@@ -20,7 +20,7 @@
     </div>
 
     {% if projects %} {% for p in projects %}
-    <div style="margin-bottom: 20px">
+    <div style="margin-bottom: 20px" class="search-result-container">
       <div class="count-number"><span class="orange-color">{{ projects.start_index|add:forloop.counter0 }}</span>번째 공고</div><br />
       <strong>📢 {{ p.공고명 }}</strong><br />
 
@@ -81,7 +81,7 @@
     {% endif %}
     <div class="button-container">
       <div class="button-container-item">
-        <a href="{% url 'main' %}" class="orange-color">처음으로 돌아가기</a>
+        <a href="{% url 'main' %}" class="orange-color">첫 화면으로</a>
       </div>
       <div class="button-container-item">
         <a href="{% url 'counsel_form' %}" class="orange-color">전문가 상담</a>
