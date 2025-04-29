@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'main/search_results.css' %}" />
+    <title>검색 결과</title>
+  </head>
+
+  <body>
+    <div class="main-subtitle">
+      <div class="main-subtitle-text">
+        <span class="orange-color">나</span>에게 <span class="orange-color">맞</span>는 <span class="orange-color">지</span>원금
+      </div>
+    </div>
+    <div class="main-container">
+      {{ region }}에서 {{ industry }}을 운영하시는<br />
+      대표님을 위한 지원 사업은..!
+    </div>
+
+    {% if projects %} {% for p in projects %}
+    <div style="margin-bottom: 20px">
+      <div class="count-number"><span class="orange-color">{{ projects.start_index|add:forloop.counter0 }}</span>번째 공고</div><br />
+      <strong>📢 {{ p.공고명 }}</strong><br />
+
+      📍 <strong>지역:</strong> {{ p.지역 }}<br />
+
+      🏭 <strong>업종:</strong> {{ p.가능업종|join:", " }}<br />
+
+      🚢 <strong>수출 실적 여부:</strong> {{ p.수출실적여부 }}<br />
+
+      💰 <strong>지원 규모:</strong> 
+      {% if p.지원규모.items %}
+      <ul style="margin: 5px 0">
+        {% for key, value in p.지원규모.items %}
+        <li>{{ key }}: {{ value }}</li>
+        {% endfor %}
+      </ul>
+      {% else %} {{ p.지원규모 }} {% endif %} <br />
+
+      👤 <strong>지원 자격:</strong>{% if p.지원자격.items %}
+      <ul style="margin: 5px 0">
+        {% for key, value in p.지원자격.items %}
+        <li>{{ key }}: {{ value }}</li>
+        {% endfor %}
+      </ul>
+      {% else %} {{ p.지원자격 }} {% endif %} <br />
+
+      📆 <strong>모집 기간:</strong>
+      {% if p.모집기간.모집종료일 == "9999-12-31" %}사업비 소진 시 까지 (상시접수) 
+      {% elif p.모집기간.모집시작일 == "1111-12-31" %} ~ {{ p.모집기간.모집종료일 }} 
+      {% else %}{{ p.모집기간.모집시작일 }} ~ {{ p.모집기간.모집종료일 }} 
+      {% endif %}
+      <br />
+
+      <strong>핵심 키워드:</strong> {{ p.핵심키워드|join:", " }}<br />
+
+      <!-- 공고 내용 -->
+      <p id="summary-{{ forloop.counter }}" class="summary">📄 {{ p.공고내용 }}</p>
+      <p id="full-{{ forloop.counter }}" class="full-text">📄 {{ p.공고내용 }}</p>
+
+      <button id="button-{{ forloop.counter }}" class="more-button" onclick="toggleContent('{{ forloop.counter }}')">더보기</button>
+    </div>
+    <hr />
+    {% endfor %}
+
+    <!-- 페이지네이션 -->
+    <div class="pagination" style="margin-top: 30px">
+      {% if projects.has_previous %}
+      <a href="?page={{ projects.previous_page_number }}&region={{ region }}&industry={{ industry }}">이전</a>
+      {% endif %}
+      <span>{{ projects.number }} / {{ projects.paginator.num_pages }}</span>
+      {% if projects.has_next %}
+      <a href="?page={{ projects.next_page_number }}&region={{ region }}&industry={{ industry }}">다음</a>
+      {% endif %}
+    </div>
+
+    {% else %}
+    <p>❗ 조건에 맞는 결과가 없습니다.</p>
+    {% endif %}
+    <div class="button-container">
+      <div class="button-container-item">
+        <a href="{% url 'main' %}" class="orange-color">처음으로 돌아가기</a>
+      </div>
+      <div class="button-container-item">
+        <a href="{% url 'counsel_form' %}" class="orange-color">전문가 상담</a>
+      </div>
+    </div>
+    <script src="{% static 'main/main.js' %}"></script>
+  </body>
+</html>

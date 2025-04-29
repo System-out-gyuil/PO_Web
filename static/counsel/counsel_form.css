@@ -1,0 +1,65 @@
+.counsel-title {
+  font-size: 23px;
+  font-weight: bold;
+  margin-bottom: 60px;
+}
+
+.form-group {
+  font-weight: bold;
+  font-size: 20px;
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.main-container {
+  font-size: 20px;
+  font-weight: bold;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.main-title {
+  font-size: 30px;
+  color: black;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.main-subtitle {
+  text-align: center;
+  font-size: 25px;
+  color: black;
+  font-weight: bold;
+  border-bottom: 1px solid black;
+  position: sticky;
+  top: 0;
+  background-color: white;
+  height: 40px;
+}
+
+/* .main-subtitle-text {
+  margin-top: 20px;
+} */
+
+.orange-color {
+  color: #ff4000;
+}
+
+.form-button {
+  text-align: center;
+  margin-top: 60px;
+}
+
+.form-button button {
+  font-weight: bold;
+  background-color: #ffffff;
+  color: #ff4000;
+  padding: 10px 20px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 20px;
+  border: 1px solid #ff4000;
+}
+
+

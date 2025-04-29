@@ -1,9 +1,9 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.views import View
-from rest_framework.views import APIView
+from django.core.paginator import Paginator
 from elasticsearch import Elasticsearch
 from datetime import datetime
-import json
+import json  # 🔥 추가
 
 class MainView(View):
     def get(self, request):
@@ -12,14 +12,25 @@ class MainView(View):
     def post(self, request):
         region = request.POST.get('region')
         industry = request.POST.get('industry')
-        print(region, industry)
 
-        # Elasticsearch 연결
+        if region and industry:
+            return redirect(f'/search/?region={region}&industry={industry}')
+        else:
+            return render(request, 'main/main.html')
+
+
+class SearchResultView(View):
+    def get(self, request):
+        region = request.GET.get('region')
+        industry = request.GET.get('industry')
+
+        if not (region and industry):
+            return redirect('main')
+
         es = Elasticsearch("http://localhost:9200", verify_certs=False)
         index_name = "support_projects"
 
-        # 검색 함수
-        def search_support_projects(region: str, industry: str, sample_size: int = 20):
+        def search_support_projects(region: str, industry: str, sample_size: int = 1000):
             query = {
                 "query": {
                     "bool": {
@@ -36,30 +47,9 @@ class MainView(View):
                     }
                 }
             }
-
             res = es.search(index=index_name, body=query, size=sample_size)
-
             return [hit["_source"] for hit in res["hits"]["hits"]]
 
-        # 날짜 유효성 검사
-        def is_valid_date_range(start_date: str, end_date: str) -> bool:
-            try:
-                today = datetime.today().date()
-                if not end_date or end_date == "9999-12-31":
-                    return True
-                return datetime.strptime(end_date, "%Y-%m-%d").date() >= today
-            except:
-                return False
-
-        # 날짜 포맷
-        def format_date_range(start: str, end: str) -> str:
-            if not end or end == "9999-12-31":
-                return "사업비 소진 시까지 (상시접수)"
-            if not start or start == "1111-12-31":
-                return f"~ {end}"
-            return f"{start} ~ {end}"
-
-        # 정렬 기준: 모집 종료일이 빠른 순 (상시모집은 맨 뒤)
         def sort_key(project):
             try:
                 end_date = project.get("모집기간", {}).get("모집종료일", "")
@@ -69,8 +59,25 @@ class MainView(View):
             except:
                 return datetime.max
 
-        # 문서 검색 및 정렬
         matched_projects = sorted(search_support_projects(region, industry), key=sort_key)
 
-        return render(request, 'main/main.html', {'projects': matched_projects})
+        # 🔥 지원규모가 dict처럼 생긴 문자열이면 파싱하기
+        for project in matched_projects:
+            규모 = project.get('지원규모')
+            if isinstance(규모, str):
+                try:
+                    parsed = json.loads(규모.replace("'", '"'))  # 홑따옴표 -> 쌍따옴표로 바꿔서 파싱
+                    if isinstance(parsed, dict):
+                        project['지원규모'] = parsed
+                except json.JSONDecodeError:
+                    pass  # 실패하면 그냥 문자열 유지
 
+        paginator = Paginator(matched_projects, 5)
+        page_number = request.GET.get('page')
+        page_obj = paginator.get_page(page_number)
+
+        return render(request, 'main/search_results.html', {
+            'projects': page_obj,
+            'region': region,
+            'industry': industry,
+        })

@@ -1,73 +1,64 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  {% comment %} <link rel="stylesheet" href="{% static 'main/main.css' %}"> {% endcomment %}
-  <title>PO</title>
-</head>
-<body>
-  <form method="post" action="{% url 'main' %}">
-    {% csrf_token %}
-    <label for="region">지역 선택:</label>
-    <select id="region" name="region" default="">
-      <option value="">-- 선택하세요 --</option>
-      <option value="서울" {% if region == "seoul" %}selected{% endif %}>서울</option>
-      <option value="경기" {% if region == "kyunggi" %}selected{% endif %}>경기</option>
-      <option value="인천" {% if region == "incheon" %}selected{% endif %}>인천</option>
-      <option value="경남" {% if region == "kyungnam" %}selected{% endif %}>경남</option>
-      <option value="경북" {% if region == "kyungnam" %}selected{% endif %}>경북</option>
-      <option value="전남" {% if region == "kyungnam" %}selected{% endif %}>전남</option>
-      <option value="전북" {% if region == "kyungnam" %}selected{% endif %}>전북</option>
-      <option value="충북" {% if region == "kyungnam" %}selected{% endif %}>충북</option>
-      <option value="충남" {% if region == "kyungnam" %}selected{% endif %}>충남</option>
-      <option value="제주" {% if region == "kyungnam" %}selected{% endif %}>제주</option>
-    </select>
-  
-    <label for="industry">업종 선택:</label>
-    <select id="industry" name="industry" default="">
-      <option value="">-- 선택하세요 --</option>
-      <option value="IT" {% if industry == "IT" %}selected{% endif %}>IT</option>
-      <option value="건설업" {% if industry == "construction" %}selected{% endif %}>건설업</option>
-      <option value="도소매" {% if industry == "retail" %}selected{% endif %}>도소매</option>
-      <option value="제조업" {% if industry == "manufacturing" %}selected{% endif %}>제조업</option>
-      <option value="서비스업" {% if industry == "service" %}selected{% endif %}>서비스업</option>
-      <option value="요식업" {% if industry == "service" %}selected{% endif %}>요식업</option>
-      <option value="무역업" {% if industry == "trade" %}selected{% endif %}>무역업</option>
-      <option value="운수업" {% if industry == "transportation" %}selected{% endif %}>운수업</option>
-      <option value="농수산업" {% if industry == "agriculture" %}selected{% endif %}>농수산업</option>
-      <option value="미디어" {% if industry == "media" %}selected{% endif %}>미디어</option>
-      <option value="기타" {% if industry == "etc" %}selected{% endif %}>기타</option>
-    </select>
-  
-    <button type="submit">검색</button>
-  </form>
-  
-  <hr>
-  
-  {% if projects %}
-    <h2>🔍 검색 결과</h2>
-    {% for p in projects %}
-      <div style="margin-bottom: 20px;">
-        <strong>📢 {{ p.공고명 }}</strong><br>
-        📍 지역: {{ p.지역 }}<br>
-        🏭 업종: {{ p.가능업종|join:", " }}<br>
-        🚢 수출 실적 여부: {{ p.수출실적여부 }}<br>
-        💰 지원 규모: {{ p.지원규모 }}<br>
-        👤 지원 자격: {{ p.지원자격 }}<br>
-        📆 모집 기간: 
-        {% if p.모집기간.모집종료일 == "9999-12-31" %}사업비 소진 시 까지 (상시접수)
-        {% elif p.모집기간.모집시작일 == "1111-12-31" %} ~ {{ p.모집기간.모집종료일 }}
-        {% else %}{{ p.모집기간.모집시작일 }} ~ {{ p.모집기간.모집종료일 }}
-        {% endif %}<br>
-        🔑 핵심 키워드: {{ p.핵심키워드|join:", " }}<br>
-        <p>📄 {{ p.공고내용 }}</p>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'main/main.css' %}" />
+    <title>PO</title>
+  </head>
+  <body>
+    <div class="main-container">
+      <div class="main-title">AI 비서가 찾아주는</div>
+      <div class="main-subtitle">
+        <span class="orange-color">나</span>에게 <br />
+        <span class="orange-color">맞</span>는 <br />
+        <span class="orange-color">지</span>원금 찾기
       </div>
-    {% endfor %}
-  {% else %}
-    <p>❗ 조건에 맞는 결과가 없습니다.</p>
-  {% endif %}
-  
-</body>
-</html>
+    </div>
 
+    <div class="search-container">
+      <form id="search-form" method="post" action="{% url 'main' %}">
+        {% csrf_token %}
+        <div class="search-region">
+          <label for="region"></label>
+          <select id="region" class="region-select" name="region">
+            <option value="">지역</option>
+            <option value="서울">서울</option>
+            <option value="경기">경기</option>
+            <option value="인천">인천</option>
+            <option value="경남">경남</option>
+            <option value="경북">경북</option>
+            <option value="전남">전남</option>
+            <option value="전북">전북</option>
+            <option value="충북">충북</option>
+            <option value="충남">충남</option>
+            <option value="강원">강원</option>
+            <option value="제주">제주</option>
+          </select>
+        </div>
+
+        <div class="search-industry">
+          <label for="industry"></label>
+          <select id="industry" class="industry-select" name="industry">
+            <option value="">업종</option>
+            <option value="IT">IT</option>
+            <option value="건설업">건설업</option>
+            <option value="도소매">도소매</option>
+            <option value="제조업">제조업</option>
+            <option value="요식업">요식업</option>
+            <option value="무역업">무역업</option>
+            <option value="운수업">운수업</option>
+            <option value="미디어">미디어</option>
+            <option value="서비스업">서비스업</option>
+            <option value="농수산업">농수산업</option>
+            <option value="기타">기타</option>
+          </select>
+        </div>
+      </form>
+      <div class="search-button-wrap">
+        <button form="search-form" type="submit" class="search-button">찾아보기</button>
+      </div>
+    </div>
+  </body>
+</html>

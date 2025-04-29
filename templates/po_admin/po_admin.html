@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>상담 신청 리스트</title>
+  {% load static %}
+  <link rel="stylesheet" href="{% static 'base.css' %}">
+</head>
+<body>
+  <h1>상담 신청 리스트</h1>
+
+  {% if counsels %}
+    <table>
+      <thead>
+        <tr>
+          <th>번호</th>
+          <th>상호</th>
+          <th>연락처</th>
+          <th>지역</th>
+          <th>업종</th>
+          <th>사업개시일</th>
+          <th>24년 매출</th>
+          <th>25년 현재매출</th>
+          <th>문의내용</th>
+          <th>신청일시</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for counsel in counsels %}
+        <tr>
+          <td>{{ forloop.counter }}</td>
+          <td>{{ counsel.company }}</td>
+          <td>{{ counsel.phone }}</td>
+          <td>{{ counsel.region }}</td>
+          <td>{{ counsel.industry }}</td>
+          <td>{{ counsel.start_date }}</td>
+          <td>{{ counsel.sales_2024 }}</td>
+          <td>{{ counsel.sales_2025 }}</td>
+          <td>{{ counsel.inquiry_type }}</td>
+          <td>{{ counsel.created_at|date:"Y-m-d H:i" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>등록된 상담 데이터가 없습니다.</p>
+  {% endif %}
+</body>
+</html>
