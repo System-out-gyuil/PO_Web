@@ -31,7 +31,7 @@ langchain-openai==0.2.1
 
 mysqlclient==2.2.4
 
-numpy==1.26.4
+numpy
 
 oauthlib==3.2.2
 openai==1.75.0
@@ -47,7 +47,7 @@ python-dateutil==2.9.0.post0
 python3-openid==3.2.0
 pytz==2024.1
 PyPDF2==3.0.1
-pywin32==310
+pywin32
 pyhwpx==0.51.2
 pytesseract==0.3.13
 paddlepaddle==3.0.0
