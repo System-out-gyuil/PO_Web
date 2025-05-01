@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect
 from django.views import View
 from counsel.models import Counsel
-from .config import ADMIN_PASSWORD  # 🔥 config에서 비밀번호 불러오기
+from config import ADMIN_PASSWORD  # 🔥 config에서 비밀번호 불러오기
 
 class AdminLoginView(View):
     def get(self, request):

@@ -4,7 +4,7 @@ from django.core.paginator import Paginator
 from elasticsearch import Elasticsearch
 from datetime import datetime
 import json  # 🔥 추가
-from .config import ES_API_KEY
+from config import ES_API_KEY
 
 class MainView(View):
     def get(self, request):
