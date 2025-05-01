@@ -9,13 +9,15 @@
   </head>
 
   <body>
-    <div class="main-subtitle">
-      <div class="main-subtitle-text">
-        <span class="orange-color">나</span>에게 <span class="orange-color">맞</span>는 <span class="orange-color">지</span>원금
+    <a href="{% url 'main' %}">
+      <div class="main-subtitle">
+        <div class="main-subtitle-text">
+          <span class="orange-color">나</span>에게 <span class="orange-color">맞</span>는 <span class="orange-color">지</span>원금
+        </div>
       </div>
-    </div>
+    </a>
     <div class="main-container">
-      {{ region }}에서 {{ industry }}을 운영하시는<br />
+      <span class="orange-color">{{ region }}</span>에서 <span class="orange-color">{{ industry }}</span>을 운영하시는<br />
       대표님을 위한 지원 사업은..!
     </div>
 

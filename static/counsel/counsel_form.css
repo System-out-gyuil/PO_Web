@@ -2,6 +2,20 @@ body {
   margin : 0
 }
 
+input {
+  height: 23px;
+  width: 180px;
+}
+
+select {
+  height: 29px;
+  width: 100px;
+}
+
+a {
+  text-decoration: none;
+}
+
 .counsel-title {
   font-size: 23px;
   font-weight: bold;
@@ -68,4 +82,49 @@ body {
 
 .counsel-container {
   margin: 10px
+}
+
+.input-error {
+  border: 1px solid red !important;
+  height: 23px;
+}
+
+.input-wrapper {
+  display: flex;
+  flex-direction: column;
+  font-size: 15px;
+}
+
+.error-message {
+  color: red;
+  font-size: 12px;
+  display: none;
+  text-align: left;
+}
+
+.input-inner-wrapper .phone-input {
+  width: 44px;
+  text-align: center;
+}
+.input-inner-wrapper{
+  display: flex;
+  gap: 4px;
+  flex-direction: row;
+  font-size: 13px;
+}
+
+.date-input { 
+  width: 40px;
+  text-align: center;
+  margin-left: 10px;
+}
+
+.sales-input24, .sales-input25 {
+  width: 25px;
+  text-align: center;
+  margin-left: 10px;
+}
+
+.input-middle-text {
+  margin-top: 5px;
 }

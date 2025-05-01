@@ -1,74 +1,167 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    {% load static %}
-    <link rel="stylesheet" href="{% static 'counsel/counsel_form.css' %}" />
-    <title>전문가 상담</title>
-  </head>
-  <body>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  {% load static %}
+  <link rel="stylesheet" href="{% static 'counsel/counsel_form.css' %}" />
+  <title>전문가 상담</title>
+  
+</head>
+<body>
+  <a href="{% url 'main' %}">
     <div class="main-subtitle">
       <div class="main-subtitle-text">
         <span class="orange-color">나</span>에게 <span class="orange-color">맞</span>는 <span class="orange-color">지</span>원금
       </div>
     </div>
+  </a>
 
-    <div class="counsel-container">
-      <h2 class="counsel-title">혼자 진행하시기가 어렵다면<br /><span class="orange-color">전문 컨설턴트</span>가 상담 도와드립니다!</h2>
+  <div class="counsel-container">
+    <h2 class="counsel-title">혼자 진행하시기가 어렵다면<br /><span class="orange-color">전문 컨설턴트</span>가 상담 도와드립니다!</h2>
 
-      <form method="post" action="{% url 'counsel_form' %}">
-        {% csrf_token %}
+    <form class="counsel-form" method="post" action="{% url 'counsel_form' %}">
+      {% csrf_token %}
 
-        <div class="form-group">
-          <label for="company">상호</label>
-          <input type="text" id="company" name="company" placeholder="상호를 입력하세요" required />
+      <div class="form-group">
+        <label for="company">상호</label>
+        <div class="input-wrapper">
+          <input class="inputs" type="text" id="company" name="company" placeholder="상호를 입력하세요"  />
+          <div class="error-message" id="company-error">상호를 입력해주세요.</div>
         </div>
+      </div>
+      
 
-        <div class="form-group">
-          <label for="phone">연락처</label>
-          <input type="text" id="phone" name="phone" placeholder="010-0000-0000" required />
+      <div class="form-group">
+        <label for="phone1">연락처</label>
+        <div class="input-wrapper ">
+          <div class="input-inner-wrapper">
+            <input class="phone-input" type="text" id="phone1" maxlength="3" placeholder="010" required />
+            <span class="input-middle-text">-</span>
+            <input class="phone-input" type="text" id="phone2" maxlength="4" placeholder="1234" required />
+            <span class="input-middle-text">-</span>
+            <input class="phone-input" type="text" id="phone3" maxlength="4" placeholder="5678" required />
+          </div>
+          <input class="inputs" type="hidden" id="phone" name="phone" />
+          <div class="error-message" id="phone-error">전화번호를 입력해주세요.</div>
         </div>
+      </div>
 
-        <div class="form-group">
-          <label for="region">지역</label>
-          <input type="text" id="region" name="region" placeholder="예: 인천" required />
+      <div class="form-group">
+        <label for="region">지역</label>
+        <div class="input-wrapper">
+          <select id="region" name="region" >
+            <option value="">선택하세요</option>
+            <option value="서울">서울</option>
+            <option value="인천">인천</option>
+            <option value="경기">경기</option>
+            <option value="부산">부산</option>
+            <option value="대구">대구</option>
+            <option value="대전">대전</option>
+            <option value="울산">울산</option>
+            <option value="경남">경남</option>
+            <option value="경북">경북</option>
+            <option value="광주">광주</option>
+            <option value="전남">전남</option>
+            <option value="전북">전북</option>
+            <option value="제주">제주</option>
+            <option value="강원">강원</option>
+            <option value="충남">충남</option>
+            <option value="충북">충북</option>
+          </select>
+          <div class="error-message" id="region-error">지역을 선택해주세요.</div>
         </div>
+      </div>
 
-        <div class="form-group">
-          <label for="industry">업종</label>
-          <input type="text" id="industry" name="industry" placeholder="예: 제조업" required />
+      <div class="form-group">
+        <label for="industry">업종</label>
+        <div class="input-wrapper">
+          <select id="industry" name="industry" >
+            <option value="">선택하세요</option>
+            <option value="IT업">IT업</option>
+            <option value="건설업">건설업</option>
+            <option value="도소매">도소매</option>
+            <option value="제조업">제조업</option>
+            <option value="요식업">요식업</option>
+            <option value="무역업">무역업</option>
+            <option value="운수업">운수업</option>
+            <option value="미디어">미디어</option>
+            <option value="서비스업">서비스업</option>
+            <option value="농수산업">농수산업</option>
+            <option value="기타">기타</option>
+          </select>
+          <div class="error-message" id="industry-error">업종을 선택해주세요.</div>
         </div>
+      </div>
 
-        <div class="form-group">
-          <label for="start_date">사업개시일</label>
-          <input type="text" id="start_date" name="start_date" placeholder="YY.MM.dd (예: 22.01.01)" required />
-        </div>
+      <!-- 사업개시일 -->
+<div class="form-group">
+  <label for="start_date">사업개시일</label>
+  <div class="input-wrapper">
+    <div class="input-inner-wrapper">
+      <input class="date-input" type="text" id="start_year" maxlength="2" placeholder="YY" required />
+      <span class="input-middle-text">년</span>
+      <input class="date-input" type="text" id="start_month" maxlength="2" placeholder="MM" required />
+      <span class="input-middle-text">월</span>
+    </div>
+    <input class="inputs" type="hidden" name="start_date" id="start_date" />
+    <div class="error-message" id="start_date-error">사업개시일을 입력해주세요.</div>
+  </div>
+</div>
 
-        <div class="form-group">
-          <label for="sales_2024">24년 매출</label>
-          <input type="text" id="sales_2024" name="sales_2024" placeholder="예: 500,000,000" />
-        </div>
+<!-- 24년 매출 -->
+<div class="form-group">
+  <label for="sales_2024">24년 매출</label>
+  <div class="input-wrapper">
+    <div class="input-inner-wrapper">
+      <input class="sales-input24" type="text" id="sales_2024_eok" maxlength="2" placeholder="2" required />
+      <span class="input-middle-text">억</span>
+    <input class="sales-input24" type="text" id="sales_2024_cheun" maxlength="3" placeholder="4" required />
+    <span class="input-middle-text">천</span>
+    <input class="sales-input24" type="text" id="sales_2024_baek" maxlength="3" placeholder="3" required />
+    <span class="input-middle-text">백만원</span>
+    </div>
+    <input class="inputs" type="hidden" name="sales_2024" id="sales_2024" />
+    <div class="error-message" id="sales_2024-error" style="margin-left: 10px;">24년 매출을 입력해주세요.</div>
+  </div>
+</div>
 
-        <div class="form-group">
-          <label for="sales_2025">25년 현재매출</label>
-          <input type="text" id="sales_2025" name="sales_2025" placeholder="예: 500,000,000" />
-        </div>
+<!-- 25년 현재매출 -->
+<div class="form-group">
+  <label for="sales_2025">25년 현재매출</label>
+  <div class="input-wrapper">
+    <div class="input-inner-wrapper">
+      <input class="sales-input25" type="text" id="sales_2025_eok" maxlength="3" placeholder="2" required />
+      <span class="input-middle-text">억</span>
+    <input class="sales-input25" type="text" id="sales_2025_cheun" maxlength="3" placeholder="5" required />
+    <span class="input-middle-text">천</span>
+    <input class="sales-input25" type="text" id="sales_2025_baek" maxlength="3" placeholder="6" required />
+    <span class="input-middle-text">백만원</span>
+    </div>
+    <input class="inputs" type="hidden" name="sales_2025" id="sales_2025" />
+    <div class="error-message" id="sales_2025-error" style="margin-left: 10px;">25년 현재매출을 입력해주세요.</div>
+  </div>
+</div>
 
-        <div class="form-group">
-          <label for="inquiry_type">문의내용</label>
-          <select id="inquiry_type" name="inquiry_type" required>
+
+      <div class="form-group">
+        <label for="inquiry_type">문의내용</label>
+        <div class="input-wrapper">
+          <select id="inquiry_type" name="inquiry_type" >
             <option value="">선택하세요</option>
             <option value="지원금">지원금</option>
             <option value="정책자금">정책자금</option>
             <option value="지원금+정책자금">지원금+정책자금</option>
           </select>
+          <div class="error-message" id="inquiry_type-error">문의내용을 선택해주세요.</div>
         </div>
+      </div>
 
-        <div class="form-button">
-          <button type="submit">상담 신청하기</button>
-        </div>
-      </form>
-    </div>
-  </body>
+      <div class="form-button">
+        <button type="button">상담 신청하기</button>
+      </div>
+    </form>
+  </div>
+  <script src="{% static 'counsel/counsel_form.js' %}"></script>
+</body>
 </html>

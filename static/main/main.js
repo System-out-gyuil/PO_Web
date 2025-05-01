@@ -7,14 +7,12 @@ function toggleContent(counter) {
     summary.style.display = "none";
     full.style.display = "block";
     full.classList.remove('hidden');
-    console.log(234)
     button.textContent = "접기"; // 버튼 문구 변경
   } else {
-    summary.style.display = "block";
+    summary.style.display = "-webkit-box";
     full.style.display = "none";
     full.classList.add('hidden');
     button.textContent = "더보기";
-    console.log(123)
   }
 }
 

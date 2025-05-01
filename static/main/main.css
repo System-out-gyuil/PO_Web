@@ -2,6 +2,10 @@ body {
   font-family: "Pretendard", sans-serif;
 }
 
+a {
+  text-decoration: none;
+}
+
 .main-container {
   display: flex;
   margin: 0 auto;
