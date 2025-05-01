@@ -25,7 +25,7 @@ SECRET_KEY = "django-insecure-4r5!bt6umkmd-eqyv8&3zwsz-e7zj=eq0p0-z607+v!xxxdrqs
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '13.124.116.146']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '13.124.116.146', '43.203.40.252', 'namatji.com', 'www.namatji.com']
 
 
 # Application definition
@@ -81,7 +81,7 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'po_db',  # 데이터베이스 이름
-        'USER': 'root',        # MySQL 계정 아이디
+        'USER': 'po_db',        # MySQL 계정 아이디
         'PASSWORD': '1234',    # MySQL 계정 비밀번호
         'HOST': '3.34.192.151',
         'PORT': '3306',

@@ -4,6 +4,7 @@ from django.core.paginator import Paginator
 from elasticsearch import Elasticsearch
 from datetime import datetime
 import json  # 🔥 추가
+from .config import ES_API_KEY
 
 class MainView(View):
     def get(self, request):
@@ -27,8 +28,8 @@ class SearchResultView(View):
         if not (region and industry):
             return redirect('main')
 
-        es = Elasticsearch("http://localhost:9200", verify_certs=False)
-        index_name = "support_projects"
+        es = Elasticsearch("https://0e0f4480a93d4cb78455e070163e467d.us-central1.gcp.cloud.es.io:443", api_key=ES_API_KEY)
+        index_name = "po_index"
 
         def search_support_projects(region: str, industry: str, sample_size: int = 1000):
             query = {
