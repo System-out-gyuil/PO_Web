@@ -11,7 +11,7 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 import os
 from pathlib import Path
-
+from config import Django_SECRET_KEY, MYSQL_PASSWORD, MYSQL_HOST_IP
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -20,7 +20,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-4r5!bt6umkmd-eqyv8&3zwsz-e7zj=eq0p0-z607+v!xxxdrqs"
+SECRET_KEY = Django_SECRET_KEY
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -82,8 +82,8 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'po_db',  # 데이터베이스 이름
         'USER': 'po_db',        # MySQL 계정 아이디
-        'PASSWORD': '1234',    # MySQL 계정 비밀번호
-        'HOST': '3.34.192.151',
+        'PASSWORD': MYSQL_PASSWORD,    # MySQL 계정 비밀번호
+        'HOST': MYSQL_HOST_IP,
         'PORT': '3306',
     }
 }
