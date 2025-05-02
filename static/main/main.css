@@ -36,19 +36,19 @@ a {
   display: flex;
   flex-direction: column;
   align-items: center;
-  height: 400px;
+  height: 260px;
 }
 
-.search-region {
-  margin-top: 20%;
-}
+/* .search-region {
+  margin-top: 10%;
+} */
 
 .search-industry {
-  margin-top: 20%;
+  margin-top: 10%;
 }
 
 .search-button-wrap {
-  margin-top: 20%;
+  margin-top: 10%;
 }
 
 .search-button {
@@ -63,4 +63,8 @@ select {
   height: 30px;
   text-align: center;
   font-size: 15px;
+}
+
+.coupang-banner {
+  margin-left: -15px;
 }
