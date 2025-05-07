@@ -1,5 +1,7 @@
 body {
   font-family: "Pretendard", sans-serif;
+  padding: 0;
+  margin: 0;
 }
 
 a {
@@ -36,7 +38,7 @@ a {
   display: flex;
   flex-direction: column;
   align-items: center;
-  height: 260px;
+  height: 350px;
 }
 
 /* .search-region {
@@ -66,5 +68,18 @@ select {
 }
 
 .coupang-banner {
-  margin-left: -15px;
+  margin: 0 auto;
+}
+
+.search-wrap {
+  display: flex;
+  gap: 20px;
+}
+
+.search-export {
+  margin-top: 10%;
+}
+
+.search-member-number {
+  margin-top: 10%;
 }

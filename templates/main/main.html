@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="naver-site-verification" content="6f35a4366ee38a7cfb2f2fecb1bf3304f131afb2" />
     {% load static %}
     <link rel="stylesheet" href="{% static 'main/main.css' %}" />
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6882409851484122"
@@ -22,7 +23,9 @@
     <div class="search-container">
       <form id="search-form" method="post" action="{% url 'main' %}">
         {% csrf_token %}
+        <div class="search-wrap">
         <div class="search-region">
+            <div>
           <label for="region"></label>
           <select id="region" class="region-select" name="region">
             <option value="">지역</option>
@@ -43,7 +46,7 @@
             <option value="강원">강원</option>
             <option value="제주">제주</option>
           </select>
-        </div>
+        </div>          
 
         <div class="search-industry">
           <label for="industry"></label>
@@ -62,11 +65,60 @@
             <option value="기타">기타</option>
           </select>
         </div>
+      </div>
+      <div>
+        <div class="search-business-period">
+          <label for="business-period"></label>
+          <select id="business-period" class="business-period-select" name="business-period">
+            <option value="">사업기간</option>
+            <option value="예비창업">예비창업</option>
+            <option value="1년 이하">1년 이하</option>
+            <option value="1~3년">1~3년</option>
+            <option value="3~7년">3~7년</option>
+            <option value="7년 이상">7년 이상</option>
+          </select>
+        </div>
+
+        <div class="search-export">
+          <label for="export"></label>
+          <select id="export" class="export-select" name="export">
+            <option value="">수출여부</option>
+            <option value="없음">없음</option>
+            <option value="수출기업">있음</option>
+            <option value="수출기업">희망</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <div class="search-sales-volume">
+          <label for="sales-volume"></label>
+          <select id="sales-volume" class="sales-volume-select" name="sales-volume">
+            <option value="">매출액</option>
+            <option value="없음">없음</option>
+            <option value="1억 이하">1억 이하</option>
+            <option value="1~5억">1~5억</option>
+            <option value="5~10억">5~10억</option>
+            <option value="10~30억">10~30억</option>
+            <option value="30억 이상">30억 이상</option>
+          </select>
+        </div>
+
+        <div class="search-member-number">
+          <label for="member-number"></label>
+          <select id="member-number" class="member-number-select" name="member-number">
+            <option value="">총 직원 수</option>
+            <option value="없음">없음</option>
+            <option value="1~4인">1~4인</option>
+            <option value="5인 이상">5인 이상</option>
+          </select>
+          </div>
+        </div>
+      </div>
       </form>
       <div class="search-button-wrap">
         <button form="search-form" type="submit" class="search-button">찾아보기</button>
       </div>
     </div>
-    <iframe class="coupang-banner" src="https://ads-partners.coupang.com/widgets.html?id=861866&template=carousel&trackingCode=AF8313643&subId=&width=350&height=140&tsource=" width="400" height="140" frameborder="0" scrolling="no" referrerpolicy="unsafe-url" browsingtopics></iframe>
+    <iframe class="coupang-banner" src="https://ads-partners.coupang.com/widgets.html?id=861866&template=carousel&trackingCode=AF8313643&subId=&width=350&height=140&tsource=" width="100%" height="140" frameborder="0" scrolling="no" referrerpolicy="unsafe-url" browsingtopics></iframe>
   </body>
 </html>

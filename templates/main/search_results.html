@@ -23,14 +23,28 @@
       대표님을 위한 지원 사업은..!
     </div>
 
-    {% if projects %} {% for p in projects %}
+    {% if results %} 
+    {% for p in results %}
     <div style="margin-bottom: 20px" class="search-result-container">
-      <div class="count-number"><span class="orange-color">{{ projects.start_index|add:forloop.counter0 }}</span>번째 공고</div><br />
+      <div class="count-number"><span class="orange-color">{{ results.start_index|add:forloop.counter0 }}</span>번째 공고</div><br />
+      
+      <div>{{ p }}</div>
+      <div class="match-score">
+        매칭 점수:
+        {% for i in "12345" %}
+          {% if forloop.counter <= p.매칭점수 %}
+            ⭐
+          {% else %}
+            ☆
+          {% endif %}
+        {% endfor %}
+      </div>
+      
       <strong>📢 {{ p.공고명 }}</strong><br />
 
       📍 <strong>지역:</strong> {{ p.지역 }}<br />
 
-      🏭 <strong>업종:</strong> {{ p.가능업종|join:", " }}<br />
+      🏭 <strong>업종:</strong> {{ p.가능업종 }}<br />
 
       🚢 <strong>수출 실적 여부:</strong> {{ p.수출실적여부 }}<br />
 
@@ -43,7 +57,10 @@
       </ul>
       {% else %} {{ p.지원규모 }} {% endif %} <br />
 
-      👤 <strong>지원 자격:</strong>{% if p.지원자격.items %}
+      💰 <strong>매출 규모:</strong>{{ p.매출규모 }}<br />
+
+      👤 <strong>지원 자격:</strong>
+      {% if p.지원자격.items %}
       <ul style="margin: 5px 0">
         {% for key, value in p.지원자격.items %}
         <li>{{ key }}: {{ value }}</li>
@@ -51,32 +68,34 @@
       </ul>
       {% else %} {{ p.지원자격 }} {% endif %} <br />
 
+      📆 <strong>사업 기간(업력):</strong>{{ p.사업기간 }}<br />
+
       📆 <strong>모집 기간:</strong>
-      {% if p.모집기간.모집종료일 == "9999-12-31" %}사업비 소진 시 까지 (상시접수) 
-      {% elif p.모집기간.모집시작일 == "1111-12-31" %} ~ {{ p.모집기간.모집종료일 }} 
-      {% else %}{{ p.모집기간.모집시작일 }} ~ {{ p.모집기간.모집종료일 }} 
+      {% if p.모집종료일 == "9999-12-31" %}사업비 소진 시 까지 (상시접수) 
+      {% elif p.모집시작일 == "0000-01-01" %} ~ {{ p.모집종료일 }} 
+      {% else %}{{ p.모집시작일 }} ~ {{ p.모집종료일 }} 
       {% endif %}
       <br />
 
-      <strong>핵심 키워드:</strong> {{ p.핵심키워드|join:", " }}<br />
+      <strong>핵심 키워드:</strong> {{ p.핵심키워드 }}<br />
 
       <!-- 공고 내용 -->
-      <p id="summary-{{ forloop.counter }}" class="summary">📄 {{ p.공고내용 }}</p>
-      <p id="full-{{ forloop.counter }}" class="full-text">📄 {{ p.공고내용 }}</p>
+      <p id="summary-{{ forloop.counter }}" class="summary"><strong>📄공고내용 요약 :</strong> {{ p.공고내용}}</p>
+      <p id="full-{{ forloop.counter }}" class="full-text"><strong>📄공고내용 요약 :</strong> {{ p.공고내용}}</p>
 
       <button id="button-{{ forloop.counter }}" class="more-button" onclick="toggleContent('{{ forloop.counter }}')">더보기</button>
     </div>
     <hr />
     {% endfor %}
-    <iframe class="coupang-banner" src="https://ads-partners.coupang.com/widgets.html?id=861867&template=carousel&trackingCode=AF8313643&subId=&width=400&height=80&tsource=" width="400" height="80" frameborder="0" scrolling="no" referrerpolicy="unsafe-url" browsingtopics></iframe>
+    <iframe class="coupang-banner" src="https://ads-partners.coupang.com/widgets.html?id=861867&template=carousel&trackingCode=AF8313643&subId=&width=400&height=80&tsource=" width="100%" height="80" frameborder="0" scrolling="no" referrerpolicy="unsafe-url" browsingtopics></iframe>
     <!-- 페이지네이션 -->
     <div class="pagination">
-      {% if projects.has_previous %}
-      <a href="?page={{ projects.previous_page_number }}&region={{ region }}&industry={{ industry }}">이전</a>
+      {% if results.has_previous %}
+      <a href="?page={{ results.previous_page_number }}&region={{ region }}&industry={{ industry }}">이전</a>
       {% endif %}
-      <span>{{ projects.number }} / {{ projects.paginator.num_pages }}</span>
-      {% if projects.has_next %}
-      <a href="?page={{ projects.next_page_number }}&region={{ region }}&industry={{ industry }}">다음</a>
+      <span>{{ results.number }} / {{ results.paginator.num_pages }}</span>
+      {% if results.has_next %}
+      <a href="?page={{ results.next_page_number }}&region={{ region }}&industry={{ industry }}">다음</a>
       {% endif %}
     </div>
 
