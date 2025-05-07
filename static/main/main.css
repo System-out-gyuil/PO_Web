@@ -1,5 +1,7 @@
 body {
   font-family: "Pretendard", sans-serif;
+  padding: 0;
+  margin: 0;
 }
 
 a {
@@ -66,7 +68,7 @@ select {
 }
 
 .coupang-banner {
-  margin-left: -15px;
+  margin: 0 auto;
 }
 
 .search-wrap {

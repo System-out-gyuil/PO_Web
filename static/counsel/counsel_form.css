@@ -128,3 +128,17 @@ a {
 .input-middle-text {
   margin-top: 5px;
 }
+
+.input-wrap {
+  display: flex;
+  font-size: 15px;
+}
+
+#consent {
+  width: 23px;
+  height: 23px;
+}
+
+.consent-text {
+  margin-top: 3px;
+}
