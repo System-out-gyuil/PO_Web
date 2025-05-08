@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <h1>지원사업공고</h1>
+  <p>작성 날짜 : {{ item.creatPnttm }}</p>
+  <hr>
+
+  <strong>공고명</strong>
+  <p>{{ item.pblancNm }}</p>
+
+  <strong>기관명</strong>
+  <p>{{ item.jrsdInsttNm }}</p>
+
+  <strong>대상</strong>
+  <p>{{ item.trgetNm }}</p>
+
+  <strong>분야</strong>
+  <p>{{ item.pldirSportRealmLclasCodeNm }}</p>
+
+  <strong>사업 기간</strong>
+  <p>{{ item.reqstBeginEndDe }}</p>
+
+  <strong>사업 개요</strong>
+  <p>{{ item.bsnsSumryCn|safe }}</p>
+
+  <strong>사업 신청 방법</strong>
+  <p>{{ item.reqstMthPapersCn }}</p>
+  
+  <strong>공고 원문</strong>
+  <p><a href="{{ item.printFlpthNm }}" target="_blank">{{ item.printFileNm }}</a></p>
+</body>
+</html>
