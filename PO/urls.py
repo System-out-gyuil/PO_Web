@@ -15,7 +15,7 @@ urlpatterns = [
     path('counsel/', include('counsel.urls')),
     path('po_admin/', include('po_admin.urls')),
     path('board/', include('board.urls')),
-    path('robots.txt/', TemplateView.as_view(template_name="robots.txt", content_type='text/plain')),
+    path('robots.txt', TemplateView.as_view(template_name="robots.txt", content_type='text/plain')),
     path('sitemap.xml', sitemap, {'sitemaps':sitemaps}, name='sitemap'),
 ]
 
