@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <h1>지원사업 목록</h1>
+  <table>
+    <thead>
+      <colgroup>
+        <col style="width: 10%">
+        <col style="width: 55%">
+        <col style="width: 15%">
+        <col style="width: 20%">
+      </colgroup>
+      <tr>
+        <th>분야</th>
+        <th>공고명</th>
+        <th>기관명</th>
+        <th>대상</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in items %}
+      <tr onclick="location.href='{% url 'board:detail'  %}?id={{ item.pblancId }}&page_index={{ page_index }}'" style="cursor:pointer;">
+        <td>{{ item.pldirSportRealmLclasCodeNm }}</td>
+        <td>{{ item.pblancNm }}</td>
+        <td>{{ item.jrsdInsttNm }}</td>
+        <td>{{ item.trgetNm }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    
+  </table>
+
+  <!-- Pagination -->
+  <div class="pagination">
+    {% with page_index|add:"-1" as prev_page %}
+      {% if prev_page > 0 %}
+        <a href="?page_index={{ prev_page }}">이전</a>
+      {% endif %}
+    {% endwith %}
+  
+    <span>현재 페이지: {{ page_index }}</span>
+  
+    {% if has_next %}
+      <a href="?page_index={{ page_index|add:"1" }}">다음</a>
+    {% endif %}
+  </div>
+  
+
+</body>
+</html>

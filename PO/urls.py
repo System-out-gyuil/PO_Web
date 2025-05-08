@@ -11,6 +11,7 @@ urlpatterns = [
     path('search/', SearchResultView.as_view(), name='search_result'),
     path('counsel/', include('counsel.urls')),
     path('po_admin/', include('po_admin.urls')),
+    path('board/', include('board.urls')),
 ]
 
 urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
