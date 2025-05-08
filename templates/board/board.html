@@ -1,13 +1,15 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="{% static 'board/board.css' %}">
   <title>Document</title>
 </head>
 <body>
   <h1>지원사업 목록</h1>
-  <table>
+  <table class="board-table">
     <thead>
       <colgroup>
         <col style="width: 10%">
@@ -24,9 +26,11 @@
     </thead>
     <tbody>
       {% for item in items %}
-      <tr onclick="location.href='{% url 'board:detail'  %}?id={{ item.pblancId }}&page_index={{ page_index }}'" style="cursor:pointer;">
+      <tr>
         <td>{{ item.pldirSportRealmLclasCodeNm }}</td>
-        <td>{{ item.pblancNm }}</td>
+        <td onclick="location.href='{% url 'board:detail'  %}?id={{ item.pblancId }}&page_index={{ page_index }}'" style="cursor:pointer;">
+          {{ item.pblancNm }}
+        </td>
         <td>{{ item.jrsdInsttNm }}</td>
         <td>{{ item.trgetNm }}</td>
       </tr>
