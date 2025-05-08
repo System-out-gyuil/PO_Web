@@ -7,14 +7,12 @@ class StaticViewSitemap(Sitemap):
 
     def items(self):
         return [
-            
             'search_result',
             'main',
             'po_admin_login',
             'po_admin_list',
             'counsel_form',
             'thank_you',
-           
             ]
     
     def location(self, item):
