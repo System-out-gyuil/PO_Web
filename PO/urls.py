@@ -4,6 +4,8 @@ from main.views import MainView, SearchResultView
 from counsel.views import CounselFormView
 from django.conf import settings
 from django.conf.urls.static import static
+from .sitemap import *
+from django.contrib.sitemaps.views import sitemap
 
 urlpatterns = [
     path('', MainView.as_view(), name='main'),
@@ -12,6 +14,8 @@ urlpatterns = [
     path('counsel/', include('counsel.urls')),
     path('po_admin/', include('po_admin.urls')),
     path('board/', include('board.urls')),
+    path('robots.txt/', TemplateView.as_view(template_name="robots.txt", content_type='text/plain')),
+    path('sitemap.xml', sitemap, {'sitemaps':sitemaps}, name='sitemap'),
 ]
 
 urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

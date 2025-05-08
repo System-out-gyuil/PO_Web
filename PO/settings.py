@@ -42,7 +42,11 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.sitemaps",
+    "django.contrib.sites",
 ]
+
+SITE_ID = 1 #sitemap
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
