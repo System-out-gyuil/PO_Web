@@ -1,10 +1,11 @@
+from django.views.generic import TemplateView
 from django.contrib import admin
 from django.urls import path, include
 from main.views import MainView, SearchResultView
 from counsel.views import CounselFormView
 from django.conf import settings
 from django.conf.urls.static import static
-from .sitemap import *
+from .sitemap import sitemaps
 from django.contrib.sitemaps.views import sitemap
 
 urlpatterns = [

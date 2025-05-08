@@ -7,16 +7,19 @@ class StaticViewSitemap(Sitemap):
 
     def items(self):
         return [
-                'admin',
-                'search_result',
+            'admin',
+            'search_result',
             'main',
             'po_admin_login',
             'po_admin_list',
             'counsel_form',
             'thank_you',
             'list',
-            'detail',
-
-                ]
+            ]
+    
     def location(self, item):
         return reverse(item)
+
+sitemaps = {
+    'static': StaticViewSitemap,
+}
