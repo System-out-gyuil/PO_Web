@@ -55,7 +55,7 @@ class BoardDetailView(View):
         item = None
         iframe_src = None
         src = None
-        
+
         try:
             # 1. 공고 API 데이터 가져오기
             url = "https://www.bizinfo.go.kr/uss/rss/bizinfoApi.do"
@@ -103,9 +103,9 @@ class BoardDetailView(View):
                 print("📄 iframe src 추출됨:", src)
                 if src and ("pdf" in src.lower() or "viewer" in src.lower()):
                     iframe_src = src
-                    if iframe_src.startswith("/"):
-                        iframe_src = "https://www.bizinfo.go.kr" + iframe_src
-                        print(iframe_src)
+                    # if iframe_src.startswith("/"):
+                        # iframe_src = "https://www.bizinfo.go.kr" + iframe_src
+                        # print(iframe_src)
                     break
 
             driver.quit()
@@ -117,6 +117,6 @@ class BoardDetailView(View):
         return render(request, "board/detail.html", {
             "item": item,
             "page_index": page_index,
-            "iframe_src": src
+            "iframe_src": iframe_src
         })
 
