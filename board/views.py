@@ -54,7 +54,8 @@ class BoardDetailView(View):
 
         item = None
         iframe_src = None
-
+        src = None
+        
         try:
             # 1. 공고 API 데이터 가져오기
             url = "https://www.bizinfo.go.kr/uss/rss/bizinfoApi.do"
