@@ -83,3 +83,15 @@ select {
 .search-member-number {
   margin-top: 10%;
 }
+
+.main-top {
+  display: flex;
+  gap: 20px;
+}
+
+.main-button {
+  font-size: 15px;
+  margin-right: 10px;
+  
+}
+
