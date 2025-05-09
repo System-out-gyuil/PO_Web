@@ -55,29 +55,28 @@ class BoardDetailView(View):
         item = None
         iframe_src = None
 
-        # 1. API 요청으로 상세 데이터 가져오기
-        url = "https://www.bizinfo.go.kr/uss/rss/bizinfoApi.do"
-        params = {
-            "crtfcKey": BIZINFO_API_KEY,
-            "dataType": "json",
-            "searchCnt": 10,
-            "pageUnit": 20,
-            "pageIndex": page_index
-        }
-
         try:
+            # 1. 공고 API 데이터 가져오기
+            url = "https://www.bizinfo.go.kr/uss/rss/bizinfoApi.do"
+            params = {
+                "crtfcKey": BIZINFO_API_KEY,
+                "dataType": "json",
+                "searchCnt": 10,
+                "pageUnit": 20,
+                "pageIndex": page_index
+            }
+
             response = requests.get(url, params=params, timeout=30)
             response.raise_for_status()
             data = response.json()
             items = data.get("jsonArray", [])
             item = next((i for i in items if i.get("pblancId") == pblanc_id), None)
-        except Exception as e:
-            print("🔴 공고 API 요청 실패:", e)
 
-        iframe_src = None
-        file_links = []
+        except Exception as e:
+            print("❌ 공고 API 요청 실패:", e)
 
         try:
+            # 2. iframe src 추출
             detail_url = f"https://www.bizinfo.go.kr/web/lay1/bbs/S1T122C128/AS/74/view.do?pblancId={pblanc_id}"
 
             options = webdriver.ChromeOptions()
@@ -88,15 +87,16 @@ class BoardDetailView(View):
 
             service = Service(executable_path=CHROMEDRIVER_PATH)
             driver = webdriver.Chrome(service=service, options=options)
+
             driver.get(detail_url)
 
+            # iframe 최대 10초까지 기다림
             WebDriverWait(driver, 10).until(
                 EC.presence_of_element_located((By.TAG_NAME, "iframe"))
             )
 
             iframe_elements = driver.find_elements(By.TAG_NAME, "iframe")
             print(f"✅ iframe 개수: {len(iframe_elements)}")
-
             for iframe in iframe_elements:
                 src = iframe.get_attribute("src")
                 print("📄 iframe src 추출됨:", src)
@@ -106,18 +106,15 @@ class BoardDetailView(View):
                         iframe_src = "https://www.bizinfo.go.kr" + iframe_src
                     break
 
-            # 추가: 파일 링크 fallback 처리
-            if not iframe_src:
-                a_tags = driver.find_elements(By.TAG_NAME, "a")
-                for a in a_tags:
-                    href = a.get_attribute("href")
-                    if href and ".pdf" in href.lower():
-                        iframe_src = href
-                        break
-
             driver.quit()
 
         except Exception as e:
-            print("🔴 iframe/PDF 추출 실패:", e)
-            iframe_src = None
+            print("⚠️ Selenium iframe 추출 실패:", e)
+
+        # ✅ 항상 HttpResponse 반환되게 보장
+        return render(request, "board/detail.html", {
+            "item": item,
+            "page_index": page_index,
+            "iframe_src": iframe_src
+        })
 
