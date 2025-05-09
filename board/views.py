@@ -10,9 +10,6 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-CHROMEDRIVER_PATH = "C:/Users/user/Desktop/po/Code/chromedriver.exe"
-
-
 class BoardView(View):
     def get(self, request):
         page_index = int(request.GET.get("page_index", 1))
@@ -49,6 +46,7 @@ class BoardView(View):
 
 class BoardDetailView(View):
     def get(self, request):
+        CHROMEDRIVER_PATH = "/usr/bin/chromedriver"
         page_index = request.GET.get("page_index")
         pblanc_id = request.GET.get("id")
 
