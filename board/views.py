@@ -74,42 +74,50 @@ class BoardDetailView(View):
         except Exception as e:
             print("🔴 공고 API 요청 실패:", e)
 
-        # 2. Selenium으로 iframe src 추출
+        iframe_src = None
+        file_links = []
+
         try:
             detail_url = f"https://www.bizinfo.go.kr/web/lay1/bbs/S1T122C128/AS/74/view.do?pblancId={pblanc_id}"
 
             options = webdriver.ChromeOptions()
             options.add_argument('--headless=chrome')
+            options.add_argument('--disable-gpu')
             options.add_argument('--no-sandbox')
             options.add_argument('--disable-dev-shm-usage')
-            options.add_argument('--disable-gpu')
 
             service = Service(executable_path=CHROMEDRIVER_PATH)
             driver = webdriver.Chrome(service=service, options=options)
-
             driver.get(detail_url)
 
-            # 최대 10초간 iframe이 DOM에 나타날 때까지 기다림
             WebDriverWait(driver, 10).until(
                 EC.presence_of_element_located((By.TAG_NAME, "iframe"))
             )
 
             iframe_elements = driver.find_elements(By.TAG_NAME, "iframe")
+            print(f"✅ iframe 개수: {len(iframe_elements)}")
+
             for iframe in iframe_elements:
                 src = iframe.get_attribute("src")
+                print("📄 iframe src 추출됨:", src)
                 if src and ("pdf" in src.lower() or "viewer" in src.lower()):
                     iframe_src = src
                     if iframe_src.startswith("/"):
                         iframe_src = "https://www.bizinfo.go.kr" + iframe_src
                     break
 
+            # 추가: 파일 링크 fallback 처리
+            if not iframe_src:
+                a_tags = driver.find_elements(By.TAG_NAME, "a")
+                for a in a_tags:
+                    href = a.get_attribute("href")
+                    if href and ".pdf" in href.lower():
+                        iframe_src = href
+                        break
+
             driver.quit()
+
         except Exception as e:
-            print("⚠️ iframe 로딩 실패 또는 없음:", e)
+            print("🔴 iframe/PDF 추출 실패:", e)
             iframe_src = None
 
-        return render(request, "board/detail.html", {
-            "item": item,
-            "page_index": page_index,
-            "iframe_src": iframe_src
-        })
