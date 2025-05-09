@@ -93,8 +93,12 @@ class BoardDetailView(View):
 
             # iframe 최대 10초까지 기다림
             WebDriverWait(driver, 10).until(
-                lambda d: d.find_element(By.TAG_NAME, "iframe").get_attribute("src")
+                lambda d: any(
+                    iframe.get_attribute("src") and ("pdf" in iframe.get_attribute("src").lower() or "viewer" in iframe.get_attribute("src").lower())
+                    for iframe in d.find_elements(By.TAG_NAME, "iframe")
+                )
             )
+
 
 
             iframe_elements = driver.find_elements(By.TAG_NAME, "iframe")
