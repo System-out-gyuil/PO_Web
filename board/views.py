@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from django.views import View
-from config import BIZINFO_API_KEY, CHROMEDRIVER_PATH
+from config import BIZINFO_API_KEY, CHROME_DRIVER_PATH
 import requests
 
 # Selenium 관련 import
@@ -46,7 +46,7 @@ class BoardView(View):
 
 class BoardDetailView(View):
     def get(self, request):
-        CHROMEDRIVER_PATH = CHROMEDRIVER_PATH
+        CHROMEDRIVER_PATH = CHROME_DRIVER_PATH
         page_index = request.GET.get("page_index")
         pblanc_id = request.GET.get("id")
 
