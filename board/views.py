@@ -97,10 +97,10 @@ class BoardDetailView(View):
             )
 
             iframe_elements = driver.find_elements(By.TAG_NAME, "iframe")
-            print(f"✅ iframe 개수: {len(iframe_elements)}")
+            # print(f"✅ iframe 개수: {len(iframe_elements)}")
             for iframe in iframe_elements:
                 src = iframe.get_attribute("src")
-                print("📄 iframe src 추출됨:", src)
+                # print("📄 iframe src 추출됨:", src)
                 if src and ("pdf" in src.lower() or "viewer" in src.lower()):
                     iframe_src = src
                     # if iframe_src.startswith("/"):
@@ -112,6 +112,8 @@ class BoardDetailView(View):
 
         except Exception as e:
             print("⚠️ Selenium iframe 추출 실패:", e)
+
+        print(iframe_src)
 
         # ✅ 항상 HttpResponse 반환되게 보장
         return render(request, "board/detail.html", {
