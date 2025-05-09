@@ -104,6 +104,7 @@ class BoardDetailView(View):
                     iframe_src = src
                     if iframe_src.startswith("/"):
                         iframe_src = "https://www.bizinfo.go.kr" + iframe_src
+                        print(iframe_src)
                     break
 
             driver.quit()
@@ -115,6 +116,6 @@ class BoardDetailView(View):
         return render(request, "board/detail.html", {
             "item": item,
             "page_index": page_index,
-            "iframe_src": iframe_src
+            "iframe_src": src
         })
 

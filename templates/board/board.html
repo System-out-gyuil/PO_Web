@@ -13,26 +13,23 @@
     <thead>
       <colgroup>
         <col style="width: 10%">
-        <col style="width: 55%">
         <col style="width: 15%">
-        <col style="width: 20%">
+        <col style="width: 75%">
       </colgroup>
       <tr>
+        <th>업로드 날짜</th>
         <th>분야</th>
         <th>공고명</th>
-        <th>기관명</th>
-        <th>대상</th>
       </tr>
     </thead>
     <tbody>
       {% for item in items %}
       <tr>
+        <td>{{ item.creatPnttm|slice:":10" }}</td>
         <td>{{ item.pldirSportRealmLclasCodeNm }}</td>
         <td onclick="location.href='{% url 'board:detail'  %}?id={{ item.pblancId }}&page_index={{ page_index }}'" style="cursor:pointer;">
           {{ item.pblancNm }}
         </td>
-        <td>{{ item.jrsdInsttNm }}</td>
-        <td>{{ item.trgetNm }}</td>
       </tr>
       {% endfor %}
     </tbody>
