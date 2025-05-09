@@ -93,8 +93,9 @@ class BoardDetailView(View):
 
             # iframe 최대 10초까지 기다림
             WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.TAG_NAME, "iframe"))
+                lambda d: d.find_element(By.TAG_NAME, "iframe").get_attribute("src")
             )
+
 
             iframe_elements = driver.find_elements(By.TAG_NAME, "iframe")
             # print(f"✅ iframe 개수: {len(iframe_elements)}")
