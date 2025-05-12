@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 from main.models import BizInfo
-from PO.management.commands.utils import fetch_iframe_src  # 폴더명도 commands로 주의
+from PO.management.commands.utils import fetch_iframe_src
 import requests
 from datetime import datetime
 from config import BIZINFO_API_KEY, CHROME_DRIVER_PATH
@@ -29,28 +29,36 @@ class Command(BaseCommand):
                 if BizInfo.objects.filter(pblanc_id=pblanc_id).exists():
                     continue
 
-                # 접수기간 파싱
-                reception = item.get("reqstBeginEndDe", "")
-                try:
-                    reception_start, reception_end = map(
-                        lambda x: datetime.strptime(x.strip(), "%Y%m%d").date(),
-                        reception.split("-")
-                    )
-                except Exception:
+                # ✅ 접수기간 파싱 (없는 경우, 잘못된 형식도 포함)
+                reception_raw = item.get("reqstBeginEndDe")
+                if reception_raw and "-" in reception_raw:
+                    try:
+                        reception_start, reception_end = map(
+                            lambda x: datetime.strptime(x.strip(), "%Y%m%d").date(),
+                            reception_raw.split("-")
+                        )
+                    except Exception:
+                        reception_start = datetime.strptime("19000101", "%Y%m%d").date()
+                        reception_end = datetime.strptime("99991231", "%Y%m%d").date()
+                else:
                     reception_start = datetime.strptime("19000101", "%Y%m%d").date()
                     reception_end = datetime.strptime("99991231", "%Y%m%d").date()
 
-                # 등록일 파싱
+                # ✅ 등록일 파싱
                 creatPnttm = item.get("creatPnttm")
                 registered_at = (
                     datetime.strptime(creatPnttm, "%Y-%m-%d %H:%M:%S").date()
                     if creatPnttm else None
                 )
 
-                # iframe src 추출
+                # ✅ iframe src 추출
                 iframe_src = fetch_iframe_src(pblanc_id, CHROME_DRIVER_PATH)
 
-                # DB 저장
+                # ✅ application form 필드 없는 경우 빈 문자열 처리
+                application_form_name = item.get("fileNm") or ""
+                application_form_path = item.get("flpthNm") or ""
+
+                # ✅ DB 저장
                 BizInfo.objects.create(
                     pblanc_id=pblanc_id,
                     title=item.get("pblancNm"),
@@ -67,8 +75,8 @@ class Command(BaseCommand):
                     print_file_path=item.get("printFlpthNm"),
                     company_hall_path=item.get("pblancUrl"),
                     support_field=item.get("pldirSportRealmMlsfcCodeNm"),
-                    application_form_name=item.get("fileNm"),
-                    application_form_path=item.get("flpthNm"),
+                    application_form_name=application_form_name,
+                    application_form_path=application_form_path,
                     iframe_src=iframe_src
                 )
 
