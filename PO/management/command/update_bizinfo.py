@@ -29,20 +29,18 @@ class Command(BaseCommand):
                 if BizInfo.objects.filter(pblanc_id=pblanc_id).exists():
                     continue
 
-                # ✅ 접수기간 파싱 (없는 경우, 잘못된 형식도 포함)
+                # ✅ 접수기간 파싱 (기본값 먼저 할당해두고 조건 만족하면 덮어쓰기)
+                reception_start = datetime.strptime("19000101", "%Y%m%d").date()
+                reception_end = datetime.strptime("99991231", "%Y%m%d").date()
+
                 reception_raw = item.get("reqstBeginEndDe")
-                if reception_raw and "-" in reception_raw:
+                if reception_raw and isinstance(reception_raw, str) and "-" in reception_raw:
                     try:
-                        reception_start, reception_end = map(
-                            lambda x: datetime.strptime(x.strip(), "%Y%m%d").date(),
-                            reception_raw.split("-")
-                        )
+                        start_str, end_str = reception_raw.split("-")
+                        reception_start = datetime.strptime(start_str.strip(), "%Y%m%d").date()
+                        reception_end = datetime.strptime(end_str.strip(), "%Y%m%d").date()
                     except Exception:
-                        reception_start = datetime.strptime("19000101", "%Y%m%d").date()
-                        reception_end = datetime.strptime("99991231", "%Y%m%d").date()
-                else:
-                    reception_start = datetime.strptime("19000101", "%Y%m%d").date()
-                    reception_end = datetime.strptime("99991231", "%Y%m%d").date()
+                        pass  # 기본값 유지
 
                 # ✅ 등록일 파싱
                 creatPnttm = item.get("creatPnttm")
@@ -54,7 +52,7 @@ class Command(BaseCommand):
                 # ✅ iframe src 추출
                 iframe_src = fetch_iframe_src(pblanc_id, CHROME_DRIVER_PATH)
 
-                # ✅ application form 필드 없는 경우 빈 문자열 처리
+                # ✅ optional fields: None → 빈 문자열 처리
                 application_form_name = item.get("fileNm") or ""
                 application_form_path = item.get("flpthNm") or ""
 
