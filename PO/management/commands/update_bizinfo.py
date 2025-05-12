@@ -13,8 +13,8 @@ class Command(BaseCommand):
         params = {
             "crtfcKey": BIZINFO_API_KEY,
             "dataType": "json",
-            "searchCnt": 2000,
-            "pageUnit": 100,
+            "searchCnt": 1000,
+            "pageUnit": 1000,
             "pageIndex": 1
         }
 
