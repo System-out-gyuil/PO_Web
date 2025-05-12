@@ -6,14 +6,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="{% static 'board/board.css' %}">
   <link rel="icon" type="image/png" href="{% static 'images/NAMATJI_ICON.png' %}" />
-  <title>Document</title>
+  <title>지원사업 목록</title>
 </head>
 <body>
   <div class="board-header">
     <h1>지원사업 목록</h1>
     <button class="main-button" onclick="location.href='/'">홈으로</button>
-
   </div>
+
   <table class="board-table">
     <thead>
       <colgroup>
@@ -32,24 +32,22 @@
       <tr>
         <td>{{ item.registered_at|date:"Y-m-d" }}</td>
         <td>{{ item.field }}</td>
-        <td onclick="location.href='{% url 'board:detail'  %}?id={{ item.pblanc_id }}&page_index={{ page_index }}'" style="cursor:pointer;">
+        <td onclick="location.href='{% url 'board:detail' item.pblanc_id %}?page_index={{ page_index }}'" style="cursor:pointer;">
           {{ item.title }}
         </td>
       </tr>
       {% endfor %}
     </tbody>
-    
   </table>
 
   <!-- Pagination -->
   <div class="pagination">
     {% if page_range %}
-      
       {% if not is_first_block %}
         <a href="?page_index=1">맨 처음</a>
         <a href="?page_index={{ page_range.start|add:"-1" }}">이전</a>
       {% endif %}
-  
+
       {% for page in page_range %}
         {% if page == page_index %}
           <strong>{{ page }}</strong>
@@ -57,17 +55,14 @@
           <a href="?page_index={{ page }}">{{ page }}</a>
         {% endif %}
       {% endfor %}
-  
+
       {% if not is_last_block %}
         <a href="?page_index={{ page_range.stop|add:"1" }}">다음</a>
         <a href="?page_index={{ total_pages }}">맨 끝</a>
       {% endif %}
-  
     {% endif %}
   </div>
-  
-  
-  
-  <iframe class="coupang-banner" src="https://ads-partners.coupang.com/widgets.html?id=861866&template=carousel&trackingCode=AF8313643&subId=&width=350&height=140&tsource=" width="100%" height="140" frameborder="0" scrolling="no" referrerpolicy="unsafe-url" browsingtopics></iframe>
+
+  <iframe class="coupang-banner" src="https://ads-partners.coupang.com/widgets.html?id=861866&template=carousel&trackingCode=AF8313643&subId=&width=350&height=140&tsource=" width="100%" height="140" frameborder="0" scrolling="no" referrerpolicy="unsafe-url"></iframe>
 </body>
 </html>

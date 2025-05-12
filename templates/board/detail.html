@@ -1,13 +1,31 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  {% load static %}
-  <link rel="stylesheet" href="{% static 'detail/detail.css' %}">
-  <link rel="icon" type="image/png" href="{% static 'images/NAMATJI_ICON.png' %}" />
-  <title>Document</title>
-</head>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% load static %}
+  
+    <!-- 🔹 SEO 메타 태그 -->
+    <title>{{ item.title }} | 지원사업 상세</title>
+    <meta name="description" content="{{ item.content|striptags|truncatechars:150 }}">
+    <meta name="robots" content="index, follow">
+  
+    <!-- 🔹 Open Graph (SNS 공유 시) -->
+    <meta property="og:type" content="article">
+    <meta property="og:title" content="{{ item.title }}">
+    <meta property="og:description" content="{{ item.content|striptags|truncatechars:150 }}">
+    <meta property="og:url" content="{{ request.build_absolute_uri }}">
+    <meta property="og:image" content="{% static 'images/NAMATJI_ICON.png' %}">
+  
+    <!-- 🔹 Twitter Card -->
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="{{ item.title }}">
+    <meta name="twitter:description" content="{{ item.content|striptags|truncatechars:150 }}">
+  
+    <link rel="stylesheet" href="{% static 'detail/detail.css' %}">
+    <link rel="icon" type="image/png" href="{% static 'images/NAMATJI_ICON.png' %}" />
+  </head>
+  
 <body>
   <h1>지원사업공고</h1>
   <button class="main-button" onclick="location.href='/'">홈으로</button>
@@ -27,11 +45,11 @@
   <p>{{ item.field }}</p>
 
   {% if item.reception_start.year != 1900 and item.reception_end.year != 9999 %}
-  <strong>사업 기간</strong>
-  <p>{{ item.reception_start|date:"Y-m-d" }} ~ {{ item.reception_end|date:"Y-m-d" }}</p>
+    <strong>사업 기간</strong>
+    <p>{{ item.reception_start|date:"Y-m-d" }} ~ {{ item.reception_end|date:"Y-m-d" }}</p>
   {% else %}
-  <strong>신청 기간</strong>
-  <p>상시 접수(예산 소진 시까지)</p>
+    <strong>신청 기간</strong>
+    <p>상시 접수(예산 소진 시까지)</p>
   {% endif %}
 
   <strong>사업 개요</strong>
@@ -48,11 +66,10 @@
     <p><a href="{{ item.application_form_path }}" target="_blank">{{ item.application_form_name }}</a></p>
   {% endif %}
 
-  {% comment %} <iframe class="coupang-banner" src="https://ads-partners.coupang.com/widgets.html?id=861866&template=carousel&trackingCode=AF8313643&subId=&width=350&height=140&tsource=" width="100%" height="140" frameborder="0" scrolling="no" referrerpolicy="unsafe-url" browsingtopics></iframe> {% endcomment %}
-
   {% if iframe_src %}
-      <iframe src="{{ iframe_src }}" width="100%" height="900px"></iframe>
+    <iframe src="{{ iframe_src }}" width="100%" height="900px"></iframe>
   {% endif %}
-  <iframe class="coupang-banner" src="https://ads-partners.coupang.com/widgets.html?id=861866&template=carousel&trackingCode=AF8313643&subId=&width=350&height=140&tsource=" width="100%" height="140" frameborder="0" scrolling="no" referrerpolicy="unsafe-url" browsingtopics></iframe>
+
+  <iframe class="coupang-banner" src="https://ads-partners.coupang.com/widgets.html?id=861866&template=carousel&trackingCode=AF8313643&subId=&width=350&height=140&tsource=" width="100%" height="140" frameborder="0" scrolling="no" referrerpolicy="unsafe-url"></iframe>
 </body>
 </html>
