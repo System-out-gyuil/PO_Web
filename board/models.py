@@ -8,7 +8,7 @@ class BizInfo(models.Model):
     reception_start = models.DateField(max_length=200)  # 접수 시작일 (reqstBeginEndDe)
     reception_end = models.DateField(max_length=200)  # 접수 마감일 (reqstBeginEndDe)
     institution_name = models.CharField(max_length=200)  # 기관명 (jrsdInsttNm)
-    enroll_method = models.CharField(max_length=200)  # 신청 방법 (reqstMthPapersCn)
+    enroll_method = models.CharField(max_length=500)  # 신청 방법 (reqstMthPapersCn)
     target = models.CharField(max_length=200)  # 대상 (trgetNm)
     field = models.CharField(max_length=200)  # 분야 (pldirSportRealmLclasCodeNm)
     hashtag = models.CharField(max_length=200)  # 해시태그 (hashtags)
