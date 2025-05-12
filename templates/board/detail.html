@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   {% load static %}
   <link rel="stylesheet" href="{% static 'detail/detail.css' %}">
+  <link rel="icon" type="image/png" href="{% static 'images/NAMATJI_ICON.png' %}" />
   <title>Document</title>
 </head>
 <body>
@@ -37,9 +38,7 @@
   <strong>공고 원문</strong>
   <p><a href="{{ item.printFlpthNm }}" target="_blank">{{ item.printFileNm }}</a></p>
 
-  {% comment %} <h2>{{ item.pblancNm }}</h2> {% endcomment %}
   <iframe class="coupang-banner" src="https://ads-partners.coupang.com/widgets.html?id=861866&template=carousel&trackingCode=AF8313643&subId=&width=350&height=140&tsource=" width="100%" height="140" frameborder="0" scrolling="no" referrerpolicy="unsafe-url" browsingtopics></iframe>
-  {% comment %} <p>{{ item.cnSummary }}</p> {% endcomment %}
 
   {% if iframe_src %}
       <iframe src="{{ iframe_src }}" width="100%" height="600px"></iframe>
