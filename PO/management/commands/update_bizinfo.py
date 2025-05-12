@@ -15,7 +15,7 @@ class Command(BaseCommand):
             "dataType": "json",
             "searchCnt": 2000,
             "pageUnit": 500,
-            "pageIndex": 4
+            "pageIndex": 3
         }
 
         try:
