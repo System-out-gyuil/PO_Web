@@ -30,6 +30,13 @@ class BizInfoSitemap(Sitemap):
     def location(self, obj):
         return reverse('board:detail', args=[obj.pblanc_id])
 
+    def get_urls(self, site=None, **kwargs):
+        from django.contrib.sites.models import Site
+        if not site:
+            site = Site(domain="namatji.com", name="나맞지")  # ✅ 여기에 실제 도메인
+
+        return super().get_urls(site=site, **kwargs)
+
 
 sitemaps = {
     'static': StaticViewSitemap,
