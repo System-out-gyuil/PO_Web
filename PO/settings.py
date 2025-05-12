@@ -31,6 +31,7 @@ ALLOWED_HOSTS = ['localhost', '127.0.0.1', '13.124.116.146', '43.203.40.252', 'n
 # Application definition
 
 INSTALLED_APPS = [
+    "PO",
     "main",
     "po_admin",
     "counsel",
