@@ -30,10 +30,10 @@
     <tbody>
       {% for item in items %}
       <tr>
-        <td>{{ item.creatPnttm|slice:":10" }}</td>
-        <td>{{ item.pldirSportRealmLclasCodeNm }}</td>
-        <td onclick="location.href='{% url 'board:detail'  %}?id={{ item.pblancId }}&page_index={{ page_index }}'" style="cursor:pointer;">
-          {{ item.pblancNm }}
+        <td>{{ item.registered_at|date:"Y-m-d" }}</td>
+        <td>{{ item.field }}</td>
+        <td onclick="location.href='{% url 'board:detail'  %}?id={{ item.pblanc_id }}&page_index={{ page_index }}'" style="cursor:pointer;">
+          {{ item.title }}
         </td>
       </tr>
       {% endfor %}
@@ -43,18 +43,30 @@
 
   <!-- Pagination -->
   <div class="pagination">
-    {% with page_index|add:"-1" as prev_page %}
-      {% if prev_page > 0 %}
-        <a href="?page_index={{ prev_page }}">이전</a>
+    {% if page_range %}
+      
+      {% if not is_first_block %}
+        <a href="?page_index=1">맨 처음</a>
+        <a href="?page_index={{ page_range.start|add:"-1" }}">이전</a>
       {% endif %}
-    {% endwith %}
   
-    <span>현재 페이지: {{ page_index }}</span>
+      {% for page in page_range %}
+        {% if page == page_index %}
+          <strong>{{ page }}</strong>
+        {% else %}
+          <a href="?page_index={{ page }}">{{ page }}</a>
+        {% endif %}
+      {% endfor %}
   
-    {% if has_next %}
-      <a href="?page_index={{ page_index|add:"1" }}">다음</a>
+      {% if not is_last_block %}
+        <a href="?page_index={{ page_range.stop|add:"1" }}">다음</a>
+        <a href="?page_index={{ total_pages }}">맨 끝</a>
+      {% endif %}
+  
     {% endif %}
   </div>
+  
+  
   
   <iframe class="coupang-banner" src="https://ads-partners.coupang.com/widgets.html?id=861866&template=carousel&trackingCode=AF8313643&subId=&width=350&height=140&tsource=" width="100%" height="140" frameborder="0" scrolling="no" referrerpolicy="unsafe-url" browsingtopics></iframe>
 </body>
