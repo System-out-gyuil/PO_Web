@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 from main.models import BizInfo
-from management.utils import fetch_iframe_src
+from PO.management.command.utils import fetch_iframe_src
 import requests
 from datetime import datetime
 from config import BIZINFO_API_KEY, CHROME_DRIVER_PATH
