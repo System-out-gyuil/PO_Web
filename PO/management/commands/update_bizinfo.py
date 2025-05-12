@@ -42,6 +42,11 @@ class Command(BaseCommand):
                     except Exception:
                         pass  # 기본값 유지
 
+                if not item.get("reqstMthPapersCn"):
+                    enroll_method = "신청 방법은 공고를 참고해주세요."
+                else:
+                    enroll_method = item.get("reqstMthPapersCn")
+
                 # ✅ 등록일 파싱
                 creatPnttm = item.get("creatPnttm")
                 registered_at = (
@@ -65,7 +70,7 @@ class Command(BaseCommand):
                     reception_start=reception_start,
                     reception_end=reception_end,
                     institution_name=item.get("jrsdInsttNm"),
-                    enroll_method=item.get("reqstMthPapersCn"),
+                    enroll_method=enroll_method,
                     target=item.get("trgetNm"),
                     field=item.get("pldirSportRealmLclasCodeNm"),
                     hashtag=item.get("hashtags"),
