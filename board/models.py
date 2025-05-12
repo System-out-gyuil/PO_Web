@@ -11,7 +11,7 @@ class BizInfo(models.Model):
     enroll_method = models.CharField(max_length=500)  # 신청 방법 (reqstMthPapersCn)
     target = models.CharField(max_length=200)  # 대상 (trgetNm)
     field = models.CharField(max_length=200)  # 분야 (pldirSportRealmLclasCodeNm)
-    hashtag = models.CharField(max_length=200)  # 해시태그 (hashtags)
+    hashtag = models.CharField(max_length=500)  # 해시태그 (hashtags)
     print_file_name = models.CharField(max_length=200)  # 원문 파일명 (printFileNm)
     print_file_path = models.CharField(max_length=200)  # 원문 파일 경로 (printFlpthNm)(다운로드)
     company_hall_path = models.CharField(max_length=200)  # 기업마당 공고원문 경로 (pblancUrl)

@@ -2,10 +2,43 @@ body {
   font-family: "Pretendard", sans-serif;
   padding: 0;
   margin: 0;
+  background-color: #ffe7dc6b;
 }
 
-a {
+a,
+a:visited {
   text-decoration: none;
+  color: #00AE68;
+}
+
+a.button {
+  display: block;
+  position: relative;
+  float: left;
+  width: 90px;
+  padding: 0;
+  margin: 10px 10px 10px 0;
+  font-weight: 600;
+  text-align: center;
+  line-height: 50px;
+  color: #000000;
+  border-radius: 5px;
+  transition: all 0.2s ;
+}
+
+.btnLightBlue.btnPush {
+  box-shadow: 0px 5px 0px 0px #ffd5c28b;
+}
+.btnPush:hover {
+  margin-top: 15px;
+  margin-bottom: 5px;
+}
+.btnLightBlue.btnPush:hover {
+  box-shadow: 0px 0px 0px 0px #ffd5c28b;
+}
+
+.btnLightBlue {
+  background: #fce3d789;
 }
 
 .main-container {
@@ -30,7 +63,7 @@ a {
 }
 
 .orange-color {
-  color: #ff4000;
+  color: #ff5d27bb;
 }
 
 .search-container {
@@ -59,6 +92,19 @@ a {
   width: 150px;
   height: 50px;
   font-size: 15px;
+  display: block;
+  position: relative;
+  float: left;
+  width: 110px;
+  padding: 0;
+  margin: 10px 10px 10px 0;
+  font-weight: 600;
+  text-align: center;
+  line-height: 50px;
+  color: #000000;
+  border-radius: 5px;
+  transition: all 0.2s ;
+  border: 1px solid #fce3d78b;
 }
 
 select {
@@ -66,6 +112,9 @@ select {
   height: 30px;
   text-align: center;
   font-size: 15px;
+  border-radius: 5px;
+  border: none;
+  background-color: #ffe7dc63;
 }
 
 .coupang-banner {
@@ -102,19 +151,19 @@ body {
 
 .namatji-top-nav {
   width: 100%;
-  /* height: 105px; */
+  height: 70px;
   display: flex;
   justify-content: flex-end;
   border-bottom: 1px solid #adadad;
 }
 
 .namatji-img {
-  margin-top: -30px;
+  margin-top: -37px;
   margin-bottom: 15px;
   margin-right: 20px;
   width: 150px;
   height: 100px;
-  background-image: url("../images/NAMATJI.png");
+  background-image: url("../images/NAMATJI2.png");
   background-size: cover;
 }
 
