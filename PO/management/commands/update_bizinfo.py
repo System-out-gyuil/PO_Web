@@ -29,24 +29,34 @@ class Command(BaseCommand):
                 if BizInfo.objects.filter(pblanc_id=pblanc_id).exists():
                     continue
 
-                # 접수기간 파싱
-                reception = item.get("reqstBeginEndDe", "")
-                try:
-                    reception_start, reception_end = map(
-                        lambda x: datetime.strptime(x.strip(), "%Y%m%d").date(),
-                        reception.split("-")
-                    )
-                except Exception:
-                    reception_start = reception_end = None
+                # ✅ 접수기간 파싱 (기본값 먼저 할당해두고 조건 만족하면 덮어쓰기)
+                reception_start = datetime.strptime("19000101", "%Y%m%d").date()
+                reception_end = datetime.strptime("99991231", "%Y%m%d").date()
 
+                reception_raw = item.get("reqstBeginEndDe")
+                if reception_raw and isinstance(reception_raw, str) and "-" in reception_raw:
+                    try:
+                        start_str, end_str = reception_raw.split("-")
+                        reception_start = datetime.strptime(start_str.strip(), "%Y%m%d").date()
+                        reception_end = datetime.strptime(end_str.strip(), "%Y%m%d").date()
+                    except Exception:
+                        pass  # 기본값 유지
+
+                # ✅ 등록일 파싱
                 creatPnttm = item.get("creatPnttm")
                 registered_at = (
                     datetime.strptime(creatPnttm, "%Y-%m-%d %H:%M:%S").date()
                     if creatPnttm else None
                 )
 
+                # ✅ iframe src 추출
                 iframe_src = fetch_iframe_src(pblanc_id, CHROME_DRIVER_PATH)
 
+                # ✅ optional fields: None → 빈 문자열 처리
+                application_form_name = item.get("fileNm") or ""
+                application_form_path = item.get("flpthNm") or ""
+
+                # ✅ DB 저장
                 BizInfo.objects.create(
                     pblanc_id=pblanc_id,
                     title=item.get("pblancNm"),
@@ -63,8 +73,8 @@ class Command(BaseCommand):
                     print_file_path=item.get("printFlpthNm"),
                     company_hall_path=item.get("pblancUrl"),
                     support_field=item.get("pldirSportRealmMlsfcCodeNm"),
-                    application_form_name=item.get("fileNm"),
-                    application_form_path=item.get("flpthNm"),
+                    application_form_name=application_form_name,
+                    application_form_path=application_form_path,
                     iframe_src=iframe_src
                 )
 
