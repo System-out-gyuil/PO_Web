@@ -34,9 +34,9 @@ class Command(BaseCommand):
                 reception_end = datetime.strptime("99991231", "%Y%m%d").date()
 
                 reception_raw = item.get("reqstBeginEndDe")
-                if reception_raw and isinstance(reception_raw, str) and "-" in reception_raw:
+                if reception_raw and isinstance(reception_raw, str) and "~" in reception_raw:
                     try:
-                        start_str, end_str = reception_raw.split("-")
+                        start_str, end_str = reception_raw.split("~")
                         reception_start = datetime.strptime(start_str.strip(), "%Y%m%d").date()
                         reception_end = datetime.strptime(end_str.strip(), "%Y%m%d").date()
                     except Exception:
