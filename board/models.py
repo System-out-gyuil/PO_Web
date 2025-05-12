@@ -18,7 +18,7 @@ class BizInfo(models.Model):
     support_field = models.CharField(max_length=200)  # 지원 분야 (pldirSportRealmMlsfcCodeNm)
     application_form_name = models.CharField(max_length=200)  # 신청서 이름 (fileNm)
     application_form_path = models.CharField(max_length=500)  # 신청서 경로 (flpthNm)
-    iframe_src = models.URLField(max_length=500, null=True, blank=True)  # 상세보기 iframe 링크
+    iframe_src = models.URLField(max_length=1000, null=True, blank=True)  # 상세보기 iframe 링크
 
 
     def __str__(self):
