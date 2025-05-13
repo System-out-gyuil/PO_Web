@@ -12,13 +12,14 @@
   
 </head>
 <body>
-  <a href="{% url 'main' %}">
+  {% include 'base/top_nav.html' %}
+  {% comment %} <a href="{% url 'main' %}">
     <div class="main-subtitle">
       <div class="main-subtitle-text">
         <span class="orange-color">나</span>에게 <span class="orange-color">맞</span>는 <span class="orange-color">지</span>원금
       </div>
     </div>
-  </a>
+  </a> {% endcomment %}
 
   <div class="counsel-container">
     <h2 class="counsel-title">혼자 진행하시기가 어렵다면<br /><span class="orange-color">전문 컨설턴트</span>가 상담 도와드립니다!</h2>

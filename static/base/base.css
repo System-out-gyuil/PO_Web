@@ -1,6 +1,6 @@
 body {
   font-family: "Pretendard", sans-serif;
-  padding-bottom: 150px;
+  padding-bottom: 220px;
   padding-top: 70px;
   margin: 0;
   background-color: #ffe7dc6b;
@@ -31,7 +31,7 @@ select {
   position: fixed;
   top: 0;
   z-index: 9999;
-  background-color: #fff1ea;
+  background-color: #ffefe5;
   border: none;
 }
 
@@ -64,7 +64,7 @@ select {
 }
 
 .btnLightBlue.btnPush {
-  box-shadow: 0px 5px 0px 0px #ffd5c28b;
+  box-shadow: 0px 5px 0px 0px #ffd0ba98;
 }
 
 .btnPush:hover {
@@ -73,11 +73,11 @@ select {
 }
 
 .btnLightBlue.btnPush:hover {
-  box-shadow: 0px 0px 0px 0px #ffd5c28b;
+  box-shadow: 0px 0px 0px 0px #ffd0ba98;
 }
 
 .btnLightBlue {
-  background: #fce3d789;
+  background: #ffe5d8;
 }
 
 a.button {
@@ -94,3 +94,26 @@ a.button {
   border-radius: 5px;
   transition: all 0.2s ;
 }
+
+.orange-color {
+  color: #ff5d27bb;
+}
+
+.button-container {
+  display: flex;
+  justify-content: end;
+  margin-top: 30px;
+  width: 95%;
+  position: fixed;
+  bottom: 160px;
+  right: 10px;
+  z-index: 9999;
+}
+
+.consel-btn {
+  height: 35px;
+}
+
+/* .consel-btn-text {
+  margin-bottom: 5px;
+} */
