@@ -1,0 +1,17 @@
+th {
+ border: 1px solid #000;
+}
+
+td {
+  border: 1px solid #000;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+body {
+  text-align: center;
+  font-family: 'Noto Sans KR', sans-serif;
+}

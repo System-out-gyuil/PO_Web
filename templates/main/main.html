@@ -21,22 +21,28 @@
     <title>나맞지, 나에게 맞는 지원금</title>
   </head>
   <body>
-    {% include 'base/top_nav.html' %}
-    <div class="main-container">
-      <div class="main-top">
-        <div class="main-title">AI 비서가 찾아주는</div>
-        
+    {% comment %} 상단 네비게이션 바 {% endcomment %}
+    <nav>
+      {% include 'base/top_nav.html' %}
+    </nav>
+
+    {% comment %} 메인 페이지 제목 {% endcomment %}
+    <section>
+      <div class="main-container">
+        <div class="main-top">
+          <div class="main-title">AI 비서가 찾아주는</div>
       </div>
       <div class="main-subtitle">
         <span class="orange-color">나</span>에게 <br />
         <span class="orange-color">맞</span>는 <br />
         <span class="orange-color">지</span>원금 찾기
       </div>
-    </div>
+      </div>
+    </section>
 
-    <div class="search-container">
-      <form id="search-form" method="post" action="{% url 'main' %}">
-        {% csrf_token %}
+      <div class="search-container">
+        <form id="search-form" method="post" action="{% url 'main' %}">
+          {% csrf_token %}
         <div class="search-wrap">
         <div class="search-region">
             <div>
@@ -133,7 +139,10 @@
         <button form="search-form" type="submit" class="search-button main-button button btnPush btnLightBlue">찾아보기</button>
       </div>
     </div>
+    {% include 'base/footer.html' %}
+    {% comment %} 전문가 상담 버튼 {% endcomment %}
     {% include 'base/consel_btn.html' %}
+    {% comment %} 쿠팡 파트너스 배너 {% endcomment %}
     {% include 'base/coupang_banner.html' %}
   </body>
 </html>

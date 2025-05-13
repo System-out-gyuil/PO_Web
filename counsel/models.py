@@ -9,6 +9,8 @@ class Counsel(models.Model):
     sales_2024 = models.CharField(max_length=30, blank=True, null=True)  # 24년 매출
     sales_2025 = models.CharField(max_length=30, blank=True, null=True)  # 25년 현재매출
     inquiry_type = models.CharField(max_length=50)  # 문의내용
+    consent = models.BooleanField(default=False)     # ✅ 개인정보 수집 이용 동의
+    consent2 = models.BooleanField(default=False)    # ✅ 제3자 제공 동의
     created_at = models.DateTimeField(auto_now_add=True)  # 접수 일시
 
     def __str__(self):

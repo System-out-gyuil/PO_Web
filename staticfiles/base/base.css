@@ -1,6 +1,6 @@
 body {
   font-family: "Pretendard", sans-serif;
-  padding-bottom: 220px;
+  padding-bottom: 99px;
   padding-top: 70px;
   margin: 0;
   background-color: #ffe7dc6b;
@@ -59,12 +59,12 @@ select {
 .coupang-banner {
   display: block;
   width: 100%;
-  height: 140px;
+  height: 100px;
   border: none;
 }
 
 .btnLightBlue.btnPush {
-  box-shadow: 0px 5px 0px 0px #ffd0ba98;
+  box-shadow: 5px 5px 5px 0px #ffd0ba;
 }
 
 .btnPush:hover {
@@ -73,7 +73,7 @@ select {
 }
 
 .btnLightBlue.btnPush:hover {
-  box-shadow: 0px 0px 0px 0px #ffd0ba98;
+  box-shadow: 0px 0px 0px 0px #ffd0ba;
 }
 
 .btnLightBlue {
@@ -110,10 +110,24 @@ a.button {
   z-index: 9999;
 }
 
-.consel-btn {
-  height: 35px;
+.namatji-consel-btn-container {
+  position: fixed;
+  bottom: 100px;
+  right: 10px;
+  z-index: 9999;
 }
 
-/* .consel-btn-text {
-  margin-bottom: 5px;
+.footer {
+  bottom: 100px;
+  width: 100%;
+  background-color: #ffe5d8;
+  font-size: 10px;
+}
+
+p {
+  margin: 2px;
+}
+
+/* .footer-content {
+  margin: 0;
 } */

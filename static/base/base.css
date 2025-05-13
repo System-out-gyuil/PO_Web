@@ -1,6 +1,6 @@
 body {
   font-family: "Pretendard", sans-serif;
-  padding-bottom: 220px;
+  padding-bottom: 99px;
   padding-top: 70px;
   margin: 0;
   background-color: #ffe7dc6b;
@@ -59,7 +59,7 @@ select {
 .coupang-banner {
   display: block;
   width: 100%;
-  height: 140px;
+  height: 100px;
   border: none;
 }
 
@@ -112,8 +112,22 @@ a.button {
 
 .namatji-consel-btn-container {
   position: fixed;
-  bottom: 160px;
+  bottom: 100px;
   right: 10px;
   z-index: 9999;
 }
 
+.footer {
+  bottom: 100px;
+  width: 100%;
+  background-color: #ffe5d8;
+  font-size: 10px;
+}
+
+p {
+  margin: 2px;
+}
+
+/* .footer-content {
+  margin: 0;
+} */

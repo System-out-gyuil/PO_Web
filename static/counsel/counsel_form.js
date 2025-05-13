@@ -29,6 +29,9 @@ const dateInputs = document.querySelectorAll("input.date-input");
 const sales24Inputs = document.querySelectorAll("input.sales-input24");
 const sales25Inputs = document.querySelectorAll("input.sales-input25");
 
+const consent2Checkbox = document.getElementById("consent2");
+const consent2Error = document.getElementById("consent2-error");
+
 const submitBtn = document.querySelector("button");
 
 // 공통 유효성 검사 함수
@@ -72,6 +75,8 @@ submitBtn.addEventListener("click", e => {
     input.classList.toggle("input-error", !input.value.trim());
   });
 
+
+
   // 사업 개시일 문자열로 변환
   if (startYear.value && startMonth.value) {
     startDateHidden.value = `${startYear.value}년 ${startMonth.value}월`;
@@ -91,11 +96,15 @@ submitBtn.addEventListener("click", e => {
   let isConsentChecked = consentCheckbox.checked;
   consentError.style.display = isConsentChecked ? "none" : "block";
 
+  // 개인정보 제3자 제공 동의 체크 확인
+  let isConsent2Checked = consent2Checkbox.checked;
+  consent2Error.style.display = isConsent2Checked ? "none" : "block";
+
   // input/select 요소 중 하나라도 유효하지 않으면 true 반환
   const hasInvalid = Array.from(inputElements).some(input => !validateForm(input));
 
   // 모든 유효성 통과 + 동의 시 폼 제출
-  if (!hasInvalid && isConsentChecked) {
+  if (!hasInvalid && isConsentChecked && isConsent2Checked) {
     counselForm.submit();
   }
 

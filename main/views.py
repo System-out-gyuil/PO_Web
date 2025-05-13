@@ -66,8 +66,6 @@ class SearchResultView(View):
 
         def expand_keywords(field, value):
 
-            
-
             keyword_mappings = {
                 "export": {
                     "있음": ["수출", "보유"],
@@ -184,9 +182,6 @@ class SearchResultView(View):
                     score += 1
 
             return score
-
-
-
 
         def parse_end_date(project):
             try:
