@@ -64,7 +64,7 @@ select {
 }
 
 .btnLightBlue.btnPush {
-  box-shadow: 0px 5px 0px 0px #ffd0ba98;
+  box-shadow: 5px 5px 5px 0px #ffd0ba;
 }
 
 .btnPush:hover {
@@ -73,7 +73,7 @@ select {
 }
 
 .btnLightBlue.btnPush:hover {
-  box-shadow: 0px 0px 0px 0px #ffd0ba98;
+  box-shadow: 0px 0px 0px 0px #ffd0ba;
 }
 
 .btnLightBlue {
@@ -110,10 +110,10 @@ a.button {
   z-index: 9999;
 }
 
-.consel-btn {
-  height: 35px;
+.namatji-consel-btn-container {
+  position: fixed;
+  bottom: 160px;
+  right: 10px;
+  z-index: 9999;
 }
 
-/* .consel-btn-text {
-  margin-bottom: 5px;
-} */
