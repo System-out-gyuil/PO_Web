@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 import os
 from pathlib import Path
 from config import Django_SECRET_KEY, MYSQL_PASSWORD, MYSQL_HOST_IP
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -45,6 +46,11 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django.contrib.sitemaps",
     "django.contrib.sites",
+    "django_crontab",
+]
+
+CRONJOBS = [
+    ('* 18 * * *', 'PO.cron.update_bizinfo'),
 ]
 
 SITE_ID = 1 #sitemap
