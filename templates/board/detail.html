@@ -23,13 +23,17 @@
     <meta name="twitter:description" content="{{ item.content|striptags|truncatechars:150 }}">
   
     <link rel="stylesheet" href="{% static 'detail/detail.css' %}">
+    <link rel="stylesheet" href="{% static 'base/base.css' %}">
     <link rel="icon" type="image/png" href="{% static 'images/NAMATJI_ICON.png' %}" />
   </head>
   
 <body>
-  <h1>지원사업공고</h1>
-  <button class="main-button" onclick="location.href='/'">홈으로</button>
-  <p>작성 날짜 : {{ item.registered_at|date:"Y-m-d" }}</p>
+  {% include 'base/board_top_nav.html' %}
+  <div class="board-top-nav-container">
+    <h1>지원사업공고</h1>
+  </div>
+
+  {% comment %} <p>작성 날짜 : {{ item.registered_at|date:"Y-m-d" }}</p> {% endcomment %}
   <hr>
 
   <strong>공고명</strong>
@@ -70,6 +74,6 @@
     <iframe src="{{ iframe_src }}" width="100%" height="900px"></iframe>
   {% endif %}
 
-  <iframe class="coupang-banner" src="https://ads-partners.coupang.com/widgets.html?id=861866&template=carousel&trackingCode=AF8313643&subId=&width=350&height=140&tsource=" width="100%" height="140" frameborder="0" scrolling="no" referrerpolicy="unsafe-url"></iframe>
+  {% include 'base/coupang_banner.html' %}
 </body>
 </html>

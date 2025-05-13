@@ -1,37 +1,42 @@
-{% load static %}
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  {% load static %}
   <link rel="stylesheet" href="{% static 'board/board.css' %}">
+  <link rel="stylesheet" href="{% static 'base/base.css' %}">
   <link rel="icon" type="image/png" href="{% static 'images/NAMATJI_ICON.png' %}" />
   <title>지원사업 목록</title>
 </head>
 <body>
+  {% include 'base/board_top_nav.html' %}
   <div class="board-header">
     <h1>지원사업 목록</h1>
-    <button class="main-button" onclick="location.href='/'">홈으로</button>
   </div>
 
   <table class="board-table">
     <thead>
       <colgroup>
-        <col style="width: 10%">
+        <col style="width: 5%">
         <col style="width: 15%">
-        <col style="width: 75%">
+        <col style="width: 15%">
+        <col style="width: 65%">
       </colgroup>
       <tr>
-        <th>업로드 날짜</th>
+        <th>등록일</th>
         <th>분야</th>
+        <th>지역</th>
         <th>공고명</th>
       </tr>
     </thead>
     <tbody>
       {% for item in items %}
       <tr>
-        <td>{{ item.registered_at|date:"Y-m-d" }}</td>
+        <td>{{ item.registered_at|date:"y.m.d" }}</td>
         <td>{{ item.field }}</td>
+        <td>{{ item.region }}</td>
         <td onclick="location.href='{% url 'board:detail' item.pblanc_id %}?page_index={{ page_index }}'" style="cursor:pointer;">
           {{ item.title }}
         </td>
@@ -44,25 +49,25 @@
   <div class="pagination">
     {% if page_range %}
       {% if not is_first_block %}
-        <a href="?page_index=1">맨 처음</a>
-        <a href="?page_index={{ page_range.start|add:"-1" }}">이전</a>
+        <a class="page-control-btn" href="?page_index=1">맨 처음</a>
+        <a class="page-control-btn" href="?page_index={{ page_range.start|add:"-1" }}">이전</a>
       {% endif %}
 
       {% for page in page_range %}
         {% if page == page_index %}
           <strong>{{ page }}</strong>
         {% else %}
-          <a href="?page_index={{ page }}">{{ page }}</a>
+          <a class="page-num-btn" href="?page_index={{ page }}">{{ page }}</a>
         {% endif %}
       {% endfor %}
 
       {% if not is_last_block %}
-        <a href="?page_index={{ page_range.stop|add:"1" }}">다음</a>
-        <a href="?page_index={{ total_pages }}">맨 끝</a>
+        <a class="page-control-btn" href="?page_index={{ page_range.stop|add:"1" }}">다음</a>
+        <a class="page-control-btn" href="?page_index={{ total_pages }}">맨 끝</a>
       {% endif %}
     {% endif %}
   </div>
 
-  <iframe class="coupang-banner" src="https://ads-partners.coupang.com/widgets.html?id=861866&template=carousel&trackingCode=AF8313643&subId=&width=350&height=140&tsource=" width="100%" height="140" frameborder="0" scrolling="no" referrerpolicy="unsafe-url"></iframe>
+  {% include 'base/coupang_banner.html' %}
 </body>
 </html>

@@ -1,3 +1,10 @@
 .coupang-banner {
   margin: 0 auto;
 }
+
+.board-top-nav-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100px;
+}

@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   {% load static %}
   <link rel="stylesheet" href="{% static 'counsel/counsel_form.css' %}" />
+  <link rel="stylesheet" href="{% static 'base/base.css' %}" />
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6882409851484122"
      crossorigin="anonymous"></script>
   <title>전문가 상담</title>
@@ -176,6 +177,7 @@
       </div>
     </form>
   </div>
+  {% include 'base/coupang_banner.html' %}
   <script src="{% static 'counsel/counsel_form.js' %}"></script>
 </body>
 </html>
