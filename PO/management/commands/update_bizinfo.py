@@ -1,4 +1,5 @@
 import os
+import re
 import requests
 from datetime import datetime
 from django.core.management.base import BaseCommand
@@ -10,9 +11,7 @@ import pdfplumber
 import uuid
 import json
 import time
-import re
 from PIL import Image
-import mimetypes
 import subprocess
 
 class Command(BaseCommand):
@@ -59,17 +58,17 @@ class Command(BaseCommand):
                 iframe_src = fetch_iframe_src(pblanc_id, CHROME_DRIVER_PATH)
 
                 file_url = item.get("flpthNm")
-                file_name = item.get("printFileNm")
+                raw_file_name = item.get("printFileNm") or "default.pdf"
+                file_name = self.sanitize_filename(raw_file_name)
                 file_path = ""
                 text, structured_data = "", {}
                 if file_url:
                     try:
                         file_path = self.download_file(file_url, file_name)
                         text = self.extract_text(file_path)
-                        print("★★★★★", text, "★★★★★")
+                        print("\n★★★★★ 텍스트 추출 결과 ★★★★★\n", text, "\n★★★★★★★★★★★★★★★★★★★★★★★★★★★★\n")
                         structured_data = self.extract_structured_data(text)
                         os.remove(file_path)
-
                     except Exception as e:
                         self.stderr.write(f"파일 처리 실패: {file_path} - {e}")
 
@@ -90,7 +89,7 @@ class Command(BaseCommand):
                     target=item.get("trgetNm"),
                     field=item.get("pldirSportRealmLclasCodeNm"),
                     hashtag=item.get("hashtags"),
-                    print_file_name=item.get("printFileNm"),
+                    print_file_name=raw_file_name,
                     print_file_path=item.get("printFlpthNm"),
                     company_hall_path=item.get("pblancUrl"),
                     support_field=item.get("pldirSportRealmMlsfcCodeNm"),
@@ -106,6 +105,10 @@ class Command(BaseCommand):
         except Exception as e:
             self.stderr.write(self.style.ERROR(f"실패: {e}"))
 
+    def sanitize_filename(self, name):
+        name = re.sub(r"[^\w가-힣._]+", "_", name)
+        return name.strip("_")
+
     def download_file(self, url, file_name):
         response = requests.get(url, stream=True, timeout=15)
         response.raise_for_status()
@@ -113,49 +116,39 @@ class Command(BaseCommand):
         content_type = response.headers.get("Content-Type", "")
         print(f"📦 Content-Type: {content_type}")
 
-        # 파일 저장 위치: PO/files/
         current_dir = os.path.dirname(os.path.abspath(__file__))
         save_dir = os.path.abspath(os.path.join(current_dir, "..", "..", "files"))
         os.makedirs(save_dir, exist_ok=True)
         save_path = os.path.join(save_dir, file_name)
 
-        # 실제 저장
         with open(save_path, "wb") as f:
             for chunk in response.iter_content(1024):
                 f.write(chunk)
 
-        # 파일 시그니처로 유효성 확인 (예: PDF)
-        try:
-            with open(save_path, "rb") as f:
-                magic = f.read(5)
-                if file_name.endswith(".pdf") and magic != b"%PDF-":
-                    raise ValueError(f"❌ 파일명은 PDF인데 실제는 PDF가 아닙니다! magic: {magic}")
-                if file_name.endswith(".hwp") and magic[:4] != b'HWP\x20':
-                    print(f"⚠️ HWP 시그니처도 아님: magic: {magic}")
-        except Exception as e:
-            print(f"📛 파일 시그니처 확인 실패: {e}")
+        with open(save_path, "rb") as f:
+            magic = f.read(5)
+            print(f"🔍 magic: {magic}")
+            if file_name.endswith(".pdf") and magic != b"%PDF-":
+                raise ValueError(f"❌ 파일명은 PDF인데 실제는 PDF가 아님 magic: {magic}")
+            if file_name.endswith(".hwp") and magic[:4] != b'HWP\x20':
+                print(f"⚠️ HWP 시그니처 아님: magic: {magic}")
 
         print(f"📥 저장 완료 → {save_path}")
         return save_path
 
-
-
-
     def extract_text(self, file_path):
+        full_text = ""
         if file_path.endswith(".pdf"):
             with pdfplumber.open(file_path) as pdf:
                 for page in pdf.pages:
                     page_text = page.extract_text()
                     if page_text:
                         full_text += page_text + "\n"
-            print("📂 pdf full_text:", full_text)
             return full_text
 
         elif file_path.endswith((".jpg", ".jpeg", ".png")):
-            full_text = self.clova_ocr(file_path, "jpg")
-            print("📂 img full_text:", full_text)
-            return full_text
-        
+            return self.clova_ocr(file_path, "jpg")
+
         elif file_path.endswith(".hwp"):
             pdf = self.convert_hwp_to_pdf(file_path)
             with pdfplumber.open(pdf) as pdf:
@@ -163,12 +156,11 @@ class Command(BaseCommand):
                     page_text = page.extract_text()
                     if page_text:
                         full_text += page_text + "\n"
-            print("📂 hwp full_text:", full_text)
             return full_text
-        
+
         return "오류"
-        
-    def clova_ocr(file_path, fmt):
+
+    def clova_ocr(self, file_path, fmt):
         request_json = {
             'images': [{'format': fmt, 'name': 'demo'}],
             'requestId': str(uuid.uuid4()),
@@ -179,26 +171,19 @@ class Command(BaseCommand):
         files = [('file', open(file_path, 'rb'))]
         headers = {'X-OCR-SECRET': NAVER_CLOVA_OCR_API_KEY}
         response = requests.post(NAVER_CLOUD_CLOVA_OCR_API_URL, headers=headers, data=payload, files=files)
-        
+
+        full_text = ""
         for field in response.json()['images'][0]['fields']:
-            full_text += field['inferText']
-        
-        return full_text
+            full_text += field['inferText'] + " "
+        return full_text.strip()
 
     def convert_hwp_to_pdf(self, hwp_path):
-
-        # pdf 저장 경로 설정
         output_dir = os.path.dirname(hwp_path)
         pdf_path = hwp_path.replace(".hwp", ".pdf")
-
         try:
-            # libreoffice를 통해 hwp → pdf 변환 시도
-            result = subprocess.run(
-                ["libreoffice", "--headless", "--convert-to", "pdf", hwp_path, "--outdir", output_dir],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                timeout=20
-            )
+            result = subprocess.run([
+                "libreoffice", "--headless", "--convert-to", "pdf", hwp_path, "--outdir", output_dir
+            ], stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=20)
 
             if result.returncode != 0:
                 print(f"[libreoffice 오류] stdout: {result.stdout.decode()}, stderr: {result.stderr.decode()}")
@@ -215,13 +200,11 @@ class Command(BaseCommand):
             print(f"[예외 발생] HWP → PDF 변환 실패: {e}")
             return ""
 
-        
-
     def extract_structured_data(self, text):
         prompt = (
             "아래 텍스트는 정부 지원사업 공고문에서 추출된 실제 내용입니다. "
             "이 내용을 기반으로 허구 없이 정확하게 요약해줘. 추가적인 추론이나 가정은 하지 말고, 원문 기반으로만 작성해줘.\n\n"
-            "📌 아래 항목들을 정확히 JSON 형식으로 추출해줘\n"
+            "\ud83d\udccc 아래 항목들을 정확히 JSON 형식으로 추출해줘\n"
             "- 직원수 : 무관, 1~4인, 5인 이상 (중 선택, 복수 선택 가능)\n"
             "- 매출규모: 무관, 1억 이하, 1~5억, 5~10억, 10~30억, 30억 이상 (중 선택, 복수 선택 가능)\n"
             "- 공고내용: 최소 450자 이상, 원문 기반 요약\n\n"
