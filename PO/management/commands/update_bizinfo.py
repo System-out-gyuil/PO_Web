@@ -11,9 +11,9 @@ import pdfplumber
 import uuid
 import json
 import time
-import shutil
 import re
 from PIL import Image
+from pdf2image import convert_from_path
 
 class Command(BaseCommand):
     help = "BizInfo API 호출 및 DB 업데이트"
@@ -115,17 +115,27 @@ class Command(BaseCommand):
         if file_path.endswith(".pdf"):
             try:
                 with pdfplumber.open(file_path) as pdf:
-                    return "\n".join(page.extract_text() or "" for page in pdf.pages)
+                    text = "\n".join(page.extract_text() or "" for page in pdf.pages)
+                    if text.strip():
+                        return text
+                # fallback to OCR
+                print("⚠️ pdfplumber 실패 → OCR 시도")
+                images = convert_from_path(file_path)
+                text = ""
+                for img in images:
+                    tmp_img_path = f"/tmp/{uuid.uuid4()}.png"
+                    img.save(tmp_img_path, "PNG")
+                    text += self.ocr_image(tmp_img_path) + "\n"
+                    os.remove(tmp_img_path)
+                return text
             except Exception as e:
-                print(f"[PDF 추출 오류] {e}")
-
+                print(f"[PDF 추출 실패] {e}")
+                return ""
         elif file_path.endswith((".png", ".jpg", ".jpeg")):
             return self.ocr_image(file_path)
-        
         elif file_path.endswith(".hwp"):
             pdf_path = file_path.replace(".hwp", ".pdf")
             return self.convert_hwp_to_pdf(file_path, pdf_path)
-        
         return "오류"
 
     def ocr_image(self, image_path):
@@ -153,7 +163,6 @@ class Command(BaseCommand):
                     return f.read()
         except Exception as e:
             print(f"[hwp5txt 오류] 변환 실패: {e}")
-
         try:
             os.system(f"libreoffice --headless --convert-to pdf '{hwp_path}' --outdir '{os.path.dirname(output_pdf_path)}'")
             converted_path = os.path.join(os.path.dirname(output_pdf_path), os.path.basename(hwp_path).replace(".hwp", ".pdf"))
@@ -161,7 +170,6 @@ class Command(BaseCommand):
                 return self.extract_text(converted_path)
         except Exception as e:
             print(f"[libreoffice 오류] PDF 변환 실패: {e}")
-
         return ""
 
     def extract_structured_data(self, text):
@@ -172,32 +180,35 @@ class Command(BaseCommand):
             "- 공고내용: 최소 450자 이상, 원문 기반 요약\n\n"
             f"내용:\n{text}"
         )
-
         llm = ChatOpenAI(
             temperature=0,
             model_name='gpt-4o-mini',
             openai_api_key=OPEN_AI_API_KEY,
         )
-
         try:
             response = llm.invoke(prompt)
-            print("📦 GPT 원응답:", response)  # 👉 여기서 응답 형태 확인
-            content = getattr(response, "content", "")  # 안전하게 content 가져오기
-            content = content.strip().replace("```json", "").replace("```", "")
-            if not content:
-                print("❗ content가 비어 있음.")
-                return {
-                    "직원수": None,
-                    "매출규모": None,
-                    "공고내용": ""
-                }
-            return json.loads(content)
+            print("📦 GPT 원응답:", response)
+            content = getattr(response, "content", "")
+            content = content.strip()
+            return self.clean_json_from_response(content)
         except Exception as e:
             print(f"[GPT 오류] {e}")
             return {
-                "직원수": None,
-                "매출규모": None,
-                "공고내용": ""
+                "직원수": "오류",
+                "매출규모": "오류",
+                "공고내용": "오류"
             }
 
-
+    def clean_json_from_response(self, content: str) -> dict:
+        try:
+            match = re.search(r"```(?:json)?\\s*(\{.*?\})\\s*```", content, re.DOTALL)
+            if match:
+                return json.loads(match.group(1))
+            match2 = re.search(r"(\{.*?\})", content, re.DOTALL)
+            if match2:
+                return json.loads(match2.group(1))
+            print("⚠️ JSON 블록 추출 실패")
+            return {}
+        except Exception as e:
+            print(f"[JSON 추출/파싱 실패] {e}")
+            return {}
