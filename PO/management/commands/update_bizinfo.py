@@ -63,6 +63,7 @@ class Command(BaseCommand):
                         file_path = self.download_file(file_url, file_name)
                         text = self.extract_text(file_path)
                         structured_data = self.extract_structured_data(text)
+                        print("📂 structured_data:", structured_data)
                         os.remove(file_path)
                     except Exception as e:
                         self.stderr.write(f"파일 처리 실패: {file_url} - {e}")
@@ -109,7 +110,7 @@ class Command(BaseCommand):
         with open(save_path, "wb") as f:
             for chunk in response.iter_content(1024):
                 f.write(chunk)
-
+        print("📂 save_path:", save_path)
         return save_path
 
     def is_text_pdf(self, file_path):
@@ -134,8 +135,11 @@ class Command(BaseCommand):
             else:
                 return self.clova_ocr(file_path, "pdf")
 
-        elif file_path.endswith(('.jpg', '.jpeg', '.png')):
+        elif file_path.endswith('.jpg'):
             return self.clova_ocr(file_path, "jpg")
+        
+        elif file_path.endswith('.png'):
+            return self.clova_ocr(file_path, "png")
 
         elif file_path.endswith(".hwp"):
             pdf_path = self.convert_hwp_to_pdf(file_path)
