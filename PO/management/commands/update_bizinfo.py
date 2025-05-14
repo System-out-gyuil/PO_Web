@@ -23,9 +23,9 @@ class Command(BaseCommand):
         params = {
             "crtfcKey": BIZINFO_API_KEY,
             "dataType": "json",
-            "searchCnt": 5,
+            "searchCnt": 100,
             "pageUnit": 5,
-            "pageIndex": 1
+            "pageIndex": 2
         }
 
         try:
@@ -64,6 +64,7 @@ class Command(BaseCommand):
                     try:
                         file_path = self.download_file(file_url)
                         text = self.extract_text(file_path)
+                        print("★★★★★",text, "★★★★★")
                         structured_data = self.extract_structured_data(text)
                         os.remove(file_path)
                     except Exception as e:
