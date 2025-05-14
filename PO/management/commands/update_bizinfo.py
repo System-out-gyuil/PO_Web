@@ -201,7 +201,7 @@ class Command(BaseCommand):
             match2 = re.search(r"(\{.*?\})", content, re.DOTALL)
             if match2:
                 return json.loads(match2.group(1))
-            print("⚠️ JSON 블록 추출 실패")
+            print("⚠️ JSON 블록 추출 실패", match)
             return {}
         except Exception as e:
             print(f"[JSON 파싱 오류] {e}")
