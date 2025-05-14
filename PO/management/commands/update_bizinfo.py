@@ -25,7 +25,7 @@ class Command(BaseCommand):
             "dataType": "json",
             "searchCnt": 100,
             "pageUnit": 5,
-            "pageIndex": 2
+            "pageIndex": 3
         }
 
         try:
@@ -106,11 +106,18 @@ class Command(BaseCommand):
     def download_file(self, url):
         response = requests.get(url, stream=True, timeout=15)
         response.raise_for_status()
-        suffix = os.path.splitext(url)[-1] or ".pdf"
+
+        suffix = os.path.splitext(url)[-1]
+        if not suffix or len(suffix) > 5:
+            suffix = ".pdf"  # 기본값
+
+        print(f"📦 파일 저장 확장자: {suffix}")
+
         with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
             for chunk in response.iter_content(1024):
                 tmp.write(chunk)
             return tmp.name
+
 
     def extract_text(self, file_path):
         if file_path.endswith(".pdf"):
