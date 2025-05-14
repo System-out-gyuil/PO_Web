@@ -24,7 +24,7 @@ class Command(BaseCommand):
             "dataType": "json",
             "searchCnt": 100,
             "pageUnit": 5,
-            "pageIndex": 3
+            "pageIndex": 4
         }
 
         try:
@@ -37,7 +37,6 @@ class Command(BaseCommand):
                 if BizInfo.objects.filter(pblanc_id=pblanc_id).exists():
                     continue
 
-                # 날짜 파싱
                 reception_start = datetime.strptime("19000101", "%Y%m%d").date()
                 reception_end = datetime.strptime("99991231", "%Y%m%d").date()
                 reception_raw = item.get("reqstBeginEndDe")
@@ -53,7 +52,6 @@ class Command(BaseCommand):
                 registered_at = datetime.strptime(creatPnttm, "%Y-%m-%d %H:%M:%S").date() if creatPnttm else None
                 iframe_src = fetch_iframe_src(pblanc_id, CHROME_DRIVER_PATH)
 
-                # 파일 처리
                 file_url = item.get("printFlpthNm")
                 raw_file_name = item.get("printFileNm") or "default.pdf"
                 file_name = self.sanitize_filename(raw_file_name)
@@ -63,7 +61,7 @@ class Command(BaseCommand):
                         file_path = self.download_file(file_url, file_name)
                         text = self.extract_text(file_path)
                         structured_data = self.extract_structured_data(text)
-                        print("📂 structured_data:", structured_data)
+                        print("\n📂 structured_data:", structured_data)
                         os.remove(file_path)
                     except Exception as e:
                         self.stderr.write(f"파일 처리 실패: {file_url} - {e}")
@@ -135,11 +133,8 @@ class Command(BaseCommand):
             else:
                 return self.clova_ocr(file_path, "pdf")
 
-        elif file_path.endswith('.jpg'):
+        elif file_path.endswith(('.jpg', '.jpeg', '.png')):
             return self.clova_ocr(file_path, "jpg")
-        
-        elif file_path.endswith('.png'):
-            return self.clova_ocr(file_path, "png")
 
         elif file_path.endswith(".hwp"):
             pdf_path = self.convert_hwp_to_pdf(file_path)
@@ -166,15 +161,26 @@ class Command(BaseCommand):
 
     def convert_hwp_to_pdf(self, hwp_path):
         output_dir = os.path.dirname(hwp_path)
-        pdf_path = hwp_path.replace(".hwp", ".pdf")
         try:
             result = subprocess.run([
-                "libreoffice", "--headless", "--convert-to", "pdf", hwp_path, "--outdir", output_dir
-            ], stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=20)
-            if result.returncode != 0:
-                print(f"[libreoffice 오류] stdout: {result.stdout.decode()}, stderr: {result.stderr.decode()}")
+                "libreoffice",
+                "--headless",
+                "--convert-to", "pdf:writer_pdf_Export",
+                hwp_path,
+                "--outdir", output_dir
+            ], stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30)
+
+            print("📦 libreoffice stdout:", result.stdout.decode())
+            print("📛 libreoffice stderr:", result.stderr.decode())
+
+            basename = os.path.splitext(os.path.basename(hwp_path))[0] + ".pdf"
+            converted_pdf = os.path.join(output_dir, basename)
+
+            if os.path.exists(converted_pdf):
+                return converted_pdf
+            else:
+                print(f"[❌ 변환 실패] {converted_pdf} 파일이 존재하지 않습니다.")
                 return ""
-            return pdf_path if os.path.exists(pdf_path) else ""
         except Exception as e:
             print(f"[예외 발생] HWP → PDF 변환 실패: {e}")
             return ""
@@ -199,21 +205,15 @@ class Command(BaseCommand):
 
     def clean_json_from_response(self, content: str) -> dict:
         try:
-            # 1. ```json ... ``` 블록 추출
-            match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", content, re.DOTALL)
+            match = re.search(r"```(?:json)?\\s*(\{.*?\})\\s*```", content, re.DOTALL)
             if match:
                 return json.loads(match.group(1))
-            
-            # 2. 중괄호로 감싸진 JSON 블록만 추출 (fallback)
             match2 = re.search(r"(\{.*?\})", content, re.DOTALL)
             if match2:
                 return json.loads(match2.group(1))
-
             print("⚠️ JSON 블록 추출 실패")
             print("📄 원본 content:", content)
             return {}
-
         except Exception as e:
             print(f"[JSON 파싱 오류] {e}")
             return {}
-
