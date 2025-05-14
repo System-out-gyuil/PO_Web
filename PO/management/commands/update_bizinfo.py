@@ -25,7 +25,7 @@ class Command(BaseCommand):
             "dataType": "json",
             "searchCnt": 100,
             "pageUnit": 5,
-            "pageIndex": 3
+            "pageIndex": 4
         }
 
         try:
@@ -107,17 +107,28 @@ class Command(BaseCommand):
         response = requests.get(url, stream=True, timeout=15)
         response.raise_for_status()
 
+        # 파일명 추출
+        filename = url.split("/")[-1]
+        if "." not in filename or len(os.path.splitext(filename)[-1]) > 5:
+            filename += ".pdf"  # fallback
 
-        suffix = os.path.splitext(url)[-1]
-        if not suffix or len(suffix) > 5:
-            suffix = ".pdf"  # 기본값
+        save_dir = os.path.join("media", "bizinfo_files")
+        os.makedirs(save_dir, exist_ok=True)
+        save_path = os.path.join(save_dir, filename)
 
-        print(f"📦 파일 저장 확장자: {suffix}")
-
-        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+        with open(save_path, "wb") as f:
             for chunk in response.iter_content(1024):
-                tmp.write(chunk)
-            return tmp.name
+                f.write(chunk)
+
+        # PDF 유효성 검사
+        if filename.endswith(".pdf"):
+            with open(save_path, "rb") as f:
+                if f.read(5) != b"%PDF-":
+                    raise ValueError(f"📛 유효하지 않은 PDF: {url}")
+
+        print(f"📥 저장 완료 → {save_path}")
+        return save_path
+
 
 
     def extract_text(self, file_path):
