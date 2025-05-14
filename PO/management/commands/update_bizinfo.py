@@ -107,6 +107,8 @@ class Command(BaseCommand):
         response = requests.get(url, stream=True, timeout=15)
         response.raise_for_status()
 
+        print("★★★★★",url, "★★★★★")
+
         suffix = os.path.splitext(url)[-1]
         if not suffix or len(suffix) > 5:
             suffix = ".pdf"  # 기본값
