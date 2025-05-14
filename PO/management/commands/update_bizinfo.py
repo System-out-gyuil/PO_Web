@@ -1,5 +1,4 @@
 import os
-import tempfile
 import requests
 from datetime import datetime
 from django.core.management.base import BaseCommand
@@ -14,6 +13,7 @@ import time
 import re
 from PIL import Image
 from pdf2image import convert_from_path
+import mimetypes
 
 class Command(BaseCommand):
     help = "BizInfo API 호출 및 DB 업데이트"
@@ -25,7 +25,7 @@ class Command(BaseCommand):
             "dataType": "json",
             "searchCnt": 100,
             "pageUnit": 5,
-            "pageIndex": 4
+            "pageIndex": 5
         }
 
         try:
@@ -64,7 +64,7 @@ class Command(BaseCommand):
                     try:
                         file_path = self.download_file(file_url)
                         text = self.extract_text(file_path)
-                        print("★★★★★",text, "★★★★★")
+                        print("★★★★★", text, "★★★★★")
                         structured_data = self.extract_structured_data(text)
                         os.remove(file_path)
                     except Exception as e:
@@ -103,14 +103,24 @@ class Command(BaseCommand):
         except Exception as e:
             self.stderr.write(self.style.ERROR(f"실패: {e}"))
 
+    def detect_file_extension(self, content_type):
+        if "pdf" in content_type:
+            return ".pdf"
+        elif "jpeg" in content_type or "jpg" in content_type:
+            return ".jpg"
+        elif "png" in content_type:
+            return ".png"
+        elif "hwp" in content_type:
+            return ".hwp"
+        return ".pdf"
+
     def download_file(self, url):
         response = requests.get(url, stream=True, timeout=15)
         response.raise_for_status()
 
-        # 파일명 추출
-        filename = url.split("/")[-1]
-        if "." not in filename or len(os.path.splitext(filename)[-1]) > 5:
-            filename += ".pdf"  # fallback
+        content_type = response.headers.get("Content-Type", "")
+        extension = self.detect_file_extension(content_type)
+        filename = f"{uuid.uuid4()}{extension}"
 
         save_dir = os.path.join("media", "bizinfo_files")
         os.makedirs(save_dir, exist_ok=True)
@@ -120,8 +130,7 @@ class Command(BaseCommand):
             for chunk in response.iter_content(1024):
                 f.write(chunk)
 
-        # PDF 유효성 검사
-        if filename.endswith(".pdf"):
+        if extension == ".pdf":
             with open(save_path, "rb") as f:
                 if f.read(5) != b"%PDF-":
                     raise ValueError(f"📛 유효하지 않은 PDF: {url}")
@@ -129,10 +138,8 @@ class Command(BaseCommand):
         print(f"📥 저장 완료 → {save_path}")
         return save_path
 
-
-
     def extract_text(self, file_path):
-        print("★★★★★",file_path, "★★★★★")
+        print("★★★★★", file_path, "★★★★★")
 
         if file_path.endswith(".pdf"):
             try:
@@ -140,7 +147,6 @@ class Command(BaseCommand):
                     text = "\n".join(page.extract_text() or "" for page in pdf.pages)
                     if text.strip():
                         return text
-                # fallback to OCR
                 print("⚠️ pdfplumber 실패 → OCR 시도")
                 images = convert_from_path(file_path)
                 text = ""
@@ -212,8 +218,7 @@ class Command(BaseCommand):
         try:
             response = llm.invoke(prompt)
             print("📦 GPT 원응답:", response)
-            content = getattr(response, "content", "")
-            content = content.strip()
+            content = getattr(response, "content", "").strip()
             return self.clean_json_from_response(content)
         except Exception as e:
             print(f"[GPT 오류] {e}")
