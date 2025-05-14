@@ -93,8 +93,6 @@ class Command(BaseCommand):
                     application_form_name=item.get("fileNm") or "",
                     application_form_path=item.get("flpthNm") or "",
                     iframe_src=iframe_src,
-                    extracted_text=text,
-                    structured_json=structured_data,
                     employee_count=employee_count,
                     revenue=revenue
                 )
