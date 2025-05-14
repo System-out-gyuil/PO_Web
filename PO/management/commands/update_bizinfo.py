@@ -24,7 +24,7 @@ class Command(BaseCommand):
             "dataType": "json",
             "searchCnt": 100,
             "pageUnit": 5,
-            "pageIndex": 4
+            "pageIndex": 5
         }
 
         try:
@@ -86,7 +86,8 @@ class Command(BaseCommand):
                     application_form_path=item.get("flpthNm") or "",
                     iframe_src=iframe_src,
                     employee_count=structured_data.get("직원수"),
-                    revenue=structured_data.get("매출규모")
+                    revenue=structured_data.get("매출규모"),
+                    noti_summary=structured_data.get("공고내용")
                 )
 
             self.stdout.write(self.style.SUCCESS(f"{len(items)}건 처리 완료."))
@@ -190,8 +191,8 @@ class Command(BaseCommand):
             "아래 텍스트는 정부 지원사업 공고문에서 추출된 실제 내용입니다. "
             "이 내용을 기반으로 허구 없이 정확하게 요약해줘. 추가적인 추론이나 가정은 하지 말고, 원문 기반으로만 작성해줘.\n\n"
             "아래 항목들을 정확히 JSON 형식으로 추출해줘\n"
-            "- 직원수 : 무관, 1~4인, 5인 이상 (중 선택, 복수 선택 가능)\n"
-            "- 매출규모: 무관, 1억 이하, 1~5억, 5~10억, 10~30억, 30억 이상 (중 선택, 복수 선택 가능)\n"
+            "- 직원수 : 무관, 1~4인, 5인 이상 (복수 선택 가능, 만약 모두 해당하면 무관)\n"
+            "- 매출규모: 무관, 1억 이하, 1~5억, 5~10억, 10~30억, 30억 이상 (복수 선택 가능, 만약 모두 해당하면 무관)\n"
             "- 공고내용: 최소 450자 이상, 원문 기반 요약\n\n"
         ) + text
 

@@ -213,3 +213,23 @@ AWS ROUTE53에서 레코드 설정을 통해 TXT타입의 DNS 설정해주니 �
 - 서버단에서 자동 실행이기 때문에 로그 추적 등 디버그가 간단하지 않음
 - try - exeption으로 예외처리 등 확실하게 해주어야 함
 - open ai를 통한 데이터 정형화 시 원하는 데이터를 출력하는지 확실히 검사하고 진행해야함
+
+# 2025.05.14 (수)
+
+## 1. 데이터 파이프라인 구축
+
+- bizinfo API에서 각 데이터별 공고문 다운로드 링크를 통해 파일 다운로드
+- libreoffice만으로는 hwp파일이 pdf로 변환하는데에 어려움이 있어서<br>
+한글 폰트 설치 및 한글 지원 extention(libreoffice-h2orestart)을 통해 파일이 깨지지 않게 한 후 <br>
+python에서 os.system으로 libreoffice의 convert to pdf 명령어 사용 <br>
+(참고 : https://ubuntu.pkgs.org/24.04/ubuntu-universe-amd64/ibreoffice-h2orestart_0.6.1-1_all.deb.html)
+
+<br>
+
+- pdf파일의 경우 windows 환경에서 무난하게 진행되었고 ubuntu 환경에서도 문제없을 것이라 판단하였으나, <br>
+
+  windows에서는 유도리있게 확장자가 pdf라면 알아서 이미지든 html이든 텍스트 추출이 가능했으나, <br>
+
+  linux에서는 파일을 까다롭게 확인하여 .pdf 파일 내부에 /Root 객체가 없는 경우에 pdf로 판단하지 않는 문제가 있었음 (error: No /Root object! – Is this really a PDF?)<br>
+  
+  파일의 첫 바이트 magic number를 검사하여 텍스트형식 pdf인지 이미지형 pdf거나 구조가 비정상적인 경우를 파악하여 텍스트형 pdf일 경우 기존 방식(pdfplumber)대로 진행, 이미지형 pdf의 경우 naver CLOVA OCR을 통해 텍스트 추출하는 방식으로 해결하였다.

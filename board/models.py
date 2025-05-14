@@ -21,6 +21,7 @@ class BizInfo(models.Model):
     iframe_src = models.URLField(max_length=1000, null=True, blank=True)  # 상세보기 iframe 링크
     employee_count = models.CharField(max_length=50, blank=True, null=True)
     revenue = models.CharField(max_length=100, blank=True, null=True)
+    noti_summary = models.TextField(blank=True, null=True)
 
 
 
