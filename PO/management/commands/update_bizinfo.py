@@ -30,14 +30,14 @@ class Command(BaseCommand):
         try:
             response = requests.get(url, params=params, timeout=30)
             response.raise_for_status()
-            data = response.json()
-            items = data.get("jsonArray", [])
+            items = response.json().get("jsonArray", [])
 
             for item in items:
                 pblanc_id = item.get("pblancId")
                 if BizInfo.objects.filter(pblanc_id=pblanc_id).exists():
                     continue
 
+                # 날짜 파싱
                 reception_start = datetime.strptime("19000101", "%Y%m%d").date()
                 reception_end = datetime.strptime("99991231", "%Y%m%d").date()
                 reception_raw = item.get("reqstBeginEndDe")
@@ -50,32 +50,22 @@ class Command(BaseCommand):
                         pass
 
                 creatPnttm = item.get("creatPnttm")
-                registered_at = (
-                    datetime.strptime(creatPnttm, "%Y-%m-%d %H:%M:%S").date()
-                    if creatPnttm else None
-                )
-
+                registered_at = datetime.strptime(creatPnttm, "%Y-%m-%d %H:%M:%S").date() if creatPnttm else None
                 iframe_src = fetch_iframe_src(pblanc_id, CHROME_DRIVER_PATH)
 
+                # 파일 처리
                 file_url = item.get("flpthNm")
                 raw_file_name = item.get("printFileNm") or "default.pdf"
                 file_name = self.sanitize_filename(raw_file_name)
-                file_path = ""
                 text, structured_data = "", {}
                 if file_url:
                     try:
                         file_path = self.download_file(file_url, file_name)
                         text = self.extract_text(file_path)
-                        print("\n★★★★★ 텍스트 추출 결과 ★★★★★\n", text, "\n★★★★★★★★★★★★★★★★★★★★★★★★★★★★\n")
                         structured_data = self.extract_structured_data(text)
                         os.remove(file_path)
                     except Exception as e:
-                        self.stderr.write(f"파일 처리 실패: {file_path} - {e}")
-
-                enroll_method = item.get("reqstMthPapersCn") or "신청 방법은 공고를 참고해주세요."
-
-                employee_count = structured_data.get("직원수") if isinstance(structured_data, dict) else None
-                revenue = structured_data.get("매출규모") if isinstance(structured_data, dict) else None
+                        self.stderr.write(f"파일 처리 실패: {file_url} - {e}")
 
                 BizInfo.objects.create(
                     pblanc_id=pblanc_id,
@@ -85,7 +75,7 @@ class Command(BaseCommand):
                     reception_start=reception_start,
                     reception_end=reception_end,
                     institution_name=item.get("jrsdInsttNm"),
-                    enroll_method=enroll_method,
+                    enroll_method=item.get("reqstMthPapersCn") or "신청 방법은 공고를 참고해주세요.",
                     target=item.get("trgetNm"),
                     field=item.get("pldirSportRealmLclasCodeNm"),
                     hashtag=item.get("hashtags"),
@@ -96,8 +86,8 @@ class Command(BaseCommand):
                     application_form_name=item.get("fileNm") or "",
                     application_form_path=item.get("flpthNm") or "",
                     iframe_src=iframe_src,
-                    employee_count=employee_count,
-                    revenue=revenue
+                    employee_count=structured_data.get("직원수"),
+                    revenue=structured_data.get("매출규모")
                 )
 
             self.stdout.write(self.style.SUCCESS(f"{len(items)}건 처리 완료."))
@@ -106,18 +96,13 @@ class Command(BaseCommand):
             self.stderr.write(self.style.ERROR(f"실패: {e}"))
 
     def sanitize_filename(self, name):
-        name = re.sub(r"[^\w가-힣._]+", "_", name)
-        return name.strip("_")
+        return re.sub(r"[^\w가-힣._]+", "_", name).strip("_")
 
     def download_file(self, url, file_name):
         response = requests.get(url, stream=True, timeout=15)
         response.raise_for_status()
 
-        content_type = response.headers.get("Content-Type", "")
-        print(f"📦 Content-Type: {content_type}")
-
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        save_dir = os.path.abspath(os.path.join(current_dir, "..", "..", "files"))
+        save_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "files"))
         os.makedirs(save_dir, exist_ok=True)
         save_path = os.path.join(save_dir, file_name)
 
@@ -125,47 +110,45 @@ class Command(BaseCommand):
             for chunk in response.iter_content(1024):
                 f.write(chunk)
 
-        with open(save_path, "rb") as f:
-            magic = f.read(5)
-            print(f"🔍 magic: {magic}")
-            if file_name.endswith(".pdf") and magic != b"%PDF-":
-                raise ValueError(f"❌ 파일명은 PDF인데 실제는 PDF가 아님 magic: {magic}")
-            if file_name.endswith(".hwp") and magic[:4] != b'HWP\x20':
-                print(f"⚠️ HWP 시그니처 아님: magic: {magic}")
-
-        print(f"📥 저장 완료 → {save_path}")
         return save_path
+
+    def is_text_pdf(self, file_path):
+        try:
+            with pdfplumber.open(file_path) as pdf:
+                for page in pdf.pages[:2]:
+                    if page.extract_text():
+                        return True
+            return False
+        except:
+            return False
 
     def extract_text(self, file_path):
         full_text = ""
         if file_path.endswith(".pdf"):
-            with pdfplumber.open(file_path) as pdf:
-                for page in pdf.pages:
-                    page_text = page.extract_text()
-                    if page_text:
-                        full_text += page_text + "\n"
-            return full_text
+            if self.is_text_pdf(file_path):
+                with pdfplumber.open(file_path) as pdf:
+                    for page in pdf.pages:
+                        page_text = page.extract_text()
+                        if page_text:
+                            full_text += page_text + "\n"
+            else:
+                return self.clova_ocr(file_path, "pdf")
 
-        elif file_path.endswith((".jpg", ".jpeg", ".png")):
+        elif file_path.endswith(('.jpg', '.jpeg', '.png')):
             return self.clova_ocr(file_path, "jpg")
 
         elif file_path.endswith(".hwp"):
-            pdf = self.convert_hwp_to_pdf(file_path)
-            with pdfplumber.open(pdf) as pdf:
-                for page in pdf.pages:
-                    page_text = page.extract_text()
-                    if page_text:
-                        full_text += page_text + "\n"
-            return full_text
+            pdf_path = self.convert_hwp_to_pdf(file_path)
+            return self.extract_text(pdf_path)
 
-        return "오류"
+        return full_text.strip() or "오류"
 
     def clova_ocr(self, file_path, fmt):
         request_json = {
             'images': [{'format': fmt, 'name': 'demo'}],
             'requestId': str(uuid.uuid4()),
             'version': 'V1',
-            'timestamp': int(round(time.time() * 1000))
+            'timestamp': int(time.time() * 1000)
         }
         payload = {'message': json.dumps(request_json).encode('UTF-8')}
         files = [('file', open(file_path, 'rb'))]
@@ -173,7 +156,7 @@ class Command(BaseCommand):
         response = requests.post(NAVER_CLOUD_CLOVA_OCR_API_URL, headers=headers, data=payload, files=files)
 
         full_text = ""
-        for field in response.json()['images'][0]['fields']:
+        for field in response.json()['images'][0].get('fields', []):
             full_text += field['inferText'] + " "
         return full_text.strip()
 
@@ -184,18 +167,10 @@ class Command(BaseCommand):
             result = subprocess.run([
                 "libreoffice", "--headless", "--convert-to", "pdf", hwp_path, "--outdir", output_dir
             ], stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=20)
-
             if result.returncode != 0:
                 print(f"[libreoffice 오류] stdout: {result.stdout.decode()}, stderr: {result.stderr.decode()}")
                 return ""
-
-            if not os.path.exists(pdf_path):
-                print(f"[❌ 변환 실패] PDF가 생성되지 않았습니다: {pdf_path}")
-                return ""
-
-            print(f"✅ HWP → PDF 변환 완료: {pdf_path}")
-            return pdf_path
-
+            return pdf_path if os.path.exists(pdf_path) else ""
         except Exception as e:
             print(f"[예외 발생] HWP → PDF 변환 실패: {e}")
             return ""
@@ -210,23 +185,13 @@ class Command(BaseCommand):
             "- 공고내용: 최소 450자 이상, 원문 기반 요약\n\n"
         ) + text
 
-        llm = ChatOpenAI(
-            temperature=0,
-            model_name='gpt-4o-mini',
-            openai_api_key=OPEN_AI_API_KEY,
-        )
+        llm = ChatOpenAI(temperature=0, model_name='gpt-4o-mini', openai_api_key=OPEN_AI_API_KEY)
         try:
             response = llm.invoke(prompt)
-            content = getattr(response, "content", "").strip()
-            print("📦 GPT 응답:", content)
-            return self.clean_json_from_response(content)
+            return self.clean_json_from_response(getattr(response, "content", "").strip())
         except Exception as e:
             print(f"[GPT 오류] {e}")
-            return {
-                "직원수": "오류",
-                "매출규모": "오류",
-                "공고내용": "오류"
-            }
+            return {"직원수": "오류", "매출규모": "오류", "공고내용": "오류"}
 
     def clean_json_from_response(self, content: str) -> dict:
         try:
@@ -239,5 +204,5 @@ class Command(BaseCommand):
             print("⚠️ JSON 블록 추출 실패")
             return {}
         except Exception as e:
-            print(f"[JSON 추출/파싱 실패] {e}")
+            print(f"[JSON 파싱 오류] {e}")
             return {}
