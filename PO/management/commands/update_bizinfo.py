@@ -110,22 +110,35 @@ class Command(BaseCommand):
         response = requests.get(url, stream=True, timeout=15)
         response.raise_for_status()
 
-        # 저장 경로: PO/files/ (현재 스크립트 기준으로 상위 경로)
-        current_dir = os.path.dirname(os.path.abspath(__file__))  # /PO/management/commands/
-        save_dir = os.path.join(current_dir, "..", "..", "files") # /PO/management/commands/files/
-        save_dir = os.path.abspath(save_dir)
-        os.makedirs(save_dir, exist_ok=True)
+        content_type = response.headers.get("Content-Type", "")
+        print(f"📦 Content-Type: {content_type}")
 
-        # 파일 저장된 경로
+        # 파일 저장 위치: PO/files/
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        save_dir = os.path.abspath(os.path.join(current_dir, "..", "..", "files"))
+        os.makedirs(save_dir, exist_ok=True)
         save_path = os.path.join(save_dir, file_name)
 
+        # 실제 저장
         with open(save_path, "wb") as f:
             for chunk in response.iter_content(1024):
                 f.write(chunk)
 
+        # 파일 시그니처로 유효성 확인 (예: PDF)
+        try:
+            with open(save_path, "rb") as f:
+                magic = f.read(5)
+                if file_name.endswith(".pdf") and magic != b"%PDF-":
+                    raise ValueError(f"❌ 파일명은 PDF인데 실제는 PDF가 아닙니다! magic: {magic}")
+                if file_name.endswith(".hwp") and magic[:4] != b'HWP\x20':
+                    print(f"⚠️ HWP 시그니처도 아님: magic: {magic}")
+        except Exception as e:
+            print(f"📛 파일 시그니처 확인 실패: {e}")
 
         print(f"📥 저장 완료 → {save_path}")
         return save_path
+
+
 
 
     def extract_text(self, file_path):
