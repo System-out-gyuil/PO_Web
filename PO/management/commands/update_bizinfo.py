@@ -25,7 +25,7 @@ class Command(BaseCommand):
             "dataType": "json",
             "searchCnt": 100,
             "pageUnit": 5,
-            "pageIndex": 5
+            "pageIndex": 1
         }
 
         try:
@@ -59,10 +59,11 @@ class Command(BaseCommand):
                 iframe_src = fetch_iframe_src(pblanc_id, CHROME_DRIVER_PATH)
 
                 file_url = item.get("flpthNm")
+                file_name = item.get("printFileNm")
                 text, structured_data = "", {}
                 if file_url:
                     try:
-                        file_path = self.download_file(file_url)
+                        file_path = self.download_file(file_url, file_name)
                         text = self.extract_text(file_path)
                         print("★★★★★", text, "★★★★★")
                         structured_data = self.extract_structured_data(text)
@@ -114,17 +115,27 @@ class Command(BaseCommand):
             return ".hwp"
         return ".pdf"
 
-    def download_file(self, url):
+    def download_file(self, url, file_name):
         response = requests.get(url, stream=True, timeout=15)
         response.raise_for_status()
 
         content_type = response.headers.get("Content-Type", "")
         extension = self.detect_file_extension(content_type)
-        filename = f"{uuid.uuid4()}{extension}"
 
-        save_dir = os.path.join("media", "bizinfo_files")
+        # 확장자 보정
+        if not os.path.splitext(file_name)[-1]:
+            file_name += extension
+        else:
+            base, _ = os.path.splitext(file_name)
+            file_name = base + extension
+
+        # 저장 경로: PO/files/ (현재 스크립트 기준으로 상위 경로)
+        current_dir = os.path.dirname(os.path.abspath(__file__))  # /PO/management/commands/
+        save_dir = os.path.join(current_dir, "..", "..", "files")
+        save_dir = os.path.abspath(save_dir)
         os.makedirs(save_dir, exist_ok=True)
-        save_path = os.path.join(save_dir, filename)
+
+        save_path = os.path.join(save_dir, file_name)
 
         with open(save_path, "wb") as f:
             for chunk in response.iter_content(1024):
@@ -137,6 +148,7 @@ class Command(BaseCommand):
 
         print(f"📥 저장 완료 → {save_path}")
         return save_path
+
 
     def extract_text(self, file_path):
         print("★★★★★", file_path, "★★★★★")
