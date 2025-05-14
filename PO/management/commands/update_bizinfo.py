@@ -167,22 +167,37 @@ class Command(BaseCommand):
     def extract_structured_data(self, text):
         prompt = (
             "지원사업 공고문 내용에서 다음 항목을 JSON으로 정리해줘\n"
-            "이 내용을 기반으로 허구 없이 정확하게 요약해줘. 추가적인 추론이나 가정은 하지 말고, 원문 기반으로만 작성해줘."
-            "- 직원수 : 무관, 1~4인, 5인 이상, 매출규모 : 무관, 1억 이하, 1~5억, 5~10억, 10~30억, 30억 이상, 공고내용: 최소 450자 이상, 최대한 자세히 (500자 이상 권장)\n"
-            "\n내용:\n" + text
+            "- 직원수 : 무관, 1~4인, 5인 이상\n"
+            "- 매출규모\n"
+            "- 공고내용: 최소 450자 이상, 원문 기반 요약\n\n"
+            f"내용:\n{text}"
         )
-        llm = ChatOpenAI(temperature=0, model_name='gpt-4o-mini', openai_api_key=OPEN_AI_API_KEY)
+
+        llm = ChatOpenAI(
+            temperature=0,
+            model_name='gpt-4o-mini',
+            openai_api_key=OPEN_AI_API_KEY,
+        )
+
         try:
             response = llm.invoke(prompt)
-            content = response.content.strip().replace("```json", "").replace("```", "")
+            print("📦 GPT 원응답:", response)  # 👉 여기서 응답 형태 확인
+            content = getattr(response, "content", "")  # 안전하게 content 가져오기
+            content = content.strip().replace("```json", "").replace("```", "")
+            if not content:
+                print("❗ content가 비어 있음.")
+                return {
+                    "직원수": None,
+                    "매출규모": None,
+                    "공고내용": ""
+                }
             return json.loads(content)
         except Exception as e:
-            import traceback
             print(f"[GPT 오류] {e}")
-            print(traceback.format_exc())
             return {
-                "직원수": "오류",
-                "매출규모": "오류",
-                "공고내용": "오류"
+                "직원수": None,
+                "매출규모": None,
+                "공고내용": ""
             }
+
 
