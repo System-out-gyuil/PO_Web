@@ -14,6 +14,7 @@ import re
 from PIL import Image
 from pdf2image import convert_from_path
 import mimetypes
+import subprocess
 
 class Command(BaseCommand):
     help = "BizInfo API 호출 및 DB 업데이트"
@@ -119,98 +120,87 @@ class Command(BaseCommand):
         response = requests.get(url, stream=True, timeout=15)
         response.raise_for_status()
 
-        content_type = response.headers.get("Content-Type", "")
-        extension = self.detect_file_extension(content_type)
-
-        # 확장자 보정
-        if not os.path.splitext(file_name)[-1]:
-            file_name += extension
-        else:
-            base, _ = os.path.splitext(file_name)
-            file_name = base + extension
-
         # 저장 경로: PO/files/ (현재 스크립트 기준으로 상위 경로)
         current_dir = os.path.dirname(os.path.abspath(__file__))  # /PO/management/commands/
-        save_dir = os.path.join(current_dir, "..", "..", "files")
+        save_dir = os.path.join(current_dir, "..", "..", "files") # /PO/management/commands/files/
         save_dir = os.path.abspath(save_dir)
         os.makedirs(save_dir, exist_ok=True)
 
+        # 파일 저장된 경로
         save_path = os.path.join(save_dir, file_name)
 
         with open(save_path, "wb") as f:
             for chunk in response.iter_content(1024):
                 f.write(chunk)
 
-        if extension == ".pdf":
-            with open(save_path, "rb") as f:
-                if f.read(5) != b"%PDF-":
-                    raise ValueError(f"📛 유효하지 않은 PDF: {url}")
 
         print(f"📥 저장 완료 → {save_path}")
         return save_path
 
 
     def extract_text(self, file_path):
-        print("★★★★★", file_path, "★★★★★")
-
         if file_path.endswith(".pdf"):
             try:
                 with pdfplumber.open(file_path) as pdf:
                     text = "\n".join(page.extract_text() or "" for page in pdf.pages)
                     if text.strip():
                         return text
-                print("⚠️ pdfplumber 실패 → OCR 시도")
-                images = convert_from_path(file_path)
-                text = ""
-                for img in images:
-                    tmp_img_path = f"/tmp/{uuid.uuid4()}.png"
-                    img.save(tmp_img_path, "PNG")
-                    text += self.ocr_image(tmp_img_path) + "\n"
-                    os.remove(tmp_img_path)
-                return text
             except Exception as e:
                 print(f"[PDF 추출 실패] {e}")
                 return ""
+            
         elif file_path.endswith((".png", ".jpg", ".jpeg")):
-            return self.ocr_image(file_path)
+            return self.clova_ocr(file_path)
+        
         elif file_path.endswith(".hwp"):
-            pdf_path = file_path.replace(".hwp", ".pdf")
-            return self.convert_hwp_to_pdf(file_path, pdf_path)
+            return self.convert_hwp_to_pdf(file_path)
+        
         return "오류"
-
-    def ocr_image(self, image_path):
-        image_format = os.path.splitext(image_path)[-1][1:]
+        
+    def clova_ocr(file_path, fmt):
         request_json = {
-            'images': [{'format': image_format, 'name': 'demo'}],
+            'images': [{'format': fmt, 'name': 'demo'}],
             'requestId': str(uuid.uuid4()),
             'version': 'V1',
-            'timestamp': int(time.time() * 1000)
+            'timestamp': int(round(time.time() * 1000))
         }
         payload = {'message': json.dumps(request_json).encode('UTF-8')}
-        with open(image_path, 'rb') as img_file:
-            files = [('file', img_file)]
-            headers = {'X-OCR-SECRET': NAVER_CLOVA_OCR_API_KEY}
-            response = requests.post(NAVER_CLOUD_CLOVA_OCR_API_URL, headers=headers, data=payload, files=files)
-            result = response.json()
-            return " ".join([field['inferText'] for field in result['images'][0].get('fields', [])])
+        files = [('file', open(file_path, 'rb'))]
+        headers = {'X-OCR-SECRET': NAVER_CLOVA_OCR_API_KEY}
+        response = requests.post(NAVER_CLOUD_CLOVA_OCR_API_URL, headers=headers, data=payload, files=files)
+        return response
 
-    def convert_hwp_to_pdf(self, hwp_path, output_pdf_path):
-        txt_path = output_pdf_path.replace(".pdf", ".txt")
+    def convert_hwp_to_pdf(self, hwp_path):
+
+        # pdf 저장 경로 설정
+        output_dir = os.path.dirname(hwp_path)
+        pdf_path = hwp_path.replace(".hwp", ".pdf")
+
         try:
-            os.system(f"hwp5txt '{hwp_path}' > '{txt_path}'")
-            if os.path.exists(txt_path):
-                with open(txt_path, encoding='utf-8') as f:
-                    return f.read()
+            # libreoffice를 통해 hwp → pdf 변환 시도
+            result = subprocess.run(
+                ["libreoffice", "--headless", "--convert-to", "pdf", hwp_path, "--outdir", output_dir],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                timeout=20
+            )
+
+            if result.returncode != 0:
+                print(f"[libreoffice 오류] stdout: {result.stdout.decode()}, stderr: {result.stderr.decode()}")
+                return ""
+
+            if not os.path.exists(pdf_path):
+                print(f"[❌ 변환 실패] PDF가 생성되지 않았습니다: {pdf_path}")
+                return ""
+
+            print(f"✅ HWP → PDF 변환 완료: {pdf_path}")
+            return self.extract_text(pdf_path)  # PDF 텍스트 추출 시도
+
         except Exception as e:
-            print(f"[hwp5txt 오류] 변환 실패: {e}")
-        try:
-            os.system(f"libreoffice --headless --convert-to pdf '{hwp_path}' --outdir '{os.path.dirname(output_pdf_path)}'")
-            converted_path = os.path.join(os.path.dirname(output_pdf_path), os.path.basename(hwp_path).replace(".hwp", ".pdf"))
-            if os.path.exists(converted_path):
-                return self.extract_text(converted_path)
-        except Exception as e:
-            print(f"[libreoffice 오류] PDF 변환 실패: {e}")
-        return ""
+            print(f"[예외 발생] HWP → PDF 변환 실패: {e}")
+            return ""
+
+        
 
     def extract_structured_data(self, text):
         prompt = (
@@ -229,8 +219,8 @@ class Command(BaseCommand):
         )
         try:
             response = llm.invoke(prompt)
-            print("📦 GPT 원응답:", response)
             content = getattr(response, "content", "").strip()
+            print("📦 GPT 응답:", content)
             return self.clean_json_from_response(content)
         except Exception as e:
             print(f"[GPT 오류] {e}")
