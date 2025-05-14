@@ -74,30 +74,30 @@ class Command(BaseCommand):
                 employee_count = structured_data.get("직원수") if isinstance(structured_data, dict) else None
                 revenue = structured_data.get("매출규모") if isinstance(structured_data, dict) else None
 
-                # BizInfo.objects.create(
-                #     pblanc_id=pblanc_id,
-                #     title=item.get("pblancNm"),
-                #     content=item.get("bsnsSumryCn"),
-                #     registered_at=registered_at,
-                #     reception_start=reception_start,
-                #     reception_end=reception_end,
-                #     institution_name=item.get("jrsdInsttNm"),
-                #     enroll_method=enroll_method,
-                #     target=item.get("trgetNm"),
-                #     field=item.get("pldirSportRealmLclasCodeNm"),
-                #     hashtag=item.get("hashtags"),
-                #     print_file_name=item.get("printFileNm"),
-                #     print_file_path=item.get("printFlpthNm"),
-                #     company_hall_path=item.get("pblancUrl"),
-                #     support_field=item.get("pldirSportRealmMlsfcCodeNm"),
-                #     application_form_name=item.get("fileNm") or "",
-                #     application_form_path=item.get("flpthNm") or "",
-                #     iframe_src=iframe_src,
-                #     extracted_text=text,
-                #     structured_json=structured_data,
-                #     employee_count=employee_count,
-                #     revenue=revenue
-                # )
+                BizInfo.objects.create(
+                    pblanc_id=pblanc_id,
+                    title=item.get("pblancNm"),
+                    content=item.get("bsnsSumryCn"),
+                    registered_at=registered_at,
+                    reception_start=reception_start,
+                    reception_end=reception_end,
+                    institution_name=item.get("jrsdInsttNm"),
+                    enroll_method=enroll_method,
+                    target=item.get("trgetNm"),
+                    field=item.get("pldirSportRealmLclasCodeNm"),
+                    hashtag=item.get("hashtags"),
+                    print_file_name=item.get("printFileNm"),
+                    print_file_path=item.get("printFlpthNm"),
+                    company_hall_path=item.get("pblancUrl"),
+                    support_field=item.get("pldirSportRealmMlsfcCodeNm"),
+                    application_form_name=item.get("fileNm") or "",
+                    application_form_path=item.get("flpthNm") or "",
+                    iframe_src=iframe_src,
+                    extracted_text=text,
+                    structured_json=structured_data,
+                    employee_count=employee_count,
+                    revenue=revenue
+                )
 
             self.stdout.write(self.style.SUCCESS(f"{len(items)}건 처리 완료."))
 
