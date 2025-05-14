@@ -68,6 +68,7 @@ class Command(BaseCommand):
                         print("★★★★★", text, "★★★★★")
                         structured_data = self.extract_structured_data(text)
                         os.remove(file_path)
+
                     except Exception as e:
                         self.stderr.write(f"파일 처리 실패: {file_url} - {e}")
 
@@ -127,21 +128,29 @@ class Command(BaseCommand):
 
 
     def extract_text(self, file_path):
-        print("📂 file_path type:", type(file_path), "| value:", file_path)  # 👈 추가
         if file_path.endswith(".pdf"):
             with pdfplumber.open(file_path) as pdf:
                 for page in pdf.pages:
                     page_text = page.extract_text()
                     if page_text:
                         full_text += page_text + "\n"
-
+            print("📂 pdf full_text:", full_text)
             return full_text
 
-        elif file_path.endswith((".png", ".jpg", ".jpeg")):
-            return self.clova_ocr(file_path)
+        elif file_path.endswith((".jpg", ".jpeg", ".png")):
+            full_text = self.clova_ocr(file_path, "jpg")
+            print("📂 img full_text:", full_text)
+            return full_text
         
         elif file_path.endswith(".hwp"):
-            return self.convert_hwp_to_pdf(file_path)
+            pdf = self.convert_hwp_to_pdf(file_path)
+            with pdfplumber.open(pdf) as pdf:
+                for page in pdf.pages:
+                    page_text = page.extract_text()
+                    if page_text:
+                        full_text += page_text + "\n"
+            print("📂 hwp full_text:", full_text)
+            return full_text
         
         return "오류"
         
@@ -156,7 +165,11 @@ class Command(BaseCommand):
         files = [('file', open(file_path, 'rb'))]
         headers = {'X-OCR-SECRET': NAVER_CLOVA_OCR_API_KEY}
         response = requests.post(NAVER_CLOUD_CLOVA_OCR_API_URL, headers=headers, data=payload, files=files)
-        return response
+        
+        for field in response.json()['images'][0]['fields']:
+            full_text += field['inferText']
+        
+        return full_text
 
     def convert_hwp_to_pdf(self, hwp_path):
 
@@ -182,7 +195,7 @@ class Command(BaseCommand):
                 return ""
 
             print(f"✅ HWP → PDF 변환 완료: {pdf_path}")
-            return self.extract_text(pdf_path)  # PDF 텍스트 추출 시도
+            return pdf_path
 
         except Exception as e:
             print(f"[예외 발생] HWP → PDF 변환 실패: {e}")
