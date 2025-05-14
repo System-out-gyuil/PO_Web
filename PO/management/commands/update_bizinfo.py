@@ -195,14 +195,21 @@ class Command(BaseCommand):
 
     def clean_json_from_response(self, content: str) -> dict:
         try:
-            match = re.search(r"```(?:json)?\\s*(\{.*?\})\\s*```", content, re.DOTALL)
+            # 1. ```json ... ``` 블록 추출
+            match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", content, re.DOTALL)
             if match:
                 return json.loads(match.group(1))
+            
+            # 2. 중괄호로 감싸진 JSON 블록만 추출 (fallback)
             match2 = re.search(r"(\{.*?\})", content, re.DOTALL)
             if match2:
                 return json.loads(match2.group(1))
-            print("⚠️ JSON 블록 추출 실패", match)
+
+            print("⚠️ JSON 블록 추출 실패")
+            print("📄 원본 content:", content)
             return {}
+
         except Exception as e:
             print(f"[JSON 파싱 오류] {e}")
             return {}
+
