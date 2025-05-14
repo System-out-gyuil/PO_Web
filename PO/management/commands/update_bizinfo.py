@@ -5,7 +5,7 @@ from datetime import datetime
 from django.core.management.base import BaseCommand
 from board.models import BizInfo
 from PO.management.commands.utils import fetch_iframe_src
-from config import BIZINFO_API_KEY, CHROME_DRIVER_PATH, OPEN_AI_API_KEY, NAVER_CLOUD_CLOVA_OCR_API_KEY, NAVER_CLOUD_CLOVA_OCR_API_URL
+from config import BIZINFO_API_KEY, CHROME_DRIVER_PATH, OPEN_AI_API_KEY, NAVER_CLOVA_OCR_API_KEY, NAVER_CLOUD_CLOVA_OCR_API_URL
 from langchain_openai import ChatOpenAI
 import pdfplumber
 import uuid
@@ -141,7 +141,7 @@ class Command(BaseCommand):
         payload = {'message': json.dumps(request_json).encode('UTF-8')}
         with open(image_path, 'rb') as img_file:
             files = [('file', img_file)]
-            headers = {'X-OCR-SECRET': NAVER_CLOUD_CLOVA_OCR_API_KEY}
+            headers = {'X-OCR-SECRET': NAVER_CLOVA_OCR_API_KEY}
             response = requests.post(NAVER_CLOUD_CLOVA_OCR_API_URL, headers=headers, data=payload, files=files)
             result = response.json()
             return " ".join([field['inferText'] for field in result['images'][0].get('fields', [])])
