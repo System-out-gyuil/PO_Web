@@ -60,6 +60,7 @@ class Command(BaseCommand):
 
                 file_url = item.get("flpthNm")
                 file_name = item.get("printFileNm")
+                file_path = ""
                 text, structured_data = "", {}
                 if file_url:
                     try:
@@ -70,7 +71,7 @@ class Command(BaseCommand):
                         os.remove(file_path)
 
                     except Exception as e:
-                        self.stderr.write(f"파일 처리 실패: {file_url} - {e}")
+                        self.stderr.write(f"파일 처리 실패: {file_path} - {e}")
 
                 enroll_method = item.get("reqstMthPapersCn") or "신청 방법은 공고를 참고해주세요."
 
