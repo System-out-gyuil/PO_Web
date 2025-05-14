@@ -19,6 +19,9 @@ class BizInfo(models.Model):
     application_form_name = models.CharField(max_length=200)  # 신청서 이름 (fileNm)
     application_form_path = models.CharField(max_length=500)  # 신청서 경로 (flpthNm)
     iframe_src = models.URLField(max_length=1000, null=True, blank=True)  # 상세보기 iframe 링크
+    employee_count = models.CharField(max_length=50, blank=True, null=True)
+    revenue = models.CharField(max_length=50, blank=True, null=True)
+
 
 
     def __str__(self):
