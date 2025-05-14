@@ -12,7 +12,6 @@ import json
 import time
 import re
 from PIL import Image
-from pdf2image import convert_from_path
 import mimetypes
 import subprocess
 
@@ -26,7 +25,7 @@ class Command(BaseCommand):
             "dataType": "json",
             "searchCnt": 100,
             "pageUnit": 5,
-            "pageIndex": 2
+            "pageIndex": 3
         }
 
         try:
@@ -105,17 +104,6 @@ class Command(BaseCommand):
         except Exception as e:
             self.stderr.write(self.style.ERROR(f"실패: {e}"))
 
-    def detect_file_extension(self, content_type):
-        if "pdf" in content_type:
-            return ".pdf"
-        elif "jpeg" in content_type or "jpg" in content_type:
-            return ".jpg"
-        elif "png" in content_type:
-            return ".png"
-        elif "hwp" in content_type:
-            return ".hwp"
-        return ".pdf"
-
     def download_file(self, url, file_name):
         response = requests.get(url, stream=True, timeout=15)
         response.raise_for_status()
@@ -139,6 +127,7 @@ class Command(BaseCommand):
 
 
     def extract_text(self, file_path):
+        print("📂 file_path type:", type(file_path), "| value:", file_path)  # 👈 추가
         if file_path.endswith(".pdf"):
             with pdfplumber.open(file_path) as pdf:
                 for page in pdf.pages:
@@ -205,7 +194,7 @@ class Command(BaseCommand):
         prompt = (
             "아래 텍스트는 정부 지원사업 공고문에서 추출된 실제 내용입니다. "
             "이 내용을 기반으로 허구 없이 정확하게 요약해줘. 추가적인 추론이나 가정은 하지 말고, 원문 기반으로만 작성해줘.\n\n"
-            "📌 아래 항목들을 정확히 JSON 형식으로 추출해줘:\n"
+            "📌 아래 항목들을 정확히 JSON 형식으로 추출해줘\n"
             "- 직원수 : 무관, 1~4인, 5인 이상 (중 선택, 복수 선택 가능)\n"
             "- 매출규모: 무관, 1억 이하, 1~5억, 5~10억, 10~30억, 30억 이상 (중 선택, 복수 선택 가능)\n"
             "- 공고내용: 최소 450자 이상, 원문 기반 요약\n\n"
