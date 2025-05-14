@@ -26,7 +26,7 @@ class Command(BaseCommand):
             "dataType": "json",
             "searchCnt": 100,
             "pageUnit": 5,
-            "pageIndex": 1
+            "pageIndex": 2
         }
 
         try:
@@ -140,15 +140,14 @@ class Command(BaseCommand):
 
     def extract_text(self, file_path):
         if file_path.endswith(".pdf"):
-            try:
-                with pdfplumber.open(file_path) as pdf:
-                    text = "\n".join(page.extract_text() or "" for page in pdf.pages)
-                    if text.strip():
-                        return text
-            except Exception as e:
-                print(f"[PDF 추출 실패] {e}")
-                return ""
-            
+            with pdfplumber.open(file_path) as pdf:
+                for page in pdf.pages:
+                    page_text = page.extract_text()
+                    if page_text:
+                        full_text += page_text + "\n"
+
+            return full_text
+
         elif file_path.endswith((".png", ".jpg", ".jpeg")):
             return self.clova_ocr(file_path)
         
