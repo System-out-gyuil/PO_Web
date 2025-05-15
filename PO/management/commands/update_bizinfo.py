@@ -24,9 +24,9 @@ class Command(BaseCommand):
         params = {
             "crtfcKey": BIZINFO_API_KEY,
             "dataType": "json",
-            "searchCnt": 200,
+            "searchCnt": 100,
             "pageUnit": 10,
-            "pageIndex": 15
+            "pageIndex": 9
         }
 
         try:
