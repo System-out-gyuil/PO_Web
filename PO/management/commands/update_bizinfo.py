@@ -14,6 +14,7 @@ import time
 from PIL import Image
 import subprocess
 import warnings
+warnings.filterwarnings("ignore")  # 경고 무시
 
 class Command(BaseCommand):
     help = "BizInfo API 호출 및 DB 업데이트"
@@ -62,7 +63,7 @@ class Command(BaseCommand):
                         file_path = self.download_file(file_url, file_name)
                         text, extra_path = self.extract_text(file_path)
                         structured_data = self.extract_structured_data(text)
-                        print("\n\U0001F4C2 structured_data:", structured_data)
+                        print("\n📄 structured_data:", structured_data)
                         if os.path.exists(file_path):
                             os.remove(file_path)
                         if extra_path and os.path.exists(extra_path):
@@ -122,7 +123,6 @@ class Command(BaseCommand):
 
     def is_text_pdf(self, file_path):
         try:
-            warnings.filterwarnings("ignore")  # 경고 무시
 
             with pdfplumber.open(file_path) as pdf:
                 for page in pdf.pages[:2]:
