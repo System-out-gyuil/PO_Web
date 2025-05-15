@@ -13,6 +13,7 @@ import json
 import time
 from PIL import Image
 import subprocess
+import warnings
 
 class Command(BaseCommand):
     help = "BizInfo API 호출 및 DB 업데이트"
@@ -24,7 +25,7 @@ class Command(BaseCommand):
             "dataType": "json",
             "searchCnt": 100,
             "pageUnit": 10,
-            "pageIndex": 7
+            "pageIndex": 8
         }
 
         try:
@@ -121,6 +122,8 @@ class Command(BaseCommand):
 
     def is_text_pdf(self, file_path):
         try:
+            warnings.filterwarnings("ignore")  # 경고 무시
+
             with pdfplumber.open(file_path) as pdf:
                 for page in pdf.pages[:2]:
                     if page.extract_text():
