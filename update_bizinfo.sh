@@ -6,4 +6,5 @@ source /home/ubuntu/PO_Web/venv/bin/activate
 cd /home/ubuntu/PO_Web
 
 # 명령 실행
-/home/ubuntu/PO_Web/venv/bin/python manage.py update_bizinfo
+# /home/ubuntu/PO_Web/venv/bin/python manage.py update_bizinfo
+python cron.py
