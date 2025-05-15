@@ -26,7 +26,7 @@ class Command(BaseCommand):
             "dataType": "json",
             "searchCnt": 500,
             "pageUnit": 20,
-            "pageIndex": 3
+            "pageIndex": 4
         }
 
         try:
@@ -228,7 +228,7 @@ class Command(BaseCommand):
             ) + text
 
 
-        llm = ChatOpenAI(temperature=0, model_name='gpt-4o-mini', openai_api_key=OPEN_AI_API_KEY)
+        llm = ChatOpenAI(temperature=0, model_name='gpt-4o', openai_api_key=OPEN_AI_API_KEY)
         try:
             response = llm.invoke(prompt)
             return self.clean_json_from_response(getattr(response, "content", "").strip())
