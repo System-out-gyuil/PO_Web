@@ -233,3 +233,13 @@ python에서 os.system으로 libreoffice의 convert to pdf 명령어 사용 <br>
   linux에서는 파일을 까다롭게 확인하여 .pdf 파일 내부에 /Root 객체가 없는 경우에 pdf로 판단하지 않는 문제가 있었음 (error: No /Root object! – Is this really a PDF?)<br>
   
   파일의 첫 바이트 magic number를 검사하여 텍스트형식 pdf인지 이미지형 pdf거나 구조가 비정상적인 경우를 파악하여 텍스트형 pdf일 경우 기존 방식(pdfplumber)대로 진행, 이미지형 pdf의 경우 naver CLOVA OCR을 통해 텍스트 추출하는 방식으로 해결하였다.
+
+# 2025.05.15 (목)
+
+## 1. open AI API prompt 조정
+- bizinfo api의 데이터와 우리 양식으로 만든 데이터를 합치는 것은 성공하였으나, gpt의 응답이 대부분 무관인 점을 확인.<br>
+프롬프트 조절을 통해 데이터를 최대한 지원사업의 선정 기준에 부합하도록 설정
+
+## 2. SEO
+- 한 페이지당 한개의 h1태그를 이용해 해당 페이지의 제목, 중점 내용 등을 기재 (robots등이 사이트 크롤링 후 내용 파악에 h1태그를 중요하게 본다.)
+- 시맨틱 태그를 이용하여 봇이 html의 구조파악을 쉽게 하도록 도와줌 ex) <header>, <section> 등

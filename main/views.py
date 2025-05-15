@@ -237,3 +237,7 @@ class SearchResultView(View):
             'region': region,
             'industry': industry,
         })
+
+class TermsOfServiceView(View):
+    def get(self, request):
+        return render(request, 'services/terms_or_service.html')

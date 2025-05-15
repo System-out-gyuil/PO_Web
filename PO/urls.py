@@ -1,7 +1,7 @@
 from django.views.generic import TemplateView
 from django.contrib import admin
 from django.urls import path, include
-from main.views import MainView, SearchResultView
+from main.views import MainView, SearchResultView, TermsOfServiceView
 from counsel.views import CounselFormView
 from django.conf import settings
 from django.conf.urls.static import static
@@ -10,7 +10,8 @@ from django.contrib.sitemaps.views import sitemap
 
 urlpatterns = [
     path('', MainView.as_view(), name='main'),
-    path("admin/", admin.site.urls),
+    path('terms_of_service/', TermsOfServiceView.as_view(), name='terms_of_service'),
+    path('admin/', admin.site.urls),
     path('search/', SearchResultView.as_view(), name='search_result'),
     path('counsel/', include('counsel.urls')),
     path('po_admin/', include('po_admin.urls')),

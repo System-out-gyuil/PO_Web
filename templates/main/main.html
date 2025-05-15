@@ -33,13 +33,14 @@
           <div class="main-title">AI 비서가 찾아주는</div>
       </div>
       <div class="main-subtitle">
-        <span class="orange-color">나</span>에게 <br />
-        <span class="orange-color">맞</span>는 <br />
-        <span class="orange-color">지</span>원금 찾기
+          <span class="orange-color">나</span>에게 <br />
+          <span class="orange-color">맞</span>는 <br />
+          <span class="orange-color">지</span>원금 찾기
       </div>
       </div>
     </section>
 
+    <section>
       <div class="search-container">
         <form id="search-form" method="post" action="{% url 'main' %}">
           {% csrf_token %}
@@ -139,6 +140,7 @@
         <button form="search-form" type="submit" class="search-button main-button button btnPush btnLightBlue">찾아보기</button>
       </div>
     </div>
+    </section>
     {% include 'base/footer.html' %}
     {% comment %} 전문가 상담 버튼 {% endcomment %}
     {% include 'base/consel_btn.html' %}
