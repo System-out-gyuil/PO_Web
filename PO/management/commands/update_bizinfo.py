@@ -26,7 +26,7 @@ class Command(BaseCommand):
             "dataType": "json",
             "searchCnt": 500,
             "pageUnit": 20,
-            "pageIndex": 4
+            "pageIndex": 5
         }
 
         try:
@@ -216,7 +216,7 @@ class Command(BaseCommand):
                 "  \"직원수\": [\"직원 없음\", \"1~4인\",\"5인 이상\" 중 실제 선정 가능성이 높은 범위를 모두 선택],\n"
                 "  \"사업기간(업력)\": [\"사업자 등록 전\",\"1년 이하\",\"1~3년\",\"3~7년\",\"7년 이상\" 중 지원 가능성이 높은 구간을 복수 선택,\n"
                 "  \"매출규모\": [\"1억 이하\",\"1~5억\",\"5~10억\",\"10~30억\",\"30억 이상\" 중 지원 가능성이 높은 구간을 복수 선택],\n"
-                "  \"수출실적여부\": [\"수출 기업\",\"수출 희망\", \"수출 없음\" 중 원문에서 실제 언급된 것만 선택],\n"
+                "  \"수출실적여부\": [\"수출 기업\",\"수출 희망\", \"수출 없음\" 반드시 예시 중 선택할 것],\n"
                 "  \"공고내용\": \"지원 목적, 대상, 기간, 방법, 자부담, 선정 절차, 지원 한도 및 제한 사항 등을 종합하여 450자 이상으로 정밀하게 요약한 문장\"\n"
                 "  \"가능업종\": [\"제조업\",\"전문 서비스업\",\"생활 서비스업\",\"요식업\",\"IT\",\"도소매\",\"건설업\",\"무역업\",\"운수업\",\"농수산업\",\"미디어\" 중 지금 만든 공고내용요약에서 명확히 지원 대상에 해당하는 업종 복수 선택 반드시 예시업종 중 선택할 것],\n"
                 "}\n\n"
@@ -228,7 +228,7 @@ class Command(BaseCommand):
             ) + text
 
 
-        llm = ChatOpenAI(temperature=0, model_name='gpt-4o', openai_api_key=OPEN_AI_API_KEY)
+        llm = ChatOpenAI(temperature=0, model_name='gpt-4o-mini', openai_api_key=OPEN_AI_API_KEY)
         try:
             response = llm.invoke(prompt)
             return self.clean_json_from_response(getattr(response, "content", "").strip())
