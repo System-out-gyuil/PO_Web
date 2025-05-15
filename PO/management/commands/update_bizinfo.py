@@ -25,8 +25,8 @@ class Command(BaseCommand):
             "crtfcKey": BIZINFO_API_KEY,
             "dataType": "json",
             "searchCnt": 100,
-            "pageUnit": 10,
-            "pageIndex": 8
+            "pageUnit": 100,
+            "pageIndex": 1
         }
 
         try:
