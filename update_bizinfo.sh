@@ -1,4 +1,5 @@
 #!/bin/bash
+
 # 가상환경 활성화
 source /home/ubuntu/PO_Web/venv/bin/activate
 
@@ -6,5 +7,6 @@ source /home/ubuntu/PO_Web/venv/bin/activate
 cd /home/ubuntu/PO_Web
 
 # 명령 실행
-# /home/ubuntu/PO_Web/venv/bin/python manage.py update_bizinfo
-python cron.py
+echo "[`date '+%Y-%m-%d %H:%M:%S'`] 🚀 BizInfo update 시작" >> /home/ubuntu/cron.log
+python cron.py >> /home/ubuntu/cron.log 2>&1
+echo "[`date '+%Y-%m-%d %H:%M:%S'`] ✅ BizInfo update 완료" >> /home/ubuntu/cron.log
