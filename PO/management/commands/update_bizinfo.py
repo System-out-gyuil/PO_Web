@@ -26,7 +26,7 @@ class Command(BaseCommand):
             "dataType": "json",
             "searchCnt": 200,
             "pageUnit": 20,
-            "pageIndex": 7
+            "pageIndex": 8
         }
 
         try:
@@ -118,7 +118,7 @@ class Command(BaseCommand):
         with open(save_path, "wb") as f:
             for chunk in response.iter_content(1024):
                 f.write(chunk)
-        print("==========================================================\n 📂 save_path:", save_path)
+        print("===============================================================================================\n 📂 save_path:", save_path)
         return save_path
 
     def is_text_pdf(self, file_path):
