@@ -23,7 +23,7 @@ class MainView(View):
 
         # print(data)
 
-        if data["region"] and data["industry"]:
+        if data["region"] and data["industry"] and data["business_period"] and data["export"] and data["sales_volume"] and data["member_number"]:
             query_string = "&".join([f"{k}={v}" for k, v in data.items() if v])
             return redirect(f"/search/?{query_string}")
         else:

@@ -5,7 +5,7 @@ from datetime import datetime
 from django.core.management.base import BaseCommand
 from board.models import BizInfo
 from PO.management.commands.utils import fetch_iframe_src
-from config import BIZINFO_API_KEY, CHROME_DRIVER_PATH, OPEN_AI_API_KEY, NAVER_CLOVA_OCR_API_KEY, NAVER_CLOUD_CLOVA_OCR_API_URL
+from config import BIZINFO_API_KEY, CHROME_DRIVER_PATH, OPEN_AI_API_KEY, NAVER_CLOVA_OCR_API_KEY, NAVER_CLOUD_CLOVA_OCR_API_URL, ES_API_KEY
 from langchain_openai import ChatOpenAI
 import pdfplumber
 import uuid
@@ -71,6 +71,7 @@ class Command(BaseCommand):
                     except Exception as e:
                         self.stderr.write(f"파일 처리 실패: {file_url} - {e}")
 
+                # MySQL에 저장
                 BizInfo.objects.create(
                     pblanc_id=pblanc_id,
                     title=item.get("pblancNm"),
@@ -100,6 +101,9 @@ class Command(BaseCommand):
                 )
 
             self.stdout.write(self.style.SUCCESS(f"{len(items)}건 처리 완료."))
+
+            # Elasticsearch에 저장
+            self.es_indexing()
 
         except Exception as e:
             self.stderr.write(self.style.ERROR(f"실패: {e}"))
@@ -250,3 +254,61 @@ class Command(BaseCommand):
         except Exception as e:
             print(f"[JSON 파싱 오류] {e}")
             return {}
+
+    def es_indexing(self):
+        from django.forms.models import model_to_dict
+        import ast
+        from elasticsearch import Elasticsearch, helpers
+
+        es = Elasticsearch(
+            "https://0e0f4480a93d4cb78455e070163e467d.us-central1.gcp.cloud.es.io:443",
+            api_key=ES_API_KEY
+        )
+
+        index_name = "bizinfo_index"
+
+        if es.indices.exists(index=index_name):
+            es.indices.delete(index=index_name)
+            self.stdout.write(f"❌ 기존 인덱스 '{index_name}' 삭제")
+
+        es.indices.create(index=index_name)
+        self.stdout.write(f"✅ 새 인덱스 '{index_name}' 생성")
+
+        actions = []
+        list_fields = ["region", "employee_count", "revenue", "export_performance", "possible_industry", "business_period"]
+
+        for obj in BizInfo.objects.all():
+            doc = model_to_dict(obj)
+
+            # 날짜 포맷
+            for field in ['registered_at', 'reception_start', 'reception_end']:
+                if doc.get(field):
+                    doc[field] = doc[field].isoformat()
+
+            # 리스트 필드 처리
+            for field in list_fields:
+                value = doc.get(field)
+                if value:
+                    if isinstance(value, list):
+                        doc[field] = value
+                    elif isinstance(value, str) and value.startswith("[") and value.endswith("]"):
+                        try:
+                            parsed = ast.literal_eval(value)
+                            doc[field] = parsed if isinstance(parsed, list) else [value]
+                        except Exception as e:
+                            self.stderr.write(f"⚠️ {field} 파싱 실패: {value} → {e}")
+                            doc[field] = [value]
+                    else:
+                        doc[field] = [value]
+                else:
+                    doc[field] = []
+
+            actions.append({
+                "_index": index_name,
+                "_id": doc["pblanc_id"],
+                "_source": doc
+            })
+
+        helpers.bulk(es, actions)
+        self.stdout.write(f"🎉 총 {len(actions)}개 문서 Elasticsearch 인덱싱 완료")
+        

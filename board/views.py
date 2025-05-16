@@ -21,19 +21,26 @@ class BoardView(View):
         select_type = request.GET.get("select-type", "")
         keyword = request.GET.get("keyword", "").strip()
 
-        # ✅ Elasticsearch 쿼리 구성
+        print(select_type, keyword)
+
         if select_type and keyword:
-            query = {"match": {select_type: keyword}} if select_type != "all" else {
-                "multi_match": {
-                    "query": keyword,
-                    "fields": [
-                        "title", "region", "institution_name",
-                        "target", "possible_industry", "noti_summary"
-                    ]
+            if select_type == "title":
+                query = {
+                    "wildcard": {
+                        "title": f"*{keyword}*"
+                    }
                 }
-            }
+            elif select_type == "region":
+                query = {
+                    "match": {
+                        "region": keyword
+                    }
+                }
+
         else:
-            query = {"match_all": {}}
+            query = { "match_all": {} }
+
+
 
         # ✅ Elasticsearch 요청
         es_response = es.search(
