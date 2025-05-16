@@ -209,26 +209,28 @@ class SearchResultView(View):
             try:
                 score_filter = int(score_filter)
                 if exact_filter:
-                    # ✅ exact=true인 경우: 해당 점수 전체 표시
+                    # ✅ exact=true인 경우: 해당 점수 전체 표시 (페이지네이션 적용)
                     matched_projects = [p for p in matched_projects if p.get("매칭점수", 0) == score_filter]
                 else:
-                    # ✅ score가 있지만 exact가 없을 때: score별 하나씩만 추림 (기존 유지)
-                    score_to_project = {}
-                    for p in matched_projects:
-                        score = p.get("매칭점수", 0)
-                        if score not in score_to_project:
-                            score_to_project[score] = p
-                    matched_projects = [score_to_project[s] for s in sorted(score_to_project.keys(), reverse=True)]
+                    # ✅ score 필터는 있지만 exact는 없을 때: 기본 동작으로 6,5,4점 하나씩만 노출
+                    filtered = []
+                    for target_score in [6, 5, 4]:
+                        for p in matched_projects:
+                            if p.get("매칭점수", 0) == target_score:
+                                filtered.append(p)
+                                break
+                    matched_projects = filtered
             except ValueError:
                 pass
         else:
-            # 기본: 점수별로 하나씩만 추림
-            score_to_project = {}
-            for p in matched_projects:
-                score = p.get("매칭점수", 0)
-                if score not in score_to_project:
-                    score_to_project[score] = p
-            matched_projects = [score_to_project[s] for s in sorted(score_to_project.keys(), reverse=True)]
+            # ✅ 6, 5, 4점만 각 하나씩 추림
+            filtered = []
+            for target_score in [6, 5, 4]:
+                for p in matched_projects:
+                    if p.get("매칭점수", 0) == target_score:
+                        filtered.append(p)
+                        break  # 해당 점수 중 첫 번째만 추가
+            matched_projects = filtered
 
         matched_projects = sorted(matched_projects, key=lambda p: (-p["매칭점수"], parse_end_date(p)))
 
@@ -239,8 +241,6 @@ class SearchResultView(View):
             results = page_obj
         else:
             results = matched_projects
-
-        print(matched_projects)
 
         return render(request, 'main/search_results.html', {
             'results': results,

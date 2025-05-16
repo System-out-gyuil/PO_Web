@@ -28,11 +28,11 @@
 
       <div class="match-score">
           {% if 6 == p.매칭점수 %}
-            나에게 딱 맞는 지원금
+            <strong>나에게 딱 맞는 지원금</strong>
           {% elif 5 == p.매칭점수 %}
-            추천 지원금
+            <strong>추천 지원금</strong>
           {% elif 4 == p.매칭점수 %}
-            관심 지원금
+            <strong>관심 지원금</strong>
           {% endif %}
       </div>
 
@@ -99,7 +99,7 @@
       <p id="full-{{ forloop.counter }}" class="full-text hidden">
         <strong>📄공고내용 요약 :</strong> {{ p.noti_summary }}
       </p>
-      <button onclick="location.href='{% url 'board:detail' p.pblanc_id %}?page_index=1'" style="cursor:pointer; color: black;" class="more-button">더보기</button>
+      <button onclick="location.href='{% url 'board:detail' p.pblanc_id %}?page_index=1'" style="cursor:pointer; color: black;" class="more-button">전체 공고 보기</button>
     </div>
     <hr />
     {% endfor %}
