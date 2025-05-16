@@ -12,11 +12,19 @@
 </head>
 <body>
   {% include 'base/top_nav.html' %}
+  <div class="score-container">
+    <ul class="score-ul">
+      {% for s in "654321" %}
+        <li onclick="location.href='?score={{ s }}&region={{ region }}&industry={{ industry }}&sales_volume={{ sales_volume }}&member_number={{ member_number }}&business_period={{ business_period }}&export={{ export }}'" style="cursor:pointer;">{{ s }}점</li>
+      {% endfor %}
+    </ul>
+  </div>
+  
 
   <div class="main-container">
     <h1 class="main-title">
       <span class="orange-color">{{ region }}</span>에서 <span class="orange-color">{{ industry }}</span>을 운영하시는<br />
-      대표님을 위한 지원 사업은..!
+      대표님을 위한 지원 사업은..! <br>
     </h1>
   </div>
 
@@ -63,7 +71,7 @@
       {% endwith %}<br />
     
 
-      👤 <strong>지원 자격:</strong>
+      {% comment %} 👤 <strong>지원 자격:</strong>
       {% if p.지원자격.items %}
         <ul style="margin: 5px 0">
           {% for key, value in p.지원자격.items %}
@@ -72,7 +80,7 @@
         </ul>
       {% else %}
         {{ p.지원자격|default:"없음" }}
-      {% endif %}<br />
+      {% endif %}<br /> {% endcomment %}
 
       📆 <strong>사업 기간(업력):</strong> 
       {{ p.사업기간요약 }}<br />
@@ -81,9 +89,9 @@
       {% if p.reception_end == "9999-12-31" %}사업비 소진 시 까지 (상시접수)
       {% elif p.reception_start == "0000-01-01" %}~ {{ p.reception_end }}
       {% else %}{{ p.reception_start }} ~ {{ p.reception_end }}
-      {% endif %}<br />
+      {% endif %}<br /><br />
 
-      <strong>핵심 키워드:</strong> {{ p.hashtag }}<br />
+      {% comment %} <strong>핵심 키워드:</strong> {{ p.hashtag }}<br /><br /> {% endcomment %}
 
       <!-- 디버깅용 -->
       {% comment %} {% if p.debug_matched_fields %}
@@ -106,13 +114,16 @@
     <!-- 페이지네비게이션 -->
     <div class="pagination">
       {% if results.has_previous %}
-      <a href="?page={{ results.previous_page_number }}&region={{ region }}&industry={{ industry }}&sales_volume={{ sales_volume }}&member_number={{ member_number }}&business_period={{ business_period }}&export={{ export }}">이전</a>
+        <a href="?page={{ results.previous_page_number }}&region={{ region }}&industry={{ industry }}&sales_volume={{ sales_volume }}&member_number={{ member_number }}&business_period={{ business_period }}&export={{ export }}{% if request.GET.score %}&score={{ request.GET.score }}{% endif %}">이전</a>
       {% endif %}
+    
       <span>{{ results.number }} / {{ results.paginator.num_pages }}</span>
+    
       {% if results.has_next %}
-      <a href="?page={{ results.next_page_number }}&region={{ region }}&industry={{ industry }}&sales_volume={{ sales_volume }}&member_number={{ member_number }}&business_period={{ business_period }}&export={{ export }}">다음</a>
+        <a href="?page={{ results.next_page_number }}&region={{ region }}&industry={{ industry }}&sales_volume={{ sales_volume }}&member_number={{ member_number }}&business_period={{ business_period }}&export={{ export }}{% if request.GET.score %}&score={{ request.GET.score }}{% endif %}">다음</a>
       {% endif %}
     </div>
+    
 
   {% else %}
     <p>❗ 조건에 맞는 결과가 없습니다.</p>

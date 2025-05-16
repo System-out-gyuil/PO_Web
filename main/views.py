@@ -21,9 +21,7 @@ class MainView(View):
             "member_number": request.POST.get("member-number", ""),
         }
 
-        # print(data)
-
-        if data["region"] and data["industry"] and data["business_period"] and data["export"] and data["sales_volume"] and data["member_number"]:
+        if all(data.values()):
             query_string = "&".join([f"{k}={v}" for k, v in data.items() if v])
             return redirect(f"/search/?{query_string}")
         else:
@@ -39,6 +37,7 @@ class SearchResultView(View):
         sales_volume = request.GET.get('sales_volume')
         member_number = request.GET.get('member_number')
         search_text = request.GET.get('search', '').strip()
+        score_filter = request.GET.get('score')
 
         filters = {
             "region": region,
@@ -64,7 +63,6 @@ class SearchResultView(View):
             must = []
             should = []
 
-            # ✅ 키워드 검색어
             if search_text:
                 must.append({
                     "multi_match": {
@@ -73,7 +71,6 @@ class SearchResultView(View):
                     }
                 })
 
-            # ✅ 지역 관련 필드
             if filters["region"]:
                 region_fields = ["region", "title", "content", "noti_summary"]
                 should.extend([
@@ -81,7 +78,6 @@ class SearchResultView(View):
                     for field in region_fields
                 ])
 
-            # ✅ 업종 관련 필드
             if filters["industry"]:
                 industry_fields = ["noti_summary", "possible_industry", "content"]
                 should.extend([
@@ -89,7 +85,6 @@ class SearchResultView(View):
                     for field in industry_fields
                 ])
 
-            # ✅ 단일 필드 조건
             if filters["business_period"]:
                 should.append({"wildcard": {"business_period": f"*{filters['business_period']}*"}})
 
@@ -130,8 +125,6 @@ class SearchResultView(View):
                         parts.append(v)
                 return " ".join(parts)
 
-            
-
             if filters["region"] and filters["region"] in flatten_and_join("region", "title", "content", "noti_summary"):
                 score += 1
                 log.append("region")
@@ -156,10 +149,8 @@ class SearchResultView(View):
                 score += 1
                 log.append("member_number")
 
-            project["debug_matched_fields"] = log  # 필요시 확인용
+            project["debug_matched_fields"] = log
             return score
-
-
 
         def parse_end_date(project):
             try:
@@ -171,7 +162,7 @@ class SearchResultView(View):
                 return datetime.max
 
         matched_projects = search_support_projects(filters, search_text)
-        print(filters)
+
         for project in matched_projects:
             project["매칭점수"] = compute_match_score(project, filters)
 
@@ -184,11 +175,9 @@ class SearchResultView(View):
                 except json.JSONDecodeError:
                     pass
 
-        # 뷰 코드에서
-        예비창업_3년이하 = {'사업자 등록 전', '1년 이하', '1~3년'}
-
         for p in matched_projects:
             period = p.get("business_period")
+
             if str(period) == "['사업자 등록 전']":
                 p["사업기간요약"] = "예비 창업"
             elif str(period) == "['사업자 등록 전', '1년 이하', '1~3년']":
@@ -203,7 +192,6 @@ class SearchResultView(View):
                 p["사업기간요약"] = "사업 시작 ~ 7년"
             elif str(period) == "['1년 이하', '1~3년', '3~7년', '7년 이상']":
                 p["사업기간요약"] = "사업 시작 이상"
-
             elif str(period) == "['1~3년', '3~7년']":
                 p["사업기간요약"] = "1~7년"
             elif str(period) == "['1~3년', '3~7년', '7년 이상']":
@@ -211,8 +199,20 @@ class SearchResultView(View):
             elif str(period) == "['3~7년', '7년 이상']":
                 p["사업기간요약"] = "3년 이상"
             else:
-                p["사업기간요약"] = ", ".join(period) if isinstance(period, list) else period
+                if isinstance(period, list) and "사업자 등록 전" in period:
+                    p["사업기간요약"] = "예비 창업"
+                else:
+                    p["사업기간요약"] = ", ".join(period) if isinstance(period, list) else str(period)
 
+        # ✅ 매칭 점수 필터링
+        if score_filter:
+            try:
+                min_score = int(score_filter)
+                matched_projects = [
+                    p for p in matched_projects if p.get("매칭점수", 0) == min_score
+                ]
+            except ValueError:
+                pass  # 잘못된 값 무시
 
         matched_projects = sorted(
             matched_projects,
@@ -231,13 +231,15 @@ class SearchResultView(View):
             'member_number': member_number,
             'business_period': business_period,
             'export': export,
+            'score': score_filter  # 템플릿에서 현재 점수 강조 등에 사용 가능
         })
+
 
 class TermsOfServiceView(View):
     def get(self, request):
         return render(request, 'services/terms_of_service.html')
 
+
 class PersonalInfoView(View):
     def get(self, request):
         return render(request, 'services/personal_info.html')
-
