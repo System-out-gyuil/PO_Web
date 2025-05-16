@@ -14,7 +14,7 @@ import time
 from PIL import Image
 import subprocess
 import warnings
-warnings.filterwarnings("ignore")  # 경고 무시
+warnings.filterwarnings("ignore", category=UserWarning)  # 경고 무시
 
 class Command(BaseCommand):
     help = "BizInfo API 호출 및 DB 업데이트"
@@ -26,7 +26,7 @@ class Command(BaseCommand):
             "dataType": "json",
             "searchCnt": 1200,
             "pageUnit": 300,
-            "pageIndex": 1
+            "pageIndex": 3
         }
 
         try:

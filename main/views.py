@@ -28,6 +28,7 @@ class MainView(View):
             return render(request, 'main/main.html')
 
 
+
 class SearchResultView(View):
     def get(self, request):
         region = request.GET.get('region')
@@ -38,6 +39,7 @@ class SearchResultView(View):
         member_number = request.GET.get('member_number')
         search_text = request.GET.get('search', '').strip()
         score_filter = request.GET.get('score')
+        exact_filter = request.GET.get('exact') == 'true'
 
         filters = {
             "region": region,
@@ -59,7 +61,7 @@ class SearchResultView(View):
             api_key=ES_API_KEY
         )
 
-        def search_support_projects(filters: dict, search_text="", sample_size=100):
+        def search_support_projects(filters: dict, search_text="", sample_size=500):
             must = []
             should = []
 
@@ -73,7 +75,7 @@ class SearchResultView(View):
 
             if filters["region"]:
                 region_fields = ["region", "title", "content", "noti_summary"]
-                should.extend([
+                must.extend([
                     {"wildcard": {field: f"*{filters['region']}*"}}
                     for field in region_fields
                 ])
@@ -102,7 +104,7 @@ class SearchResultView(View):
                     "bool": {
                         "must": must,
                         "should": should,
-                        "minimum_should_match": 1
+                        "minimum_should_match": 1 if should else 0
                     }
                 },
                 "sort": [{"registered_at": {"order": "desc"}}]
@@ -177,7 +179,6 @@ class SearchResultView(View):
 
         for p in matched_projects:
             period = p.get("business_period")
-
             if str(period) == "['사업자 등록 전']":
                 p["사업기간요약"] = "예비 창업"
             elif str(period) == "['사업자 등록 전', '1년 이하', '1~3년']":
@@ -204,35 +205,54 @@ class SearchResultView(View):
                 else:
                     p["사업기간요약"] = ", ".join(period) if isinstance(period, list) else str(period)
 
-        # ✅ 매칭 점수 필터링
         if score_filter:
             try:
-                min_score = int(score_filter)
-                matched_projects = [
-                    p for p in matched_projects if p.get("매칭점수", 0) == min_score
-                ]
+                score_filter = int(score_filter)
+                if exact_filter:
+                    # ✅ exact=true인 경우: 해당 점수 전체 표시
+                    matched_projects = [p for p in matched_projects if p.get("매칭점수", 0) == score_filter]
+                else:
+                    # ✅ score가 있지만 exact가 없을 때: score별 하나씩만 추림 (기존 유지)
+                    score_to_project = {}
+                    for p in matched_projects:
+                        score = p.get("매칭점수", 0)
+                        if score not in score_to_project:
+                            score_to_project[score] = p
+                    matched_projects = [score_to_project[s] for s in sorted(score_to_project.keys(), reverse=True)]
             except ValueError:
-                pass  # 잘못된 값 무시
+                pass
+        else:
+            # 기본: 점수별로 하나씩만 추림
+            score_to_project = {}
+            for p in matched_projects:
+                score = p.get("매칭점수", 0)
+                if score not in score_to_project:
+                    score_to_project[score] = p
+            matched_projects = [score_to_project[s] for s in sorted(score_to_project.keys(), reverse=True)]
 
-        matched_projects = sorted(
-            matched_projects,
-            key=lambda p: (-p["매칭점수"], parse_end_date(p))
-        )
+        matched_projects = sorted(matched_projects, key=lambda p: (-p["매칭점수"], parse_end_date(p)))
 
-        paginator = Paginator(matched_projects, 5)
-        page_number = request.GET.get('page')
-        page_obj = paginator.get_page(page_number)
+        if exact_filter:
+            paginator = Paginator(matched_projects, 5)
+            page_number = request.GET.get('page')
+            page_obj = paginator.get_page(page_number)
+            results = page_obj
+        else:
+            results = matched_projects
+
+        print(matched_projects)
 
         return render(request, 'main/search_results.html', {
-            'results': page_obj,
+            'results': results,
             'region': region,
             'industry': industry,
             'sales_volume': sales_volume,
             'member_number': member_number,
             'business_period': business_period,
             'export': export,
-            'score': score_filter  # 템플릿에서 현재 점수 강조 등에 사용 가능
+            'score': score_filter,
         })
+
 
 
 class TermsOfServiceView(View):

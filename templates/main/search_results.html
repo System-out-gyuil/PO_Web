@@ -12,13 +12,7 @@
 </head>
 <body>
   {% include 'base/top_nav.html' %}
-  <div class="score-container">
-    <ul class="score-ul">
-      {% for s in "654321" %}
-        <li onclick="location.href='?score={{ s }}&region={{ region }}&industry={{ industry }}&sales_volume={{ sales_volume }}&member_number={{ member_number }}&business_period={{ business_period }}&export={{ export }}'" style="cursor:pointer;">{{ s }}점</li>
-      {% endfor %}
-    </ul>
-  </div>
+  
   
 
   <div class="main-container">
@@ -31,22 +25,21 @@
   {% if results %}
     {% for p in results %}
     <div style="margin-bottom: 20px" class="search-result-container">
-      <div class="count-number">
-        <span class="orange-color">{{ results.start_index|add:forloop.counter0 }}</span>번째 공고
-      </div><br />
 
       <div class="match-score">
-        매칭 점수:
-        {% for i in "123456" %}
-          {% if forloop.counter <= p.매칭점수 %}
-            ⭐
-          {% else %}
-            ☆
+          {% if 6 == p.매칭점수 %}
+            나에게 딱 맞는 지원금
+          {% elif 5 == p.매칭점수 %}
+            추천 지원금
+          {% elif 4 == p.매칭점수 %}
+            관심 지원금
           {% endif %}
-        {% endfor %}
       </div>
 
-      <a onclick="location.href='{% url 'board:detail' p.pblanc_id %}?page_index=1'" style="cursor:pointer; text-decoration: none; color: black;"><strong>📢 {{ p.title }}</strong></a><br />
+      <a href="?score={{ p.매칭점수 }}&exact=true&region={{ region }}&industry={{ industry }}&sales_volume={{ sales_volume }}&member_number={{ member_number }}&business_period={{ business_period }}&export={{ export }}" style="cursor:pointer; text-decoration: none; color: black;">
+        <strong>📢 {{ p.title }}</strong>
+      </a>
+      <br />
 
       📍 <strong>지역:</strong> {{ p.region|join:", " }}<br />
       🏭 <strong>업종:</strong> {{ p.possible_industry|join:", " }}<br />
@@ -106,7 +99,7 @@
       <p id="full-{{ forloop.counter }}" class="full-text hidden">
         <strong>📄공고내용 요약 :</strong> {{ p.noti_summary }}
       </p>
-      <button id="button-{{ forloop.counter }}" class="more-button" onclick="toggleContent('{{ forloop.counter }}')">더보기</button>
+      <button onclick="location.href='{% url 'board:detail' p.pblanc_id %}?page_index=1'" style="cursor:pointer; color: black;" class="more-button">더보기</button>
     </div>
     <hr />
     {% endfor %}
