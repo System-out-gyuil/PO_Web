@@ -235,4 +235,9 @@ class SearchResultView(View):
 
 class TermsOfServiceView(View):
     def get(self, request):
-        return render(request, 'services/terms_or_service.html')
+        return render(request, 'services/terms_of_service.html')
+
+class PersonalInfoView(View):
+    def get(self, request):
+        return render(request, 'services/personal_info.html')
+
