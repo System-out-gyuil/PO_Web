@@ -12,6 +12,21 @@
 </head>
 <body>
   {% include 'base/board_top_nav.html' %}
+
+  <div class="search-container">
+    <form method="get" action="{% url 'board:list' %}" style="display: flex; gap: 10px;">
+      <select id="select-type" class="select-type" name="select-type" default="all">
+        <option value="all">전체</option>
+        <option value="field">분야</option>
+        <option value="region">지역</option>
+        <option value="title">공고명</option>
+      </select>
+      <input type="text" id="search-input" name="keyword" placeholder="검색어를 입력하세요">
+      <button type="submit" id="search-button">검색</button>
+    </form>
+  </div>
+  
+
   <div class="board-header">
     <h1>지원사업 목록</h1>
   </div>
@@ -34,9 +49,15 @@
     <tbody>
       {% for item in items %}
       <tr>
-        <td>{{ item.registered_at|date:"y.m.d" }}</td>
+        <td>{{ item.registered_at }}</td>
         <td>{{ item.field }}</td>
-        <td>{{ item.region }}</td>
+
+        {% if item.region %}
+          <td>{{ item.region.0 }}</td>
+        {% else %}
+          <td>전국</td>
+        {% endif %}
+
         <td onclick="location.href='{% url 'board:detail' item.pblanc_id %}?page_index={{ page_index }}'" style="cursor:pointer;">
           {{ item.title }}
         </td>
@@ -70,5 +91,7 @@
   {% include 'base/footer.html' %}
   {% include 'base/consel_btn.html' %}
   {% include 'base/coupang_banner.html' %}
+  
+  <script src="{% static 'board/board.js' %}"></script>
 </body>
 </html>

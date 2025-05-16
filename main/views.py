@@ -21,7 +21,7 @@ class MainView(View):
             "member_number": request.POST.get("member-number", ""),
         }
 
-        print(data)
+        # print(data)
 
         if data["region"] and data["industry"]:
             query_string = "&".join([f"{k}={v}" for k, v in data.items() if v])
@@ -34,10 +34,11 @@ class SearchResultView(View):
     def get(self, request):
         region = request.GET.get('region')
         industry = request.GET.get('industry')
-        business_period = request.GET.get('business-period')
+        business_period = request.GET.get('business_period')
         export = request.GET.get('export')
-        sales_volume = request.GET.get('sales-volume')
-        member_number = request.GET.get('member-number')
+        sales_volume = request.GET.get('sales_volume')
+        member_number = request.GET.get('member_number')
+        search_text = request.GET.get('search', '').strip()
 
         filters = {
             "region": region,
@@ -48,12 +49,8 @@ class SearchResultView(View):
             "member_number": member_number,
         }
 
-        region_map = {
-                    "서울": "서울특별시", "부산": "부산광역시", "대구": "대구광역시", "인천": "인천광역시",
-                    "광주": "광주광역시", "대전": "대전광역시", "울산": "울산광역시", "세종": "세종특별자치시",
-                    "경기": "경기도", "강원": "강원특별자치도", "충북": "충청북도", "충남": "충청남도",
-                    "전북": "전라북도", "전남": "전라남도", "경북": "경상북도", "경남": "경상남도", "제주": "제주특별자치도"
-                }
+        if filters["sales_volume"] == "없음":
+            filters["sales_volume"] = "1억 이하"
 
         if not (region and industry):
             return redirect('main')
@@ -62,126 +59,107 @@ class SearchResultView(View):
             "https://0e0f4480a93d4cb78455e070163e467d.us-central1.gcp.cloud.es.io:443",
             api_key=ES_API_KEY
         )
-        index_name = "po_index"
 
-        def expand_keywords(field, value):
+        def search_support_projects(filters: dict, search_text="", sample_size=100):
+            must = []
+            should = []
 
-            keyword_mappings = {
-                "export": {
-                    "있음": ["수출", "보유"],
-                    "없음": ["없음", "미보유"],
-                    "희망": ["희망", "계획"],
-                    "무관": []
-                },
-                "sales_volume": {
-                    "없음": ["없음", "0원"],
-                    "1억 이하": ["1억 이하", "1억 미만"],
-                    "1~5억": ["1억", "2억", "3억", "4억", "5억"],
-                    "5~10억": ["5억", "6억", "7억", "8억", "9억", "10억"],
-                    "10~30억": ["10억", "20억", "30억"],
-                    "30억 이상": ["30억", "50억", "100억", "초과"],
-                    "무관": []
-                },
-                "business_period": {
-                    "예비창업": ["예비창업", "법인설립 전", "창업 전"],
-                    "1년 이하": ["1년 이하", "0.5년", "6개월", "1년 미만"],
-                    "1~3년": ["1년", "2년", "3년"],
-                    "3~7년": ["3년", "4년", "5년", "6년", "7년"],
-                    "7년 이상": ["7년 이상", "10년", "15년", "20년"],
-                    "무관": []
-                },
-                "member_number": {
-                    "없음": ["0명", "없음", "무"],
-                    "1~4인": ["1인", "2인", "3인", "4인"],
-                    "5인 이상": ["5인", "10인", "50인", "100인"],
-                    "무관": []
-                }
-            }
+            # ✅ 키워드 검색어
+            if search_text:
+                must.append({
+                    "multi_match": {
+                        "query": search_text,
+                        "fields": ["title", "content", "noti_summary"]
+                    }
+                })
 
-            result = []
-            keywords = keyword_mappings.get(field, {}).get(value, [])
-            for kw in keywords:
-                result.append({"wildcard": {field: f"*{kw}*"}})
-            return result
-
-        def search_support_projects(filters: dict, sample_size: int = 100):
-            must_conditions = []
-            should_conditions = []
-
-            if filters["industry"]:
-                must_conditions.append({"match": {"가능업종": filters["industry"]}})
-
+            # ✅ 지역 관련 필드
             if filters["region"]:
-                should_conditions += [
-                    {"match_phrase": {"지역": filters["region"]}},
-                    {"wildcard": {"지역": f"*{filters['region']}*"}},
-                    {"wildcard": {"공고내용": f"*{filters['region']}*"}}
-                ]
+                region_fields = ["region", "title", "content", "noti_summary"]
+                should.extend([
+                    {"wildcard": {field: f"*{filters['region']}*"}}
+                    for field in region_fields
+                ])
 
+            # ✅ 업종 관련 필드
+            if filters["industry"]:
+                industry_fields = ["noti_summary", "possible_industry", "content"]
+                should.extend([
+                    {"wildcard": {field: f"*{filters['industry']}*"}}
+                    for field in industry_fields
+                ])
+
+            # ✅ 단일 필드 조건
             if filters["business_period"]:
-                should_conditions.extend(expand_keywords("business_period", filters["business_period"]))
-                should_conditions.extend(expand_keywords("사업기간", filters["business_period"]))
+                should.append({"wildcard": {"business_period": f"*{filters['business_period']}*"}})
 
             if filters["export"]:
-                should_conditions.extend(expand_keywords("export", filters["export"]))
-                should_conditions.extend(expand_keywords("수출실적여부", filters["export"]))
+                should.append({"wildcard": {"export_performance": f"*{filters['export']}*"}})
 
             if filters["sales_volume"]:
-                should_conditions.extend(expand_keywords("sales_volume", filters["sales_volume"]))
-                should_conditions.extend(expand_keywords("매출규모", filters["sales_volume"]))
+                should.append({"wildcard": {"revenue": f"*{filters['sales_volume']}*"}})
 
             if filters["member_number"]:
-                should_conditions.extend(expand_keywords("member_number", filters["member_number"]))
-                should_conditions.extend(expand_keywords("상시근로자수", filters["member_number"]))
+                should.append({"wildcard": {"employee_count": f"*{filters['member_number']}*"}})
 
             query = {
                 "query": {
                     "bool": {
-                        "must": must_conditions,
-                        "should": should_conditions,
+                        "must": must,
+                        "should": should,
                         "minimum_should_match": 1
                     }
-                }
+                },
+                "sort": [{"registered_at": {"order": "desc"}}]
             }
 
-            res = es.search(index=index_name, body=query, size=sample_size)
+            res = es.search(index="bizinfo_index", body=query, size=sample_size)
             return [hit["_source"] for hit in res["hits"]["hits"]]
 
         def compute_match_score(project, filters):
             score = 0
+            log = []
 
-            # 지역 비교 (줄임말 매핑 처리)
-            user_region = filters["region"]
-            full_region = region_map.get(user_region, user_region)
-            # 지역과 공고내용에 포함되어 있다면 SCORE 추가
-            if full_region in project.get("지역", "") or full_region in project.get("공고내용", ""):
+            def flatten_and_join(*fields):
+                parts = []
+                for f in fields:
+                    v = project.get(f, "")
+                    if isinstance(v, list):
+                        parts.extend(v)
+                    elif isinstance(v, str):
+                        parts.append(v)
+                return " ".join(parts)
+
+            
+
+            if filters["region"] and filters["region"] in flatten_and_join("region", "title", "content", "noti_summary"):
                 score += 1
+                log.append("region")
 
-            # 업종 비교 (list 포함 여부)
-            industry = filters["industry"]
-            if industry and industry in project.get("가능업종", ""):
+            if filters["industry"] and filters["industry"] in flatten_and_join("noti_summary", "possible_industry", "content"):
                 score += 1
+                log.append("industry")
 
-            # 사업기간 포함 여부
-            if filters["business_period"] and filters["business_period"] in project.get("사업기간", ""):
+            if filters["business_period"] and filters["business_period"] in str(project.get("business_period", "")):
                 score += 1
+                log.append("business_period")
 
-            # 수출 여부
-            if filters["export"]:
-                if "무관" in project.get("수출실적여부", "") or filters["export"] in project.get("수출실적여부", ""):
-                    score += 1
+            if filters["export"] and filters["export"] in str(project.get("export_performance", "")):
+                score += 1
+                log.append("export")
 
-            # 매출규모
-            if filters["sales_volume"]:
-                if "무관" in project.get("매출규모", "") or filters["sales_volume"] in project.get("매출규모", ""):
-                    score += 1
+            if filters["sales_volume"] and filters["sales_volume"] in str(project.get("revenue", "")):
+                score += 1
+                log.append("sales_volume")
 
-            # 직원 수
-            if filters["member_number"]:
-                if "무관" in project.get("직원수", "") or filters["member_number"] in project.get("직원수", ""):
-                    score += 1
+            if filters["member_number"] and filters["member_number"] in str(project.get("employee_count", "")):
+                score += 1
+                log.append("member_number")
 
+            project["debug_matched_fields"] = log  # 필요시 확인용
             return score
+
+
 
         def parse_end_date(project):
             try:
@@ -192,27 +170,10 @@ class SearchResultView(View):
             except:
                 return datetime.max
 
-        matched_projects = search_support_projects(filters)
-
-        score_5 = []
-        score_4 = []
-        score_3 = []
-        score_2 = []
-        score_1 = []
-
+        matched_projects = search_support_projects(filters, search_text)
+        print(filters)
         for project in matched_projects:
             project["매칭점수"] = compute_match_score(project, filters)
-
-            if project["매칭점수"] == 5:
-                score_5.append(project)
-            elif project["매칭점수"] == 4:
-                score_4.append(project)
-            elif project["매칭점수"] == 3:
-                score_3.append(project)
-            elif project["매칭점수"] == 2:
-                score_2.append(project)
-            elif project["매칭점수"] == 1:
-                score_1.append(project)
 
             규모 = project.get('지원규모')
             if isinstance(규모, str):
@@ -222,6 +183,36 @@ class SearchResultView(View):
                         project['지원규모'] = parsed
                 except json.JSONDecodeError:
                     pass
+
+        # 뷰 코드에서
+        예비창업_3년이하 = {'사업자 등록 전', '1년 이하', '1~3년'}
+
+        for p in matched_projects:
+            period = p.get("business_period")
+            if str(period) == "['사업자 등록 전']":
+                p["사업기간요약"] = "예비 창업"
+            elif str(period) == "['사업자 등록 전', '1년 이하', '1~3년']":
+                p["사업기간요약"] = "예비 창업 ~ 3년"
+            elif str(period) == "['사업자 등록 전', '1년 이하', '1~3년', '3~7년']":
+                p["사업기간요약"] = "예비 창업 ~ 7년"
+            elif str(period) == "['사업자 등록 전', '1년 이하', '1~3년', '3~7년', '7년 이상']":
+                p["사업기간요약"] = "무관"
+            elif str(period) == "['1년 이하', '1~3년']":
+                p["사업기간요약"] = "사업 시작 ~ 3년"
+            elif str(period) == "['1년 이하', '1~3년', '3~7년']":
+                p["사업기간요약"] = "사업 시작 ~ 7년"
+            elif str(period) == "['1년 이하', '1~3년', '3~7년', '7년 이상']":
+                p["사업기간요약"] = "사업 시작 이상"
+
+            elif str(period) == "['1~3년', '3~7년']":
+                p["사업기간요약"] = "1~7년"
+            elif str(period) == "['1~3년', '3~7년', '7년 이상']":
+                p["사업기간요약"] = "1~7년"
+            elif str(period) == "['3~7년', '7년 이상']":
+                p["사업기간요약"] = "3년 이상"
+            else:
+                p["사업기간요약"] = ", ".join(period) if isinstance(period, list) else period
+
 
         matched_projects = sorted(
             matched_projects,
