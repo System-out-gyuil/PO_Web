@@ -76,3 +76,10 @@ a {
 .count-number {
   font-weight: bold;
 }
+
+.score-ul {
+  display: flex;
+  justify-content: space-between;
+}
+
+
