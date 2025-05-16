@@ -28,11 +28,11 @@
 
       <div class="match-score">
           {% if 6 == p.매칭점수 %}
-            <strong>나에게 딱 맞는 지원금</strong>
+            <strong>나에게 딱 맞는 지원금</strong> <a href="?score={{ p.매칭점수 }}&exact=true&region={{ region }}&industry={{ industry }}&sales_volume={{ sales_volume }}&member_number={{ member_number }}&business_period={{ business_period }}&export={{ export }}" style="cursor:pointer; text-decoration: none; color: black;">전부 보기</a>
           {% elif 5 == p.매칭점수 %}
-            <strong>추천 지원금</strong>
+            <strong>추천 지원금</strong> <a href="?score={{ p.매칭점수 }}&exact=true&region={{ region }}&industry={{ industry }}&sales_volume={{ sales_volume }}&member_number={{ member_number }}&business_period={{ business_period }}&export={{ export }}" style="cursor:pointer; text-decoration: none; color: black;">전부 보기</a>
           {% elif 4 == p.매칭점수 %}
-            <strong>관심 지원금</strong>
+            <strong>관심 지원금</strong> <a href="?score={{ p.매칭점수 }}&exact=true&region={{ region }}&industry={{ industry }}&sales_volume={{ sales_volume }}&member_number={{ member_number }}&business_period={{ business_period }}&export={{ export }}" style="cursor:pointer; text-decoration: none; color: black;">전부 보기</a>
           {% endif %}
       </div>
 
