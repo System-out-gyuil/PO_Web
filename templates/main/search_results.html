@@ -106,11 +106,11 @@
     <!-- 페이지네비게이션 -->
     <div class="pagination">
       {% if results.has_previous %}
-      <a href="?page={{ results.previous_page_number }}&region={{ region }}&industry={{ industry }}">이전</a>
+      <a href="?page={{ results.previous_page_number }}&region={{ region }}&industry={{ industry }}&sales_volume={{ sales_volume }}&member_number={{ member_number }}&business_period={{ business_period }}&export={{ export }}">이전</a>
       {% endif %}
       <span>{{ results.number }} / {{ results.paginator.num_pages }}</span>
       {% if results.has_next %}
-      <a href="?page={{ results.next_page_number }}&region={{ region }}&industry={{ industry }}">다음</a>
+      <a href="?page={{ results.next_page_number }}&region={{ region }}&industry={{ industry }}&sales_volume={{ sales_volume }}&member_number={{ member_number }}&business_period={{ business_period }}&export={{ export }}">다음</a>
       {% endif %}
     </div>
 

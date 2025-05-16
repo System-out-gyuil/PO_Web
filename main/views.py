@@ -227,6 +227,10 @@ class SearchResultView(View):
             'results': page_obj,
             'region': region,
             'industry': industry,
+            'sales_volume': sales_volume,
+            'member_number': member_number,
+            'business_period': business_period,
+            'export': export,
         })
 
 class TermsOfServiceView(View):
