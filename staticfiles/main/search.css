@@ -1,0 +1,43 @@
+.search-region {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+}
+
+.region {
+  background-color: #fff;
+  border: 1px solid #000000;
+  padding: 10px;
+}
+
+.search-industry-container {
+  display: none;
+}
+
+.business-style-container {
+  display: none;
+}
+
+.industry-category-container {
+  display: flex;
+}
+
+.business-period-container {
+  display: none;
+}
+
+.billing-last-year-container {
+  display: none;
+}
+
+.export-performance-container {
+  display: none;
+}
+
+.employee-number-container {
+  display: none;
+}
+
+.search-result-container {
+  display: none;
+}
