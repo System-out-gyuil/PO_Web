@@ -17,6 +17,7 @@ INSTALLED_APPS = [
     "po_admin",
     "counsel",
     "board",
+    "search",
     "rest_framework",
     "django.contrib.admin",
     "django.contrib.auth",

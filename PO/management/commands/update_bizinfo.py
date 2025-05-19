@@ -4,6 +4,7 @@ import requests
 from datetime import datetime
 from django.core.management.base import BaseCommand
 from board.models import BizInfo
+from main.models import Industry
 from PO.management.commands.utils import fetch_iframe_src
 from config import BIZINFO_API_KEY, CHROME_DRIVER_PATH, OPEN_AI_API_KEY, NAVER_CLOVA_OCR_API_KEY, NAVER_CLOUD_CLOVA_OCR_API_URL, ES_API_KEY
 from langchain_openai import ChatOpenAI
@@ -15,9 +16,10 @@ from PIL import Image
 import subprocess
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning)  # 경고 무시
+import pandas as pd
 
 class Command(BaseCommand):
-    help = "BizInfo API 호출 및 DB 업데이트"
+    help = "DB 업데이트"
 
     def handle(self, *args, **kwargs):
         url = "https://www.bizinfo.go.kr/uss/rss/bizinfoApi.do"
@@ -26,7 +28,7 @@ class Command(BaseCommand):
             "dataType": "json",
             "searchCnt": 1200,
             "pageUnit": 300,
-            "pageIndex": 3
+            "pageIndex": 4
         }
 
         try:
@@ -356,5 +358,7 @@ class Command(BaseCommand):
         # ✅ Elasticsearch에 업로드
         helpers.bulk(es, actions)
         print(f"🎉 총 {len(actions)}개 문서 Elasticsearch 인덱싱 완료")
+
+
 
         

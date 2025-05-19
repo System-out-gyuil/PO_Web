@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  {% load static %}
+  <link rel="stylesheet" href="{% static 'main/search.css' %}">
+  <link rel="stylesheet" href="{% static 'base/base.css' %}">
+  <title>검색</title>
+</head>
+<body>
+  <section id="region-section">
+    <div class="search-region-container">
+      <h1>지역선택</h1>
+        <div class="search-region">
+        <div class="region">서울</div>
+        <div class="region">경기</div>
+        <div class="region">인천</div>
+        <div class="region">경남</div>
+        <div class="region">경북</div>
+        <div class="region">부산</div>
+        <div class="region">대구</div>
+        <div class="region">대전</div>
+      </div>
+      <div class="search-region">
+        <div class="region">울산</div>
+        <div class="region">전남</div>
+        <div class="region">전북</div>
+        <div class="region">광주</div>
+        <div class="region">충북</div>
+        <div class="region">충남</div>
+        <div class="region">강원</div>
+        <div class="region">제주</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="business-style-section">
+    <div class="business-style-container">
+      <h1>사업자 보유 현황</h1>
+      <div class="business-style">
+        <div class="business-style-item">
+          <div class="business-style-item-text">창업 전</div>
+          <div class="business-style-item-text">사업자 보유</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="industry-section">
+    <div class="search-industry-container">
+      <h1>업종선택</h1>
+      <div class="search-industry">
+        <div class="industry">
+          <div class="industry-category">업종명 검색</div>
+          <input type="text" class="industry-category-input">
+          <div class="industry-category-container">
+            <table>
+              <thead>
+                <colgroup>
+                  <col style="width: 40%">
+                  <col style="width: 40%">
+                  <col style="width: 20%">
+                </colgroup>
+                <tr>
+                  <td>대분류</td>
+                  <td>소분류</td>
+                  <td></td>
+                </tr>
+              </thead>
+              <tbody class="industry-category-table">
+                {% comment %} 업종 검색결과 나올 곳 {% endcomment %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="business-period-section">
+    <div class="business-period-container">
+      <h1>사업개시일</h1>
+      <div class="business-period">
+        <div class="business-period-item">
+          <input type="text" class="business-period-year" placeholder="25">
+          <div>년</div>
+          <input type="text" class="business-period-month" placeholder="03">
+          <div>월</div>
+        </div>
+        <button class="business-period-button">다음</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="billing-last-year-section">
+    <div class="billing-last-year-container">
+      <h1>전년도 매출</h1>
+      <div class="billing-last-year">
+        <input type="text" class="billing-last-year-year">
+        <div>만원</div>
+      </div>
+      <button class="billing-last-year-button">다음</button>
+    </div>
+  </section>
+
+  <section id="export-performance-section">
+    <div class="export-performance-container">
+      <h1>수출 실적</h1>
+      <div class="export-performance">
+        <div class="export-performance-item">
+          <div class="export-performance-item-text">실적 없음</div>
+          <div class="export-performance-item-text">실적 있음</div>
+          <div class="export-performance-item-text">수출 희망</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="employee-number-section">
+    <div class="employee-number-container">
+      <h1>직원수</h1>
+      <div class="employee-number">
+        <div class="employee-number-item">직원 없음</div>
+        <div class="employee-number-item">1~4인</div>
+        <div class="employee-number-item">5인 이상</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="search-result-section">
+    <div class="search-result-container">
+      <h1>검색 결과 기다리는 창</h1>
+    </div>
+  </section>
+
+  <script src="{% static 'main/search.js' %}"></script>
+</body>
+</html>
