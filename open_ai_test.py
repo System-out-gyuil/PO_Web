@@ -28,8 +28,15 @@ django.setup()
 
 from board.models import BizInfo
 
+region = ["인천", "전국"]
+employee = ["5인 이상"]
+possible_industry = ["제조업"]
+sales = ["10억~30억"]
+export = ["수출 기업"]
+date = ["3년 이상"]
+
 data = BizInfo.objects.filter(
-    (Q(region__contains=["인천"]) | Q(region__contains=["전국"]) & Q(possible_industry__contains=["제조업"]))
+    (Q(region__contains=region) & Q(possible_industry__contains=possible_industry) & Q(employee_count__contains=employee) & Q(sales__contains=sales) & Q(export__contains=export) & Q(date__contains=date))
 )
 
 datas = ''
@@ -41,7 +48,7 @@ for i in data:
 # print(data)
 print(datas)
 
-text = '\n사업지 주소지 인천, 대분류: 수산동물 가공 및 저장 처리업, 소분류: 수산동물 냉동품 제조업을 영위함, 개업한지 3년 4개월 되었고 작년 10억 매출에 수출 실적이 있어, 직원은 7명이야 아래 지원 공고 내용을 토대로 선정 가능성이 높은 공고를 알려줘, 적합도 점수(자사의 정보로 선정될 수 있는) 100점 만점으로 해서 우선순위를 정해줘, 점수 상위 10개만 보여줘\n'
+text = f'\n사업지 주소지 인천이고 , 대분류: 수산동물 가공 및 저장 처리업, 소분류: 수산동물 냉동품 제조업을 영위함, 개업한지 3년 4개월 되었고 작년 10억 매출에 수출 실적이 있어, 직원은 7명이야 아래 지원 공고 내용을 토대로 선정 가능성이 높은 공고를 알려줘, 적합도 점수(자사의 정보로 선정될 수 있는) 100점 만점으로 해서 우선순위를 정해줘, 점수 상위 10개만 보여줘\n'
 
 llm = ChatOpenAI(
     temperature=0,
