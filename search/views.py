@@ -130,7 +130,7 @@ class SearchResultView(View):
                 parts = []
                 for f in fields:
                     v = project.get(f, "")
-                    if isinstance(v, list):
+                    if isinstance(v, list): 
                         parts.extend(v)
                     elif isinstance(v, str):
                         parts.append(v)

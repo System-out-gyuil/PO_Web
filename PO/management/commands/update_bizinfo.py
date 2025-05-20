@@ -26,9 +26,9 @@ class Command(BaseCommand):
         params = {
             "crtfcKey": BIZINFO_API_KEY,
             "dataType": "json",
-            "searchCnt": 1200,
-            "pageUnit": 300,
-            "pageIndex": 4
+            "searchCnt": 20,
+            "pageUnit": 20,
+            "pageIndex": 1
         }
 
         try:
@@ -93,19 +93,19 @@ class Command(BaseCommand):
                     application_form_name=item.get("fileNm") or "",
                     application_form_path=item.get("flpthNm") or "",
                     iframe_src=iframe_src,
-                    employee_count=structured_data.get("직원수"),
-                    revenue=structured_data.get("매출규모"),
+                    employee_count=structured_data.get("직원수", "test"),
+                    revenue=structured_data.get("매출규모", "test"),
                     noti_summary=structured_data.get("공고내용"),
-                    business_period=structured_data.get("사업기간(업력)"),
+                    business_period=structured_data.get("사업기간(업력)", "test"),
                     region=structured_data.get("지역"),
-                    possible_industry=structured_data.get("가능업종"),
-                    export_performance=structured_data.get("수출실적여부")
+                    possible_industry=structured_data.get("가능업종", "test"),
+                    export_performance=structured_data.get("수출실적여부", "test")
                 )
 
             self.stdout.write(self.style.SUCCESS(f"{len(items)}건 처리 완료."))
 
             # Elasticsearch에 저장
-            self.es_indexing()
+            # self.es_indexing()
 
         except Exception as e:
             self.stderr.write(self.style.ERROR(f"실패: {e}"))
@@ -219,12 +219,12 @@ class Command(BaseCommand):
                 "응답 형식 (반드시 JSON, 빈 값 허용 불가):\n"
                 "{\n"
                 "  \"지역\": [\"전국\" 또는 [\"서울\",\"경기\",\"인천\",\"강원\",\"경북\",\"경남\",\"부산\",\"대구\",\"대전\",\"광주\",\"울산\",\"세종\",\"충북\",\"충남\",\"전북\",\"전남\",\"제주\"] 중 원문 근거로 복수 선택],\n"
-                "  \"직원수\": [\"직원 없음\", \"1~4인\",\"5인 이상\" 중 실제 선정 가능성이 높은 범위를 모두 선택],\n"
-                "  \"사업기간(업력)\": [\"사업자 등록 전\",\"1년 이하\",\"1~3년\",\"3~7년\",\"7년 이상\" 중 지원 가능성이 높은 구간을 복수 선택,\n"
-                "  \"매출규모\": [\"1억 이하\",\"1~5억\",\"5~10억\",\"10~30억\",\"30억 이상\" 중 지원 가능성이 높은 구간을 복수 선택],\n"
-                "  \"수출실적여부\": [\"수출 기업\",\"수출 희망\", \"수출 없음\" 반드시 예시 중 선택할 것],\n"
+                # "  \"직원수\": [\"직원 없음\", \"1~4인\",\"5인 이상\" 중 실제 선정 가능성이 높은 범위를 모두 선택],\n"
+                # "  \"사업기간(업력)\": [\"사업자 등록 전\",\"1년 이하\",\"1~3년\",\"3~7년\",\"7년 이상\" 중 지원 가능성이 높은 구간을 복수 선택,\n"
+                # "  \"매출규모\": [\"1억 이하\",\"1~5억\",\"5~10억\",\"10~30억\",\"30억 이상\" 중 지원 가능성이 높은 구간을 복수 선택],\n"
+                # "  \"수출실적여부\": [\"수출 기업\",\"수출 희망\", \"수출 없음\" 반드시 예시 중 선택할 것],\n"
                 "  \"공고내용\": \"지원 목적, 대상, 기간, 방법, 자부담, 선정 절차, 지원 한도 및 제한 사항 등을 종합하여 450자 이상으로 정밀하게 요약한 문장\"\n"
-                "  \"가능업종\": [\"제조업\",\"전문 서비스업\",\"생활 서비스업\",\"요식업\",\"IT\",\"도소매\",\"건설업\",\"무역업\",\"운수업\",\"농수산업\",\"미디어\" 중 지금 만든 공고내용요약에서 명확히 지원 대상에 해당하는 업종 복수 선택 반드시 예시업종 중 선택할 것],\n"
+                # "  \"가능업종\": [\"제조업\",\"전문 서비스업\",\"생활 서비스업\",\"요식업\",\"IT\",\"도소매\",\"건설업\",\"무역업\",\"운수업\",\"농수산업\",\"미디어\" 중 지금 만든 공고내용요약에서 명확히 지원 대상에 해당하는 업종 복수 선택 반드시 예시업종 중 선택할 것],\n"
                 "}\n\n"
                 "필수 준수사항:\n"
                 "- 모든 키에 반드시 하나 이상의 값을 채워야 하며, 빈 배열 또는 누락은 허용되지 않습니다.\n"
@@ -234,7 +234,7 @@ class Command(BaseCommand):
             ) + text
 
 
-        llm = ChatOpenAI(temperature=0, model_name='gpt-4o-mini', openai_api_key=OPEN_AI_API_KEY)
+        llm = ChatOpenAI(temperature=0, model_name='gpt-4o', openai_api_key=OPEN_AI_API_KEY)
         try:
             response = llm.invoke(prompt)
             return self.clean_json_from_response(getattr(response, "content", "").strip())
