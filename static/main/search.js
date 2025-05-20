@@ -134,7 +134,7 @@ businessPeriodButton.addEventListener('click', () => {
 });
 
 // 전년도 매출 선택 창
-const billingLastYearYear = document.querySelector('.billing-last-year-year');
+const billingLastYearItems = document.querySelectorAll('.billing-last-year-item');
 const billingLastYearContainer = document.querySelector('.billing-last-year-container');
 const billingLastYearButton = document.querySelector('.billing-last-year-button');
 
@@ -143,12 +143,20 @@ function billingLastYear() {
   billingLastYearContainer.style.display = 'block';
 }
 
-// 전년도 매출 선택 시 전년도 매출 전달
-billingLastYearButton.addEventListener('click', () => {
-  billingLastYear = `${billingLastYearYear.value}`;
-  selectedConditions.sales = billingLastYear;
-  exportPerformance();
+billingLastYearItems.forEach(billingLastYearItem => {
+  billingLastYearItem.addEventListener('click', () => {
+    billingLastYear = billingLastYearItem.innerText;
+    selectedConditions.sales = billingLastYear;
+    exportPerformance();
+  });
 });
+
+// 전년도 매출 선택 시 전년도 매출 전달
+// billingLastYearButton.addEventListener('click', () => {
+//   billingLastYear = `${billingLastYearItems.value}`;
+//   selectedConditions.sales = billingLastYear;
+//   exportPerformance();
+// });
 
 // 수출 실적 선택 창
 const exportPerformanceContainer = document.querySelector('.export-performance-container');
@@ -181,6 +189,7 @@ function employeeNumber() {
 employeeNumberItems.forEach(employeeNumberItem => {
   employeeNumberItem.addEventListener('click', () => {
     selectedConditions.employees = employeeNumberItem.innerText;
+    search(selectedConditions);
     WatingSearchResult();
   });
 });
@@ -188,4 +197,7 @@ employeeNumberItems.forEach(employeeNumberItem => {
 // 검색 결과 기다리는 창에서 검색 결과로 넘어가기
 function search(selectedConditions) {
   console.log(selectedConditions);
+
+  const query = new URLSearchParams(selectedConditions).toString();
+  window.location.href = `/search/ai-result/?${query}`;
 }

@@ -23,7 +23,7 @@ class MainView(View):
 
         if all(data.values()):
             query_string = "&".join([f"{k}={v}" for k, v in data.items() if v])
-            return redirect(f"/search/?{query_string}")
+            return redirect(f"/search/result/?{query_string}")
         else:
             return render(request, 'main/main.html')
 

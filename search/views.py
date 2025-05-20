@@ -35,6 +35,30 @@ def search_industry(request):
         ]
         return JsonResponse(results, safe=False)
 
+class SearchAIResultView(View):
+    def get(self, request):
+        # 쿼리 파라미터 가져오기
+        region = request.GET.get("region", "")
+        business_style = request.GET.get("business_style", "")
+        industry = request.GET.get("industry", "")
+        period = request.GET.get("period", "")
+        export = request.GET.get("export", "")
+        sales = request.GET.get("sales", "")
+        employees = request.GET.get("employees", "")
+
+        
+
+        context = {
+            "region": region,
+            "business_style": business_style,
+            "industry": industry,
+            "period": period,
+            "export": export,
+            "sales": sales,
+            "employees": employees,
+        }
+
+        return render(request, "main/search_ai_result.html", context)
 
 
 class SearchResultView(View):

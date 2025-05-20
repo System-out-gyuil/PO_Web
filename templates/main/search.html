@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="{% static 'main/search.css' %}">
   <link rel="stylesheet" href="{% static 'base/base.css' %}">
   <title>검색</title>
+  {% csrf_token %}
 </head>
 <body>
   <section id="region-section">
@@ -96,8 +97,12 @@
     <div class="billing-last-year-container">
       <h1>전년도 매출</h1>
       <div class="billing-last-year">
-        <input type="text" class="billing-last-year-year">
-        <div>만원</div>
+        <div class="billing-last-year-item">매출 없음</div>
+        <div class="billing-last-year-item">1억 이하</div>
+        <div class="billing-last-year-item">1~5억</div>
+        <div class="billing-last-year-item">5~10억</div>
+        <div class="billing-last-year-item">10~30억</div>
+        <div class="billing-last-year-item">30억 이상</div>
       </div>
       <button class="billing-last-year-button">다음</button>
     </div>
