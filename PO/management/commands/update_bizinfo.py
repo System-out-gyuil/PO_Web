@@ -28,7 +28,7 @@ class Command(BaseCommand):
             "dataType": "json",
             "searchCnt": 1020, # 조회할 전체 개수
             "pageUnit": 204, # 페이지당 개수
-            "pageIndex": 3 # 페이지 번호
+            "pageIndex": 4 # 페이지 번호
         }
 
         try:
@@ -105,7 +105,7 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS(f"{len(items)}건 처리 완료."))
 
             # Elasticsearch에 저장
-            # self.es_indexing()
+            self.es_indexing()
 
         except Exception as e:
             self.stderr.write(self.style.ERROR(f"실패: {e}"))

@@ -2,7 +2,8 @@
 const selectedConditions = {
   region: null,
   business_style: null,
-  industry: null,
+  big_industry: null,
+  small_industry: null,
   business_period: null,
   sales: null,
   export: null,
@@ -69,12 +70,9 @@ function industry() {
   search_industry_container.style.display = 'block';
 }
 
+// 업종 검색창에 글자를 입력할때마다 검색 결과 표시
 industryInput.addEventListener('keyup', (e) => {
-
-  // 업종 검색창에 입력 후 엔터를 누르면
-  if (e.key === 'Enter') {
     industrySection(e);
-  }
 });
 
 // 업종 검색 시 검색 결과 표시
@@ -104,11 +102,14 @@ function industrySection(e) {
       });
     });
   
-  // 업종 옆 선택 버튼 클릭 시 소카테고리를 전달
+  // 업종 옆 선택 버튼 클릭 시 해당 대카테고리와 소카테고리를 전달
   industryCategoryContainer.addEventListener('click', (e) => {
     if (e.target.tagName === 'BUTTON') {
+
+      big = e.target.parentElement.parentElement.children[0].innerText;
       small = e.target.parentElement.parentElement.children[1].innerText;
-      selectedConditions.industry = small;
+      selectedConditions.big_industry = big;
+      selectedConditions.small_industry = small;
       businessPeriod();
     }
   });
@@ -134,7 +135,7 @@ businessPeriodButton.addEventListener('click', () => {
 });
 
 // 전년도 매출 선택 창
-const billingLastYearYear = document.querySelector('.billing-last-year-year');
+const billingLastYearItems = document.querySelectorAll('.billing-last-year-item');
 const billingLastYearContainer = document.querySelector('.billing-last-year-container');
 const billingLastYearButton = document.querySelector('.billing-last-year-button');
 
@@ -143,12 +144,20 @@ function billingLastYear() {
   billingLastYearContainer.style.display = 'block';
 }
 
-// 전년도 매출 선택 시 전년도 매출 전달
-billingLastYearButton.addEventListener('click', () => {
-  billingLastYear = `${billingLastYearYear.value}`;
-  selectedConditions.sales = billingLastYear;
-  exportPerformance();
+billingLastYearItems.forEach(billingLastYearItem => {
+  billingLastYearItem.addEventListener('click', () => {
+    billingLastYear = billingLastYearItem.innerText;
+    selectedConditions.sales = billingLastYear;
+    exportPerformance();
+  });
 });
+
+// 전년도 매출 선택 시 전년도 매출 전달
+// billingLastYearButton.addEventListener('click', () => {
+//   billingLastYear = `${billingLastYearItems.value}`;
+//   selectedConditions.sales = billingLastYear;
+//   exportPerformance();
+// });
 
 // 수출 실적 선택 창
 const exportPerformanceContainer = document.querySelector('.export-performance-container');
@@ -181,6 +190,7 @@ function employeeNumber() {
 employeeNumberItems.forEach(employeeNumberItem => {
   employeeNumberItem.addEventListener('click', () => {
     selectedConditions.employees = employeeNumberItem.innerText;
+    search(selectedConditions);
     WatingSearchResult();
   });
 });
@@ -188,4 +198,7 @@ employeeNumberItems.forEach(employeeNumberItem => {
 // 검색 결과 기다리는 창에서 검색 결과로 넘어가기
 function search(selectedConditions) {
   console.log(selectedConditions);
+
+  const query = new URLSearchParams(selectedConditions).toString();
+  window.location.href = `/search/ai-result/?${query}`;
 }
