@@ -2,7 +2,8 @@
 const selectedConditions = {
   region: null,
   business_style: null,
-  industry: null,
+  big_industry: null,
+  small_industry: null,
   business_period: null,
   sales: null,
   export: null,
@@ -69,12 +70,9 @@ function industry() {
   search_industry_container.style.display = 'block';
 }
 
+// 업종 검색창에 글자를 입력할때마다 검색 결과 표시
 industryInput.addEventListener('keyup', (e) => {
-
-  // 업종 검색창에 입력 후 엔터를 누르면
-  if (e.key === 'Enter') {
     industrySection(e);
-  }
 });
 
 // 업종 검색 시 검색 결과 표시
@@ -104,11 +102,14 @@ function industrySection(e) {
       });
     });
   
-  // 업종 옆 선택 버튼 클릭 시 소카테고리를 전달
+  // 업종 옆 선택 버튼 클릭 시 해당 대카테고리와 소카테고리를 전달
   industryCategoryContainer.addEventListener('click', (e) => {
     if (e.target.tagName === 'BUTTON') {
+
+      big = e.target.parentElement.parentElement.children[0].innerText;
       small = e.target.parentElement.parentElement.children[1].innerText;
-      selectedConditions.industry = small;
+      selectedConditions.big_industry = big;
+      selectedConditions.small_industry = small;
       businessPeriod();
     }
   });

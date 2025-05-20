@@ -28,7 +28,7 @@ class Command(BaseCommand):
             "dataType": "json",
             "searchCnt": 1020, # 조회할 전체 개수
             "pageUnit": 204, # 페이지당 개수
-            "pageIndex": 2 # 페이지 번호
+            "pageIndex": 3 # 페이지 번호
         }
 
         try:

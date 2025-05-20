@@ -40,18 +40,20 @@ class SearchAIResultView(View):
         # 쿼리 파라미터 가져오기
         region = request.GET.get("region", "")
         business_style = request.GET.get("business_style", "")
-        industry = request.GET.get("industry", "")
+        big_industry = request.GET.get("big_industry", "")
+        small_industry = request.GET.get("small_industry", "")
         period = request.GET.get("period", "")
         export = request.GET.get("export", "")
         sales = request.GET.get("sales", "")
         employees = request.GET.get("employees", "")
 
-        
+
 
         context = {
             "region": region,
             "business_style": business_style,
-            "industry": industry,
+            "big_industry": big_industry,
+            "small_industry": small_industry,
             "period": period,
             "export": export,
             "sales": sales,
