@@ -12,7 +12,6 @@ from django.http import JsonResponse
 from main.models import Industry
 from django.db.models import Q
 
-# Create your views here.
 class SearchView(View):
     def get(self, request):
         return render(request, 'main/search.html')
