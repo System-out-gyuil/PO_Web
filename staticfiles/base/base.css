@@ -47,7 +47,7 @@ ul {
 /* 모바일 화면일 때 */
 @media (max-width: 768px) {
   .namatji-top-nav-buttons-box {
-    width: 55%;
+    width: 67%;
   }
 }
 
@@ -60,8 +60,6 @@ ul {
 
 .namatji-img-box {
   margin-top: -37px;
-  width: 150px;
-  height: 100px;
 }
 
 .namatji-img {
@@ -70,6 +68,7 @@ ul {
   background-image: url("../images/NAMATJI2.png");
   background-size: cover;
 }
+
 
 .coupang-banner-container {
   position: fixed;
@@ -121,7 +120,7 @@ ul {
 .footer {
   bottom: 100px;
   width: 100%;
-  background-color: #ffefe5;
+  background-color: #ffffff;
   font-size: 10px;
 }
 
@@ -132,3 +131,20 @@ p {
 /* .footer-content {
   margin: 0;
 } */
+
+@media (max-width: 768px) {
+  .namatji-img  {
+    width: 140px;
+    height: 90px;
+  }
+}
+
+@media (max-width: 768px) {
+  .main-button  {
+    color: #000000;
+    font-weight: 750;
+    padding-right: 25px;
+    cursor: pointer;
+    font-size: 15px;
+  }
+}

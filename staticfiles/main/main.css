@@ -123,3 +123,37 @@ ul {
   white-space: nowrap;
   margin-left: 10px;
 }
+
+@media (max-width: 768px) {
+  .main-section-container {
+    display: flex;
+    justify-content: center;
+    background-color: #0000001a;
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 768px) {
+  .main-section-box {
+    width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .main-container {
+    display: flex;
+    margin: 0 auto;
+    flex-direction: column;
+    align-items: center;
+    background-image: url("../images/main_banner.jpg");
+    background-size: cover;
+    background-position: center;
+    height: 240px;
+    width: 100%;
+  }
+
+  .banner-btn {
+    top: 30%;
+    right: 50%;
+  }
+}

@@ -26,34 +26,65 @@ function WatingSearchResult() {
 
 // 지역 선택 창
 const search_region_container = document.querySelector('.search-region-container');
+const search_region_button = document.querySelector('.search-region-btn-container');
 regions = document.querySelectorAll('.region');
 
 document.querySelectorAll('.region').forEach(region => {
   region.addEventListener('click', () => {
+    document.querySelectorAll('.region').forEach(r => {
+      r.style.color = '#000000'; // 글자색도 초기화 (선택사항)
+    });
+
+    // 클릭한 region만 선택된 색으로 변경
+    region.style.color = '#7dff32';
+
+    // 선택값 저장
     selectedConditions.region = region.innerText;
-    businessStyle();
+
+    if (selectedConditions.region === '') {
+      warning();
+    }
+
   });
+});
+
+search_region_button.addEventListener('click', () => {
+  console.log(selectedConditions.region);
+  businessStyle();
 });
 
 // 사업자 현황 선택 창
 const businessStyleContainer = document.querySelector('.business-style-container');
 const businessStyleItems = document.querySelectorAll('.business-style-item-text');
-
+const search_business_btn_container = document.querySelector('.search-business-btn-container');
 function businessStyle() {
   search_region_container.style.display = 'none';
-  businessStyleContainer.style.display = 'block';
+  businessStyleContainer.style.display = 'flex';
 }
 
 businessStyleItems.forEach(businessStyleItem => {
   businessStyleItem.addEventListener('click', () => {
     selectedConditions.business_style = businessStyleItem.innerText;
 
-    if (businessStyleItem.innerText === '창업 전') {
-      WatingSearchResult();
-    } else {
-      industry();
+    document.querySelectorAll('.business-style-item-text').forEach(item => {
+      item.style.color = '#000000';
+    });
+
+    businessStyleItem.style.color = '#7dff32';
+
+    if (selectedConditions.business_style === '') {
+      warning();
     }
+
   });
+});
+
+search_business_btn_container.addEventListener('click', () => {
+  if (selectedConditions.business_style === '창업 전') {
+    WatingSearchResult();
+  } else {
+    industry();
+  }
 });
 
 // 업종 선택 창
@@ -67,7 +98,7 @@ const industryCategoryContainer = document.querySelector('.industry-category-con
 
 function industry() {
   businessStyleContainer.style.display = 'none';
-  search_industry_container.style.display = 'block';
+  search_industry_container.style.display = 'flex';
 }
 
 // 업종 검색창에 글자를 입력할때마다 검색 결과 표시
@@ -101,11 +132,11 @@ function industrySection(e) {
       const smallCategory = highlight(item.small_category);
 
       industryCategoryTable.innerHTML += `
-        <tr>
-          <td>${bigCategory}</td>
-          <td>${smallCategory}</td>
-          <td><button class="industry-category-button">선택</button></td>
-        </tr>
+        <div class="industry-table-row">
+          <div class="industry-table-big">${bigCategory}</div>
+          <div class="industry-table-small">${smallCategory}</div>
+          <div class="industry-table-select"><button class="industry-category-button">선택</button></div>
+        </div>
       `;
     });
   });
@@ -118,6 +149,8 @@ function industrySection(e) {
       small = e.target.parentElement.parentElement.children[1].innerText;
       selectedConditions.big_industry = big;
       selectedConditions.small_industry = small;
+      console.log(selectedConditions.big_industry);
+      console.log(selectedConditions.small_industry);
       businessPeriod();
     }
   });
@@ -129,9 +162,31 @@ const businessPeriodMonth = document.querySelector('.business-period-month');
 const businessPeriodContainer = document.querySelector('.business-period-container');
 const businessPeriodButton = document.querySelector('.business-period-button');
 
+// 연도: 숫자 2자리만 허용
+document.querySelector('.business-period-year').addEventListener('input', function () {
+  let value = this.value.replace(/[^0-9]/g, '');
+  if (value.length > 2) value = value.slice(0, 2);
+  this.value = value;
+});
+
+// 월: 숫자 2자리 + 1~12만 허용
+document.querySelector('.business-period-month').addEventListener('input', function () {
+  let value = this.value.replace(/[^0-9]/g, '');
+  if (value.length > 2) value = value.slice(0, 2);
+
+  if (value !== '') {
+    const num = parseInt(value, 10);
+    if (num < 1 || num > 12) {
+      value = '';
+    }
+  }
+
+  this.value = value;
+});
+
 function businessPeriod() {
   search_industry_container.style.display = 'none';
-  businessPeriodContainer.style.display = 'block';
+  businessPeriodContainer.style.display = 'flex';
 }
 
 // 사업개시일 선택 시 사업개시일 전달
@@ -149,38 +204,55 @@ const billingLastYearButton = document.querySelector('.billing-last-year-button'
 
 function billingLastYear() {
   businessPeriodContainer.style.display = 'none';
-  billingLastYearContainer.style.display = 'block';
+  billingLastYearContainer.style.display = 'flex';
 }
 
 billingLastYearItems.forEach(billingLastYearItem => {
   billingLastYearItem.addEventListener('click', () => {
+
+    document.querySelectorAll('.billing-last-year-item').forEach(item => {
+      item.style.color = '#000000';
+    });
+
+    billingLastYearItem.style.color = '#7dff32';
+
     billingLastYear = billingLastYearItem.innerText;
     selectedConditions.sales = billingLastYear;
-    exportPerformance();
   });
 });
 
-// 전년도 매출 선택 시 전년도 매출 전달
-// billingLastYearButton.addEventListener('click', () => {
-//   billingLastYear = `${billingLastYearItems.value}`;
-//   selectedConditions.sales = billingLastYear;
-//   exportPerformance();
-// });
+billingLastYearButton.addEventListener('click', () => {
+  console.log(selectedConditions.sales);
+  exportPerformance();
+
+});
 
 // 수출 실적 선택 창
 const exportPerformanceContainer = document.querySelector('.export-performance-container');
 const exportPerformances = document.querySelectorAll('.export-performance-item-text');
+const exportPerformanceButton = document.querySelector('.export-performance-button');
 
 function exportPerformance() {
   billingLastYearContainer.style.display = 'none';
-  exportPerformanceContainer.style.display = 'block';
+  exportPerformanceContainer.style.display = 'flex';
 }
 
 exportPerformances.forEach(exportPerformance => {
   exportPerformance.addEventListener('click', () => {
+
+    document.querySelectorAll('.export-performance-item-text').forEach(item => {
+      item.style.color = '#000000';
+    });
+
+    exportPerformance.style.color = '#7dff32';
+
     selectedConditions.export = exportPerformance.innerText;
-    employeeNumber();
   });
+});
+
+exportPerformanceButton.addEventListener('click', () => {
+  console.log(selectedConditions.export);
+  employeeNumber();
 });
 
 // 직원수 선택 창
@@ -191,16 +263,27 @@ const employeeNumberItems = document.querySelectorAll('.employee-number-item');
 
 function employeeNumber() {
   exportPerformanceContainer.style.display = 'none';
-  employeeNumberContainer.style.display = 'block';
+  employeeNumberContainer.style.display = 'flex';
 }
 
 // 직원수 선택 시 직원수 전달
 employeeNumberItems.forEach(employeeNumberItem => {
   employeeNumberItem.addEventListener('click', () => {
+
+    document.querySelectorAll('.employee-number-item').forEach(item => {
+      item.style.color = '#000000';
+    });
+
+    employeeNumberItem.style.color = '#7dff32';
+
     selectedConditions.employees = employeeNumberItem.innerText;
-    search(selectedConditions);
-    WatingSearchResult();
   });
+});
+
+employeeNumberButton.addEventListener('click', () => {
+  console.log(selectedConditions.employees);
+  search(selectedConditions);
+  WatingSearchResult();
 });
 
 // 검색 결과 기다리는 창에서 검색 결과로 넘어가기
@@ -210,3 +293,14 @@ function search(selectedConditions) {
   const query = new URLSearchParams(selectedConditions).toString();
   window.location.href = `/search/ai-result/?${query}`;
 }
+
+const warningContainer = document.querySelector('.select-warning-container');
+
+function warning() {
+  warningContainer.style.display = 'flex';
+}
+
+warningContainer.addEventListener('click', () => {
+  warningContainer.style.display = 'none';
+});
+
