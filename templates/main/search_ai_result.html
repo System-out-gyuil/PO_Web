@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Document</title>
+  {% load static %}
+  <link rel="icon" type="image/png" href="{% static 'images/NAMATJI_ICON.png' %}" />
+  <title>검색 결과</title>
 </head>
 <body>
   <h1>검색 결과</h1>
@@ -15,6 +17,10 @@
   <p>{{ export }}</p>
   <p>{{ sales }}</p>
   <p>{{ employees }}</p>
-  <p>위 결과를 ai에 넘기고 결과 받아오는 페이지</p>
+  <div>
+    {% for data in datas %}
+      <p>{{ data.title }} {{ data.score }} {{data.noti_summary}}</p>
+    {% endfor %}
+  </div>
 </body>
 </html>

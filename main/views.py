@@ -5,11 +5,18 @@ from elasticsearch import Elasticsearch
 from datetime import datetime
 import json
 from config import ES_API_KEY
-
+from board.models import BizInfo
 
 class MainView(View):
     def get(self, request):
-        return render(request, 'main/main.html')
+        biz_list_10 = BizInfo.objects.all()[:10]
+        
+
+        context = {
+            'biz_list': biz_list_10
+        }
+
+        return render(request, 'main/main.html', context)
 
     def post(self, request):
         data = {

@@ -10,7 +10,12 @@ from elasticsearch import Elasticsearch
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 from main.models import Industry
+from board.models import BizInfo
 from django.db.models import Q
+from langchain_openai import ChatOpenAI
+import tiktoken
+from config import OPEN_AI_API_KEY
+
 
 class SearchView(View):
     def get(self, request):
@@ -47,7 +52,54 @@ class SearchAIResultView(View):
         sales = request.GET.get("sales", "")
         employees = request.GET.get("employees", "")
 
+        data = BizInfo.objects.filter(
+            (Q(region__contains=region) | Q(region__contains="전국")) & Q(possible_industry__contains=big_industry)
+        )
 
+        datas = ''
+
+        for i in data:
+            if i.noti_summary:
+                datas += f'id: {i.pblanc_id}, title:{i.title}, summary:{i.noti_summary}, region:{i.region}\n\n'
+
+        print(datas)
+
+        text = f"사업지 주소지 {region}이고, \
+                대분류: {big_industry}, 소분류: {small_industry}을 영위함, \
+                작년 {sales} 매출에 수출 {export}, 직원은 {employees}이야 \
+                아래 지원 공고 내용을 토대로 선정 가능성이 높은 공고를 알려줘. 단. 지역과 업종은 무조건 일치해야하고\
+                적합도 점수(자사의 정보로 선정될 수 있는) 100점 만점으로 해서 우선순위를 정해줘, 점수 상위 5개 공고만 보여줘, id가 같은 공고는 한번만 보여줘\
+                공고 id, title, score를 포함해서 응답만을 dict 형태로 보여줘\n"
+
+        llm = ChatOpenAI(
+            temperature=0,
+            model_name='gpt-4o-mini',
+            openai_api_key=OPEN_AI_API_KEY
+        )
+
+        user_input = text + datas
+
+        response = llm.invoke(user_input)
+        content = response.content.strip()
+        print("[GPT 응답 원본]:", content)
+
+        enc = tiktoken.encoding_for_model("gpt-4o-mini")
+        tokens = enc.encode(user_input)
+        print(f"입력 토큰 수: {len(tokens)}")
+
+        # 응답을 JSON 형태로 파싱
+        try:
+            contents = json.loads(content.replace("```python", "").replace("```", ""))
+        except json.JSONDecodeError:
+            print("JSON 파싱 오류:", content)
+
+        datas = []
+        for i in contents:
+            obj = BizInfo.objects.get(pblanc_id=i.get("id"))
+            obj.score = i.get("score")
+            datas.append(obj)
+
+        print(datas)
 
         context = {
             "region": region,
@@ -58,6 +110,7 @@ class SearchAIResultView(View):
             "export": export,
             "sales": sales,
             "employees": employees,
+            "datas": datas
         }
 
         return render(request, "main/search_ai_result.html", context)

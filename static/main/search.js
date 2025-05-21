@@ -87,20 +87,28 @@ function industrySection(e) {
 
   // MySQL에 저장된 업종 대카테고리와 소카테고리에 검색
   fetch(`/search/industry/?q=${encodeURIComponent(keyword)}`)
-    .then(res => res.json())
-    .then(data => {
-      industryCategoryTable.innerHTML = '';
+  .then(res => res.json())
+  .then(data => {
+    industryCategoryTable.innerHTML = '';
 
-      data.forEach(item => {
-        industryCategoryTable.innerHTML += `
-          <tr>
-            <td>${item.big_category}</td>
-            <td>${item.small_category}</td>
-            <td><button class="industry-category-button">선택</button></td>
-          </tr>
-        `;
-      });
+    data.forEach(item => {
+      const highlight = (text) => {
+        const regex = new RegExp(`(${keyword})`, 'gi'); // 대소문자 구분 없이 매칭
+        return text.replace(regex, '<mark>$1</mark>');
+      };
+
+      const bigCategory = highlight(item.big_category);
+      const smallCategory = highlight(item.small_category);
+
+      industryCategoryTable.innerHTML += `
+        <tr>
+          <td>${bigCategory}</td>
+          <td>${smallCategory}</td>
+          <td><button class="industry-category-button">선택</button></td>
+        </tr>
+      `;
     });
+  });
   
   // 업종 옆 선택 버튼 클릭 시 해당 대카테고리와 소카테고리를 전달
   industryCategoryContainer.addEventListener('click', (e) => {
