@@ -11,68 +11,77 @@
   {% csrf_token %}
 </head>
 <body>
+  {% include 'base/top_nav.html' %}
+
   <section id="region-section">
-    <div class="search-region-container">
-      <h1>지역선택</h1>
+    <div class="search-region-container search-container">
+      <h1 class="search-title">사업장 소재지</h1>
+      <h1 class="search-title2"><span class="search-title-sub">지역</span>을 알려주세요</h1>
+      <div class="search-region-wrapper">
         <div class="search-region">
-        <div class="region">서울</div>
-        <div class="region">경기</div>
-        <div class="region">인천</div>
-        <div class="region">경남</div>
-        <div class="region">경북</div>
-        <div class="region">부산</div>
-        <div class="region">대구</div>
-        <div class="region">대전</div>
+          <div class="region">서울</div>
+          <div class="region">경기</div>
+          <div class="region">인천</div>
+          <div class="region">경남</div>
+        </div>
+        <div class="search-region">
+          <div class="region">경북</div>
+          <div class="region">부산</div>
+          <div class="region">대구</div>
+          <div class="region">대전</div>
+        </div>
+        <div class="search-region">
+          <div class="region">울산</div>
+          <div class="region">전남</div>
+          <div class="region">전북</div>
+          <div class="region">광주</div>
+        </div>
+        <div class="search-region">
+          <div class="region">충북</div>
+          <div class="region">충남</div>
+          <div class="region">강원</div>
+          <div class="region">제주</div>
+        </div>
       </div>
-      <div class="search-region">
-        <div class="region">울산</div>
-        <div class="region">전남</div>
-        <div class="region">전북</div>
-        <div class="region">광주</div>
-        <div class="region">충북</div>
-        <div class="region">충남</div>
-        <div class="region">강원</div>
-        <div class="region">제주</div>
+      <div class="search-btn-container search-region-btn-container">
+        <button class="search-region-button-text search-btn">다음으로</button>
       </div>
     </div>
   </section>
 
   <section id="business-style-section">
-    <div class="business-style-container">
-      <h1>사업자 보유 현황</h1>
+    <div class="business-style-container search-container">
+      <h1 class="business-style-title search-title"><span class="search-title-sub">사업자</span> 보유현황</h1>
       <div class="business-style">
         <div class="business-style-item">
           <div class="business-style-item-text">창업 전</div>
           <div class="business-style-item-text">사업자 보유</div>
+        </div>
+      </div>
+      <div class="search-btn-container search-business-btn-container">
+        <button class="search-business-button-text search-btn">다음으로</button>
       </div>
     </div>
   </section>
 
   <section id="industry-section">
-    <div class="search-industry-container">
-      <h1>업종선택</h1>
+    <div class="search-industry-container search-container">
+      <h1 class="search-title industry-search-title"><span class="search-title-sub">업종</span>을 입력하세요</h1>
       <div class="search-industry">
         <div class="industry">
-          <div class="industry-category">업종명 검색</div>
-          <input type="text" class="industry-category-input">
+          <div class="industry-category-wrapper">
+            <div class="industry-category">업종명 검색</div>
+            <input type="text" class="industry-category-input">
+          </div>
           <div class="industry-category-container">
-            <table>
-              <thead>
-                <colgroup>
-                  <col style="width: 40%">
-                  <col style="width: 40%">
-                  <col style="width: 20%">
-                </colgroup>
-                <tr>
-                  <td>대분류</td>
-                  <td>소분류</td>
-                  <td></td>
-                </tr>
-              </thead>
-              <tbody class="industry-category-table">
+            <div class="industry-table-header">
+              <div class="industry-table-header-big">대분류</div>
+              <div class="industry-table-header-small">소분류</div>
+              <div class="industry-table-header-select">선택</div>
+            </div>
+              <div class="industry-category-table">
                 {% comment %} 업종 검색결과 나올 곳 {% endcomment %}
-              </tbody>
-            </table>
+              </div>
           </div>
         </div>
       </div>
@@ -80,38 +89,62 @@
   </section>
 
   <section id="business-period-section">
-    <div class="business-period-container">
-      <h1>사업개시일</h1>
+    <div class="business-period-container search-container">
+      <div class="business-period-title search-title"><span class="search-title-sub">설립</span>시점을<br> 적어주세요</div>
       <div class="business-period">
         <div class="business-period-item">
-          <input type="text" class="business-period-year" placeholder="25">
-          <div>년</div>
-          <input type="text" class="business-period-month" placeholder="03">
-          <div>월</div>
+          <div class="business-period-year-wrapper">
+            <input type="text" 
+                   class="business-period-year" 
+                   placeholder="25" 
+                   maxlength="2" 
+                   pattern="\d*" 
+                   inputmode="numeric">
+            <div>년</div>
+          </div>
+          
+          <div class="business-period-month-wrapper">
+            <input type="text" 
+                   class="business-period-month" 
+                   placeholder="03" 
+                   maxlength="2" 
+                   pattern="\d*" 
+                   inputmode="numeric">
+            <div>월</div>
+          </div>
+          
         </div>
-        <button class="business-period-button">다음</button>
+      </div>
+      <div class="search-btn-container search-business-btn-container">
+        <button class="business-period-button search-btn">다음으로</button>
       </div>
     </div>
   </section>
 
   <section id="billing-last-year-section">
-    <div class="billing-last-year-container">
-      <h1>전년도 매출</h1>
+    <div class="billing-last-year-container search-container">
+      <h1 class="billing-last-year-title search-title"><span class="search-title-sub">연간매출</span></h1>
       <div class="billing-last-year">
         <div class="billing-last-year-item">매출 없음</div>
         <div class="billing-last-year-item">1억 이하</div>
+      </div>
+      <div class="billing-last-year">
         <div class="billing-last-year-item">1~5억</div>
         <div class="billing-last-year-item">5~10억</div>
+      </div>
+      <div class="billing-last-year">
         <div class="billing-last-year-item">10~30억</div>
         <div class="billing-last-year-item">30억 이상</div>
       </div>
-      <button class="billing-last-year-button">다음</button>
+      <div class="search-btn-container search-business-btn-container">
+        <button class="billing-last-year-button search-btn">다음으로</button>
+      </div>
     </div>
   </section>
 
   <section id="export-performance-section">
-    <div class="export-performance-container">
-      <h1>수출 실적</h1>
+    <div class="export-performance-container search-container">
+      <h1 class="export-performance-title search-title"><span class="search-title-sub">수출 실적</span></h1>
       <div class="export-performance">
         <div class="export-performance-item">
           <div class="export-performance-item-text">실적 없음</div>
@@ -119,17 +152,29 @@
           <div class="export-performance-item-text">수출 희망</div>
         </div>
       </div>
+      <div class="search-btn-container search-business-btn-container">
+        <button class="export-performance-button search-btn">다음으로</button>
+      </div>
     </div>
   </section>
 
   <section id="employee-number-section">
-    <div class="employee-number-container">
-      <h1>직원수</h1>
+    <div class="employee-number-container search-container">
+      <h1 class="employee-number-title search-title"><span class="search-title-sub">직원수</span></h1>
       <div class="employee-number">
         <div class="employee-number-item">직원 없음</div>
         <div class="employee-number-item">1~4인</div>
         <div class="employee-number-item">5인 이상</div>
       </div>
+      <div class="search-btn-container search-business-btn-container">
+        <button class="employee-number-button search-btn">다음으로</button>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="select-warning-container">
+      <div class="select-warning-text">옵션을 선택해주세요!</div>
     </div>
   </section>
 
@@ -138,6 +183,8 @@
       <h1>검색 결과 기다리는 창</h1>
     </div>
   </section>
+
+  {% include 'base/coupang_banner.html' %}
 
   <script src="{% static 'main/search.js' %}"></script>
 </body>
