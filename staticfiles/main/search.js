@@ -10,6 +10,9 @@ const selectedConditions = {
   employees: null
 };
 
+const selectedColor = 'rgb(167 255 162)';
+const defaultColor = '#fff';
+
 // 검색 결과 기다리는 창
 const searchResultContainer = document.querySelector('.search-result-container');
 
@@ -32,25 +35,28 @@ regions = document.querySelectorAll('.region');
 document.querySelectorAll('.region').forEach(region => {
   region.addEventListener('click', () => {
     document.querySelectorAll('.region').forEach(r => {
-      r.style.color = '#000000'; // 글자색도 초기화 (선택사항)
+      r.style.backgroundColor = defaultColor; // 글자색도 초기화 (선택사항)
     });
 
     // 클릭한 region만 선택된 색으로 변경
-    region.style.color = '#7dff32';
+    region.style.backgroundColor = selectedColor;
 
     // 선택값 저장
     selectedConditions.region = region.innerText;
 
-    if (selectedConditions.region === '') {
-      warning();
-    }
+    
 
   });
 });
 
 search_region_button.addEventListener('click', () => {
-  console.log(selectedConditions.region);
-  businessStyle();
+  if (!selectedConditions.region) {
+    warning();
+  } else {
+    
+    console.log(selectedConditions.region);
+    businessStyle();
+  }
 });
 
 // 사업자 현황 선택 창
@@ -67,23 +73,27 @@ businessStyleItems.forEach(businessStyleItem => {
     selectedConditions.business_style = businessStyleItem.innerText;
 
     document.querySelectorAll('.business-style-item-text').forEach(item => {
-      item.style.color = '#000000';
+      item.style.backgroundColor = defaultColor;
     });
 
-    businessStyleItem.style.color = '#7dff32';
+    businessStyleItem.style.backgroundColor = selectedColor;
 
-    if (selectedConditions.business_style === '') {
-      warning();
-    }
+    
 
   });
 });
 
 search_business_btn_container.addEventListener('click', () => {
-  if (selectedConditions.business_style === '창업 전') {
-    WatingSearchResult();
+
+  if (!selectedConditions.business_style) {
+    warning();
   } else {
-    industry();
+
+    if (selectedConditions.business_style === '창업 전') {
+      WatingSearchResult();
+    } else {
+      industry();
+    }
   }
 });
 
@@ -194,7 +204,12 @@ businessPeriodButton.addEventListener('click', () => {
   businessPeriod = `${businessPeriodYear.value}.${businessPeriodMonth.value}`
 
   selectedConditions.business_period = businessPeriod;
-  billingLastYear();
+
+  if (!selectedConditions.business_period) {
+    warning();
+  } else {
+    billingLastYear();
+  }
 });
 
 // 전년도 매출 선택 창
@@ -211,19 +226,22 @@ billingLastYearItems.forEach(billingLastYearItem => {
   billingLastYearItem.addEventListener('click', () => {
 
     document.querySelectorAll('.billing-last-year-item').forEach(item => {
-      item.style.color = '#000000';
+      item.style.backgroundColor = defaultColor;
     });
 
-    billingLastYearItem.style.color = '#7dff32';
+    billingLastYearItem.style.backgroundColor = selectedColor;
 
-    billingLastYear = billingLastYearItem.innerText;
-    selectedConditions.sales = billingLastYear;
+    billingLastYearValue = billingLastYearItem.innerText;
+    selectedConditions.sales = billingLastYearValue;
   });
 });
 
 billingLastYearButton.addEventListener('click', () => {
-  console.log(selectedConditions.sales);
-  exportPerformance();
+  if (!selectedConditions.sales) {
+    warning();
+  } else {
+    exportPerformance();
+  }
 
 });
 
@@ -241,18 +259,21 @@ exportPerformances.forEach(exportPerformance => {
   exportPerformance.addEventListener('click', () => {
 
     document.querySelectorAll('.export-performance-item-text').forEach(item => {
-      item.style.color = '#000000';
+      item.style.backgroundColor = defaultColor;
     });
 
-    exportPerformance.style.color = '#7dff32';
+    exportPerformance.style.backgroundColor = selectedColor;
 
     selectedConditions.export = exportPerformance.innerText;
   });
 });
 
 exportPerformanceButton.addEventListener('click', () => {
-  console.log(selectedConditions.export);
-  employeeNumber();
+  if (!selectedConditions.export) {
+    warning();
+  } else {
+    employeeNumber();
+  }
 });
 
 // 직원수 선택 창
@@ -271,19 +292,22 @@ employeeNumberItems.forEach(employeeNumberItem => {
   employeeNumberItem.addEventListener('click', () => {
 
     document.querySelectorAll('.employee-number-item').forEach(item => {
-      item.style.color = '#000000';
+      item.style.backgroundColor = defaultColor;
     });
 
-    employeeNumberItem.style.color = '#7dff32';
+    employeeNumberItem.style.backgroundColor = selectedColor;
 
     selectedConditions.employees = employeeNumberItem.innerText;
   });
 });
 
 employeeNumberButton.addEventListener('click', () => {
-  console.log(selectedConditions.employees);
-  search(selectedConditions);
-  WatingSearchResult();
+  if (!selectedConditions.employees) {
+    warning();
+  } else {
+    search(selectedConditions);
+    WatingSearchResult();
+  }
 });
 
 // 검색 결과 기다리는 창에서 검색 결과로 넘어가기
@@ -294,13 +318,47 @@ function search(selectedConditions) {
   window.location.href = `/search/ai-result/?${query}`;
 }
 
-const warningContainer = document.querySelector('.select-warning-container');
+const warningContainer = document.querySelector('.select-warning-container-wrapper');
 
 function warning() {
-  warningContainer.style.display = 'flex';
+  console.log('warning');
+  warningContainer.style.display = 'block';
+  setTimeout(() => {
+    warningContainer.style.display = 'none';
+  }, 3000);
 }
 
 warningContainer.addEventListener('click', () => {
   warningContainer.style.display = 'none';
 });
 
+const searchBackIcons = document.querySelectorAll('.search-back-icon');
+
+searchBackIcons.forEach(searchBackIcon => {
+  searchBackIcon.addEventListener('click', () => {
+    if (searchBackIcon.parentElement.classList.contains('business-style-container')) {
+      search_region_container.style.display = 'flex';
+      businessStyleContainer.style.display = 'none';
+
+    } else if (searchBackIcon.parentElement.classList.contains('search-industry-container')) {
+      businessStyleContainer.style.display = 'flex';
+      search_industry_container.style.display = 'none';
+
+    } else if (searchBackIcon.parentElement.classList.contains('business-period-container')) {
+      search_industry_container.style.display = 'flex';
+      businessPeriodContainer.style.display = 'none';
+
+    } else if (searchBackIcon.parentElement.classList.contains('billing-last-year-container')) {
+      businessPeriodContainer.style.display = 'flex';
+      billingLastYearContainer.style.display = 'none';
+
+    } else if (searchBackIcon.parentElement.classList.contains('export-performance-container')) {
+      billingLastYearContainer.style.display = 'flex';
+      exportPerformanceContainer.style.display = 'none';
+
+    } else if (searchBackIcon.parentElement.classList.contains('employee-number-container')) {
+      exportPerformanceContainer.style.display = 'flex';
+      employeeNumberContainer.style.display = 'none';
+    }
+  });
+});

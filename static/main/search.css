@@ -16,6 +16,7 @@
   background-color: #4294ff;
   margin-top: 50px;
   border-radius: 15px;
+  position: relative;
 }
 
 @media (max-width: 768px) {
@@ -26,7 +27,7 @@
     align-items: center;
     justify-content: center;
     width: 95%;
-    height: 650px;
+    height: 550px;
     background-color: #4294ff;
     border-radius: 15px;
   }
@@ -62,9 +63,9 @@
   margin-top: 15px;
 }
 
-.search-region-wrapper {
+/* .search-region-wrapper {
   margin-top: 30px;
-}
+} */
 
 .search-btn-container {
   display: flex;
@@ -157,9 +158,9 @@
   margin-top: 15px;
 }
 
-/* .industry-search-title {
-  margin-top: -50px;
-} */
+.industry-search-title {
+  width: 88%;
+}
 
 .industry-category-wrapper {
   display: flex;
@@ -228,7 +229,7 @@
 }
 
 .industry-category-table {
-  height: 375px;
+  height: 290px;
   display: flex;
   flex-direction: column;
   max-height: 375px;
@@ -238,6 +239,10 @@
 
 .industry-category-table::-webkit-scrollbar {
   display: none;
+}
+
+.search-industry-container {
+  height: 600px;
 }
 
 .industry-table-row {
@@ -291,6 +296,7 @@
 }
 
 .business-period-year-wrapper input {
+  border-radius: 5px;
   width: 80%;
   border: 1px solid #000;
   background-color: #fff;
@@ -317,6 +323,7 @@
 }
 
 .business-period-month-wrapper input {
+  border-radius: 5px;
   width: 80%;
   border: 1px solid #000;
   background-color: #fff;
@@ -471,22 +478,38 @@
   display: none;
 }
 
-.select-warning-container {
+.select-warning-container-wrapper {
   display: none;
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  background-color: #00000085;
 }
 
 .select-warning-container {
-  display: none;
   justify-content: center;
   align-items: center;
   width: 300px;
-  height: 300px;
+  height: 100px;
   background-color: #ff6f6f;
   border-radius: 15px;
   margin-top: 50px;
+  position: absolute;
+  top: 27%;
+  left: 12%;
 }
 
 .select-warning-text {
   font-family: 'Nanum Barun Gothic', sans-serif;
   font-size: 20px;
+  font-weight: 600;
+  line-height: 100px;
+  text-align: center;
+}
+
+.search-back-icon {
+  position: absolute;
+    top: 20px;
+    left: 20px;
 }
