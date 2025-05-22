@@ -15,7 +15,8 @@ from django.db.models import Q
 from langchain_openai import ChatOpenAI
 import tiktoken
 from config import OPEN_AI_API_KEY
-
+import ast
+import re
 
 class SearchView(View):
     def get(self, request):
@@ -42,7 +43,6 @@ def search_industry(request):
 
 class SearchAIResultView(View):
     def get(self, request):
-        # 쿼리 파라미터 가져오기
         region = request.GET.get("region", "")
         business_style = request.GET.get("business_style", "")
         big_industry = request.GET.get("big_industry", "")
@@ -53,32 +53,50 @@ class SearchAIResultView(View):
         employees = request.GET.get("employees", "")
 
         data = BizInfo.objects.filter(
-            (Q(region__contains=region) | Q(region__contains="전국")) & Q(possible_industry__contains=big_industry)
+            (Q(region__contains=region) | Q(region__contains="전국")) & Q(possible_industry__contains=big_industry) & Q(revenue__contains=sales) & Q(hashtag__contains=region)
         )
 
         datas = ''
-
         for i in data:
             if i.noti_summary:
                 datas += f'id: {i.pblanc_id}, title:{i.title}, summary:{i.noti_summary}, region:{i.region}\n\n'
 
-        print(datas)
+        text = f"""
+        당신은 중소기업 지원사업 매칭 전문가입니다.
 
-        text = f"사업지 주소지 {region}이고, \
-                업종은 대분류: {big_industry}, 소분류: {small_industry}을 영위함, \
-                작년 {sales} 매출에 수출 {export}, 직원은 {employees}이야 \
-                아래 지원 공고 내용을 토대로 선정 가능성이 높은 공고를 알려줘. 단. 지역과 업종은 무조건 일치해야하고\
-                적합도 점수(자사의 정보로 선정될 수 있는) 100점 만점으로 해서 우선순위를 정해줘, 점수 상위 5개 공고만 보여줘, id가 같은 공고는 한번만 보여줘, 절대 내용을 지어내거나 id를 임의로 바꿔서도 안돼\
-                공고 id, title, score를 포함해서 응답만을 dict 형태로 보여줘\n"
+        ## 기업 정보
+        - 사업지 주소지: {region}
+        - 업종: 대분류 - {big_industry}, 소분류 - {small_industry}
+        - 작년 매출: {sales}
+        - 수출 실적: {export}
+        - 직원 수: {employees}
+
+        ## 요청 사항
+        - 아래 지원 공고 목록을 기반으로, 선정 가능성이 높은 공고를 알려주세요.
+        - 지역과 업종은 반드시 일치해야 합니다.
+        - 적합도 점수를 100점 만점으로 평가하여 우선순위를 정해주세요.
+        - 점수가 70점 이상인 공고만 보여주세요.
+        - 동일한 공고는 한 번만 표시해주세요, 절대로 중복이 나타나선 안됩니다.
+        - 절대 내용을 지어내거나 ID를 임의로 변경하지 마세요.
+        - 적합도 점수에 대한 근거를 20자 이내로 작성해주세요.
+        - title, summary 등 모두 검토하여 절대로 지역과 업종이 일치하지 않는 공고는 보여주지 마세요.
+        - title에 만약 다른 지역 이름이 적혀있을 시 절대로 해당 공고는 보여주지 마시오.
+
+        ## 출력 형식
+        각 공고에 대해 다음 정보를 포함한 딕셔너리 형태로 응답해주세요:
+        - id: 공고 ID
+        - title: 공고 제목
+        - score: 적합도 점수
+        - reason: 적합도 점수의 근거
+        """
 
         llm = ChatOpenAI(
-            temperature=0,
+            temperature=0.3,
             model_name='gpt-4o-mini',
             openai_api_key=OPEN_AI_API_KEY
         )
 
         user_input = text + datas
-
         response = llm.invoke(user_input)
         content = response.content.strip()
         print("[GPT 응답 원본]:", content)
@@ -87,22 +105,47 @@ class SearchAIResultView(View):
         tokens = enc.encode(user_input)
         print(f"입력 토큰 수: {len(tokens)}")
 
-        # 응답을 JSON 형태로 파싱
+        # GPT 응답에서 ```python ... ``` 블록 추출
         try:
-            contents = json.loads(content.replace("```python", "").replace("```", ""))
-        except json.JSONDecodeError:
-            print("JSON 파싱 오류:", content)
+            content_cleaned = None
 
-        datas = []
+            # 1. 코드 블록 안에서 추출: ```json 또는 ```python
+            match = re.search(r"```(?:json|python)?\n([\s\S]*?)```", content)
+            if match:
+                content_cleaned = match.group(1).strip()
+            else:
+                # 2. matching_results = [...] 형태 처리
+                if "matching_results" in content:
+                    start = content.index("matching_results")
+                    content_cleaned = content[start:].split("=", 1)[1].strip()
+                else:
+                    # 3. 마지막 수단: 전체가 그냥 JSON 배열인 경우
+                    content_cleaned = content.strip()
+
+            # 파싱 시도 (JSON 우선)
+            try:
+                contents = json.loads(content_cleaned)
+            except json.JSONDecodeError:
+                contents = ast.literal_eval(content_cleaned)
+
+        except Exception as e:
+            print("파싱 오류:", e)
+            print("GPT 응답:", content)
+            return render(request, "main/search_ai_result.html", {"datas": [], "error": "GPT 응답 파싱 실패"})
+
+        datas2 = []
         for i in contents:
             print(i.get("id"), "\n")
-            obj = BizInfo.objects.get(pblanc_id=i.get("id"))
-            obj.region = obj.region.replace("[", "").replace("]", "")
-            obj.possible_industry = obj.possible_industry.replace("[", "").replace("]", "")
-            obj.score = i.get("score")
-            datas.append(obj)
-
-        print(datas)
+            try:
+                obj = BizInfo.objects.get(pblanc_id=i.get("id"))
+                obj.region = obj.region.replace("[", "").replace("]", "")
+                obj.possible_industry = obj.possible_industry.replace("[", "").replace("]", "")
+                obj.score = i.get("score")
+                obj.reason = i.get("reason")
+                datas2.append(obj)
+            except BizInfo.DoesNotExist:
+                print(f"DB에 존재하지 않는 공고 ID: {i.get('id')}")
+                continue
 
         context = {
             "region": region,
@@ -113,7 +156,7 @@ class SearchAIResultView(View):
             "export": export,
             "sales": sales,
             "employees": employees,
-            "datas": datas
+            "datas": datas2
         }
 
         return render(request, "main/search_ai_result.html", context)

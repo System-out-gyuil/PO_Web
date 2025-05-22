@@ -1,0 +1,46 @@
+<nav>
+  <div class="consel-nav-container">
+    <div class="consel-nav-item">
+      <div class="consel-nav-item-box">
+        <div class="consel-nav-item-text">
+          무료 상세 결과 안내받기
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="consel-nav-modal-container">
+    <div class="consel-nav-modal-item-box">
+      <div class="consel-nav-modal-close-btn"></div>
+        <div class="consel-nav-modal-text-box">
+          <div class="consel-nav-modal-text-box-title">
+            무료 상세 결과 안내받기
+          </div>
+          <div class="consel-nav-modal-text">
+            <p class="underline">현재 2만4천여개 사업 중 가능한</p><br>
+            <p>지원사업과 정책자금을 추천드려요.</p>
+          </div>
+          <div class="name-wrap">
+            <div class="name-wrap-title">*이름</div>
+            <input class="name-wrap-input" type="text" placeholder="이름을 입력해 주세요">
+          </div>
+          <div class="phone-wrap">
+            <div class="phone-wrap-title">*연락처</div>
+            <input class="phone-wrap-input" type="text" placeholder="휴대폰 번호를 입력해 주세요">
+          </div>
+          <div class="personal-info-wrap">
+            <div class="info-check-box">
+              <input type="checkbox">
+              <div class="personal-info-title">개인정보 수집 및 이용 동의 <span class="personal-info-title-text" onclick="window.location.href='{% url 'personal_info' %}'">[전문보기]</span></div>
+            </div>
+            <div class="info-check-box">
+              <input type="checkbox">
+              <div class="personal-info-title">개인정보 제 3자 제공 동의 <span class="personal-info-title-text" onclick="window.location.href='{% url 'personal_info' %}'">[전문보기]</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="consel-nav-modal-text-box-btn-wrap">
+          <button class="consel-nav-modal-text-box-btn">신청하기</button>
+        </div>
+    </div>
+  </div>
+</nav>

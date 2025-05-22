@@ -35,7 +35,7 @@
               <div class="detail-text">
                 <div class="detail-text-box">
                   <div class="detail-text-title">AI 점수</div>:
-                  <div class="detail-text-value">{{data.score}}점</div>
+                  <div class="detail-text-value">{{data.score}}점 ({{data.reason}})</div>
                 </div>
                 <div class="detail-text-box">
                   <div class="detail-text-title">공고명</div>:
@@ -66,6 +66,8 @@
       {% endfor %}
     </ul>
   </div>
+  {% include 'base/consel_nav.html' %}
+  <script src="{% static 'base/base.js' %}"></script>
   <script src="{% static 'main/search_ai_result.js' %}"></script>
 </body>
 </html>

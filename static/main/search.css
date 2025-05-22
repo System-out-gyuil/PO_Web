@@ -758,6 +758,7 @@ ul {
 .detail-view {
   color: #004ddc;
   font-style: italic;
+  cursor: pointer;
 }
 .search-region-container {
   display: flex;
