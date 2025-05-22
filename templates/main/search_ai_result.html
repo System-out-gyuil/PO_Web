@@ -4,23 +4,68 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   {% load static %}
+  <link rel="stylesheet" href="{% static 'main/search.css' %}">
+  <link rel="stylesheet" href="{% static 'base/base.css' %}">
   <link rel="icon" type="image/png" href="{% static 'images/NAMATJI_ICON.png' %}" />
   <title>검색 결과</title>
 </head>
 <body>
-  <h1>검색 결과</h1>
-  <p>{{ region }}</p>
-  <p>{{ business_style }}</p>
-  <p>{{ big_industry }}</p>
-  <p>{{ small_industry }}</p>
-  <p>{{ period }}</p>
-  <p>{{ export }}</p>
-  <p>{{ sales }}</p>
-  <p>{{ employees }}</p>
-  <div>
-    {% for data in datas %}
-      <p>{{ data.title }} {{ data.score }} {{data.noti_summary}}</p>
-    {% endfor %}
+  {% include 'base/top_nav.html' %}
+  <div class="search-ai-result-container">
+    <div class="search-ai-result-title">
+      AI 비서가 찾은 <br>
+      대표님께 딱 맞는<br>
+      지원사업은!
+    </div>
+    <div class="search-ai-result-content">
+      <ul>
+        <li class="main-section-box-list-item">
+          <div class="main-section-box-list-items">
+            <div class="category-text">점수</div>|<div class="title-text">공고명</div>|<div class="title-text-d-day">디데이</div>
+          </div>
+        </li>
+      
+        {% for data in datas %}
+        <li class="main-section-box-list-item">
+          <div class="main-section-box-list-items2">
+            <div class="detail-text-container">
+              <div class="category-text-biz">{{data.score}}점</div>|<div class="title-text-biz">{{data.title}}</div>|<div class="title-text-d-day-biz">D-10</div>
+            </div>
+            <div class="detail-text-container2">
+              <div class="detail-text">
+                <div class="detail-text-box">
+                  <div class="detail-text-title">AI 점수</div>:
+                  <div class="detail-text-value">{{data.score}}점</div>
+                </div>
+                <div class="detail-text-box">
+                  <div class="detail-text-title">공고명</div>:
+                  <div class="detail-text-value">{{data.title}}<br>
+                    <span class="detail-view" onclick="location.href='{% url 'board:detail'  data.pblanc_id %}'" style="cursor: pointer;">[공고보기]</span>
+                  </div>
+                </div>
+                <div class="detail-text-box">
+                  <div class="detail-text-title">지역</div>:
+                  <div class="detail-text-value">{{data.region}}</div>
+                </div>
+                <div class="detail-text-box">
+                  <div class="detail-text-title">업종</div>:
+                  <div class="detail-text-value">{{data.possible_industry}}</div>
+                </div>
+                <div class="detail-text-box">
+                  <div class="detail-text-title">지원규모</div>:
+                  <div class="detail-text-value">3억원</div>
+                </div>
+                <div class="detail-text-box last-text-box">
+                  <div class="detail-text-title">사업요약</div>:
+                  <div class="detail-text-value">{{data.noti_summary}}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
   </div>
+  <script src="{% static 'main/search_ai_result.js' %}"></script>
 </body>
 </html>

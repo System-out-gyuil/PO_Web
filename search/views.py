@@ -65,10 +65,10 @@ class SearchAIResultView(View):
         print(datas)
 
         text = f"사업지 주소지 {region}이고, \
-                대분류: {big_industry}, 소분류: {small_industry}을 영위함, \
+                업종은 대분류: {big_industry}, 소분류: {small_industry}을 영위함, \
                 작년 {sales} 매출에 수출 {export}, 직원은 {employees}이야 \
                 아래 지원 공고 내용을 토대로 선정 가능성이 높은 공고를 알려줘. 단. 지역과 업종은 무조건 일치해야하고\
-                적합도 점수(자사의 정보로 선정될 수 있는) 100점 만점으로 해서 우선순위를 정해줘, 점수 상위 5개 공고만 보여줘, id가 같은 공고는 한번만 보여줘\
+                적합도 점수(자사의 정보로 선정될 수 있는) 100점 만점으로 해서 우선순위를 정해줘, 점수 상위 5개 공고만 보여줘, id가 같은 공고는 한번만 보여줘, 절대 내용을 지어내거나 id를 임의로 바꿔서도 안돼\
                 공고 id, title, score를 포함해서 응답만을 dict 형태로 보여줘\n"
 
         llm = ChatOpenAI(
@@ -95,7 +95,10 @@ class SearchAIResultView(View):
 
         datas = []
         for i in contents:
+            print(i.get("id"), "\n")
             obj = BizInfo.objects.get(pblanc_id=i.get("id"))
+            obj.region = obj.region.replace("[", "").replace("]", "")
+            obj.possible_industry = obj.possible_industry.replace("[", "").replace("]", "")
             obj.score = i.get("score")
             datas.append(obj)
 

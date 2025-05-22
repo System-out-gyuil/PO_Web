@@ -170,7 +170,7 @@ function industrySection(e) {
 const businessPeriodYear = document.querySelector('.business-period-year');
 const businessPeriodMonth = document.querySelector('.business-period-month');
 const businessPeriodContainer = document.querySelector('.business-period-container');
-const businessPeriodButton = document.querySelector('.business-period-button');
+const businessPeriodButton = document.querySelector('.search-business-period-btn-container');
 
 // 연도: 숫자 2자리만 허용
 document.querySelector('.business-period-year').addEventListener('input', function () {
@@ -216,6 +216,7 @@ businessPeriodButton.addEventListener('click', () => {
 const billingLastYearItems = document.querySelectorAll('.billing-last-year-item');
 const billingLastYearContainer = document.querySelector('.billing-last-year-container');
 const billingLastYearButton = document.querySelector('.billing-last-year-button');
+const billingLastYearButtonContainer = document.querySelector('.search-billing-btn-container');
 
 function billingLastYear() {
   businessPeriodContainer.style.display = 'none';
@@ -236,7 +237,7 @@ billingLastYearItems.forEach(billingLastYearItem => {
   });
 });
 
-billingLastYearButton.addEventListener('click', () => {
+billingLastYearButtonContainer.addEventListener('click', () => {
   if (!selectedConditions.sales) {
     warning();
   } else {
@@ -248,7 +249,7 @@ billingLastYearButton.addEventListener('click', () => {
 // 수출 실적 선택 창
 const exportPerformanceContainer = document.querySelector('.export-performance-container');
 const exportPerformances = document.querySelectorAll('.export-performance-item-text');
-const exportPerformanceButton = document.querySelector('.export-performance-button');
+const exportPerformanceButton = document.querySelector('.search-export-performance-btn-container');
 
 function exportPerformance() {
   billingLastYearContainer.style.display = 'none';
@@ -281,6 +282,7 @@ const employeeNumberContainer = document.querySelector('.employee-number-contain
 const employeeNumberInput = document.querySelector('.employee-number-input');
 const employeeNumberButton = document.querySelector('.employee-number-button');
 const employeeNumberItems = document.querySelectorAll('.employee-number-item');
+const employeeNumberButtonContainer = document.querySelector('.search-employee-number-btn-container');
 
 function employeeNumber() {
   exportPerformanceContainer.style.display = 'none';
@@ -301,7 +303,7 @@ employeeNumberItems.forEach(employeeNumberItem => {
   });
 });
 
-employeeNumberButton.addEventListener('click', () => {
+employeeNumberButtonContainer.addEventListener('click', () => {
   if (!selectedConditions.employees) {
     warning();
   } else {
@@ -362,3 +364,4 @@ searchBackIcons.forEach(searchBackIcon => {
     }
   });
 });
+
