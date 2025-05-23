@@ -4,7 +4,6 @@ body {
   padding-bottom: 99px;
   padding-top: 70px;
   margin: 0;
-  background-color: #fff;
   height: 100%;
   position: relative;
 }
@@ -49,7 +48,7 @@ ul {
 .namatji-top-nav-buttons {
   line-height: 4;
   display: flex;
-  justify-content: space-around;
+  justify-content: space-evenly;
 }
 /* 모바일 화면일 때 */
 @media (max-width: 768px) {
@@ -127,7 +126,7 @@ ul {
 .footer {
   bottom: 100px;
   width: 100%;
-  background-color: #ffffff;
+  background-color: #0000001a;
   font-size: 10px;
 }
 

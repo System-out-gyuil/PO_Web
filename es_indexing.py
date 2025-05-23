@@ -11,6 +11,10 @@ django.setup()
 
 from board.models import BizInfo
 
+from django.forms.models import model_to_dict
+import ast
+from elasticsearch import Elasticsearch, helpers
+
 # ✅ Elasticsearch 클라이언트 생성
 es = Elasticsearch(
     "https://0e0f4480a93d4cb78455e070163e467d.us-central1.gcp.cloud.es.io:443",

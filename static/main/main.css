@@ -34,7 +34,7 @@
 .main-section-container {
   display: flex;
   justify-content: center;
-  background-color: #0000001a;
+  padding-bottom: 100px;
 }
 
 .main-section-box {
@@ -129,7 +129,6 @@ ul {
   .main-section-container {
     display: flex;
     justify-content: center;
-    background-color: #0000001a;
     flex-direction: column;
   }
 }
@@ -157,4 +156,8 @@ ul {
     top: 70%;
     right: 50%;
   }
+}
+
+body {
+  background-color: #0000001a;
 }

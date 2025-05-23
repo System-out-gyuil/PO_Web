@@ -263,7 +263,13 @@ exportPerformances.forEach(exportPerformance => {
 
     exportPerformance.style.backgroundColor = selectedColor;
 
-    selectedConditions.export = exportPerformance.innerText;
+    if (exportPerformance.innerText === '"없음"') {
+      selectedConditions.export = '실적 없음';
+    } else if (exportPerformance.innerText === '"있음"') {
+      selectedConditions.export = '실적 있음';
+    } else {
+      selectedConditions.export = exportPerformance.innerText;
+    }
   });
 });
 

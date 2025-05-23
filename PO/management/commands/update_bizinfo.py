@@ -17,6 +17,7 @@ import subprocess
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning)  # 경고 무시
 import pandas as pd
+from datetime import date
 
 class Command(BaseCommand):
     help = "DB 업데이트"
@@ -366,5 +367,9 @@ class Command(BaseCommand):
         print(f"🎉 총 {len(actions)}개 문서 Elasticsearch 인덱싱 완료")
 
 
+    def delete_bizinfo_by_date(self):
+        deleted, _ = BizInfo.objects.filter(reception_end__lt=date.today()).delete()
 
+        print(f"{deleted}개의 마감된 공고가 삭제되었습니다.")
+        return deleted
         

@@ -45,13 +45,13 @@
             <ul>
               <li class="main-section-box-list-item">
                 <div class="main-section-box-list-items">
-                  <div class="category-text">분야</div>|<div class="title-text">공고명</div>
+                  <div class="category-text">업로드날짜</div>|<div class="title-text">공고명</div>
                 </div>
               </li>
               {% for biz in biz_list %}
                 <li class="main-section-box-list-item">
                   <div class="main-section-box-list-items2">
-                    <div class="category-text-biz">{{ biz.field }}</div>|<div class="title-text-biz" onclick="window.location.href='{% url 'board:detail' biz.pblanc_id %}'">{{ biz.title }}</div>
+                    <div class="category-text-biz">{{ biz.registered_at|date:"m.d" }}</div>|<div class="title-text-biz" onclick="window.location.href='{% url 'board:detail' biz.pblanc_id %}'">{{ biz.title }}</div>
                   </div>
                 </li>
               {% endfor %}
@@ -66,13 +66,13 @@
             <ul>
               <li class="main-section-box-list-item">
                 <div class="main-section-box-list-items">
-                  <div class="category-text">분야</div>|<div class="title-text">공고명</div>
+                  <div class="category-text">업로드날짜</div>|<div class="title-text">공고명</div>
                 </div>
               </li>
               {% for biz in biz_list %}
                 <li class="main-section-box-list-item">
                   <div class="main-section-box-list-items2">
-                    <div class="category-text-biz">{{ biz.field }}</div>|<div class="title-text-biz" onclick="window.location.href='{% url 'board:detail' biz.pblanc_id %}'">{{ biz.title }}</div>
+                    <div class="category-text-biz">{{ biz.registered_at|date:"m.d" }}</div>|<div class="title-text-biz" onclick="window.location.href='{% url 'board:detail' biz.pblanc_id %}'">{{ biz.title }}</div>
                   </div>
                 </li>
               {% endfor %}

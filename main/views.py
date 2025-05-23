@@ -9,7 +9,7 @@ from board.models import BizInfo
 
 class MainView(View):
     def get(self, request):
-        biz_list_10 = BizInfo.objects.all()[:10]
+        biz_list_10 = BizInfo.objects.all().order_by('-registered_at')[:10]
         
 
         context = {

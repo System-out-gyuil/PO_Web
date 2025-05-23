@@ -58,7 +58,30 @@ class SearchAIResultView(View):
         )
 
         datas = ''
+        datas2 = []
+
         for i in data:
+            if ("1~4인" in i.employee_count or "직원 없음" in i.employee_count) and "ADD" in i.pblanc_id :
+                obj = BizInfo.objects.get(pblanc_id=i.pblanc_id)
+                obj.region = obj.region.replace("[", "").replace("]", "")
+                obj.possible_industry = obj.possible_industry.replace("[", "").replace("]", "")
+                try:
+                    reception_end_date = obj.reception_end
+                    today = datetime.today().date()
+
+                    # "9999-12-31" 은 무시
+                    if reception_end_date == date(9999, 12, 31):
+                        obj.d_day = "none"
+                    else:
+                        obj.d_day = (reception_end_date - today).days
+                except Exception as e:
+                    print(f"날짜 파싱 오류: {e}")
+                    obj.d_day = "none"
+
+                obj.score = '100'
+                obj.reason = '지원 대상 해당 및 지역 일치'
+                datas2.append(obj)
+
             if i.noti_summary:
                 datas += f'id: {i.pblanc_id},\n title:{i.title},\n summary:{i.noti_summary},\n region:{i.region}\n\n'
 
@@ -79,7 +102,7 @@ class SearchAIResultView(View):
         - 점수가 70점 이상인 공고만 보여주세요.
         - 동일한 공고는 한 번만 표시해주세요, 절대로 중복이 나타나선 안됩니다.
         - 절대 내용을 지어내거나 ID를 임의로 변경하지 마세요.
-        - 적합도 점수에 대한 근거를 20자 이내로 작성해주세요.
+        - 적합도 점수에 대한 근거(지역과 업종 제외한 다른 근거)를 20자 이내로 작성해주세요.
         - title, summary 등 모두 검토하여 절대로 지역과 업종이 일치하지 않는 공고는 보여주지 마세요.
         - title에 만약 다른 지역 이름이 적혀있을 시 절대로 해당 공고는 보여주지 마시오.
 
@@ -119,6 +142,9 @@ class SearchAIResultView(View):
                 if "matching_results" in content:
                     start = content.index("matching_results")
                     content_cleaned = content[start:].split("=", 1)[1].strip()
+                elif "matching_opportunities" in content:
+                    start = content.index("matching_opportunities")
+                    content_cleaned = content[start:].split("=", 1)[1].strip()
                 else:
                     # 3. 마지막 수단: 전체가 그냥 JSON 배열인 경우
                     content_cleaned = content.strip()
@@ -134,7 +160,6 @@ class SearchAIResultView(View):
             print("GPT 응답:", content)
             return render(request, "main/search_ai_result.html", {"datas": [], "error": "GPT 응답 파싱 실패"})
 
-        datas2 = []
 
         for i in contents:
             print(i.get("id"), "\n")

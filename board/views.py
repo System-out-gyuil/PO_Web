@@ -19,7 +19,7 @@ class BoardView(View):
         page_index = int(request.GET.get("page_index", 1))
         page_size = 10
         select_type = request.GET.get("select-type", "")
-        keyword = request.GET.get("keyword", "").strip()
+        keyword = request.GET.get("keyword", "").strip().lower()
 
         print(select_type, keyword)
 
