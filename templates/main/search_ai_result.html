@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   {% load static %}
-  <link rel="stylesheet" href="{% static 'main/search.css' %}">
   <link rel="stylesheet" href="{% static 'base/base.css' %}">
+  <link rel="stylesheet" href="{% static 'main/search.css' %}">
   <link rel="icon" type="image/png" href="{% static 'images/NAMATJI_ICON.png' %}" />
   <title>검색 결과</title>
 </head>
@@ -24,12 +24,17 @@
             <div class="category-text">점수</div>|<div class="title-text">공고명</div>|<div class="title-text-d-day">디데이</div>
           </div>
         </li>
-      
         {% for data in datas %}
         <li class="main-section-box-list-item">
           <div class="main-section-box-list-items2">
             <div class="detail-text-container">
-              <div class="category-text-biz">{{data.score}}점</div>|<div class="title-text-biz">{{data.title}}</div>|<div class="title-text-d-day-biz">D-10</div>
+              <div class="category-text-biz">{{data.score}}점</div>|
+              <div class="title-text-biz">{{data.title}}</div>|
+              {% if data.d_day == "none" %}
+              <div class="title-text-d-day-biz">상시</div>
+              {% else %}
+              <div class="title-text-d-day-biz">D-{{data.d_day}}</div>
+              {% endif %}
             </div>
             <div class="detail-text-container2">
               <div class="detail-text">
@@ -63,10 +68,57 @@
             </div>
           </div>
         </li>
-      {% endfor %}
-    </ul>
+        {% endfor %}
+      </ul>
+    </div>
   </div>
-  {% include 'base/consel_nav.html' %}
+
+  <!-- 상담 신청 모달 -->
+  <nav>
+    <div class="consel-nav-container">
+      <div class="consel-nav-item">
+        <div class="consel-nav-item-box">
+          <div class="consel-nav-item-text">
+            무료 상세 결과 안내받기
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="consel-nav-modal-container">
+      <div class="consel-nav-modal-item-box">
+        <div class="consel-nav-modal-close-btn"></div>
+        <div class="consel-nav-modal-text-box">
+          <div class="consel-nav-modal-text-box-title">무료 상세 결과 안내받기</div>
+          <div class="consel-nav-modal-text">
+            <p class="underline">현재 2만4천여개 사업 중 가능한</p><br>
+            <p>지원사업과 정책자금을 추천드려요.</p>
+          </div>
+          <div class="name-wrap">
+            <div class="name-wrap-title">*상호명</div>
+            <input class="name-wrap-input" type="text" placeholder="상호명을 입력해 주세요">
+          </div>
+          <div class="phone-wrap">
+            <div class="phone-wrap-title">*연락처</div>
+            <input class="phone-wrap-input" type="text" placeholder="휴대폰 번호를 입력해 주세요">
+          </div>
+          <div class="personal-info-wrap">
+            <div class="info-check-box">
+              <input type="checkbox" class="consent-checkbox">
+              <div class="personal-info-title">개인정보 수집 및 이용 동의 <span class="personal-info-title-text" onclick="window.location.href='{% url 'personal_info' %}'">[전문보기]</span></div>
+            </div>
+            <div class="info-check-box">
+              <input type="checkbox" class="consent2-checkbox">
+              <div class="personal-info-title">개인정보 제 3자 제공 동의 <span class="personal-info-title-text" onclick="window.location.href='{% url 'personal_info' %}'">[전문보기]</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="consel-nav-modal-text-box-btn-wrap">
+          <button class="consel-nav-modal-text-box-btn">신청하기</button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
   <script src="{% static 'base/base.js' %}"></script>
   <script src="{% static 'main/search_ai_result.js' %}"></script>
 </body>

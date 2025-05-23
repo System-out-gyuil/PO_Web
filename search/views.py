@@ -17,6 +17,7 @@ import tiktoken
 from config import OPEN_AI_API_KEY
 import ast
 import re
+from datetime import datetime, date
 
 class SearchView(View):
     def get(self, request):
@@ -59,7 +60,7 @@ class SearchAIResultView(View):
         datas = ''
         for i in data:
             if i.noti_summary:
-                datas += f'id: {i.pblanc_id}, title:{i.title}, summary:{i.noti_summary}, region:{i.region}\n\n'
+                datas += f'id: {i.pblanc_id},\n title:{i.title},\n summary:{i.noti_summary},\n region:{i.region}\n\n'
 
         text = f"""
         당신은 중소기업 지원사업 매칭 전문가입니다.
@@ -91,7 +92,7 @@ class SearchAIResultView(View):
         """
 
         llm = ChatOpenAI(
-            temperature=0.3,
+            temperature=0,
             model_name='gpt-4o-mini',
             openai_api_key=OPEN_AI_API_KEY
         )
@@ -134,18 +135,36 @@ class SearchAIResultView(View):
             return render(request, "main/search_ai_result.html", {"datas": [], "error": "GPT 응답 파싱 실패"})
 
         datas2 = []
+
         for i in contents:
             print(i.get("id"), "\n")
             try:
                 obj = BizInfo.objects.get(pblanc_id=i.get("id"))
                 obj.region = obj.region.replace("[", "").replace("]", "")
                 obj.possible_industry = obj.possible_industry.replace("[", "").replace("]", "")
+
+                # ✅ D-day 계산
+                try:
+                    reception_end_date = obj.reception_end
+                    today = datetime.today().date()
+
+                    # "9999-12-31" 은 무시
+                    if reception_end_date == date(9999, 12, 31):
+                        obj.d_day = "none"
+                    else:
+                        obj.d_day = (reception_end_date - today).days
+                except Exception as e:
+                    print(f"날짜 파싱 오류: {e}")
+                    obj.d_day = "none"
+
                 obj.score = i.get("score")
                 obj.reason = i.get("reason")
                 datas2.append(obj)
+
             except BizInfo.DoesNotExist:
                 print(f"DB에 존재하지 않는 공고 ID: {i.get('id')}")
                 continue
+
 
         context = {
             "region": region,

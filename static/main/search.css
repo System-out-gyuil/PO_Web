@@ -5,6 +5,10 @@
   font-style: normal;
 }
 
+body {
+  padding-bottom: 170px;
+}
+
 .search-container {
   margin: 0 auto;
   display: flex;
@@ -276,6 +280,7 @@
 
 .industry-table-big {
   width: 150px;
+  line-height: 20px;
 }
 
 .industry-table-small {
@@ -612,6 +617,12 @@ ul {
   border: 1px solid #5ec7ff;
 }
 
+@media (max-width: 768px) {
+  .search-ai-result-container {
+    width: 97%;
+  }
+}
+
 .search-ai-result-content {
   width: 100%;
   display: flex;
@@ -760,6 +771,25 @@ ul {
   font-style: italic;
   cursor: pointer;
 }
+
+.underline {
+  margin-bottom: -15px;
+}
+
+@media (max-width: 768px) {
+  .consel-nav-modal-item-box {
+    width: 365px;
+  }
+
+  .consel-nav-modal-text-box {
+    width: 92%;
+  }
+
+  body {
+    padding-bottom: 200px;
+  }
+}
+
 .search-region-container {
   display: flex;
 }

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYdivE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8">
@@ -10,70 +10,101 @@
     <meta name="description" content="{{ item.content|striptags|truncatechars:150 }}">
     <meta name="robots" content="index, follow">
   
-    <!-- 🔹 Open Graph (SNS 공유 시) -->
-    <meta property="og:type" content="article">
+    <!-- 🔹 Odiven Gradivh (SNS 공유 시) -->
+    <meta property="og:tydive" content="article">
     <meta property="og:title" content="{{ item.title }}">
     <meta property="og:description" content="{{ item.content|striptags|truncatechars:150 }}">
     <meta property="og:url" content="{{ request.build_absolute_uri }}">
-    <meta property="og:image" content="{% static 'images/NAMATJI_ICON.png' %}">
+    <meta property="og:image" content="{% static 'images/NAMATJI_ICON.divng' %}">
   
     <!-- 🔹 Twitter Card -->
     <meta name="twitter:card" content="summary">
     <meta name="twitter:title" content="{{ item.title }}">
     <meta name="twitter:description" content="{{ item.content|striptags|truncatechars:150 }}">
   
-    <link rel="stylesheet" href="{% static 'detail/detail.css' %}">
     <link rel="stylesheet" href="{% static 'base/base.css' %}">
-    <link rel="icon" type="image/png" href="{% static 'images/NAMATJI_ICON.png' %}" />
+    <link rel="stylesheet" href="{% static 'board/detail.css' %}">
+    <link rel="icon" tydive="image/divng" href="{% static 'images/NAMATJI_ICON.divng' %}" />
   </head>
   
 <body>
-  {% include 'base/board_top_nav.html' %}
+  {% include 'base/top_nav.html' %}
   <div class="board-top-nav-container">
     <h1>지원사업공고</h1>
   </div>
 
-  {% comment %} <p>작성 날짜 : {{ item.registered_at|date:"Y-m-d" }}</p> {% endcomment %}
+  {% comment %} <div>작성 날짜 : {{ item.registered_at|date:"Y-m-d" }}</div> {% endcomment %}
   <hr>
+  <div class="board-detail-container">
+    <div class="detail-wrapper">
+      <div class="detail-title">{{ item.title }}</div>
 
-  <strong>공고명</strong>
-  <p>{{ item.title }}</p>
+      <div class="hr-div"></div>
 
-  <strong>기관명</strong>
-  <p>{{ item.institution_name }}</p>
+      <div class="detail-info-container">
+        <div class="description-wrap">
+          <div class="description-text">기관명 :&nbsp;</div><div class="detail-institution-name">{{ item.institution_name }} </div>
+        </div>
+        <div class="description-wrap">
+          {% comment %} <div class="description-text">대상 :&nbsp;</div><div class="detail-target">{{ item.target }} </div> {% endcomment %}
+          <div class="description-text">분야 :&nbsp;</div><div class="detail-field">{{ item.field }} </div>
+        </div>
+        <div class="description-wrap">
+          <div class="description-text">등록일 :&nbsp;</div><div class="detail-registered-at">{{ item.registered_at|date:"Y-m-d" }} </div>
+        </div>
+      </div>
 
-  <strong>대상</strong>
-  <p>{{ item.target }}</p>
+      <div class="hr-div"></div>
+      
+      <div class="detail-info-container">
+        {% if item.reception_start.year != 1900 and item.reception_end.year != 9999 %}
+        <div class="description-wrap">
+          <div class="description-text">신청 기간 :&nbsp;</div><div class="detail-registered-at">{{ item.reception_start|date:"Y-m-d" }} ~ {{ item.reception_end|date:"Y-m-d" }}</div>
+        </div>
+        {% else %}
+        <div class="description-wrap">
+          <div class="description-text">신청 기간 :&nbsp;</div>
+          <div>상시 접수(예산 소진 시까지)</div>
+        </div>
+        {% endif %}
+      </div>
 
-  <strong>분야</strong>
-  <p>{{ item.field }}</p>
 
-  {% if item.reception_start.year != 1900 and item.reception_end.year != 9999 %}
-    <strong>사업 기간</strong>
-    <p>{{ item.reception_start|date:"Y-m-d" }} ~ {{ item.reception_end|date:"Y-m-d" }}</p>
-  {% else %}
-    <strong>신청 기간</strong>
-    <p>상시 접수(예산 소진 시까지)</p>
-  {% endif %}
+      <div class="hr-div"></div>
+      
+      <div class="description-text">사업 개요</div>
+      <div>{{ item.content|safe }}</div>
+      
+      <div class="hr-div"></div>
+      <div class="detail-info-container">
+        <div class="description-text detail-info-text">사업 신청 방법 :&nbsp;</div>
+        <div>{{ item.enroll_method }}</div>
+      </div>
+      
+      <div class="hr-div"></div>
+      
+      <div class="description-noti-summary">공고 내용 요약&nbsp;</div>
+      <div>{{ item.noti_summary }}</div>
+      
+      <div class="hr-div"></div>
 
-  <strong>사업 개요</strong>
-  <p>{{ item.content|safe }}</p>
+      {% if item.application_form_path %}
+      <div class="detail-info-container">
+        <div class="description-text">신청 양식 :&nbsp;</div>
+        <div><a href="{{ item.application_form_path }}" target="_blank">{{ item.application_form_name }}</a></div>
+      </div>
+      {% endif %}
 
-  <strong>사업 신청 방법</strong>
-  <p>{{ item.enroll_method }}</p>
-  
-  <strong>공고 원문</strong>
-  <p><a href="{{ item.print_file_path }}" target="_blank">{{ item.print_file_name }}</a></p>
-  
-  {% if item.application_form_path %}
-    <strong>신청 양식</strong>
-    <p><a href="{{ item.application_form_path }}" target="_blank">{{ item.application_form_name }}</a></p>
-  {% endif %}
+      <div class="detail-info-container">
+        <div class="description-text">공고 원문 :&nbsp;</div>
+        <div><a href="{{ item.print_file_path }}" target="_blank">{{ item.print_file_name }}</a></div>
+      </div>
 
-  {% if iframe_src %}
-    <iframe src="{{ iframe_src }}" width="100%" height="900px"></iframe>
-  {% endif %}
-  {% include 'base/footer.html' %}
+      {% if iframe_src %}
+        <iframe src="{{ iframe_src }}" width="100%" height="1500px"></iframe>
+      {% endif %}
+    </div>
+  </div>
   {% include 'base/coupang_banner.html' %}
 </body>
 </html>

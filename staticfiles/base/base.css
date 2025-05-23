@@ -43,22 +43,26 @@ ul {
 
 
 .namatji-top-nav-buttons-box {
-  width: 50%;
+  width: 83%;
 }
 
+.namatji-top-nav-buttons {
+  line-height: 4;
+  display: flex;
+  justify-content: space-around;
+}
 /* 모바일 화면일 때 */
 @media (max-width: 768px) {
   .namatji-top-nav-buttons-box {
     width: 67%;
   }
+
+  .namatji-top-nav-buttons  {
+    justify-content: flex-end;
+  }
 }
 
 
-.namatji-top-nav-buttons {
-  line-height: 4;
-  display: flex;
-  justify-content: flex-end;
-}
 
 .namatji-img-box {
   margin-top: -37px;

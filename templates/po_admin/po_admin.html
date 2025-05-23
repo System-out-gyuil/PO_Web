@@ -21,7 +21,6 @@
         <col style="width: 10%">
         <col style="width: 10%">
         <col style="width: 10%">
-        <col style="width: 10%">
       </colgroup>
       <thead>
         <tr>
@@ -30,10 +29,9 @@
           <th>연락처</th>
           <th>지역</th>
           <th>업종</th>
+          <th>세부업종</th>
           <th>사업개시일</th>
-          <th>24년 매출</th>
-          <th>25년 현재매출</th>
-          <th>문의내용</th>
+          <th>연매출</th>
           <th>신청일시</th>
         </tr>
       </thead>
@@ -45,10 +43,9 @@
           <td>{{ counsel.phone }}</td>
           <td>{{ counsel.region }}</td>
           <td>{{ counsel.industry }}</td>
+          <td>{{ counsel.industry_detail }}</td>
           <td>{{ counsel.start_date }}</td>
-          <td>{{ counsel.sales_2024 }}</td>
-          <td>{{ counsel.sales_2025 }}</td>
-          <td>{{ counsel.inquiry_type }}</td>
+          <td>{{ counsel.sales }}</td>
           <td>{{ counsel.created_at|date:"Y-m-d H:i" }}</td>
         </tr>
         {% endfor %}

@@ -159,8 +159,6 @@ function industrySection(e) {
       small = e.target.parentElement.parentElement.children[1].innerText;
       selectedConditions.big_industry = big;
       selectedConditions.small_industry = small;
-      console.log(selectedConditions.big_industry);
-      console.log(selectedConditions.small_industry);
       businessPeriod();
     }
   });
@@ -364,4 +362,6 @@ searchBackIcons.forEach(searchBackIcon => {
     }
   });
 });
+
+
 

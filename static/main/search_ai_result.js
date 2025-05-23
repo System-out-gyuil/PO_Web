@@ -1,7 +1,5 @@
 const titleTexts = document.querySelectorAll('.title-text-biz');
 
-
-
 titleTexts.forEach(titleText => { 
   titleText.addEventListener('click', (e) => {
     detail = e.target.parentElement.nextElementSibling

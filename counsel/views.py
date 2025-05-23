@@ -1,47 +1,35 @@
-from django.shortcuts import render, redirect
 from django.views import View
+from django.http import JsonResponse
 from .models import Counsel
 
 class CounselFormView(View):
     def get(self, request):
-        return render(request, 'counsel/counsel_form.html')
+        company = request.GET.get("name", "")
+        phone = request.GET.get("phone", "")
+        region = request.GET.get("region", "")
+        industry = request.GET.get("big_industry", "")
+        industry_detail = request.GET.get("small_industry", "")
+        start_date = request.GET.get("business_period", "")
+        sales = request.GET.get("sales", "")
+        consent = request.GET.get("consent") == "on"
+        consent2 = request.GET.get("consent2") == "on"
 
-    def post(self, request):
-        # 데이터 추출
-        company = request.POST.get('company')
-        phone = request.POST.get('phone')
-        region = request.POST.get('region')
-        industry = request.POST.get('industry')
-        start_date = request.POST.get('start_date')
-        sales_2024 = request.POST.get('sales_2024')
-        sales_2025 = request.POST.get('sales_2025')
-        inquiry_type = request.POST.get('inquiry_type')
+        if start_date and '.' in start_date:
+            parts = start_date.split('.')
+            start_date = f'{parts[0]}년{parts[1]}월'
+        else:
+            start_date = ""
 
-        # ✅ 동의 여부 체크박스 값: 체크시 'on', 미체크시 None
-        consent = bool(request.POST.get('consent'))
-        consent2 = bool(request.POST.get('consent2'))
-
-        # 디버깅 로그 (선택)
-        print(company, phone, region, industry, start_date, sales_2024, sales_2025, inquiry_type, consent, consent2)
-
-        # DB 저장
         Counsel.objects.create(
             company=company,
             phone=phone,
             region=region,
             industry=industry,
+            industry_detail=industry_detail,
             start_date=start_date,
-            sales_2024=sales_2024,
-            sales_2025=sales_2025,
-            inquiry_type=inquiry_type,
+            sales=sales,
             consent=consent,
             consent2=consent2
         )
 
-        # 성공 후 thank_you 페이지로 리디렉션
-        return redirect('thank_you')
-
-
-class ThankYouView(View):
-    def get(self, request):
-        return render(request, 'counsel/thank_you.html')
+        return JsonResponse({"status": "success"})
