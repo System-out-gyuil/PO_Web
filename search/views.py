@@ -133,12 +133,11 @@ class SearchAIResultView(View):
         try:
             content_cleaned = None
 
-            # 1. 코드 블록 안에서 추출: ```json 또는 ```python
+            # 1. 코드 블록 추출
             match = re.search(r"```(?:json|python)?\n([\s\S]*?)```", content)
             if match:
                 content_cleaned = match.group(1).strip()
             else:
-                # 2. matching_results = [...] 형태 처리
                 if "matching_results" in content:
                     start = content.index("matching_results")
                     content_cleaned = content[start:].split("=", 1)[1].strip()
@@ -146,10 +145,13 @@ class SearchAIResultView(View):
                     start = content.index("matching_opportunities")
                     content_cleaned = content[start:].split("=", 1)[1].strip()
                 else:
-                    # 3. 마지막 수단: 전체가 그냥 JSON 배열인 경우
                     content_cleaned = content.strip()
 
-            # 파싱 시도 (JSON 우선)
+            # ✅ 추가 보정: 코드 블록 안에 대입문이 들어있는 경우 제거
+            if content_cleaned.startswith("matching_opportunities") or content_cleaned.startswith("matching_results"):
+                content_cleaned = content_cleaned.split("=", 1)[1].strip()
+
+            # 파싱 시도 (JSON 우선 → 파이썬 fallback)
             try:
                 contents = json.loads(content_cleaned)
             except json.JSONDecodeError:
@@ -159,6 +161,7 @@ class SearchAIResultView(View):
             print("파싱 오류:", e)
             print("GPT 응답:", content)
             return render(request, "main/search_ai_result.html", {"datas": [], "error": "GPT 응답 파싱 실패"})
+
 
 
         for i in contents:

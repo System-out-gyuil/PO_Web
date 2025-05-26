@@ -1,6 +1,7 @@
 from django.views import View
 from django.http import JsonResponse
 from .models import Counsel
+from django.shortcuts import render
 
 class CounselFormView(View):
     def get(self, request):
@@ -33,3 +34,16 @@ class CounselFormView(View):
         )
 
         return JsonResponse({"status": "success"})
+    
+class InquiryView(View):
+    def get(self, request):
+        return render(request, 'counsel/inquiry.html')
+    
+    def post(self, request):
+        name = request.POST.get("name", "")
+        phone = request.POST.get("phone", "")
+        inquiry = request.POST.get("inquiry", "")
+
+        print(name, phone, inquiry)
+        
+        return render(request, 'counsel/thank_you.html')

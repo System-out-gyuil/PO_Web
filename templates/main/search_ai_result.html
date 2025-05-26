@@ -49,6 +49,19 @@
                   </div>
                 </div>
                 <div class="detail-text-box">
+                  <div class="detail-text-title">모집 일자</div>:
+                  <div class="detail-text-value">
+                    {% if data.reception_start|date:"Y-m-d" == "1900-01-01" and data.reception_end|date:"Y-m-d" != "9999-12-31" %}
+                      &nbsp; ~ {{ data.reception_end|date:"Y.m.d" }}
+                    {% elif data.reception_end|date:"Y-m-d" == "9999-12-31" %}
+                      상시 접수 (예산 소진 시 까지)
+                    {% else %}
+                      &nbsp; {{ data.reception_start|date:"Y.m.d" }} ~ {{ data.reception_end|date:"Y.m.d" }}
+                    {% endif %}
+                  </div>
+                </div>
+                
+                <div class="detail-text-box">
                   <div class="detail-text-title">지역</div>:
                   <div class="detail-text-value">{{data.region}}</div>
                 </div>

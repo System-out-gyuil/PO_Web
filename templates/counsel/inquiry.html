@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  {% load static %}
+  <link rel="stylesheet" href="{% static 'base/base.css' %}">
+  <link rel="stylesheet" href="{% static 'main/inquiry.css' %}">
+  <title>고객문의</title>
+</head>
+<body>
+  {% include 'base/top_nav.html' %}
+  <div class="inquiry-container">
+    <div class="inquiry-title">고객문의</div>
+    <div class="inquiry-form">
+      <form action="{% url 'inquiry' %}" method="post">
+        {% csrf_token %}
+        <div class="inquiry-form-item">
+          <label for="name">이름</label>
+          <input type="text" id="name" name="name">
+        </div>
+        <div class="inquiry-form-item">
+          <label for="phone">전화번호</label>
+          <input type="text" id="phone" name="phone">
+        </div>
+        <div class="inquiry-form-item">
+          <label for="inquiry">문의 내용</label>
+          <textarea id="inquiry" name="inquiry"></textarea>
+        </div>
+        <div class="personal-info-wrap">
+          <div class="info-check-box">
+            <input type="checkbox" class="consent-checkbox">
+            <div class="personal-info-title">개인정보 수집 및 이용 동의 <span class="personal-info-title-text" onclick="window.location.href='{% url 'personal_info' %}'">[전문보기]</span></div>
+          </div>
+          <div class="info-check-box">
+            <input type="checkbox" class="consent2-checkbox">
+            <div class="personal-info-title">개인정보 제 3자 제공 동의 <span class="personal-info-title-text" onclick="window.location.href='{% url 'personal_info' %}'">[전문보기]</span></div>
+          </div>
+        </div>
+        <button type="submit">전송</button>
+      </form>
+    </div>
+  </div>
+</body>
+</html>

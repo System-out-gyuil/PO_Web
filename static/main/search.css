@@ -766,6 +766,7 @@ ul {
 }
 
 .detail-text-value {
+  margin-left: 10px;
   font-size: 15px;
   width: 70%;
   max-height: 100px;
