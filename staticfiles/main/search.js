@@ -27,6 +27,13 @@ function WatingSearchResult() {
   searchResultContainer.style.display = 'block';
 }
 
+// 검색 결과 없음 창
+const searchNoneResultContainer = document.querySelector('.search-none-result-container');
+
+function WatingNoneSearchResult() {
+  businessStyleContainer.style.display = 'none';
+  searchNoneResultContainer.style.display = 'block';
+}
 // 지역 선택 창
 const search_region_container = document.querySelector('.search-region-container');
 const search_region_button = document.querySelector('.search-region-btn-container');
@@ -90,7 +97,7 @@ search_business_btn_container.addEventListener('click', () => {
   } else {
 
     if (selectedConditions.business_style === '창업 전') {
-      WatingSearchResult();
+      WatingNoneSearchResult();
     } else {
       industry();
     }

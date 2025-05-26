@@ -419,6 +419,16 @@ body {
   border: 1px solid #5ec7ff;
   border-radius: 15px;
 }
+.search-none-result-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 25%;
+  height: 100%;
+  margin: 0 auto;
+  border-radius: 15px;
+}
 
 .search-result-wait {
   font-family: 'TmonMonsori', sans-serif;
@@ -426,6 +436,14 @@ body {
   font-weight: 600;
   color: #318aff;
   margin-top: 60px;
+  text-align: center;
+}
+.search-none-result-wait {
+  font-family: 'TmonMonsori', sans-serif;
+  font-size: 40px;
+  font-weight: 600;
+  color: #318aff;
+  margin-top: 160px;
   text-align: center;
 }
 
@@ -450,6 +468,19 @@ body {
   width: 100%;
   height: 100%;
   background-image: url("../images/ai_consel_img.jpg");
+  background-size: cover;
+}
+.none-wait_ai_img_box {
+  width: 230px;
+  height: 250px;
+  margin: 0 auto;
+  position: relative;
+}
+
+.none-wait_ai_img {
+  width: 100%;
+  height: 100%;
+  background-image: url("../images/sad_imoji.png");
   background-size: cover;
 }
 

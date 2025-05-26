@@ -250,7 +250,7 @@ ul {
 }
 
 .consel-nav-container {
-  position: fixed;
+  /* position: fixed; */
   bottom: 90px;
   left: 0;
   width: 100%;
