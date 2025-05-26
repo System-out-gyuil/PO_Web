@@ -6,7 +6,7 @@ from datetime import datetime
 import json
 from config import ES_API_KEY, BIZINFO_API_KEY
 from board.models import BizInfo
-from main.models import Count
+from main.models import Count, IpAddress
 import requests
 
 class MainView(View):
@@ -29,13 +29,31 @@ class MainView(View):
 
         biz_top_10 = list(BizInfo.objects.filter(pblanc_id__in=pblanc_ids))
 
-        for i in biz_top_10:
-            print(i.title, i.registered_at)
-
         context = {
             'biz_list': biz_list_10,
             'biz_top_10': biz_top_10
         }
+
+        def get_client_ip(request):
+            x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+            if x_forwarded_for:
+                # 프록시를 거쳤을 경우, 실제 IP는 리스트 맨 앞에 있음
+                ip = x_forwarded_for.split(',')[0]
+            else:
+                # 직접 접속일 경우
+                ip = request.META.get('REMOTE_ADDR')
+            return ip
+
+        ip = get_client_ip(request)
+
+        print(f'접속 ip: {ip}')
+
+        ip_address = IpAddress.objects.filter(ip_address=ip).first()
+        if ip_address:
+            ip_address.count += 1
+            ip_address.save()
+        else:
+            IpAddress.objects.create(ip_address=ip, count=1)
 
         count = Count.objects.get(count_type="main")
         count.value += 1
