@@ -10,11 +10,15 @@ class StaticViewSitemap(Sitemap):
     def items(self):
         return [
             'main',
-            'search_result',
             'po_admin_login',
             'po_admin_list',
             'counsel_form',
             'thank_you',
+            'board:list',
+            'counsel_form',
+            'inquiry'
+            'search'
+            'search_ai_result'
         ]
 
     def location(self, item):
