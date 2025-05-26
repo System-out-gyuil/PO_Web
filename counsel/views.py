@@ -1,6 +1,6 @@
 from django.views import View
 from django.http import JsonResponse
-from .models import Counsel
+from .models import Counsel, Inquiry
 from django.shortcuts import render
 
 class CounselFormView(View):
@@ -43,7 +43,18 @@ class InquiryView(View):
         name = request.POST.get("name", "")
         phone = request.POST.get("phone", "")
         inquiry = request.POST.get("inquiry", "")
+        consent = request.POST.get("consent") == "on"
+        consent2 = request.POST.get("consent2") == "on"
 
-        print(name, phone, inquiry)
+
+        Inquiry.objects.create(
+            name=name,
+            phone=phone,
+            inquiry=inquiry,
+            consent=consent,
+            consent2=consent2
+        )
+
+        print(name, phone, inquiry, consent, consent2)
         
         return render(request, 'counsel/thank_you.html')

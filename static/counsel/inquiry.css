@@ -1,0 +1,101 @@
+.inquiry-container {
+  margin: 0 auto;
+  width: 30%;
+  height: 700px;
+  background-color: #f0f0f0;
+  /* background-color: #4294ff; */
+  margin-top: 50px;
+  border-radius: 15px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  font-family: "Nanum Barun Gothic", sans-serif;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.inquiry-wrapper {
+  width: 75%;
+  height: 100%;
+}
+
+.inquiry-title {
+  margin-top: 20px;
+  font-size: 30px;
+  font-weight: 700;
+  color: #333;
+  text-align: center;
+}
+
+
+.inquiry-form-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-around;
+  margin-top: 50px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  font-family: 'Nanum Barun Gothic', sans-serif;
+}
+
+label {
+  margin-right: 20px;
+  
+}
+
+.inquiry-form-item input {
+  width: 97%;
+  height: 40px;
+  border-radius: 5px;
+  border: 1px solid #686868;
+  background-color: #f8f8f8;
+  margin: 0 auto;
+  margin-top: 10px;
+  font-family: 'Nanum Barun Gothic', sans-serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+
+}
+
+textarea {
+  width: 97%;
+  height: 100px;
+  border-radius: 5px;
+  border: 1px solid #686868;
+  background-color: #f8f8f8;
+  margin: 0 auto;
+  margin-top: 10px;
+  resize: none;
+  font-family: 'Nanum Barun Gothic', sans-serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+.inquiry-form-btn-wrap {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  height: 70px;
+  background-color: #318aff;
+  margin-top: auto;
+  border-bottom-left-radius: 15px;
+  border-bottom-right-radius: 15px;
+  cursor: pointer;
+}
+
+.inquiry-form-btn {
+  background-color: #318aff;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 35px;
+  font-weight: 600;
+  font-family: 'Nanum Barun Gothic', sans-serif;
+}
+
