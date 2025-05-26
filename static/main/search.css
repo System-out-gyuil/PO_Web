@@ -605,6 +605,23 @@ ul {
   margin: 0;
 }
 
+@media (max-width: 768px) {
+  .search-result-wait {
+    margin-top: 10px;
+  }
+  .search-result-wait2 {
+    margin-top: 25px;
+  }
+  .wait_ai_img_box {
+    width: 200px;
+    height: 240px;
+  }
+  .wait_ai_searching_img {
+    width: 45px;
+    height: 55px;
+  }
+}
+
 .search-ai-result-container {
   width: 25%;
   margin: 0 auto;

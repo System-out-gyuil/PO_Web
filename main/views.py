@@ -4,16 +4,36 @@ from django.core.paginator import Paginator
 from elasticsearch import Elasticsearch
 from datetime import datetime
 import json
-from config import ES_API_KEY
+from config import ES_API_KEY, BIZINFO_API_KEY
 from board.models import BizInfo
+import requests
 
 class MainView(View):
     def get(self, request):
         biz_list_10 = BizInfo.objects.all().order_by('-registered_at')[:10]
-        
+
+        # 인기 공고 10개 직접 입력
+        pblanc_ids = [
+            'PBLN_000000000109562',
+            'PBLN_000000000109448',
+            'PBLN_000000000109555',
+            'PBLN_000000000109464',
+            'PBLN_000000000109685',
+            'PBLN_000000000109439',
+            'PBLN_000000000109783',
+            'PBLN_000000000109668',
+            'PBLN_000000000109768',
+            'PBLN_000000000109784',
+        ]
+
+        biz_top_10 = list(BizInfo.objects.filter(pblanc_id__in=pblanc_ids))
+
+        for i in biz_top_10:
+            print(i.title, i.registered_at)
 
         context = {
-            'biz_list': biz_list_10
+            'biz_list': biz_list_10,
+            'biz_top_10': biz_top_10
         }
 
         return render(request, 'main/main.html', context)
