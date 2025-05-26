@@ -89,7 +89,7 @@ class BoardDetailView(View):
         page_index = request.GET.get("page_index", 1)
         item = get_object_or_404(BizInfo, pblanc_id=pblanc_id)
 
-        count = Count.objects.get_or_create(count_type="board_detail", defaults={"value": 1})
+        count = Count.objects.get(count_type="board_detail")
         count.value += 1
         count.save()
 
