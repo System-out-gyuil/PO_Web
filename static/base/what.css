@@ -1,0 +1,17 @@
+.button-container {
+  display: flex;
+  justify-content: end;
+  margin-top: 30px;
+  width: 95%;
+  position: fixed;
+  bottom: 160px;
+  right: 10px;
+  z-index: 9999;
+}
+
+.namatji-consel-btn-container {
+  position: fixed;
+  bottom: 100px;
+  right: 10px;
+  z-index: 9999;
+}
