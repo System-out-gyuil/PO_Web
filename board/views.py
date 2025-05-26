@@ -7,7 +7,7 @@ from config import ES_API_KEY
 import math
 import ast
 from datetime import datetime
-
+from main.models import Count
 # ✅ Elasticsearch 클라이언트 설정
 es = Elasticsearch(
     "https://0e0f4480a93d4cb78455e070163e467d.us-central1.gcp.cloud.es.io:443",
@@ -66,6 +66,10 @@ class BoardView(View):
         block_end = min(block_start + 9, total_pages)
         page_range = range(block_start, block_end + 1)
 
+        count, created = Count.objects.get_or_create(count_type="board", defaults={"value": 1})
+        count.value += 1
+        count.save()
+
         return render(request, "board/board.html", {
             "items": items,
             "page_index": page_index,
@@ -84,6 +88,10 @@ class BoardDetailView(View):
     def get(self, request, pblanc_id):
         page_index = request.GET.get("page_index", 1)
         item = get_object_or_404(BizInfo, pblanc_id=pblanc_id)
+
+        count = Count.objects.get_or_create(count_type="board_detail", defaults={"value": 1})
+        count.value += 1
+        count.save()
 
         return render(request, "board/detail.html", {
             "item": item,

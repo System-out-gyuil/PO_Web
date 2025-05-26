@@ -13,7 +13,7 @@ ul {
 }
 
 .search-ai-result-container {
-  width: 25%;
+  width: 440px;
   margin: 0 auto;
   border-radius: 10px;
   line-height: 35px;
@@ -333,10 +333,6 @@ ul {
   width: 80%;
   height: 91%;
   
-}
-
-.underline {
-  margin-bottom: -50px;
 }
 
 .consel-nav-modal-text {

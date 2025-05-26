@@ -6,6 +6,7 @@ from datetime import datetime
 import json
 from config import ES_API_KEY, BIZINFO_API_KEY
 from board.models import BizInfo
+from main.models import Count
 import requests
 
 class MainView(View):
@@ -35,6 +36,11 @@ class MainView(View):
             'biz_list': biz_list_10,
             'biz_top_10': biz_top_10
         }
+
+        count = Count.objects.get(count_type="main")
+        count.value += 1
+        count.save()
+
 
         return render(request, 'main/main.html', context)
 

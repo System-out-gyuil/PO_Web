@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  {% load static %}
+  <link rel="stylesheet" href="{% static 'po_admin/po_admin.css' %}">
+  <title>Document</title>
+</head>
+<body>
+  <div>
+    <table class="count-table">
+      <colgroup>
+        <col style="width: 20%;">
+        <col style="width: 30%;">
+      </colgroup>
+      <thead>
+        <tr>
+          <th>카운트 타입</th>
+          <th>조회수</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for count in counts %}
+        <tr>
+          {% if count.count_type == "main" %}
+          <td>메인페이지</td>
+          {% elif count.count_type == "search" %}
+          <td>검색페이지</td>
+          {% elif count.count_type == "search_ai_result" %}
+          <td>검색AI 결과</td>
+          {% elif count.count_type == "inquiry" %}
+          <td>상담 문의</td>
+          {% elif count.count_type == "board" %}
+          <td>게시판</td>
+          {% elif count.count_type == "board_detail" %}
+          <td>게시판 상세</td>
+          {% elif count.count_type == "counsel" %}
+          <td>상담 문의</td>
+          {% endif %}
+          <td>{{ count.value }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>

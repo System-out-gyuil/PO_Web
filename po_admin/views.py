@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect
 from django.views import View
 from counsel.models import Counsel
 from config import ADMIN_PASSWORD  # 🔥 config에서 비밀번호 불러오기
+from main.models import Count
 
 class AdminLoginView(View):
     def get(self, request):
@@ -23,3 +24,9 @@ class AdminCounselListView(View):
 
         counsels = Counsel.objects.all().order_by('-created_at')
         return render(request, 'po_admin/po_admin.html', {'counsels': counsels})
+
+class AdminCountListView(View):
+    def get(self, request):
+
+        counts = Count.objects.all()
+        return render(request, 'po_admin/po_admin_count.html', {'counts': counts})

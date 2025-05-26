@@ -18,9 +18,14 @@ from config import OPEN_AI_API_KEY
 import ast
 import re
 from datetime import datetime, date
-
+from main.models import Count
 class SearchView(View):
     def get(self, request):
+
+        count = Count.objects.get(count_type="search")
+        count.value += 1
+        count.save()
+
         return render(request, 'main/search.html')
     
 @csrf_exempt
@@ -192,6 +197,10 @@ class SearchAIResultView(View):
             except BizInfo.DoesNotExist:
                 print(f"DB에 존재하지 않는 공고 ID: {i.get('id')}")
                 continue
+
+        count = Count.objects.get(count_type="search_ai_result")
+        count.value += 1
+        count.save()
 
 
         context = {

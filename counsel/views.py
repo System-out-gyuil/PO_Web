@@ -2,6 +2,7 @@ from django.views import View
 from django.http import JsonResponse
 from .models import Counsel, Inquiry
 from django.shortcuts import render
+from main.models import Count
 
 class CounselFormView(View):
     def get(self, request):
@@ -37,6 +38,11 @@ class CounselFormView(View):
     
 class InquiryView(View):
     def get(self, request):
+
+        count = Count.objects.get(count_type="inquiry")
+        count.value += 1
+        count.save()
+
         return render(request, 'counsel/inquiry.html')
     
     def post(self, request):
@@ -45,7 +51,6 @@ class InquiryView(View):
         inquiry = request.POST.get("inquiry", "")
         consent = request.POST.get("consent") == "on"
         consent2 = request.POST.get("consent2") == "on"
-
 
         Inquiry.objects.create(
             name=name,
