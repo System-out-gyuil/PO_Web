@@ -13,7 +13,6 @@ class StaticViewSitemap(Sitemap):
             'po_admin_login',
             'po_admin_list',
             'counsel_form',
-            'thank_you',
             'board:list',
             'counsel_form',
             'inquiry'
