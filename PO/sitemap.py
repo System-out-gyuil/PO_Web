@@ -15,9 +15,9 @@ class StaticViewSitemap(Sitemap):
             'counsel_form',
             'board:list',
             'counsel_form',
-            'inquiry'
-            'search'
-            'search_ai_result'
+            'inquiry',
+            'search',
+            'search_ai_result',
         ]
 
     def location(self, item):
