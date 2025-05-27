@@ -8,6 +8,11 @@ from config import ES_API_KEY, BIZINFO_API_KEY
 from board.models import BizInfo
 from main.models import Count, IpAddress
 import requests
+from django.http import HttpResponse
+
+class Ads(View):
+    def Ads(request):
+        return HttpResponse("google.com, pub-6882409851484122, DIRECT, f08c47fec0942fa0", content_type='text/plain')
 
 class MainView(View):
     def get(self, request):
