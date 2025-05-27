@@ -250,3 +250,17 @@ python에서 os.system으로 libreoffice의 convert to pdf 명령어 사용 <br>
 ## 3. Cron 자동화 재설정
 - crontab이 자꾸 실행되지 않아 기존 command 내의 update_bizinfo.py 파일을 바로 실행하는 방식에서 <br>
 update_bizinfo.sh 의 스크립트를 통해 실행하는 방식으로 바꾸었다.
+
+# 2025.05.27 (화)
+
+## 1. 각종 오류 수정
+- 자잘한 오류들 및  웹앱 반응형을 width 450px까지만 적용했었는데 fold같은 슬림한 버전 고려해서 350px까지 반응형 대응
+
+## 2. SEO
+- 네이버 서치어드바이저와 구글 서치콘솔의 규약에 따라 meta태그의 다양한 속성값을 이용해 SEO
+
+- meta name="description" content="나에게 맞는 지원금 찾기 서비스 - 나맞지"> : 해당 페이지에 대한 설명
+- meta name="keywords" content="나맞지, 나에게 맞는 지원~~,...">  : 해당 페이지의 키워드
+- meta name="robots" content="index, follow"> : 로봇의 색인 생성 등 옵션 부여
+- link rel="canonical" href="https://namatji.com"> : 해당 페이지의 대표 URL
+

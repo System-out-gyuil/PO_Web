@@ -12,8 +12,8 @@
     <meta name="robots" content="index, follow">
     <link rel="canonical" href="https://namatji.com/board/{{ item.pblanc_id }}/?page_index={{ page_index }}">
   
-    <!-- 🔹 Odiven Gradivh (SNS 공유 시) -->
-    <meta property="og:tydive" content="article">
+    <!-- 🔹 Open Graph (SNS 공유 시) -->
+    <meta property="og:type" content="article">
     <meta property="og:title" content="{{ item.title }}">
     <meta property="og:description" content="{{ item.content|striptags|truncatechars:150 }}">
     <meta property="og:url" content="{{ request.build_absolute_uri }}">
@@ -26,7 +26,7 @@
   
     <link rel="stylesheet" href="{% static 'base/base.css' %}">
     <link rel="stylesheet" href="{% static 'board/detail.css' %}">
-    <link rel="icon" tydive="image/divng" href="{% static 'images/NAMATJI_ICON.png' %}" />
+    <link rel="icon" type="image/png" href="{% static 'images/NAMATJI_ICON.png' %}" />
   </head>
   
 <body>
