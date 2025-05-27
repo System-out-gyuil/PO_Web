@@ -89,10 +89,13 @@ textarea {
 }
 
 .inquiry-form-btn {
+  width: 100%;
+  height: 70px;
   background-color: #318aff;
   color: #fff;
   border: none;
-  border-radius: 5px;
+  border-bottom-left-radius: 15px;
+  border-bottom-right-radius: 15px;
   cursor: pointer;
   font-size: 35px;
   font-weight: 600;
@@ -131,5 +134,21 @@ input[type="checkbox"] {
   .inquiry-wrapper {
     width: 90%;
   }
+
+
 }
 
+@media (max-width: 360px) {
+  .inquiry-container {
+    width: 97%;
+    margin-top: 0;
+  }
+
+  .inquiry-wrapper {
+    width: 90%;
+  }
+
+  .personal-info-title {
+    font-size: 14px;
+  }
+}

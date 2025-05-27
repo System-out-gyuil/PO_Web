@@ -34,6 +34,7 @@ function WatingNoneSearchResult() {
   businessStyleContainer.style.display = 'none';
   searchNoneResultContainer.style.display = 'block';
 }
+
 // 지역 선택 창
 const search_region_container = document.querySelector('.search-region-container');
 const search_region_button = document.querySelector('.search-region-btn-container');
@@ -94,7 +95,11 @@ search_business_btn_container.addEventListener('click', () => {
 
   if (!selectedConditions.business_style) {
     warning();
-  } else {
+  }
+  else if (selectedConditions.business_style === '창업 전') {
+    WatingNoneSearchResult();
+  }
+  else {
 
     if (selectedConditions.business_style === '창업 전') {
       WatingNoneSearchResult();
