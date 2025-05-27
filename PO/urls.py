@@ -7,6 +7,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from .sitemap import sitemaps
 from django.contrib.sitemaps.views import sitemap
+from . import views
 
 urlpatterns = [
     path('', MainView.as_view(), name='main'),
@@ -19,6 +20,7 @@ urlpatterns = [
     path('search/', include('search.urls')),
     path('robots.txt', TemplateView.as_view(template_name="robots.txt", content_type='text/plain')),
     path('sitemap.xml', sitemap, {'sitemaps':sitemaps}, name='sitemap'),
+    path('ads.txt',views.Ads),
 ]
 
 urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
