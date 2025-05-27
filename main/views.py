@@ -11,7 +11,7 @@ import requests
 from django.http import HttpResponse
 
 class Ads(View):
-    def Ads(request):
+    def get(self, request):
         return HttpResponse("google.com, pub-6882409851484122, DIRECT, f08c47fec0942fa0", content_type='text/plain')
 
 class MainView(View):
