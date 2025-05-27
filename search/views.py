@@ -58,15 +58,15 @@ class SearchAIResultView(View):
         sales = request.GET.get("sales", "")
         employees = request.GET.get("employees", "")
 
-        data = BizInfo.objects.filter(
-            (Q(region__contains=region) | Q(region__contains="전국")) & Q(possible_industry__contains=big_industry) & Q(revenue__contains=sales) & Q(hashtag__contains=region)
-        )
+        data = BizInfo.objects.filter((Q(region__contains=region) | Q(region__contains="전국")) & Q(possible_industry__contains=big_industry) & Q(revenue__contains=sales) & Q(hashtag__contains=region))
+        
 
         datas = ''
         datas2 = []
 
         for i in data:
-            if ("1~4인" in i.employee_count or "직원 없음" in i.employee_count) and "ADD" in i.pblanc_id :
+            if "ADD" in i.pblanc_id and employees != "5인 이상":
+                print(f"*******************************들어옴******************************{employees}, {i.employee_count}")
                 obj = BizInfo.objects.get(pblanc_id=i.pblanc_id)
                 obj.region = obj.region.replace("[", "").replace("]", "")
                 obj.possible_industry = obj.possible_industry.replace("[", "").replace("]", "")
@@ -105,7 +105,7 @@ class SearchAIResultView(View):
         - 지역과 업종은 반드시 일치해야 합니다.
         - 적합도 점수를 100점 만점으로 평가하여 우선순위를 정해주세요.
         - 점수가 70점 이상인 공고만 보여주세요.
-        - 동일한 공고는 한 번만 표시해주세요, 절대로 중복이 나타나선 안됩니다.
+        - 동일한 공고는 한 번만 표시해주세요, 절대로 중복이 나타나선 안됩니다. **ID가 같은 공고는 하나만 포함해주세요**
         - 절대 내용을 지어내거나 ID를 임의로 변경하지 마세요.
         - 적합도 점수에 대한 근거(지역과 업종 제외한 다른 근거)를 20자 이내로 작성해주세요.
         - title, summary 등 모두 검토하여 절대로 지역과 업종이 일치하지 않는 공고는 보여주지 마세요.
@@ -201,6 +201,16 @@ class SearchAIResultView(View):
         count = Count.objects.get(count_type="search_ai_result")
         count.value += 1
         count.save()
+
+        unique_datas2 = []
+        seen_ids = set()
+
+        for obj in datas2:
+            if obj.pblanc_id not in seen_ids:
+                seen_ids.add(obj.pblanc_id)
+                unique_datas2.append(obj)
+
+        datas2 = unique_datas2
 
 
         context = {
