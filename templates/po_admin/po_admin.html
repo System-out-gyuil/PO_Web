@@ -7,52 +7,146 @@
   <link rel="stylesheet" href="{% static 'po_admin/po_admin.css' %}">
 </head>
 <body>
-  <h1>상담 신청 리스트</h1>
+  <nav>
+    <div class="nav-wrapper">
+      <div class="nav-item counsel-nav-item">상담 신청 리스트</div>
+      <div class="nav-item inquiry-nav-item">고객 문의 리스트</div>
+      <div class="nav-item count-nav-item">조회수 통계</div>
+    </div>
+  </nav>
 
-  {% if counsels %}
-    <table>
-      <colgroup>
-        <col style="width: 10%">
-        <col style="width: 10%">
-        <col style="width: 10%">
-        <col style="width: 10%">
-        <col style="width: 10%">
-        <col style="width: 10%">
-        <col style="width: 10%">
-        <col style="width: 10%">
-        <col style="width: 10%">
-      </colgroup>
-      <thead>
-        <tr>
-          <th>번호</th>
-          <th>상호</th>
-          <th>연락처</th>
-          <th>지역</th>
-          <th>업종</th>
-          <th>세부업종</th>
-          <th>사업개시일</th>
-          <th>연매출</th>
-          <th>신청일시</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for counsel in counsels %}
-        <tr>
-          <td>{{ forloop.counter }}</td>
-          <td>{{ counsel.company }}</td>
-          <td>{{ counsel.phone }}</td>
-          <td>{{ counsel.region }}</td>
-          <td>{{ counsel.industry }}</td>
-          <td>{{ counsel.industry_detail }}</td>
-          <td>{{ counsel.start_date }}</td>
-          <td>{{ counsel.sales }}</td>
-          <td>{{ counsel.created_at|date:"Y-m-d H:i" }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  {% else %}
-    <p>등록된 상담 데이터가 없습니다.</p>
-  {% endif %}
+  <section>
+    <div class="counsel-wrapper">
+      
+
+      <h1>상담 신청 리스트</h1>
+      {% if counsels %}
+        <table class="counsel-table">
+          <colgroup>
+            <col style="width: 10%">
+            <col style="width: 10%">
+            <col style="width: 10%">
+            <col style="width: 10%">
+            <col style="width: 10%">
+            <col style="width: 10%">
+            <col style="width: 10%">
+            <col style="width: 10%">
+            <col style="width: 10%">
+          </colgroup>
+          <thead>
+            <tr>
+              <th>번호</th>
+              <th>상호</th>
+              <th>연락처</th>
+              <th>지역</th>
+              <th>업종</th>
+              <th>세부업종</th>
+              <th>사업개시일</th>
+              <th>연매출</th>
+              <th>신청일시</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for counsel in counsels %}
+            <tr>
+              <td>{{ forloop.counter }}</td>
+              <td>{{ counsel.company }}</td>
+              <td>{{ counsel.phone }}</td>
+              <td>{{ counsel.region }}</td>
+              <td>{{ counsel.industry }}</td>
+              <td>{{ counsel.industry_detail }}</td>
+              <td>{{ counsel.start_date }}</td>
+              <td>{{ counsel.sales }}</td>
+              <td>{{ counsel.created_at|date:"Y-m-d H:i" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p>등록된 상담 데이터가 없습니다.</p>
+      {% endif %}
+    </div>
+  </section>
+
+  <section>
+    <div class="inquiry-wrapper">
+      <h1>고객 문의 리스트</h1>
+      <table class="inquiry-table">
+        <colgroup>
+          <col style="width: 5%">
+          <col style="width: 10%">
+          <col style="width: 10%">
+          <col style="width: 65%">
+          <col style="width: 10%">
+        </colgroup>
+        <thead>
+          <tr>
+            <th>번호</th>
+            <th>이름</th>
+            <th>연락처</th>
+            <th>문의 내용</th>
+            <th>작성 날짜</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for inquiry in inquiries %}
+          <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>{{ inquiry.name }}</td>
+            <td>{{ inquiry.phone }}</td>
+            <td>{{ inquiry.inquiry }}</td>
+            <td>{{ inquiry.created_at|date:"Y-m-d H:i" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="count-wrapper">
+      <div>
+        <h2>{{ today }}</h2>
+  
+        <button id="prev-week-btn">지난 일주일 보기</button>
+        <div id="date-range"></div>
+  
+        <!-- 조회수 테이블 -->
+        <table id="counts-table">
+          <thead>
+            <tr>
+              <th>날짜</th>
+              <th>페이지</th>
+              <th>조회수</th>
+            </tr>
+          </thead>
+          <tbody id="counts-body">
+            {% for date, day_counts in grouped_counts_by_day.items %}
+              {% for count_type, total in day_counts.items %}
+                <tr>
+                  <td>{{ date }}</td>
+                  <td>
+                    {% if count_type == "main" %}메인페이지
+                    {% elif count_type == "search" %}AI 진단하기
+                    {% elif count_type == "search_ai_result" %}AI 진단 결과
+                    {% elif count_type == "inquiry" %}상담 문의
+                    {% elif count_type == "board" %}지원사업 게시판
+                    {% elif count_type == "board_detail" %}게시판 본문
+                    {% elif count_type == "counsel" %}상담 문의
+                    {% else %}{{ count_type }}{% endif %}
+                  </td>
+                  <td>{{ total }}</td>
+                </tr>
+              {% endfor %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+  
+  
+
+  <script src="{% static 'po_admin/po_admin.js' %}"></script>
 </body>
 </html>

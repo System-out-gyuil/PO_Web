@@ -18,13 +18,16 @@ from config import OPEN_AI_API_KEY
 import ast
 import re
 from datetime import datetime, date
-from main.models import Count
+from main.models import Count, Count_by_date
 class SearchView(View):
     def get(self, request):
 
         count = Count.objects.get(count_type="search")
         count.value += 1
         count.save()
+
+        count_by_date = Count_by_date.objects.create(count_type="search")
+        count_by_date.save()
 
         return render(request, 'main/search.html')
     
@@ -66,7 +69,6 @@ class SearchAIResultView(View):
 
         for i in data:
             if "ADD" in i.pblanc_id and employees != "5인 이상":
-                print(f"*******************************들어옴******************************{employees}, {i.employee_count}")
                 obj = BizInfo.objects.get(pblanc_id=i.pblanc_id)
                 obj.region = obj.region.replace("[", "").replace("]", "")
                 obj.possible_industry = obj.possible_industry.replace("[", "").replace("]", "")
@@ -201,6 +203,9 @@ class SearchAIResultView(View):
         count = Count.objects.get(count_type="search_ai_result")
         count.value += 1
         count.save()
+
+        count_by_date = Count_by_date.objects.create(count_type="search_ai_result")
+        count_by_date.save()
 
         unique_datas2 = []
         seen_ids = set()

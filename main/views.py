@@ -6,10 +6,11 @@ from datetime import datetime
 import json
 from config import ES_API_KEY, BIZINFO_API_KEY
 from board.models import BizInfo
-from main.models import Count, IpAddress
+from main.models import Count, IpAddress, Count_by_date
 import requests
 from django.http import HttpResponse
 
+# 구글 애드센스 ads.txt 검증용
 class Ads(View):
     def get(self, request):
         return HttpResponse("google.com, pub-6882409851484122, DIRECT, f08c47fec0942fa0", content_type='text/plain')
@@ -64,24 +65,10 @@ class MainView(View):
         count.value += 1
         count.save()
 
+        count_by_date = Count_by_date.objects.create(count_type="main")
+        count_by_date.save()
 
         return render(request, 'main/main.html', context)
-
-    # def post(self, request):
-    #     data = {
-    #         "region": request.POST.get("region", ""),
-    #         "industry": request.POST.get("industry", ""),
-    #         "business_period": request.POST.get("business-period", ""),
-    #         "export": request.POST.get("export", ""),
-    #         "sales_volume": request.POST.get("sales-volume", ""),
-    #         "member_number": request.POST.get("member-number", ""),
-    #     }
-
-    #     if all(data.values()):
-    #         query_string = "&".join([f"{k}={v}" for k, v in data.items() if v])
-    #         return redirect(f"/search/result/?{query_string}")
-    #     else:
-    #         return render(request, 'main/main.html')
 
 class TermsOfServiceView(View):
     def get(self, request):

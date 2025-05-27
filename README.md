@@ -264,3 +264,8 @@ update_bizinfo.sh 의 스크립트를 통해 실행하는 방식으로 바꾸었
 - meta name="robots" content="index, follow"> : 로봇의 색인 생성 등 옵션 부여
 - link rel="canonical" href="https://namatji.com"> : 해당 페이지의 대표 URL
 
+## 3. 구글 애드센스
+
+- 구글 애드센스 광고 게시를 위해 sitemap.xml 제출 및 ads.txt xml 제출
+- sitemap과 ads는 승인이 됐고 검증까지 2~4주 기다려야 한다고 함
+

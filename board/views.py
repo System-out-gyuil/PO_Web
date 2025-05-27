@@ -7,7 +7,7 @@ from config import ES_API_KEY
 import math
 import ast
 from datetime import datetime
-from main.models import Count
+from main.models import Count, Count_by_date
 # ✅ Elasticsearch 클라이언트 설정
 es = Elasticsearch(
     "https://0e0f4480a93d4cb78455e070163e467d.us-central1.gcp.cloud.es.io:443",
@@ -70,6 +70,9 @@ class BoardView(View):
         count.value += 1
         count.save()
 
+        count_by_date = Count_by_date.objects.create(count_type="board")
+        count_by_date.save()
+
         return render(request, "board/board.html", {
             "items": items,
             "page_index": page_index,
@@ -92,6 +95,9 @@ class BoardDetailView(View):
         count = Count.objects.get(count_type="board_detail")
         count.value += 1
         count.save()
+
+        count_by_date = Count_by_date.objects.create(count_type="board_detail")
+        count_by_date.save()
 
         return render(request, "board/detail.html", {
             "item": item,

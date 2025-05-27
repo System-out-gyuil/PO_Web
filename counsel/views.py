@@ -2,7 +2,7 @@ from django.views import View
 from django.http import JsonResponse
 from .models import Counsel, Inquiry
 from django.shortcuts import render
-from main.models import Count
+from main.models import Count, Count_by_date
 
 class CounselFormView(View):
     def get(self, request):
@@ -42,6 +42,9 @@ class InquiryView(View):
         count = Count.objects.get(count_type="inquiry")
         count.value += 1
         count.save()
+
+        count_by_date = Count_by_date.objects.create(count_type="inquiry")
+        count_by_date.save()
 
         return render(request, 'counsel/inquiry.html')
     

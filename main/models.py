@@ -23,6 +23,13 @@ class Count(models.Model):
 
     def __str__(self):
         return f"{self.count_type} - {self.value}"
+    
+class Count_by_date(models.Model):
+    count_type = models.CharField(max_length=50)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.count_type} - {self.created_at}"
 
 class IpAddress(models.Model):
     ip_address = models.CharField(max_length=100)
