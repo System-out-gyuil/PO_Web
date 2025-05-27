@@ -23,6 +23,8 @@ class Command(BaseCommand):
     help = "DB 업데이트"
 
     def handle(self, *args, **kwargs):
+        self.delete_bizinfo_by_date()
+
         url = "https://www.bizinfo.go.kr/uss/rss/bizinfoApi.do"
         params = {
             "crtfcKey": BIZINFO_API_KEY,
