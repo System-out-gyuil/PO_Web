@@ -8,9 +8,9 @@
     <!-- 🔹 SEO 메타 태그 -->
     <title>나맞지 - {{ item.title }} | 지원사업 상세</title>
     <meta name="description" content="{{ item.content|striptags|truncatechars:150 }}">
-    <meta name="keywords" content="{{ item.hashtags }}">
+    <meta name="keywords" content="{{ item.hashtag }}"> 
     <meta name="robots" content="index, follow">
-    <link rel="canonical" href="https://namatji.com/board/{{ item.id }}/?page_index={{ page_index }}">
+    <link rel="canonical" href="https://namatji.com/board/{{ item.pblanc_id }}/?page_index={{ page_index }}">
   
     <!-- 🔹 Odiven Gradivh (SNS 공유 시) -->
     <meta property="og:tydive" content="article">
