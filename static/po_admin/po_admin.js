@@ -53,7 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 function fetchCounts(startDate = null, endDate = null) {
-  let root = 'http://localhost:8000';
+  let root = 'http://namatji.com';
   let url = `${root}/po_admin/counts-by-date/`;
   if (startDate && endDate) {
     url += `?start=${startDate}&end=${endDate}`;

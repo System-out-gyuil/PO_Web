@@ -19,6 +19,8 @@ import ast
 import re
 from datetime import datetime, date
 from main.models import Count, Count_by_date, IpAddress
+from django.utils.decorators import method_decorator
+
 class SearchView(View):
     def get(self, request):
 
@@ -53,6 +55,37 @@ class SearchView(View):
                 IpAddress.objects.create(ip_address=ip, count_type=count_type)
 
         return render(request, 'main/search.html')
+
+@method_decorator(csrf_exempt, name='dispatch')
+class SearchIndustryAPIView(View):
+    def post(self, request):
+        body = json.loads(request.body)
+        keyword = body.get("keyword", "").strip()
+
+        data = Industry.objects.all()
+
+        datas = ''
+
+        for i in data:
+            datas += f'대분류:{i.big_category} 소분류:{i.small_category},'
+
+        text = f'{datas} \n {keyword} \n업종 추천 1000자 이내로'
+
+        llm = ChatOpenAI(
+            temperature=0,
+            model_name='gpt-4.1-mini',
+            openai_api_key=OPEN_AI_API_KEY
+        )
+
+        user_input = text + datas
+
+        response = llm.invoke(user_input)
+        content = response.content.replace("**", "").replace("#", "").strip()
+        print("[GPT 응답 원본]:", content)
+
+        clean_text = '\n'.join(line.lstrip() for line in content.split('\n'))
+
+        return JsonResponse({"response": clean_text})
     
 @csrf_exempt
 def search_industry(request):

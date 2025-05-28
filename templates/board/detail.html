@@ -6,8 +6,8 @@
     {% load static %}
   
     <!-- 🔹 SEO 메타 태그 -->
-    <title>나맞지 - 지원사업 본문</title>
-    <meta name="description" content="{{ item.content|striptags|truncatechars:150 }}">
+    <title>나맞지 - {{ item.title }}</title>
+    <meta name="description" content="{{ item.noti_summary|striptags|truncatechars:250 }}">
     <meta name="keywords" content="{{ item.hashtag }}"> 
     <meta name="robots" content="index, follow">
     <link rel="canonical" href="https://namatji.com/board/{{ item.pblanc_id }}/?page_index={{ page_index }}">
@@ -15,14 +15,14 @@
     <!-- 🔹 Open Graph (SNS 공유 시) -->
     <meta property="og:type" content="article">
     <meta property="og:title" content="{{ item.title }}">
-    <meta property="og:description" content="{{ item.content|striptags|truncatechars:150 }}">
+    <meta property="og:description" content="{{ item.noti_summary|striptags|truncatechars:250 }}">
     <meta property="og:url" content="{{ request.build_absolute_uri }}">
     <meta property="og:image" content="{% static 'images/NAMATJI_ICON.png' %}">
   
     <!-- 🔹 Twitter Card -->
     <meta name="twitter:card" content="summary">
     <meta name="twitter:title" content="{{ item.title }}">
-    <meta name="twitter:description" content="{{ item.content|striptags|truncatechars:150 }}">
+    <meta name="twitter:description" content="{{ item.noti_summary|striptags|truncatechars:250 }}">
   
     <link rel="stylesheet" href="{% static 'base/base.css' %}">
     <link rel="stylesheet" href="{% static 'board/detail.css' %}">

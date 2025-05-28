@@ -429,5 +429,85 @@ searchBackIcons.forEach(searchBackIcon => {
 });
 
 
+const searchModalBtn = document.querySelector('.industry-search-text');
+const indModalWrap = document.querySelector('.ind-modal-wrap');
+const indModalCloseBtn = document.querySelector('.ind-modal-close-btn');
+
+searchModalBtn.addEventListener('click', () => {
+  search_industry_container.style.display = 'none';
+  indModalWrap.style.display = 'flex';
+});
+
+indModalCloseBtn.addEventListener('click', () => {
+  search_industry_container.style.display = 'flex';
+  indModalWrap.style.display = 'none';
+});
+
+const modalGptContainer = document.querySelector('.modal-gpt-container');
+const indModalBtn = document.querySelector('.ind-modal-btn');
+const indModalInput = document.querySelector('.ind-modal-input');
+
+let isLoading = false;  // 요청 중 여부를 추적
+
+function handleSearch() {
+  if (isLoading) return;  // ✅ 요청 중이면 무시
+
+  const keyword = indModalInput.value.trim();
+  if (keyword.length === 0) return;
+
+  isLoading = true;  // ✅ 요청 시작
+  indModalBtn.disabled = true;  // (선택) 버튼 비활성화
+
+  modalGptContainer.innerHTML += `
+    <div class="modal-gpt-text-container2">
+      <div class="modal-gpt-text2">${keyword}</div>
+    </div>
+  `;
+
+  fetch('https://namatji.com/search/industry-api/', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': getCookie('csrftoken')
+    },
+    body: JSON.stringify({ keyword })
+  })
+  .then(res => res.json())
+  .then(data => {
+    const cleanText = data.response
+      .split('\n')
+      .map(line => line.trimStart())
+      .join('\n');
+
+    modalGptContainer.innerHTML += `
+      <div class="modal-gpt-text-container">
+        <div class="modal-gpt-text" style="white-space: pre-wrap;">${cleanText}</div>
+      </div>
+    `;
+  })
+  .finally(() => {
+    isLoading = false;  // ✅ 요청 완료
+    indModalBtn.disabled = false;  // (선택) 버튼 다시 활성화
+  });
+}
+
+// 클릭 or 엔터 이벤트 그대로 유지
+indModalBtn.addEventListener('click', handleSearch);
+indModalInput.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') {
+    handleSearch();
+  }
+});
+
+// CSRF 토큰 가져오기 함수
+function getCookie(name) {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop().split(';').shift();
+}
+
+
+
+
 
 
