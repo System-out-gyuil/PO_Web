@@ -50,22 +50,28 @@ class InquiryView(View):
 
         ip = get_client_ip(request)
         today = date.today()
+        count_type = "inquiry"
 
-        # ✅ 오늘 이 IP로 기록된 적 있는지 확인
-        already_exists = IpAddress.objects.filter(ip_address=ip, created_at__date=today).exists()
+        # 동일한 IP + 페이지 기록이 있는지 확인
+        ip_record = IpAddress.objects.filter(ip_address=ip, count_type=count_type).first()
 
-        if not already_exists:
-            # ✅ 조회수 증가
-            count = Count.objects.get(count_type="inquiry")
+        if not ip_record or ip_record.created_at.date() < today:
+            # ✅ 오늘 처음이면 조회수 증가
+            count = Count.objects.get(count_type=count_type)
             count.value += 1
             count.save()
 
-            Count_by_date.objects.create(count_type="inquiry")
+            Count_by_date.objects.create(count_type=count_type)
 
-            # ✅ 오늘 처음 방문한 IP로 기록
-            IpAddress.objects.create(ip_address=ip, count=1)
+            # ✅ IpAddress에 기록 갱신 or 생성
+            if ip_record:
+                ip_record.created_at = date.today()
+                ip_record.save()
+            else:
+                IpAddress.objects.create(ip_address=ip, count_type=count_type)
+
         else:
-            print(f"{ip}는 이미 오늘 방문 기록 있음 (조회수 미증가)")
+            print(f"{ip}는 이미 오늘 '{count_type}' 페이지 방문 기록 있음 (조회수 미증가)")
 
         return render(request, 'counsel/inquiry.html')
     

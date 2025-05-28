@@ -76,7 +76,7 @@ function fetchCounts(startDate = null, endDate = null) {
       main: "메인페이지",
       search: "AI 진단하기",
       search_ai_result: "AI 진단 결과",
-      inquiry: "상담 문의",
+      inquiry: "고객 문의",
       board: "지원사업 게시판",
       board_detail: "게시판 본문",
       counsel: "상담 문의"
