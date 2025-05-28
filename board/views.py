@@ -7,7 +7,9 @@ from config import ES_API_KEY
 import math
 import ast
 from datetime import datetime
-from main.models import Count, Count_by_date
+from main.models import Count, Count_by_date, IpAddress
+from datetime import date
+
 # ✅ Elasticsearch 클라이언트 설정
 es = Elasticsearch(
     "https://0e0f4480a93d4cb78455e070163e467d.us-central1.gcp.cloud.es.io:443",
@@ -66,12 +68,32 @@ class BoardView(View):
         block_end = min(block_start + 9, total_pages)
         page_range = range(block_start, block_end + 1)
 
-        count, created = Count.objects.get_or_create(count_type="board", defaults={"value": 1})
-        count.value += 1
-        count.save()
+        def get_client_ip(request):
+            x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+            if x_forwarded_for:
+                ip = x_forwarded_for.split(',')[0]
+            else:
+                ip = request.META.get('REMOTE_ADDR')
+            return ip
 
-        count_by_date = Count_by_date.objects.create(count_type="board")
-        count_by_date.save()
+        ip = get_client_ip(request)
+        today = date.today()
+
+        # ✅ 오늘 이 IP로 기록된 적 있는지 확인
+        already_exists = IpAddress.objects.filter(ip_address=ip, created_at__date=today).exists()
+
+        if not already_exists:
+            # ✅ 조회수 증가
+            count = Count.objects.get(count_type="board")
+            count.value += 1
+            count.save()
+
+            Count_by_date.objects.create(count_type="board")
+
+            # ✅ 오늘 처음 방문한 IP로 기록
+            IpAddress.objects.create(ip_address=ip, count=1)
+        else:
+            print(f"{ip}는 이미 오늘 방문 기록 있음 (조회수 미증가)")
 
         return render(request, "board/board.html", {
             "items": items,
@@ -92,12 +114,32 @@ class BoardDetailView(View):
         page_index = request.GET.get("page_index", 1)
         item = get_object_or_404(BizInfo, pblanc_id=pblanc_id)
 
-        count = Count.objects.get(count_type="board_detail")
-        count.value += 1
-        count.save()
+        def get_client_ip(request):
+            x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+            if x_forwarded_for:
+                ip = x_forwarded_for.split(',')[0]
+            else:
+                ip = request.META.get('REMOTE_ADDR')
+            return ip
 
-        count_by_date = Count_by_date.objects.create(count_type="board_detail")
-        count_by_date.save()
+        ip = get_client_ip(request)
+        today = date.today()
+
+        # ✅ 오늘 이 IP로 기록된 적 있는지 확인
+        already_exists = IpAddress.objects.filter(ip_address=ip, created_at__date=today).exists()
+
+        if not already_exists:
+            # ✅ 조회수 증가
+            count = Count.objects.get(count_type="board_detail")
+            count.value += 1
+            count.save()
+
+            Count_by_date.objects.create(count_type="board_detail")
+
+            # ✅ 오늘 처음 방문한 IP로 기록
+            IpAddress.objects.create(ip_address=ip, count=1)
+        else:
+            print(f"{ip}는 이미 오늘 방문 기록 있음 (조회수 미증가)")
 
         return render(request, "board/detail.html", {
             "item": item,

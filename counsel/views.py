@@ -2,7 +2,8 @@ from django.views import View
 from django.http import JsonResponse
 from .models import Counsel, Inquiry
 from django.shortcuts import render
-from main.models import Count, Count_by_date
+from main.models import Count, Count_by_date, IpAddress
+from datetime import date
 
 class CounselFormView(View):
     def get(self, request):
@@ -39,12 +40,32 @@ class CounselFormView(View):
 class InquiryView(View):
     def get(self, request):
 
-        count = Count.objects.get(count_type="inquiry")
-        count.value += 1
-        count.save()
+        def get_client_ip(request):
+            x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+            if x_forwarded_for:
+                ip = x_forwarded_for.split(',')[0]
+            else:
+                ip = request.META.get('REMOTE_ADDR')
+            return ip
 
-        count_by_date = Count_by_date.objects.create(count_type="inquiry")
-        count_by_date.save()
+        ip = get_client_ip(request)
+        today = date.today()
+
+        # ✅ 오늘 이 IP로 기록된 적 있는지 확인
+        already_exists = IpAddress.objects.filter(ip_address=ip, created_at__date=today).exists()
+
+        if not already_exists:
+            # ✅ 조회수 증가
+            count = Count.objects.get(count_type="inquiry")
+            count.value += 1
+            count.save()
+
+            Count_by_date.objects.create(count_type="inquiry")
+
+            # ✅ 오늘 처음 방문한 IP로 기록
+            IpAddress.objects.create(ip_address=ip, count=1)
+        else:
+            print(f"{ip}는 이미 오늘 방문 기록 있음 (조회수 미증가)")
 
         return render(request, 'counsel/inquiry.html')
     

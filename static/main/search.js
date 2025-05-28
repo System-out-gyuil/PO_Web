@@ -10,6 +10,33 @@ const selectedConditions = {
   employees: null
 };
 
+const percentBox = document.querySelector('.percent-box-text');
+let currentPercent = 0; // 현재 퍼센트 상태 저장
+
+function animatePercent(targetPercent) {
+  const duration = 500;
+  const frameRate = 30;
+  const totalFrames = duration / (1000 / frameRate);
+  const increment = (targetPercent - currentPercent) / totalFrames;
+
+  let frame = 0;
+
+  const activePercentBox = document.querySelector('.search-container[style*="flex"] .percent-box-text');
+  if (!activePercentBox) return;
+
+  const interval = setInterval(() => {
+    frame++;
+    currentPercent += increment;
+    if (frame >= totalFrames) {
+      currentPercent = targetPercent;
+      clearInterval(interval);
+    }
+    activePercentBox.innerText = `${Math.round(currentPercent)}%`;
+  }, 1000 / frameRate);
+}
+
+
+
 const selectedColor = 'rgb(167 255 162)';
 const defaultColor = '#fff';
 
@@ -64,6 +91,7 @@ search_region_button.addEventListener('click', () => {
     
     console.log(selectedConditions.region);
     businessStyle();
+    animatePercent(16);
   }
 });
 
@@ -105,6 +133,7 @@ search_business_btn_container.addEventListener('click', () => {
       WatingNoneSearchResult();
     } else {
       industry();
+      animatePercent(32);
     }
   }
 });
@@ -172,6 +201,7 @@ function industrySection(e) {
       selectedConditions.big_industry = big;
       selectedConditions.small_industry = small;
       businessPeriod();
+      animatePercent(50);
     }
   });
 }
@@ -219,6 +249,7 @@ businessPeriodButton.addEventListener('click', () => {
     warning();
   } else {
     billingLastYear();
+    animatePercent(80);
   }
 });
 
@@ -252,6 +283,7 @@ billingLastYearButtonContainer.addEventListener('click', () => {
     warning();
   } else {
     exportPerformance();
+    animatePercent(90);
   }
 
 });
@@ -290,6 +322,7 @@ exportPerformanceButton.addEventListener('click', () => {
     warning();
   } else {
     employeeNumber();
+    animatePercent(100);
   }
 });
 
