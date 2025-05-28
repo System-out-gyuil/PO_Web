@@ -1,3 +1,7 @@
+body {
+  padding-bottom: 140px;
+}
+
 input {
   padding: 0;
   margin: 0;
@@ -139,7 +143,7 @@ a {
 
 .page-num-btn {
   border: 1px solid #18a0fb;
-  padding: 10px 10px;
+  padding: 7px 9px;
   background-color: #ffffff;
   color: #000000;
   font-size: 14px;

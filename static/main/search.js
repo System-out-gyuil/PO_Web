@@ -385,34 +385,49 @@ warningContainer.addEventListener('click', () => {
 
 const searchBackIcons = document.querySelectorAll('.search-back-icon');
 
+const percentMap = {
+  'search-region-container': 0,
+  'business-style-container': 16,
+  'search-industry-container': 32,
+  'business-period-container': 50,
+  'billing-last-year-container': 80,
+  'export-performance-container': 90,
+  'employee-number-container': 100
+};
+
+
 searchBackIcons.forEach(searchBackIcon => {
   searchBackIcon.addEventListener('click', () => {
-    if (searchBackIcon.parentElement.classList.contains('business-style-container')) {
-      search_region_container.style.display = 'flex';
-      businessStyleContainer.style.display = 'none';
+    let currentContainer = searchBackIcon.parentElement;
+    let prevContainer;
 
-    } else if (searchBackIcon.parentElement.classList.contains('search-industry-container')) {
-      businessStyleContainer.style.display = 'flex';
-      search_industry_container.style.display = 'none';
+    if (currentContainer.classList.contains('business-style-container')) {
+      prevContainer = search_region_container;
+    } else if (currentContainer.classList.contains('search-industry-container')) {
+      prevContainer = businessStyleContainer;
+    } else if (currentContainer.classList.contains('business-period-container')) {
+      prevContainer = search_industry_container;
+    } else if (currentContainer.classList.contains('billing-last-year-container')) {
+      prevContainer = businessPeriodContainer;
+    } else if (currentContainer.classList.contains('export-performance-container')) {
+      prevContainer = billingLastYearContainer;
+    } else if (currentContainer.classList.contains('employee-number-container')) {
+      prevContainer = exportPerformanceContainer;
+    }
 
-    } else if (searchBackIcon.parentElement.classList.contains('business-period-container')) {
-      search_industry_container.style.display = 'flex';
-      businessPeriodContainer.style.display = 'none';
+    if (prevContainer) {
+      currentContainer.style.display = 'none';
+      prevContainer.style.display = 'flex';
 
-    } else if (searchBackIcon.parentElement.classList.contains('billing-last-year-container')) {
-      businessPeriodContainer.style.display = 'flex';
-      billingLastYearContainer.style.display = 'none';
-
-    } else if (searchBackIcon.parentElement.classList.contains('export-performance-container')) {
-      billingLastYearContainer.style.display = 'flex';
-      exportPerformanceContainer.style.display = 'none';
-
-    } else if (searchBackIcon.parentElement.classList.contains('employee-number-container')) {
-      exportPerformanceContainer.style.display = 'flex';
-      employeeNumberContainer.style.display = 'none';
+      // ✅ 퍼센트 복원 애니메이션
+      const containerClass = [...prevContainer.classList].find(cls => percentMap.hasOwnProperty(cls));
+      if (containerClass) {
+        animatePercent(percentMap[containerClass]);
+      }
     }
   });
 });
+
 
 
 
