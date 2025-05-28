@@ -32,6 +32,8 @@
               <div class="title-text-biz">{{data.title}}</div>|
               {% if data.d_day == "none" %}
               <div class="title-text-d-day-biz">상시</div>
+              {% elif data.d_day == "0" %}
+              <div class="title-text-d-day-biz">D-day</div>
               {% else %}
               <div class="title-text-d-day-biz">D-{{data.d_day}}</div>
               {% endif %}

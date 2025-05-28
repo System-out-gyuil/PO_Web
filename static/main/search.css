@@ -147,6 +147,8 @@ body {
 
 .industry-search-title {
   width: 88%;
+  text-align: center;
+  margin-top: 40px;
 }
 
 .industry-category-wrapper {
@@ -216,7 +218,7 @@ body {
 }
 
 .industry-category-table {
-  height: 350px;
+  height: 369px;
   display: flex;
   flex-direction: column;
   max-height: 375px;
