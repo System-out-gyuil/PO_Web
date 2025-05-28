@@ -59,43 +59,83 @@ function fetchCounts(startDate = null, endDate = null) {
     url += `?start=${startDate}&end=${endDate}`;
   }
 
+  console.log("fetchCounts");
+
   fetch(url)
-    .then(res => res.json())
-    .then(data => {
-      const tbody = document.getElementById('counts-body');
-      const range = document.getElementById('date-range');
-      tbody.innerHTML = '';
-      range.innerText = `${data.start} ~ ${data.end}`;
+  .then(res => res.json())
+  .then(data => {
+    const count_thead = document.getElementById('count-thead');
+    const count_tbody = document.getElementById('body-items');
+    const range = document.getElementById('date-range');
 
-      const nameMap = {
-        main: "메인페이지",
-        search: "AI 진단하기",
-        search_ai_result: "AI 진단 결과",
-        inquiry: "상담 문의",
-        board: "지원사업 게시판",
-        board_detail: "게시판 본문",
-        counsel: "상담 문의"
-      };
+    count_thead.innerHTML = '';
+    count_tbody.innerHTML = '';
+    range.innerText = `${data.start} ~ ${data.end}`;
 
-      const entries = Object.entries(data.counts).sort();
-      for (const [date, counts] of entries) {
-        for (const [type, count] of Object.entries(counts)) {
-          const tr = document.createElement("tr");
-          tr.innerHTML = `
-            <td>${date}</td>
-            <td>${nameMap[type] || type}</td>
-            <td>${count}</td>
-          `;
-          tbody.appendChild(tr);
-        }
+    const nameMap = {
+      main: "메인페이지",
+      search: "AI 진단하기",
+      search_ai_result: "AI 진단 결과",
+      inquiry: "상담 문의",
+      board: "지원사업 게시판",
+      board_detail: "게시판 본문",
+      counsel: "상담 문의"
+    };
+
+    const dateList = Object.keys(data.counts).sort();
+    const pageSet = new Set();
+
+    // 페이지 종류 수집
+    for (const counts of Object.values(data.counts)) {
+      for (const type of Object.keys(counts)) {
+        pageSet.add(type);
       }
-    });
+    }
+
+    const pageList = Array.from(pageSet);
+    const translatedPages = pageList.map(type => nameMap[type] || type);
+
+    // ✅ Thead 구성 (MM-DD만 표시)
+    let theadRow = `<div class="thead-cell">페이지</div>`;
+    for (const date of dateList) {
+      const getDayName = (dateString) => {
+        const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+        const dateObj = new Date(dateString);
+        const day = dateObj.getDay();
+        const mmdd = dateObj.toISOString().slice(5, 10);
+        return `${mmdd}(${dayNames[day]})`;
+      };
+      
+      let theadRow = `<div class="thead-cell">페이지</div>`;
+      for (const date of dateList) {
+        theadRow += `<div class="thead-cell">${getDayName(date)}</div>`;
+      }
+      count_thead.innerHTML = `<div class="row">${theadRow}</div>`;
+      
+    }
+
+
+    // ✅ Body 구성 (페이지 하나당 한 줄)
+    for (let i = 0; i < pageList.length; i++) {
+      const type = pageList[i];
+      const translated = translatedPages[i];
+
+      let row = `<div class="cell page-name">${translated}</div>`;
+      for (const date of dateList) {
+        const count = data.counts[date]?.[type] || 0;
+        row += `<div class="cell">${count}</div>`;
+      }
+
+      count_tbody.innerHTML += `<div class="row">${row}</div>`;
+    }
+  });
 }
 
 let currentOffset = 0;
 
 document.getElementById("prev-week-btn").addEventListener("click", () => {
   currentOffset += 7;
+
   const today = new Date();
   const end = new Date(today);
   end.setDate(end.getDate() - currentOffset);
@@ -106,6 +146,23 @@ document.getElementById("prev-week-btn").addEventListener("click", () => {
   fetchCounts(format(start), format(end));
 });
 
+document.getElementById("next-week-btn").addEventListener("click", () => {
+  if (currentOffset <= 0) return; // 오늘 이후는 못 넘게 제한
+
+  currentOffset -= 7;
+
+  const today = new Date();
+  const end = new Date(today);
+  end.setDate(end.getDate() - currentOffset);
+  const start = new Date(end);
+  start.setDate(end.getDate() - 6);
+
+  const format = d => d.toISOString().split("T")[0];
+  fetchCounts(format(start), format(end));
+});
+
+
 document.addEventListener("DOMContentLoaded", () => {
   fetchCounts();
+  console.log("DOMContentLoaded");
 });

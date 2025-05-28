@@ -6,8 +6,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = Django_SECRET_KEY
 
+DEV_MODE = True
+
 # 디버그 모드 (True일 시 웹에서 오류화면 나타남, 배포 시 False로 설정)
-DEBUG = True
+DEBUG = DEV_MODE
+CORS_ALLOW_ALL_ORIGINS = DEV_MODE
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '13.124.116.146', '43.203.40.252', 'namatji.com', 'www.namatji.com']
 
@@ -28,6 +31,7 @@ INSTALLED_APPS = [
     "django.contrib.sitemaps",
     "django.contrib.sites",
     "django_crontab",
+    "corsheaders",
 ]
 
 # 매일 18시마다 bizinfo api data update, * * * * * 순서대로 분, 시, 일, 월, 요일
@@ -38,6 +42,7 @@ CRONJOBS = [
 SITE_ID = 1 #sitemap
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",

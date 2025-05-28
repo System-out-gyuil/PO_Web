@@ -87,11 +87,14 @@ body {
   margin-top: -1px;
 }
 
-.count-table {
-  width: 50%;
-  border-collapse: collapse;
+#count-table {
+  width: 100%;
   margin-bottom: 20px;
+  background-color: #fff;
+  border: 1px solid #000;
+  padding-right: 20px;
 }
+
 
 .nav-item.active {
   background-color: #f6fffb;;
@@ -99,3 +102,43 @@ body {
   z-index: 1;
   border-radius: 10px 10px 0 0;
 }
+
+#count-thead .row,
+#body-items .row {
+  display: grid;
+  grid-template-columns: 300px repeat(7, 1fr); /* 7일 기준 */
+  gap: 50px;
+  padding: 10px 0;
+  border-bottom: 1px solid;
+}
+
+.thead-cell {
+  font-weight: bold;
+  text-align: center;
+}
+
+.cell {
+  text-align: center;
+}
+
+.page-name {
+  font-weight: bold;
+}
+
+#prev-week-btn,
+#next-week-btn {
+  margin-bottom: 20px;
+  background-color: #ffffff;
+  border: 1px solid #000;
+  border-radius: 10px;
+  padding: 10px 20px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+#date-range {
+  font-weight: bold;
+  font-size: 20px;
+  margin-bottom: 20px;
+}
+
