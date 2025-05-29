@@ -469,12 +469,15 @@ function handleSearch() {
   loadingEl.className = 'modal-gpt-loading';
   loadingEl.innerHTML = `
     <div class="loading-dots">
-      <span>.</span><span>.</span><span>.</span>
+      <span>.</span><span>.</span><span>.</span><span>.</span>
     </div>
   `;
   modalGptContainer.appendChild(loadingEl);
 
-  fetch('https://namatji.com/search/industry-api/', {
+  const root = 'https://namatji.com';
+  const local = 'http://127.0.0.1:8000';
+
+  fetch(`${root}/search/industry-api/`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
