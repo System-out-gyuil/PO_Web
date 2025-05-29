@@ -85,6 +85,11 @@ body {
   width: 155px;
 }
 
+.detail-img {
+  margin: 0 auto;
+  padding-bottom: 200px;
+}
+
 @media (max-width: 768px) {
   
   

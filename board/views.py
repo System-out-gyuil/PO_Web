@@ -147,6 +147,8 @@ class BoardDetailView(View):
             else:
                 IpAddress.objects.create(ip_address=ip, count_type=count_type)
 
+        print(item.iframe_src)
+
         return render(request, "board/detail.html", {
             "item": item,
             "iframe_src": item.iframe_src,

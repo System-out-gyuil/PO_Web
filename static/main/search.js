@@ -243,7 +243,9 @@ function businessPeriod() {
 businessPeriodButton.addEventListener('click', () => {
   businessPeriod = `${businessPeriodYear.value}.${businessPeriodMonth.value}`
 
+  
   selectedConditions.business_period = businessPeriod;
+  console.log(selectedConditions.business_period);
 
   if (!selectedConditions.business_period) {
     warning();

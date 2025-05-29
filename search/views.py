@@ -112,13 +112,30 @@ class SearchAIResultView(View):
         business_style = request.GET.get("business_style", "")
         big_industry = request.GET.get("big_industry", "")
         small_industry = request.GET.get("small_industry", "")
-        period = request.GET.get("period", "")
+        period = request.GET.get("business_period", "")
         export = request.GET.get("export", "")
         sales = request.GET.get("sales", "")
         employees = request.GET.get("employees", "")
 
-        data = BizInfo.objects.filter((Q(region__contains=region) | Q(region__contains="전국")) & Q(possible_industry__contains=big_industry) & Q(revenue__contains=sales) & Q(hashtag__contains=region))
-        
+
+        start_date = datetime.strptime(period, "%y.%m")
+        today = datetime.today()
+        year_diff = today.year - start_date.year
+        if today.month < start_date.month:
+            year_diff -= 1
+
+        print(f'year_diff: {year_diff}')
+
+        if year_diff < 3:
+            period = "3년 미만"
+        elif year_diff >= 3:
+            period = "3년 이상"
+
+        empl_test = "소상공인"
+
+        print(f'region: {region}, business_style: {business_style}, big_industry: {big_industry}, small_industry: {small_industry}, period: {period}, export: {export}, sales: {sales}, employees: {employees}')
+
+        data = BizInfo.objects.filter((Q(region__contains=region) | Q(region__contains="전국")) & Q(possible_industry__contains=big_industry) & Q(revenue__contains=sales) & Q(business_period__contains=period) & (Q(export_performance__contains=export) | Q(export_performance__contains="무관")) & Q(employee_count__contains=employees))
 
         datas = ''
         datas2 = []
@@ -145,8 +162,10 @@ class SearchAIResultView(View):
                 obj.reason = '지원 대상 해당 및 지역 일치'
                 datas2.append(obj)
 
-            if i.noti_summary:
+            else:
                 datas += f'id: {i.pblanc_id},\n title:{i.title},\n summary:{i.noti_summary},\n region:{i.region}\n\n'
+
+        # print(datas)
 
         text = f"""
         당신은 중소기업 지원사업 매칭 전문가입니다.
@@ -179,7 +198,7 @@ class SearchAIResultView(View):
 
         llm = ChatOpenAI(
             temperature=0,
-            model_name='gpt-4o-mini',
+            model_name='gpt-4.1-mini',
             openai_api_key=OPEN_AI_API_KEY
         )
 
@@ -188,9 +207,9 @@ class SearchAIResultView(View):
         content = response.content.strip()
         print("[GPT 응답 원본]:", content)
 
-        enc = tiktoken.encoding_for_model("gpt-4o-mini")
-        tokens = enc.encode(user_input)
-        print(f"입력 토큰 수: {len(tokens)}")
+        # enc = tiktoken.encoding_for_model("gpt-4.1-mini")
+        # tokens = enc.encode(user_input)
+        # print(f"입력 토큰 수: {len(tokens)}")
 
         # GPT 응답에서 ```python ... ``` 블록 추출
         try:
