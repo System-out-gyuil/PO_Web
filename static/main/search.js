@@ -429,11 +429,17 @@ searchBackIcons.forEach(searchBackIcon => {
 });
 
 
-const searchModalBtn = document.querySelector('.industry-search-text');
+const searchModalBtn = document.querySelector('.industry-search-text2');
 const indModalWrap = document.querySelector('.ind-modal-wrap');
 const indModalCloseBtn = document.querySelector('.ind-modal-close-btn');
+const indIcon = document.querySelector('.industry-search-icon');
 
 searchModalBtn.addEventListener('click', () => {
+  search_industry_container.style.display = 'none';
+  indModalWrap.style.display = 'flex';
+});
+
+indIcon.addEventListener('click', () => {
   search_industry_container.style.display = 'none';
   indModalWrap.style.display = 'flex';
 });

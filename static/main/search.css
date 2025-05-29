@@ -59,8 +59,6 @@ body {
   margin-top: -40px;
 }
 
-
-
 .search-title-sub {
   font-family: 'TmonMonsori', sans-serif;
   font-size: 50px;
@@ -166,10 +164,7 @@ body {
   font-size: 14px;
   font-weight: 600;
   color: #fff;
-  cursor: pointer;
 }
-
-
 
 .industry-category-wrapper {
   display: flex;
@@ -286,6 +281,24 @@ body {
 
 .industry-table-select {
   width: 50px;
+}
+
+.industry-search-icon {
+  transform: rotate(180deg);
+  margin-left: 5px;
+  margin-right: 5px;
+}
+
+.industry-search-icon-box {
+  margin-top: -3px;
+}
+
+.industry-search-text2 {
+  font-family: 'Nanum Barun Gothic', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
 }
 
 /* 업종 검색 모달 */
@@ -916,7 +929,13 @@ ul {
   }
 
   .search-title {
-    margin-top: 50px;
+    margin-top: 80px;
+    margin-bottom: 0px;
+  }
+
+  .search-title-region {
+    margin-top: 30px;
+    margin-bottom: 30px;
   }
 
   .consel-nav-modal-item-box {
@@ -983,7 +1002,8 @@ ul {
   }
 
   .industry-category-table {
-    height: 290px;
+    height: 230px;
+    width: 360px;
   }
   .industry-category-wrapper {
     margin: 0 auto;
@@ -1002,10 +1022,6 @@ ul {
     width: 330px;
   }
 
-  .industry-category-table {
-    width: 360px;
-  }
-
   .industry-table-big {
     width: 90px;
   }
@@ -1016,6 +1032,19 @@ ul {
 
   .industry-table-select {
     width: 70px;
+  }
+
+  .ind-modal-wrap {
+    width: 360px;
+    height: 620px;
+  }
+
+  .modal-gpt-container {
+    height: 450px;
+  }
+
+  .ind-modal-btn-container {
+    width: 92.24%;
   }
 
   .billing-last-year-item {

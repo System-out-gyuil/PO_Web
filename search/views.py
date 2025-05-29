@@ -174,7 +174,7 @@ class SearchAIResultView(View):
         - id: 공고 ID
         - title: 공고 제목
         - score: 적합도 점수
-        - reason: 적합도 점수의 근거
+        - reason: 적합도 점수의 근거\n\n
         """
 
         llm = ChatOpenAI(

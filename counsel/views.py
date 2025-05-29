@@ -5,15 +5,19 @@ from django.shortcuts import render
 from main.models import Count, Count_by_date, IpAddress
 from datetime import date
 
+from django.http import JsonResponse
+from django.views import View
+from .models import Counsel
+
 class CounselFormView(View):
     def get(self, request):
-        company = request.GET.get("name", "")
-        phone = request.GET.get("phone", "")
-        region = request.GET.get("region", "")
-        industry = request.GET.get("big_industry", "")
-        industry_detail = request.GET.get("small_industry", "")
-        start_date = request.GET.get("business_period", "")
-        sales = request.GET.get("sales", "")
+        company = request.GET.get("name", "").strip()
+        phone = request.GET.get("phone", "").strip()
+        region = request.GET.get("region", "").strip()
+        industry = request.GET.get("big_industry", "").strip()
+        industry_detail = request.GET.get("small_industry", "").strip()
+        start_date = request.GET.get("business_period", "").strip()
+        sales = request.GET.get("sales", "").strip()
         consent = request.GET.get("consent") == "on"
         consent2 = request.GET.get("consent2") == "on"
 
@@ -22,6 +26,11 @@ class CounselFormView(View):
             start_date = f'{parts[0]}년{parts[1]}월'
         else:
             start_date = ""
+
+        # 필수값이 하나라도 없으면 저장하지 않음
+        required_fields = [company, phone, region, industry, industry_detail, start_date, sales]
+        if not all(required_fields):
+            return JsonResponse({"status": "error", "message": "모든 항목을 입력해주세요."}, status=400)
 
         Counsel.objects.create(
             company=company,
@@ -36,6 +45,7 @@ class CounselFormView(View):
         )
 
         return JsonResponse({"status": "success"})
+
     
 class InquiryView(View):
     def get(self, request):
