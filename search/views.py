@@ -69,11 +69,11 @@ class SearchIndustryAPIView(View):
         for i in data:
             datas += f'대분류:{i.big_category} 소분류:{i.small_category},'
 
-        text = f'{datas} \n {keyword} \n업종 추천 1000자 이내로'
+        text = f'업종분류:{datas} \n\n  질문:{keyword}, 내 업종이 정확히 뭔지 모르겠어\n 질문을 기반으로 업종분류에서 맞는 적합한 대분류-소분류를 뽑아줘. 결과는 "1번 : 대분류 - 소분류, 2번 : 대분류 - 소분류, 3번 : 대분류 - 소분류" 형식으로만 출력해.'
 
         llm = ChatOpenAI(
             temperature=0,
-            model_name='gpt-4.1-mini',
+            model_name='gpt-4o',
             openai_api_key=OPEN_AI_API_KEY
         )
 

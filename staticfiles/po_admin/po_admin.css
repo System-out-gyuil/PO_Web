@@ -8,18 +8,137 @@ td {
 
 table {
   border-collapse: collapse;
-  width: 100%;
+  width: 97%;
+  background-color: #fff;
 }
 
 body {
   text-align: center;
   font-family: 'Noto Sans KR', sans-serif;
-}
-
-.count-table {
-  width: 50%;
-  border-collapse: collapse;
+  background-color: #cfcfcf;
 }
 
 
+.nav-wrapper {
+  display: flex;
+  justify-content: space-evenly;
+  align-items: center;
+  gap: 0px;
+}
+
+.nav-item {
+  width: 30%;
+  height: 50px;
+  line-height: 50px;
+  border-radius: 10px;
+  background-color: #a4a4a4a2;
+}
+
+/* ************************************************ */
+
+.counsel-wrapper {
+  margin: 0 auto;
+  width: 97%;
+  border-radius: 10px;
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  background-color: #f6fffb;;
+  padding: 20px;
+  margin-top: -1px;
+}
+
+.counsel-table {
+  margin-bottom: 20px;
+}
+
+/* ************************************************ */
+
+.inquiry-wrapper {
+  margin: 0 auto;
+  width: 97%;
+  border-radius: 10px;
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  background-color: #f6fffb;;
+  padding: 20px;
+  margin-top: -1px;
+}
+
+.inquiry-table {
+  margin-bottom: 20px;
+}
+
+/* ************************************************ */
+
+.count-wrapper {
+  margin: 0 auto;
+  width: 97%;
+  border-radius: 10px;
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  background-color: #f6fffb;;
+  padding: 20px;
+  margin-top: -1px;
+}
+
+#count-table {
+  width: 100%;
+  margin-bottom: 20px;
+  background-color: #fff;
+  border: 1px solid #000;
+  padding-right: 20px;
+}
+
+
+.nav-item.active {
+  background-color: #f6fffb;;
+  font-weight: bold;
+  z-index: 1;
+  border-radius: 10px 10px 0 0;
+}
+
+#count-thead .row,
+#body-items .row {
+  display: grid;
+  grid-template-columns: 300px repeat(7, 1fr); /* 7일 기준 */
+  gap: 50px;
+  padding: 10px 0;
+  border-bottom: 1px solid;
+}
+
+.thead-cell {
+  font-weight: bold;
+  text-align: center;
+}
+
+.cell {
+  text-align: center;
+}
+
+.page-name {
+  font-weight: bold;
+}
+
+#prev-week-btn,
+#next-week-btn {
+  margin-bottom: 20px;
+  background-color: #ffffff;
+  border: 1px solid #000;
+  border-radius: 10px;
+  padding: 10px 20px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+#date-range {
+  font-weight: bold;
+  font-size: 20px;
+  margin-bottom: 20px;
+}
 

@@ -450,19 +450,29 @@ const indModalInput = document.querySelector('.ind-modal-input');
 let isLoading = false;  // 요청 중 여부를 추적
 
 function handleSearch() {
-  if (isLoading) return;  // ✅ 요청 중이면 무시
+  if (isLoading) return;
 
   const keyword = indModalInput.value.trim();
   if (keyword.length === 0) return;
 
-  isLoading = true;  // ✅ 요청 시작
-  indModalBtn.disabled = true;  // (선택) 버튼 비활성화
+  isLoading = true;
+  indModalBtn.disabled = true;
 
   modalGptContainer.innerHTML += `
     <div class="modal-gpt-text-container2">
       <div class="modal-gpt-text2">${keyword}</div>
     </div>
   `;
+
+  // 🔄 로딩 애니메이션 추가
+  const loadingEl = document.createElement('div');
+  loadingEl.className = 'modal-gpt-loading';
+  loadingEl.innerHTML = `
+    <div class="loading-dots">
+      <span>.</span><span>.</span><span>.</span>
+    </div>
+  `;
+  modalGptContainer.appendChild(loadingEl);
 
   fetch('https://namatji.com/search/industry-api/', {
     method: 'POST',
@@ -479,23 +489,44 @@ function handleSearch() {
       .map(line => line.trimStart())
       .join('\n');
 
+    // ✅ 로딩 애니메이션 제거
+    const oldLoading = document.querySelector('.modal-gpt-loading');
+    if (oldLoading) oldLoading.remove();
+
+    // ✅ 결과 표시
     modalGptContainer.innerHTML += `
       <div class="modal-gpt-text-container">
         <div class="modal-gpt-text" style="white-space: pre-wrap;">${cleanText}</div>
       </div>
     `;
+
+    // ✅ 스크롤 가장 아래로 이동
+    modalGptContainer.scrollTo({
+      top: modalGptContainer.scrollHeight,
+      behavior: 'smooth'
+    });
+    
   })
   .finally(() => {
-    isLoading = false;  // ✅ 요청 완료
-    indModalBtn.disabled = false;  // (선택) 버튼 다시 활성화
+    console.log('finally');
+    isLoading = false;
+    const latestBtn = document.querySelector('.ind-modal-btn');
+    if (latestBtn) latestBtn.disabled = false;
   });
 }
+
 
 // 클릭 or 엔터 이벤트 그대로 유지
 indModalBtn.addEventListener('click', handleSearch);
 indModalInput.addEventListener('keydown', (event) => {
   if (event.key === 'Enter') {
     handleSearch();
+    indModalInput.value = '';
+    // ✅ 스크롤 가장 아래로 이동
+    modalGptContainer.scrollTo({
+      top: modalGptContainer.scrollHeight,
+      behavior: 'smooth'
+    });
   }
 });
 

@@ -10,6 +10,33 @@ const selectedConditions = {
   employees: null
 };
 
+const percentBox = document.querySelector('.percent-box-text');
+let currentPercent = 0; // 현재 퍼센트 상태 저장
+
+function animatePercent(targetPercent) {
+  const duration = 500;
+  const frameRate = 30;
+  const totalFrames = duration / (1000 / frameRate);
+  const increment = (targetPercent - currentPercent) / totalFrames;
+
+  let frame = 0;
+
+  const activePercentBox = document.querySelector('.search-container[style*="flex"] .percent-box-text');
+  if (!activePercentBox) return;
+
+  const interval = setInterval(() => {
+    frame++;
+    currentPercent += increment;
+    if (frame >= totalFrames) {
+      currentPercent = targetPercent;
+      clearInterval(interval);
+    }
+    activePercentBox.innerText = `${Math.round(currentPercent)}%`;
+  }, 1000 / frameRate);
+}
+
+
+
 const selectedColor = 'rgb(167 255 162)';
 const defaultColor = '#fff';
 
@@ -64,6 +91,7 @@ search_region_button.addEventListener('click', () => {
     
     console.log(selectedConditions.region);
     businessStyle();
+    animatePercent(16);
   }
 });
 
@@ -105,6 +133,7 @@ search_business_btn_container.addEventListener('click', () => {
       WatingNoneSearchResult();
     } else {
       industry();
+      animatePercent(32);
     }
   }
 });
@@ -172,6 +201,7 @@ function industrySection(e) {
       selectedConditions.big_industry = big;
       selectedConditions.small_industry = small;
       businessPeriod();
+      animatePercent(50);
     }
   });
 }
@@ -219,6 +249,7 @@ businessPeriodButton.addEventListener('click', () => {
     warning();
   } else {
     billingLastYear();
+    animatePercent(80);
   }
 });
 
@@ -252,6 +283,7 @@ billingLastYearButtonContainer.addEventListener('click', () => {
     warning();
   } else {
     exportPerformance();
+    animatePercent(90);
   }
 
 });
@@ -290,6 +322,7 @@ exportPerformanceButton.addEventListener('click', () => {
     warning();
   } else {
     employeeNumber();
+    animatePercent(100);
   }
 });
 
@@ -352,34 +385,160 @@ warningContainer.addEventListener('click', () => {
 
 const searchBackIcons = document.querySelectorAll('.search-back-icon');
 
+const percentMap = {
+  'search-region-container': 0,
+  'business-style-container': 16,
+  'search-industry-container': 32,
+  'business-period-container': 50,
+  'billing-last-year-container': 80,
+  'export-performance-container': 90,
+  'employee-number-container': 100
+};
+
+
 searchBackIcons.forEach(searchBackIcon => {
   searchBackIcon.addEventListener('click', () => {
-    if (searchBackIcon.parentElement.classList.contains('business-style-container')) {
-      search_region_container.style.display = 'flex';
-      businessStyleContainer.style.display = 'none';
+    let currentContainer = searchBackIcon.parentElement;
+    let prevContainer;
 
-    } else if (searchBackIcon.parentElement.classList.contains('search-industry-container')) {
-      businessStyleContainer.style.display = 'flex';
-      search_industry_container.style.display = 'none';
+    if (currentContainer.classList.contains('business-style-container')) {
+      prevContainer = search_region_container;
+    } else if (currentContainer.classList.contains('search-industry-container')) {
+      prevContainer = businessStyleContainer;
+    } else if (currentContainer.classList.contains('business-period-container')) {
+      prevContainer = search_industry_container;
+    } else if (currentContainer.classList.contains('billing-last-year-container')) {
+      prevContainer = businessPeriodContainer;
+    } else if (currentContainer.classList.contains('export-performance-container')) {
+      prevContainer = billingLastYearContainer;
+    } else if (currentContainer.classList.contains('employee-number-container')) {
+      prevContainer = exportPerformanceContainer;
+    }
 
-    } else if (searchBackIcon.parentElement.classList.contains('business-period-container')) {
-      search_industry_container.style.display = 'flex';
-      businessPeriodContainer.style.display = 'none';
+    if (prevContainer) {
+      currentContainer.style.display = 'none';
+      prevContainer.style.display = 'flex';
 
-    } else if (searchBackIcon.parentElement.classList.contains('billing-last-year-container')) {
-      businessPeriodContainer.style.display = 'flex';
-      billingLastYearContainer.style.display = 'none';
-
-    } else if (searchBackIcon.parentElement.classList.contains('export-performance-container')) {
-      billingLastYearContainer.style.display = 'flex';
-      exportPerformanceContainer.style.display = 'none';
-
-    } else if (searchBackIcon.parentElement.classList.contains('employee-number-container')) {
-      exportPerformanceContainer.style.display = 'flex';
-      employeeNumberContainer.style.display = 'none';
+      // ✅ 퍼센트 복원 애니메이션
+      const containerClass = [...prevContainer.classList].find(cls => percentMap.hasOwnProperty(cls));
+      if (containerClass) {
+        animatePercent(percentMap[containerClass]);
+      }
     }
   });
 });
+
+
+const searchModalBtn = document.querySelector('.industry-search-text');
+const indModalWrap = document.querySelector('.ind-modal-wrap');
+const indModalCloseBtn = document.querySelector('.ind-modal-close-btn');
+
+searchModalBtn.addEventListener('click', () => {
+  search_industry_container.style.display = 'none';
+  indModalWrap.style.display = 'flex';
+});
+
+indModalCloseBtn.addEventListener('click', () => {
+  search_industry_container.style.display = 'flex';
+  indModalWrap.style.display = 'none';
+});
+
+const modalGptContainer = document.querySelector('.modal-gpt-container');
+const indModalBtn = document.querySelector('.ind-modal-btn');
+const indModalInput = document.querySelector('.ind-modal-input');
+
+let isLoading = false;  // 요청 중 여부를 추적
+
+function handleSearch() {
+  if (isLoading) return;
+
+  const keyword = indModalInput.value.trim();
+  if (keyword.length === 0) return;
+
+  isLoading = true;
+  indModalBtn.disabled = true;
+
+  modalGptContainer.innerHTML += `
+    <div class="modal-gpt-text-container2">
+      <div class="modal-gpt-text2">${keyword}</div>
+    </div>
+  `;
+
+  // 🔄 로딩 애니메이션 추가
+  const loadingEl = document.createElement('div');
+  loadingEl.className = 'modal-gpt-loading';
+  loadingEl.innerHTML = `
+    <div class="loading-dots">
+      <span>.</span><span>.</span><span>.</span>
+    </div>
+  `;
+  modalGptContainer.appendChild(loadingEl);
+
+  fetch('https://namatji.com/search/industry-api/', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': getCookie('csrftoken')
+    },
+    body: JSON.stringify({ keyword })
+  })
+  .then(res => res.json())
+  .then(data => {
+    const cleanText = data.response
+      .split('\n')
+      .map(line => line.trimStart())
+      .join('\n');
+
+    // ✅ 로딩 애니메이션 제거
+    const oldLoading = document.querySelector('.modal-gpt-loading');
+    if (oldLoading) oldLoading.remove();
+
+    // ✅ 결과 표시
+    modalGptContainer.innerHTML += `
+      <div class="modal-gpt-text-container">
+        <div class="modal-gpt-text" style="white-space: pre-wrap;">${cleanText}</div>
+      </div>
+    `;
+
+    // ✅ 스크롤 가장 아래로 이동
+    modalGptContainer.scrollTo({
+      top: modalGptContainer.scrollHeight,
+      behavior: 'smooth'
+    });
+    
+  })
+  .finally(() => {
+    console.log('finally');
+    isLoading = false;
+    const latestBtn = document.querySelector('.ind-modal-btn');
+    if (latestBtn) latestBtn.disabled = false;
+  });
+}
+
+
+// 클릭 or 엔터 이벤트 그대로 유지
+indModalBtn.addEventListener('click', handleSearch);
+indModalInput.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') {
+    handleSearch();
+    indModalInput.value = '';
+    // ✅ 스크롤 가장 아래로 이동
+    modalGptContainer.scrollTo({
+      top: modalGptContainer.scrollHeight,
+      behavior: 'smooth'
+    });
+  }
+});
+
+// CSRF 토큰 가져오기 함수
+function getCookie(name) {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop().split(';').shift();
+}
+
+
+
 
 
 
