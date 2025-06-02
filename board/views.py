@@ -9,6 +9,7 @@ import ast
 from datetime import datetime
 from main.models import Count, Count_by_date, IpAddress
 from datetime import date
+from PO.management.commands.utils import update_count
 
 class BoardView(View):
     def get(self, request):
@@ -52,32 +53,7 @@ class BoardView(View):
         block_end = min(block_start + 9, total_pages)
         page_range = range(block_start, block_end + 1)
 
-        def get_client_ip(request):
-            x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-            if x_forwarded_for:
-                ip = x_forwarded_for.split(',')[0]
-            else:
-                ip = request.META.get('REMOTE_ADDR')
-            return ip
-
-        ip = get_client_ip(request)
-        today = date.today()
-        count_type = "board"
-
-        ip_record = IpAddress.objects.filter(ip_address=ip, count_type=count_type).first()
-
-        if not ip_record or ip_record.created_at.date() < today:
-            count = Count.objects.get(count_type=count_type)
-            count.value += 1
-            count.save()
-
-            Count_by_date.objects.create(count_type=count_type)
-
-            if ip_record:
-                ip_record.created_at = date.today()
-                ip_record.save()
-            else:
-                IpAddress.objects.create(ip_address=ip, count_type=count_type)
+        update_count(request, "board")
 
         return render(request, "board/board.html", {
             "items": items,
@@ -98,35 +74,7 @@ class BoardDetailView(View):
         page_index = request.GET.get("page_index", 1)
         item = get_object_or_404(BizInfo, pblanc_id=pblanc_id)
 
-        def get_client_ip(request):
-            x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-            if x_forwarded_for:
-                ip = x_forwarded_for.split(',')[0]
-            else:
-                ip = request.META.get('REMOTE_ADDR')
-            return ip
-
-        ip = get_client_ip(request)
-        today = date.today()
-        count_type = "board_detail"
-
-        # 동일한 IP + 페이지 기록이 있는지 확인
-        ip_record = IpAddress.objects.filter(ip_address=ip, count_type=count_type).first()
-
-        if not ip_record or ip_record.created_at.date() < today:
-            # ✅ 오늘 처음이면 조회수 증가
-            count = Count.objects.get(count_type=count_type)
-            count.value += 1
-            count.save()
-
-            Count_by_date.objects.create(count_type=count_type)
-
-            # ✅ IpAddress에 기록 갱신 or 생성
-            if ip_record:
-                ip_record.created_at = date.today()
-                ip_record.save()
-            else:
-                IpAddress.objects.create(ip_address=ip, count_type=count_type)
+        update_count(request, "board_detail")
 
         print(item.iframe_src)
 

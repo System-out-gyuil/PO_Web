@@ -4,6 +4,7 @@ from board.models import BizInfo
 from main.models import Count, IpAddress, Count_by_date
 from django.http import HttpResponse
 from datetime import date
+from PO.management.commands.utils import update_count
 
 # 구글 애드센스 ads.txt 검증용
 class Ads(View):
@@ -40,37 +41,7 @@ class MainView(View):
             'biz_top_10': biz_top_10
         }
 
-
-        def get_client_ip(request):
-            x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-            if x_forwarded_for:
-                ip = x_forwarded_for.split(',')[0]
-            else:
-                ip = request.META.get('REMOTE_ADDR')
-            return ip
-
-        ip = get_client_ip(request)
-        today = date.today()
-        count_type = "main"
-
-        # 동일한 IP + 페이지 기록이 있는지 확인
-        ip_record = IpAddress.objects.filter(ip_address=ip, count_type=count_type).first()
-
-        if not ip_record or ip_record.created_at.date() < today:
-            # ✅ 오늘 처음이면 조회수 증가
-            count = Count.objects.get(count_type=count_type)
-            count.value += 1
-            count.save()
-
-            Count_by_date.objects.create(count_type=count_type)
-
-            # ✅ IpAddress에 기록 갱신 or 생성
-            if ip_record:
-                ip_record.created_at = date.today()
-                ip_record.save()
-            else:
-                IpAddress.objects.create(ip_address=ip, count_type=count_type)
-
+        update_count(request, "main")
 
         return render(request, 'main/main.html', context)
 
