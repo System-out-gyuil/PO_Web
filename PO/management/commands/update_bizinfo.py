@@ -18,6 +18,7 @@ import warnings
 warnings.filterwarnings("ignore", category=UserWarning)  # 경고 무시
 import pandas as pd
 from datetime import date
+from django.utils.timezone import make_aware
 
 class Command(BaseCommand):
     help = "DB 업데이트"
@@ -264,7 +265,13 @@ class Command(BaseCommand):
             return {}
 
     def delete_bizinfo_by_date(self):
-        deleted, _ = BizInfo.objects.filter(reception_end__lt=date.today()).delete()
+        # 오늘 00:00:00 기준 datetime 객체 생성
+        today_midnight = datetime.combine(date.today(), time.min)
+        
+        # DB가 timezone-aware인 경우 (TIME_ZONE 설정 사용 시), aware로 변환 필요
+        today_midnight = make_aware(today_midnight)
+
+        deleted, _ = BizInfo.objects.filter(reception_end__lt=today_midnight).delete()
 
         print(f"{deleted}개의 마감된 공고가 삭제되었습니다.")
         return deleted
