@@ -126,7 +126,7 @@
         <div><a href="{{ item.print_file_path }}" target="_blank">{{ item.print_file_name }}</a></div>
       </div>
 
-      {% if "jpg" in iframe_src or "png" in iframe_src %}
+      {% if "add" in item.pblanc_id %}
       <div class="detail-info-container">
         <div class="detail-img">
           <img src="{{ iframe_src }}" alt="공고 이미지">
