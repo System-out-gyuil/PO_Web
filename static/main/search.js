@@ -477,7 +477,7 @@ function handleSearch() {
   loadingEl.className = 'modal-gpt-loading';
   loadingEl.innerHTML = `
     <div class="loading-dots">
-      <span>.</span><span>.</span><span>.</span><span>.</span>
+      <span>.</span><span>.</span><span>.</span>
     </div>
   `;
   modalGptContainer.appendChild(loadingEl);

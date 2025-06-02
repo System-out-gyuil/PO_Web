@@ -160,6 +160,7 @@ ul {
   -webkit-box-orient: vertical;
   margin-top: 10px;
   margin-bottom: 10px;
+  line-height: 20px;
 }
 
 .title-text-value {

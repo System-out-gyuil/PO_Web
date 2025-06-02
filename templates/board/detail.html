@@ -137,6 +137,15 @@
       {% endif %}
     </div>
   </div>
+  <div class="hr-div-2"></div>
+  <div class="hashtag-container">
+    <div class="hashtag-text">해쉬태그</div>
+    <div class="hashtag-items">
+    {% for hashtag in item.hashtag %}
+      <div class="hashtag-item">#{{ hashtag }}</div>
+    {% endfor %}
+    </div>
+  </div>
   {% include 'base/coupang_banner.html' %}
 </body>
 </html>

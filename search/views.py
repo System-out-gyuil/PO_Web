@@ -178,7 +178,7 @@ class SearchAIResultView(View):
         - id: 공고 ID
         - title: 공고 제목
         - score: 적합도 점수  (100점 만점)
-        - reason: 적합도 점수의 분석 근거\n\n
+        - reason: 적합도 점수의 분석 근거 (100자 이내)\n\n
 
         주의사항:
         - 결과만 도출하세요. 추가적인 설명이나 소개는 하지 마세요.
