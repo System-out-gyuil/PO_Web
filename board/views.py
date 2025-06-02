@@ -55,6 +55,7 @@ class BoardView(View):
 
         update_count(request, "board")
 
+        print(1)
         return render(request, "board/board.html", {
             "items": items,
             "page_index": page_index,
