@@ -1,13 +1,7 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render
 from django.views import View
-from django.core.paginator import Paginator
-from elasticsearch import Elasticsearch
-from datetime import datetime
-import json
-from config import ES_API_KEY, BIZINFO_API_KEY
 from board.models import BizInfo
 from main.models import Count, IpAddress, Count_by_date
-import requests
 from django.http import HttpResponse
 from datetime import date
 
@@ -18,20 +12,25 @@ class Ads(View):
 
 class MainView(View):
     def get(self, request):
-        biz_list_10 = BizInfo.objects.all().order_by('-registered_at')[:10]
+        biz_list_10 = BizInfo.objects.all().order_by('-registered_at')[:15]
 
         # 인기 공고 10개 직접 입력
         pblanc_ids = [
             'PBLN_000000000109562',
-            'PBLN_000000000109448',
-            'PBLN_000000000109555',
-            'PBLN_000000000109464',
-            'PBLN_000000000109685',
-            'PBLN_000000000109439',
+            'PBLN_000000000109726',
+            'PBLN_000000000109950',
+            'PBLN_000000000109773',
+            'PBLN_000000000109818',
             'PBLN_000000000109783',
-            'PBLN_000000000109668',
-            'PBLN_000000000109768',
+            'PBLN_000000000109685',
+            'PBLN_000000000109820',
             'PBLN_000000000109784',
+            'PBLN_000000000109768',
+            'PBLN_000000000110043',
+            'PBLN_000000000109746',
+            'PBLN_000000000109739',
+            'PBLN_000000000109834',
+            'PBLN_000000000109766',
         ]
 
         biz_top_10 = list(BizInfo.objects.filter(pblanc_id__in=pblanc_ids))

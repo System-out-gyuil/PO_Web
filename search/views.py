@@ -131,14 +131,27 @@ class SearchAIResultView(View):
         elif year_diff >= 3:
             period = "3년 이상"
 
-        empl_test = "소상공인"
+        empl = ""
+
+        if employees in ["1~4인", "5~9인"] and big_industry in ["광업", "제조업", "건설업", "운수업"] :
+            empl = "소상공인"
+        elif employees == "1~4인":
+            empl = "소상공인"
+        elif employees in ["10인 이상", "5~9인"]:
+            empl = "중소기업"
+
+
 
         print(f'region: {region}, business_style: {business_style}, big_industry: {big_industry}, small_industry: {small_industry}, period: {period}, export: {export}, sales: {sales}, employees: {employees}')
 
-        data = BizInfo.objects.filter((Q(region__contains=region) | Q(region__contains="전국")) & Q(possible_industry__contains=big_industry) & Q(revenue__contains=sales) & Q(business_period__contains=period) & (Q(export_performance__contains=export) | Q(export_performance__contains="무관")) & Q(employee_count__contains=employees))
+        data = BizInfo.objects.filter((Q(region__contains=region) | Q(region__contains="전국"))\
+                                       & Q(possible_industry__contains=big_industry) & Q(revenue__contains=sales)\
+                                          & Q(business_period__contains=period) & (Q(export_performance__contains=export) | Q(export_performance__contains="무관"))\
+                                              & Q(target__contains=empl))
 
         datas = ''
         datas2 = []
+        num = 0
 
         for i in data:
             if "ADD" in i.pblanc_id and employees != "5인 이상":
@@ -163,12 +176,15 @@ class SearchAIResultView(View):
                 datas2.append(obj)
 
             else:
+                num += 1
                 datas += f'id: {i.pblanc_id},\n title:{i.title},\n summary:{i.noti_summary},\n region:{i.region}\n\n'
 
-        # print(datas)
+        print(f'num: {len(data)}')
+        print(datas)
 
         text = f"""
-        당신은 중소기업 지원사업 매칭 전문가입니다.
+        당신은 지원사업 매칭 전문가입니다.
+        주어진 기업 정보와 지원사업 정보를 깊이 있게 분석하여 지원사업이 해당 회사에 도움이 되는지 판단해야 합니다.
 
         ## 기업 정보
         - 사업지 주소지: {region}
@@ -178,22 +194,26 @@ class SearchAIResultView(View):
         - 직원 수: {employees}
 
         ## 요청 사항
-        - 아래 지원 공고 목록을 기반으로, 선정 가능성이 높은 공고를 알려주세요.
-        - 지역과 업종은 반드시 일치해야 합니다.
-        - 적합도 점수를 100점 만점으로 평가하여 우선순위를 정해주세요.
-        - 점수가 70점 이상인 공고만 보여주세요.
-        - 동일한 공고는 한 번만 표시해주세요, 절대로 중복이 나타나선 안됩니다. **ID가 같은 공고는 하나만 포함해주세요**
-        - 절대 내용을 지어내거나 ID를 임의로 변경하지 마세요.
-        - 적합도 점수에 대한 근거(지역과 업종 제외한 다른 근거)를 20자 이내로 작성해주세요.
-        - title, summary 등 모두 검토하여 절대로 지역과 업종이 일치하지 않는 공고는 보여주지 마세요.
-        - title에 만약 다른 지역 이름이 적혀있을 시 절대로 해당 공고는 보여주지 마시오.
+        1. 기업 정보와 지원사업 정보를 철저히 비교 분석하세요.
+        2. 지원사업이 회사의 현재 상황, 필요, 목표와 얼마나 잘 부합하는지 고려하세요.
+        3. 회사가 지원사업의 요구사항을 충족시킬 수 있는지 평가하세요.
+        4. 지원사업이 회사에 제공할 수 있는 구체적인 이점을 식별하세요.
+        5. 잠재적인 불일치 또는 문제점도 고려하세요.
 
         ## 출력 형식
         각 공고에 대해 다음 정보를 포함한 딕셔너리 형태로 응답해주세요:
         - id: 공고 ID
         - title: 공고 제목
-        - score: 적합도 점수
-        - reason: 적합도 점수의 근거\n\n
+        - score: 적합도 점수  (100점 만점)
+        - reason: 적합도 점수의 분석 근거\n\n
+
+        주의사항:
+        - 결과만 도출하세요. 추가적인 설명이나 소개는 하지 마세요.
+        - 한국어로 출력하세요.
+        - XML 태그를 사용하지 마세요.
+        - 적합도 점수가 50점 이상인 공고만 보여주세요.
+
+        이제 분석을 시작하고 지정된 형식으로 결과를 제시하세요.\n\n
         """
 
         llm = ChatOpenAI(
@@ -313,7 +333,8 @@ class SearchAIResultView(View):
                 seen_ids.add(obj.pblanc_id)
                 unique_datas2.append(obj)
 
-        datas2 = unique_datas2
+        # 적합도 점수 높은 순 정렬
+        datas2 = sorted(unique_datas2, key=lambda x: int(x.score), reverse=True)
 
 
         context = {

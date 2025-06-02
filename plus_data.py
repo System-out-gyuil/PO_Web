@@ -22,8 +22,6 @@ import time
 from PIL import Image
 import subprocess
 import warnings
-
-
 from board.models import BizInfo
 
 # Excel 파일 경로

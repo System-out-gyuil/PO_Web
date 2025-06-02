@@ -10,12 +10,6 @@ from datetime import datetime
 from main.models import Count, Count_by_date, IpAddress
 from datetime import date
 
-# ✅ Elasticsearch 클라이언트 설정
-es = Elasticsearch(
-    "https://0e0f4480a93d4cb78455e070163e467d.us-central1.gcp.cloud.es.io:443",
-    api_key=ES_API_KEY
-)
-
 class BoardView(View):
     def get(self, request):
         page_index = int(request.GET.get("page_index", 1))
@@ -25,45 +19,35 @@ class BoardView(View):
 
         print(select_type, keyword)
 
+        # ✅ DB 검색 쿼리
+        queryset = BizInfo.objects.all()
+
         if select_type and keyword:
             if select_type == "title":
-                query = {
-                    "wildcard": {
-                        "title": f"*{keyword}*"
-                    }
-                }
+                queryset = queryset.filter(title__icontains=keyword)
             elif select_type == "region":
-                query = {
-                    "match": {
-                        "region": keyword
-                    }
-                }
+                queryset = queryset.filter(region__icontains=keyword)
 
-        else:
-            query = { "match_all": {} }
+        queryset = queryset.order_by("-registered_at")
 
+        # ✅ Paginator 적용
+        paginator = Paginator(queryset, page_size)
+        page_obj = paginator.get_page(page_index)
+        items = list(page_obj)
 
-
-        # ✅ Elasticsearch 요청
-        es_response = es.search(
-            index="bizinfo_index",
-            body={
-                "query": query,
-                "sort": [{"registered_at": {"order": "desc"}}],
-                "from": (page_index - 1) * page_size,
-                "size": page_size
-            }
-        )
-
-        total_count = es_response['hits']['total']['value']
-        hits = es_response['hits']['hits']
-        items = [hit["_source"] for hit in hits]
-
+        # ✅ 날짜 및 지역 리스트 포맷 처리
         for item in items:
-            item["registered_at"] = datetime.strptime(item["registered_at"], "%Y-%m-%d").strftime("%y.%m.%d")
+            item.registered_at = item.registered_at.strftime("%y.%m.%d")
 
-        # ✅ 페이지네이션 처리
-        total_pages = math.ceil(total_count / page_size)
+            # region이 문자열 형태의 리스트일 경우 → 실제 리스트로 변환
+            if isinstance(item.region, str) and item.region.startswith("["):
+                try:
+                    item.region = ast.literal_eval(item.region)
+                except (SyntaxError, ValueError):
+                    item.region = [item.region]  # 파싱 실패 시 그냥 문자열을 리스트로 감쌈
+
+        total_count = paginator.count
+        total_pages = paginator.num_pages
         block_start = ((page_index - 1) // 10) * 10 + 1
         block_end = min(block_start + 9, total_pages)
         page_range = range(block_start, block_end + 1)
@@ -80,18 +64,15 @@ class BoardView(View):
         today = date.today()
         count_type = "board"
 
-        # 동일한 IP + 페이지 기록이 있는지 확인
         ip_record = IpAddress.objects.filter(ip_address=ip, count_type=count_type).first()
 
         if not ip_record or ip_record.created_at.date() < today:
-            # ✅ 오늘 처음이면 조회수 증가
             count = Count.objects.get(count_type=count_type)
             count.value += 1
             count.save()
 
             Count_by_date.objects.create(count_type=count_type)
 
-            # ✅ IpAddress에 기록 갱신 or 생성
             if ip_record:
                 ip_record.created_at = date.today()
                 ip_record.save()
