@@ -9,6 +9,7 @@ body {
   padding-bottom: 170px;
 }
 
+/* 각 항목별 진행도 퍼센트 표시 */
 .percent-box {
   position: absolute;
   top: 0px;
@@ -27,6 +28,7 @@ body {
   text-align: center;
 }
 
+/* 전체 페이지 공용 */
 .search-container {
   margin: 0 auto;
   display: flex;
@@ -35,7 +37,7 @@ body {
   justify-content: center;
   width: 426px;
   height: 700px;
-  background-color: #4294ff;
+  background-color: #18a0fb;
   margin-top: 50px;
   border-radius: 15px;
   position: relative;
@@ -57,8 +59,6 @@ body {
   margin-top: -40px;
 }
 
-
-
 .search-title-sub {
   font-family: 'TmonMonsori', sans-serif;
   font-size: 50px;
@@ -66,10 +66,6 @@ body {
   color: #7dff32;
   margin-top: 15px;
 }
-
-/* .search-region-wrapper {
-  margin-top: 30px;
-} */
 
 .search-btn-container {
   display: flex;
@@ -93,6 +89,8 @@ body {
   cursor: pointer;
 }
 
+/* 지역 선택 페이지 */
+
 .search-region {
   display: flex;
   flex-direction: row;
@@ -115,6 +113,7 @@ body {
   margin-top: 15px;
 }
 
+/* 사업자 보유 현황 선택 페이지 */
 .business-style {
   margin-top: 60px;
 }
@@ -145,6 +144,8 @@ body {
   margin-top: 15px;
 }
 
+/* 업종 검색 페이지 */
+
 .industry-search-title {
   width: 88%;
   text-align: center;
@@ -163,177 +164,6 @@ body {
   font-size: 14px;
   font-weight: 600;
   color: #fff;
-  cursor: pointer;
-}
-
-.ind-modal-wrap {
-  display: none;
-  width: 426px;
-  height: 700px;
-  margin: 0 auto;
-  /* position: absolute;
-  top: 15%;
-  left: 38%; */
-  background-color: #e6f5ff;
-  border-radius: 15px;
-  margin-top: 50px;
-}
-
-.ind-modal-container {
-  margin: 0 auto;
-  width: 97%;
-  height: 100%;
-  /* background-color: #d49999; */
-}
-
-.ind-modal-title-container {
-  display: flex;
-}
-
-.ind-modal-close-btn-img {
-  width: 20px;
-  height: 20px;
-  background-image: url('../images/X_icon.png');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  position: absolute;
-  top: 10px;
-  right: 5px;
-}
-
-.ind-modal-title {
-  width: 100%;
-  height: 40px;
-  line-height: 40px;
-  text-align: center;
-  font-family: 'Nanum Barun Gothic', sans-serif;
-  font-size: 18px;
-  font-weight: 600;
-  color: #000000;
-}
-
-.ind-modal-btn-container {
-  display: flex;
-  justify-content: center;
-  width: 24.24%;
-  height: 40px;
-  position: fixed;
-  bottom: 123px;
-}
-
-.ind-modal-close-btn {
-  cursor: pointer;
-  position: relative;
-}
-
-.modal-gpt-container {
-  width: 100%;
-  height: 600px;
-  text-align: center;
-  background-color: #e6f5ff;
-  overflow-y: auto;
-  position: relative;
-  border-radius: 15px;
-  padding-bottom: 50px;
-}
-
-.modal-gpt-container::-webkit-scrollbar {
-  display: none;
-}
-
-.modal-gpt-text {
-  white-space: pre-wrap;
-  /* font-family: 'Nanum Barun Gothic', sans-serif; */
-  font-size: 13px;
-  font-weight: 660;
-  color: #000000;
-  background-color: #ffffff;
-  width: 90%;
-  max-height: 2000px;
-  margin-left: 0px;
-  margin-top: 10px;
-  text-align: left;
-  border-radius: 10px;
-  padding: 10px;
-  border: 1px solid #bdbdbd;
-}
-
-.modal-gpt-text2 {
-  white-space: pre-wrap;
-  font-family: 'Nanum Barun Gothic', sans-serif;
-  font-size: 14px;
-  font-weight: 600;
-  color: #000000;
-  background-color: #ffffff;
-  max-height: 1000px;
-  margin-left: 10%;
-  margin-top: 10px;
-  text-align: left;
-  border-radius: 10px;
-  padding: 10px;
-  border: 1px solid #bdbdbd;
-}
-
-.ind-modal-input {
-  width: 85%;
-  height: 41px;
-  background-color: #ffffff;
-  border: 1px solid #a7a7a7;
-  margin: 0;
-  padding: 0;
-  padding-left: 10px;
-}
-
-.ind-modal-btn {
-  width: 15%;
-  height: 42px;
-  background-color: #ffffff;
-  border: 1px solid #a7a7a7;
-  margin: 0;
-  padding: 0;
-}
-
-/* dsadsadsa */
-
-.modal-gpt-loading {
-  display: flex;
-  justify-content: flex-start;
-}
-
-.loading-dots {
-  border: 1px solid #bdbdbd;
-  background-color: #fff;
-  padding: 10px;
-  border-radius: 5px;
-  display: inline-block;
-  font-size: 20px;
-  margin-top: 8px;
-  height: 20px;
-  line-height: 20px;
-  width: 100px;
-}
-
-.loading-dots span {
-  animation: blink 1.4s infinite;
-  display: inline-block;
-}
-
-.loading-dots span:nth-child(2) {
-  animation-delay: 0.2s;
-}
-
-.loading-dots span:nth-child(3) {
-  animation-delay: 0.4s;
-}
-
-@keyframes blink {
-  0%, 80%, 100% {
-    opacity: 0;
-  }
-  40% {
-    opacity: 1;
-  }
 }
 
 .industry-category-wrapper {
@@ -451,6 +281,198 @@ body {
 
 .industry-table-select {
   width: 50px;
+}
+
+.industry-search-icon {
+  transform: rotate(180deg);
+  margin-left: 5px;
+  margin-right: 5px;
+}
+
+.industry-search-icon-box {
+  margin-top: -3px;
+}
+
+.industry-search-text2 {
+  font-family: 'Nanum Barun Gothic', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+}
+
+/* 업종 검색 모달 */
+
+.ind-modal-wrap {
+  display: none;
+  width: 426px;
+  height: 700px;
+  margin: 0 auto;
+  background-color: #e6f5ff;
+  border-radius: 15px;
+  margin-top: 50px;
+}
+
+.ind-modal-container {
+  margin: 0 auto;
+  width: 97%;
+  height: 100%;
+}
+
+.ind-modal-title-container {
+  display: flex;
+}
+
+.ind-modal-close-btn-img {
+  width: 20px;
+  height: 20px;
+  background-image: url('../images/X_icon.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  position: absolute;
+  top: 10px;
+  right: 5px;
+}
+
+.ind-modal-title {
+  width: 100%;
+  height: 40px;
+  line-height: 40px;
+  text-align: center;
+  font-family: 'Nanum Barun Gothic', sans-serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: #000000;
+}
+
+.ind-modal-btn-container {
+  display: flex;
+  justify-content: center;
+  width: 24.24%;
+  height: 40px;
+  position: fixed;
+  bottom: 123px;
+}
+
+.ind-modal-close-btn {
+  cursor: pointer;
+  position: relative;
+}
+
+.modal-gpt-container {
+  width: 100%;
+  height: 600px;
+  text-align: center;
+  background-color: #e6f5ff;
+  overflow-y: auto;
+  position: relative;
+  border-radius: 15px;
+  padding-bottom: 50px;
+}
+
+.modal-gpt-container::-webkit-scrollbar {
+  display: none;
+}
+
+.modal-gpt-text {
+  white-space: pre-wrap;
+  /* font-family: 'Nanum Barun Gothic', sans-serif; */
+  font-size: 13px;
+  font-weight: 660;
+  color: #000000;
+  background-color: #ffffff;
+  width: 90%;
+  max-height: 2000px;
+  margin-left: 0px;
+  margin-top: 10px;
+  text-align: left;
+  border-radius: 10px;
+  padding: 10px;
+  border: 1px solid #bdbdbd;
+}
+
+.modal-gpt-text2 {
+  white-space: pre-wrap;
+  font-family: 'Nanum Barun Gothic', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: #000000;
+  background-color: #ffffff;
+  max-height: 1000px;
+  margin-left: 10%;
+  margin-top: 10px;
+  text-align: left;
+  border-radius: 10px;
+  padding: 10px;
+  border: 1px solid #bdbdbd;
+}
+
+.ind-modal-input {
+  width: 85%;
+  height: 41px;
+  background-color: #ffffff;
+  border: 1px solid #a7a7a7;
+  margin: 0;
+  padding: 0;
+  padding-left: 10px;
+}
+
+.ind-modal-btn {
+  width: 15%;
+  height: 42px;
+  background-color: #ffffff;
+  border: 1px solid #a7a7a7;
+  margin: 0;
+  padding: 0;
+}
+
+/* 업종 검색 모달 로딩 애니메이션 */
+
+.modal-gpt-loading {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.loading-dots {
+  position: relative;
+  border: 1px solid #bdbdbd;
+  background-color: #fff;
+  padding: 10px;
+  border-radius: 15px;
+  display: inline-block;
+  font-size: 80px;
+  margin-top: 20px;
+  height: 20px;
+  line-height: 20px;
+  width: 80px;
+}
+
+.loading-dots span {
+  animation: blink 1.4s infinite;
+  display: inline-block;
+  position: absolute;
+  top: -20px;
+  left: 20px;
+}
+
+.loading-dots span:nth-child(2) {
+  animation-delay: 0.2s;
+  left: 40px;
+}
+
+.loading-dots span:nth-child(3) {
+  animation-delay: 0.4s;
+  left: 60px;
+}
+
+@keyframes blink {
+  0%, 80%, 100% {
+    opacity: 0;
+  }
+  40% {
+    opacity: 1;
+  }
 }
 
 .business-period-year-wrapper {
@@ -902,7 +924,13 @@ ul {
   }
 
   .search-title {
-    margin-top: 50px;
+    margin-top: 80px;
+    margin-bottom: 0px;
+  }
+
+  .search-title-region {
+    margin-top: 30px;
+    margin-bottom: 30px;
   }
 
   .consel-nav-modal-item-box {
@@ -969,7 +997,8 @@ ul {
   }
 
   .industry-category-table {
-    height: 290px;
+    height: 230px;
+    width: 360px;
   }
   .industry-category-wrapper {
     margin: 0 auto;
@@ -988,10 +1017,6 @@ ul {
     width: 330px;
   }
 
-  .industry-category-table {
-    width: 360px;
-  }
-
   .industry-table-big {
     width: 90px;
   }
@@ -1002,6 +1027,19 @@ ul {
 
   .industry-table-select {
     width: 70px;
+  }
+
+  .ind-modal-wrap {
+    width: 360px;
+    height: 620px;
+  }
+
+  .modal-gpt-container {
+    height: 450px;
+  }
+
+  .ind-modal-btn-container {
+    width: 92.24%;
   }
 
   .billing-last-year-item {

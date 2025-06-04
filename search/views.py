@@ -21,13 +21,18 @@ from datetime import datetime, date
 from main.models import Count, Count_by_date, IpAddress
 from django.utils.decorators import method_decorator
 from PO.management.commands.utils import update_count
+from django.contrib.auth.mixins import LoginRequiredMixin
+
 
 class SearchView(View):
     def get(self, request):
-
         update_count(request, "search")
+        print(f'request.user.is_authenticated: {request.user.is_authenticated}')
+        
+        return render(request, 'main/search.html', {
+            'is_authenticated': request.user.is_authenticated
+        })
 
-        return render(request, 'main/search.html')
 
 @method_decorator(csrf_exempt, name='dispatch')
 class SearchIndustryAPIView(View):

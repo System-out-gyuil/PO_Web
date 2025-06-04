@@ -56,6 +56,10 @@
   line-height: 50px;
 }
 
+.main-section-box-list {
+  height: 640px;
+  overflow: hidden;
+}
 
 ul {
   padding: 0;
@@ -170,6 +174,10 @@ ul {
 
   .category-text-biz {
     width: 20%;
+  }
+  .main-section-box-list {
+    height: 440px;
+    overflow: hidden;
   }
 }
 

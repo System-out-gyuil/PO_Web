@@ -8,6 +8,8 @@ SECRET_KEY = Django_SECRET_KEY
 
 DEV_MODE = True
 
+
+
 # 디버그 모드 (True일 시 웹에서 오류화면 나타남, 배포 시 False로 설정)
 DEBUG = DEV_MODE
 CORS_ALLOW_ALL_ORIGINS = DEV_MODE
@@ -21,6 +23,8 @@ INSTALLED_APPS = [
     "counsel",
     "board",
     "search",
+    "member",
+    
     "rest_framework",
     "django.contrib.admin",
     "django.contrib.auth",
@@ -29,17 +33,42 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.sitemaps",
-    "django.contrib.sites",
     "django_crontab",
     "corsheaders",
+
+    # Allauth
+    "django.contrib.sites",
+    "allauth",
+    "allauth.account",
+    "allauth.socialaccount",
+    "allauth.socialaccount.providers.kakao",
 ]
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
+]
+
+SOCIALACCOUNT_PROVIDERS = {
+    'kakao': {
+        'SCOPE': [
+            'profile_nickname',
+            'profile_image',
+            'account_email',
+        ],
+        'AUTH_PARAMS': {
+            'access_type': 'online',
+        },
+    }
+}
+
 
 # 매일 18시마다 bizinfo api data update, * * * * * 순서대로 분, 시, 일, 월, 요일
 CRONJOBS = [
     ('* 18 * * *', 'PO.cron.update_bizinfo'),
 ]
 
-SITE_ID = 1 #sitemap
+SITE_ID = 16 #sitemap 
 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
@@ -50,6 +79,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    'allauth.account.middleware.AccountMiddleware',
 ]
 
 # 모든 요청 뒤에 / 붙이는 설정
@@ -72,6 +102,14 @@ TEMPLATES = [
         },
     },
 ]
+
+SOCIALACCOUNT_ADAPTER = 'PO.adapters.MySocialAccountAdapter'
+SOCIALACCOUNT_LOGIN_ON_GET = True
+# LOGIN_REDIRECT_URL = '/search/'
+ACCOUNT_LOGOUT_REDIRECT_URL = '/'
+ACCOUNT_LOGOUT_ON_GET = True 
+
+LOGIN_REDIRECT_URL = "/member/popup-close/"
 
 WSGI_APPLICATION = "PO.wsgi.application"
 

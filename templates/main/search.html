@@ -21,6 +21,7 @@
   {% load static %}
   <link rel="stylesheet" href="{% static 'main/search.css' %}">
   <link rel="stylesheet" href="{% static 'base/base.css' %}">
+  <link rel="stylesheet" href="{% static 'member/login.css' %}">
   <link rel="icon" type="image/png" href="{% static 'images/NAMATJI_ICON.png' %}" />
   <title>나맞지, ai 정부지원금·정책자금 찾기</title>
   {% csrf_token %}
@@ -40,11 +41,31 @@
     <noscript><img height="1" width="1" style="display:none"
     src="https://www.facebook.com/tr?id=692464356832795&ev=PageView&noscript=1"
     /></noscript>
-    <!-- End Meta Pixel Code -->
+
+    {% if not is_authenticated %}
+    <script>
+      window.onload = function () {
+
+        const width = 500;
+        const height = 600;
+        const left = (screen.width - width) / 2;
+        const top = (screen.height - height) / 2;
+
+        window.open(
+          "/accounts/kakao/login/",
+          "KakaoLoginPopup",
+          `width=${width},height=${height},top=${top},left=${left}`
+        );
+      };
+    </script>
+    {% endif %}
+
 </head>
 <body>
   {% include 'base/top_nav.html' %}
   <h1 style="display: none;">나맞지 - 나에게 딱 맞는 지원금 찾아보기</h1>
+
+  {% comment %} {% include 'member/login.html' %} {% endcomment %}
 
   <section id="region-section">
     <div class="search-region-container search-container">
@@ -350,6 +371,9 @@
 
   {% include 'base/coupang_banner.html' %}
 
+  <script>
+    window.IS_AUTHENTICATED = {{ request.user.is_authenticated|yesno:"true,false" }};
+  </script>
   <script src="{% static 'main/search.js' %}"></script>
 </body>
 </html>

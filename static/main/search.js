@@ -10,6 +10,11 @@ const selectedConditions = {
   employees: null
 };
 
+const search_region_btn_container = document.querySelector('.search-region-btn-container');
+
+
+
+
 const percentBox = document.querySelector('.percent-box-text');
 let currentPercent = 0; // 현재 퍼센트 상태 저장
 
@@ -79,21 +84,77 @@ document.querySelectorAll('.region').forEach(region => {
     // 선택값 저장
     selectedConditions.region = region.innerText;
 
-    
-
   });
 });
 
+// function requireLogin(callback) {
+//   if (window.IS_AUTHENTICATED === true || window.IS_AUTHENTICATED === 'true') {
+//     // 로그인된 상태면 바로 콜백 실행
+//     callback();
+//     return;
+//   }
+
+//   // 로그인 안 된 경우 → 로그인 팝업
+//   const width = 500;
+//   const height = 600;
+//   const left = (screen.width - width) / 2;
+//   const top = (screen.height - height) / 2;
+
+//   const popup = window.open(
+//     "/accounts/kakao/login/",
+//     "KakaoLoginPopup",
+//     `width=${width},height=${height},top=${top},left=${left}`
+//   );
+
+//   const timer = setInterval(() => {
+//     if (popup.closed) {
+//       clearInterval(timer);
+
+//       // 로그인 확인을 위해 서버에 인증 상태 요청
+//       fetch("/member/whoami/")
+//         .then(res => res.json())
+//         .then(data => {
+//           if (data.is_authenticated) {
+//             window.IS_AUTHENTICATED = true;
+//             callback();  // 로그인 완료 후 계속 진행
+//           } else {
+//             console.log("로그인이 필요합니다.");
+//           }
+//         });
+//     }
+//   }, 500);
+// }
+
 search_region_button.addEventListener('click', () => {
-  if (!selectedConditions.region) {
-    warning();
-  } else {
-    
-    console.log(selectedConditions.region);
-    businessStyle();
-    animatePercent(16);
-  }
+  fetch("/member/whoami/")
+    .then(res => res.json())
+    .then(data => {
+      if (data.is_authenticated) {
+        if (!selectedConditions.region) {
+          warning();
+        } else {
+        
+          console.log(selectedConditions.region);
+          businessStyle();
+          animatePercent(16);
+        }
+      } else {
+        console.log("로그인이 필요합니다.");
+        const width = 500;
+        const height = 600;
+        const left = (screen.width - width) / 2;
+        const top = (screen.height - height) / 2;
+
+        const popup = window.open(
+          "/accounts/kakao/login/",
+          "KakaoLoginPopup",
+          `width=${width},height=${height},top=${top},left=${left}`
+        );
+      }
+    });
 });
+
+    
 
 // 사업자 현황 선택 창
 const businessStyleContainer = document.querySelector('.business-style-container');

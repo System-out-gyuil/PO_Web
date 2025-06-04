@@ -1,0 +1,19 @@
+button {
+  border: none;
+}
+
+
+
+.login-with-sns-wrap {
+  height: 500px;
+  background-color: #8f8f8f;
+}
+
+.login-with-sns-box {
+  width: 100%;
+  height: 100%;
+  background-color: #ffffff;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
