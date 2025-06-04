@@ -8,8 +8,6 @@ SECRET_KEY = Django_SECRET_KEY
 
 DEV_MODE = True
 
-
-
 # 디버그 모드 (True일 시 웹에서 오류화면 나타남, 배포 시 False로 설정)
 DEBUG = DEV_MODE
 CORS_ALLOW_ALL_ORIGINS = DEV_MODE

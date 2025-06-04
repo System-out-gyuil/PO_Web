@@ -1,7 +1,6 @@
 from django.shortcuts import render
 from django.views import View
 from django.shortcuts import redirect
-from config import KAKAO_REST_API_KEY, KAKAO_CALLBACK_URI
 from django.contrib.sites.models import Site
 from PO.settings import SITE_ID
 from django.http import JsonResponse
