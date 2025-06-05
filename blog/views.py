@@ -104,7 +104,7 @@ class BlogGPTAPIView(View):
                 full_text = "(본문을 읽는 중 오류 발생)"
 
             # GPT 호출
-            llm = ChatOpenAI(temperature=0, model_name='gpt-4o', openai_api_key=OPEN_AI_API_KEY)
+            llm = ChatOpenAI(temperature=0, model_name='gpt-4o', openai_api_key=OPEN_AI_API_KEY, max_tokens=2048)
             input_data = f"{user_input}\n\n{full_text}"
             response = llm.invoke(input_data)
             content = response.content.replace("**", "").replace("#", "").strip()
