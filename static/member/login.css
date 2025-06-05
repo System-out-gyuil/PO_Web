@@ -30,6 +30,7 @@ button {
 .login-with-sns-button {
   width: 90%;
   height: 55px;
+  cursor: pointer;
 }
 
 .kakao {
