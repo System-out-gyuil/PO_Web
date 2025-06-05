@@ -22,6 +22,7 @@ INSTALLED_APPS = [
     "board",
     "search",
     "member",
+    "blog",
     
     "rest_framework",
     "django.contrib.admin",

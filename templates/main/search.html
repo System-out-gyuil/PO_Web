@@ -63,7 +63,9 @@
 </head>
 <body>
   {% include 'base/top_nav.html' %}
-  <h1 style="display: none;">나맞지 - 나에게 딱 맞는 지원금 찾아보기</h1>
+  <section id="page-title-section">
+    <h1 style="display: none;">나맞지 - 나에게 딱 맞는 지원금 찾아보기</h1>
+  </section>
 
   {% comment %} {% include 'member/login.html' %} {% endcomment %}
 
@@ -325,7 +327,7 @@
     </div>
   </section>
 
-  <section>
+  <section id="select-warning-section">
     <div class="select-warning-container-wrapper">
       <div class="select-warning-box">
         <div class="select-warning-container">

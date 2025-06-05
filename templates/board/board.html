@@ -80,47 +80,55 @@
       </tr>
     </thead>
     <tbody>
-      {% for item in items %}
-      <tr class="table-row">
-        <td class="table-row-1">{{ item.registered_at }}</td>
-        {% comment %} <td>{{ item.field }}</td> {% endcomment %}
+      {% if items %}
+        {% for item in items %}
+        <tr class="table-row">
+          <td class="table-row-1">{{ item.registered_at }}</td>
+          {% comment %} <td>{{ item.field }}</td> {% endcomment %}
 
-        {% if item.region %}
-          <td class="table-row-2">{{ item.region.0 }}</td>
-        {% else %}
-          <td class="table-row-2">전국</td>
-        {% endif %}
+          {% if item.region %}
+            <td class="table-row-2">{{ item.region.0 }}</td>
+          {% else %}
+            <td class="table-row-2">전국</td>
+          {% endif %}
 
-        <td class="table-row-3" onclick="location.href='{% url 'board:detail' item.pblanc_id %}?page_index={{ page_index }}'" style="cursor:pointer;">
-          {{ item.title }}
-        </td>
+          <td class="table-row-3" onclick="location.href='{% url 'board:detail' item.pblanc_id %}?page_index={{ page_index }}'" style="cursor:pointer;">
+            {{ item.title }}
+          </td>
+        </tr>
+        {% endfor %}
+      {% else %}
+      <tr>
+        <td colspan="3" style="text-align: center;">검색 결과가 없습니다.</td>
       </tr>
-      {% endfor %}
+      {% endif %}
     </tbody>
   </table>
 
   <!-- Pagination -->
-  <div class="pagination">
-    {% if page_range %}
-      {% if not is_first_block %}
-        <a class="page-control-btn-dl" href="?page_index=1&select-type={{ select_type }}&keyword={{ keyword }}"></a>
-        <a class="page-control-btn-l" href="?page_index={{ page_range.start|add:"-1" }}&select-type={{ select_type }}&keyword={{ keyword }}"></a>
-      {% endif %}
-
-      {% for page in page_range %}
-        {% if page == page_index %}
-          <strong class="page-num-btn selected">{{ page }}</strong>
-        {% else %}
-        <a class="page-num-btn" href="?page_index={{ page }}&select-type={{ select_type }}&keyword={{ keyword }}">{{ page }}</a>
+  {% if items %}
+    <div class="pagination">
+      {% if page_range %}
+        {% if not is_first_block %}
+          <a class="page-control-btn-dl" href="?page_index=1&select-type={{ select_type }}&keyword={{ keyword }}"></a>
+          <a class="page-control-btn-l" href="?page_index={{ page_range.start|add:"-1" }}&select-type={{ select_type }}&keyword={{ keyword }}"></a>
         {% endif %}
-      {% endfor %}
 
-      {% if not is_last_block %}
-        <a class="page-control-btn-r" href="?page_index={{ page_range.stop|add:"1" }}&select-type={{ select_type }}&keyword={{ keyword }}"></a>
-        <a class="page-control-btn-dr" href="?page_index={{ total_pages }}&select-type={{ select_type }}&keyword={{ keyword }}"></a>
+        {% for page in page_range %}
+          {% if page == page_index %}
+            <strong class="page-num-btn selected">{{ page }}</strong>
+          {% else %}
+          <a class="page-num-btn" href="?page_index={{ page }}&select-type={{ select_type }}&keyword={{ keyword }}">{{ page }}</a>
+          {% endif %}
+        {% endfor %}
+
+        {% if not is_last_block %}
+          <a class="page-control-btn-r" href="?page_index={{ page_range.stop|add:"1" }}&select-type={{ select_type }}&keyword={{ keyword }}"></a>
+          <a class="page-control-btn-dr" href="?page_index={{ total_pages }}&select-type={{ select_type }}&keyword={{ keyword }}"></a>
+        {% endif %}
       {% endif %}
-    {% endif %}
-  </div>
+    </div>
+  {% endif %}
   {% include 'base/coupang_banner.html' %}
 
   <script src="{% static 'board/board.js' %}"></script>

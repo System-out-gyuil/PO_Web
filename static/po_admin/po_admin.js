@@ -51,7 +51,6 @@ document.addEventListener('DOMContentLoaded', () => {
   counselNavItem.classList.add('active');
 });
 
-
 function fetchCounts(startDate = null, endDate = null) {
   let root = 'https://namatji.com';
   // let root = 'http://127.0.0.1:8000';
@@ -67,7 +66,6 @@ function fetchCounts(startDate = null, endDate = null) {
       const count_tbody = document.getElementById('body-items');
       const range = document.getElementById('date-range');
 
-      console.log(data.counts);
 
       count_thead.innerHTML = '';
       count_tbody.innerHTML = '';

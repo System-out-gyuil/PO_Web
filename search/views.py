@@ -1,6 +1,5 @@
 from django.shortcuts import render
 from django.views import View
-from django.http import HttpResponse
 from django.shortcuts import redirect
 from django.core.paginator import Paginator
 from datetime import datetime
@@ -27,7 +26,6 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 class SearchView(View):
     def get(self, request):
         update_count(request, "search")
-        print(f'request.user.is_authenticated: {request.user.is_authenticated}')
         
         return render(request, 'main/search.html', {
             'is_authenticated': request.user.is_authenticated
@@ -59,12 +57,13 @@ class SearchIndustryAPIView(View):
 
         response = llm.invoke(user_input)
         content = response.content.replace("**", "").replace("#", "").strip()
-        print("[GPT 응답 원본]:", content)
+        # print("[GPT 응답 원본]:", content)
 
         clean_text = '\n'.join(line.lstrip() for line in content.split('\n'))
 
         return JsonResponse({"response": clean_text})
-    
+
+# 띄어쓰기 제외 검색
 # @csrf_exempt
 # def search_industry(request):
 #     if request.method == "GET":
@@ -126,8 +125,6 @@ class SearchAIResultView(View):
         if today.month < start_date.month:
             year_diff -= 1
 
-        print(f'year_diff: {year_diff}')
-
         if year_diff < 3:
             period = "3년 미만"
         elif year_diff >= 3:
@@ -142,14 +139,14 @@ class SearchAIResultView(View):
         elif employees in ["10인 이상", "5~9인"]:
             empl = "중소기업"
 
-
-
-        print(f'region: {region}, business_style: {business_style}, big_industry: {big_industry}, small_industry: {small_industry}, period: {period}, export: {export}, sales: {sales}, employees: {employees}')
-
-        data = BizInfo.objects.filter((Q(region__contains=region) | Q(region__contains="전국"))\
-                                       & Q(possible_industry__contains=big_industry) & Q(revenue__contains=sales)\
-                                          & Q(business_period__contains=period) & (Q(export_performance__contains=export) | Q(export_performance__contains="무관"))\
-                                              & Q(target__contains=empl))
+        data = BizInfo.objects.filter(
+                                        (Q(region__contains=region) | Q(region__contains="전국"))\
+                                       & Q(possible_industry__contains=big_industry) \
+                                       & Q(revenue__contains=sales)\
+                                       & Q(business_period__contains=period) \
+                                       & (Q(export_performance__contains=export) | Q(export_performance__contains="무관"))\
+                                       & Q(target__contains=empl)
+                                       )
 
         datas = ''
         datas2 = []
@@ -180,9 +177,6 @@ class SearchAIResultView(View):
             else:
                 num += 1
                 datas += f'id: {i.pblanc_id},\n title:{i.title},\n summary:{i.noti_summary},\n region:{i.region}\n\n'
-
-        print(f'num: {len(data)}')
-        print(datas)
 
         text = f"""
         당신은 지원사업 매칭 전문가입니다.
@@ -227,7 +221,6 @@ class SearchAIResultView(View):
         user_input = text + datas
         response = llm.invoke(user_input)
         content = response.content.strip()
-        print("[GPT 응답 원본]:", content)
 
         # enc = tiktoken.encoding_for_model("gpt-4.1-mini")
         # tokens = enc.encode(user_input)
@@ -266,10 +259,7 @@ class SearchAIResultView(View):
             print("GPT 응답:", content)
             return render(request, "main/search_ai_result.html", {"datas": [], "error": "GPT 응답 파싱 실패"})
 
-
-
         for i in contents:
-            print(i.get("id"), "\n")
             try:
                 obj = BizInfo.objects.get(pblanc_id=i.get("id"))
                 obj.region = obj.region.replace("[", "").replace("]", "")
@@ -309,7 +299,6 @@ class SearchAIResultView(View):
 
         # 적합도 점수 높은 순 정렬
         datas2 = sorted(unique_datas2, key=lambda x: int(x.score), reverse=True)
-
 
         context = {
             "region": region,

@@ -2,13 +2,7 @@ from django.shortcuts import render, get_object_or_404
 from django.views import View
 from django.core.paginator import Paginator
 from board.models import BizInfo
-from elasticsearch import Elasticsearch
-from config import ES_API_KEY
-import math
 import ast
-from datetime import datetime
-from main.models import Count, Count_by_date, IpAddress
-from datetime import date
 from PO.management.commands.utils import update_count
 
 class BoardView(View):
@@ -55,7 +49,6 @@ class BoardView(View):
 
         update_count(request, "board")
 
-        print(1)
         return render(request, "board/board.html", {
             "items": items,
             "page_index": page_index,
