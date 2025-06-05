@@ -67,7 +67,7 @@
 
       <div class="hr-div"></div>
 
-      <div class="detail-info-container">
+      <div class="detail-info-container1">
         <div class="description-wrap">
           <div class="description-text">기관명 :&nbsp;</div><div class="detail-institution-name">{{ item.institution_name }} </div>
         </div>
@@ -82,7 +82,7 @@
 
       <div class="hr-div"></div>
       
-      <div class="detail-info-container">
+      <div class="detail-info-container1">
         {% if item.reception_start.year != 1900 and item.reception_end.year != 9999 %}
         <div class="description-wrap">
           <div class="description-text">신청 기간 :&nbsp;</div><div class="detail-registered-at">{{ item.reception_start|date:"Y-m-d" }} ~ {{ item.reception_end|date:"Y-m-d" }}</div>
@@ -102,8 +102,8 @@
       <div>{{ item.content|safe }}</div>
       
       <div class="hr-div"></div>
-      <div class="detail-info-container">
-        <div class="description-text detail-info-text">사업 신청 방법 :&nbsp;</div>
+      <div class="detail-info-container2">
+        <div class="description-text detail-info-text">사업 신청 방법</div>
         <div>{{ item.enroll_method }}</div>
       </div>
       
@@ -115,13 +115,13 @@
       <div class="hr-div"></div>
 
       {% if item.application_form_path %}
-      <div class="detail-info-container">
+      <div class="detail-info-container1">
         <div class="description-text">신청 양식 :&nbsp;</div>
         <div><a href="{{ item.application_form_path }}" target="_blank">{{ item.application_form_name }}</a></div>
       </div>
       {% endif %}
 
-      <div class="detail-info-container">
+      <div class="detail-info-container1">
         <div class="description-text">공고 원문 :&nbsp;</div>
         <div><a href="{{ item.print_file_path }}" target="_blank">{{ item.print_file_name }}</a></div>
       </div>

@@ -65,6 +65,30 @@ class SearchIndustryAPIView(View):
 
         return JsonResponse({"response": clean_text})
     
+# @csrf_exempt
+# def search_industry(request):
+#     if request.method == "GET":
+#         keyword = request.GET.get("q", "").strip()
+        
+#         keyword_no_space = keyword.replace(" ", "")
+#         industries = Industry.objects.all()
+
+#         filtered = [
+#             i for i in industries
+#             if keyword_no_space in i.big_category.replace(" ", "") or
+#             keyword_no_space in i.small_category.replace(" ", "")
+#         ][:40]
+
+#         results = [
+#             {
+#                 "big_category": ind.big_category,
+#                 "small_category": ind.small_category
+#             }
+#             for ind in industries
+#         ]
+
+#         return JsonResponse(results, safe=False)
+    
 @csrf_exempt
 def search_industry(request):
     if request.method == "GET":

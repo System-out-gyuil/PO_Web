@@ -101,7 +101,9 @@
                 </div> {% endcomment %}
                 <div class="detail-text-box last-text-box">
                   <div class="detail-text-title">사업요약</div>
-                  <div class="detail-text-value">{{data.noti_summary}}</div>
+                  <div class="detail-text-value">{{data.noti_summary|truncatechars:100}}
+                    <span class="detail-view" onclick="location.href='{% url 'board:detail'  data.pblanc_id %}'" style="cursor: pointer;">[더보기]</span>
+                  </div>
                 </div>
               </div>
             </div>

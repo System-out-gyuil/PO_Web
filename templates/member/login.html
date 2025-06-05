@@ -6,20 +6,6 @@
   {% load static %}
   <link rel="stylesheet" href="{% static 'member/login.css' %}">
   <title>Document</title>
-  {% load socialaccount %}
-  <script>
-    if (window.opener && !window.opener.closed) {
-      try {
-        // 로그인 성공했을 경우에만 부모창 새로고침
-        window.opener.sessionStorage.removeItem("popupOpened");
-        window.opener.location.reload();
-      } catch (e) {
-        console.warn("부모창 접근 실패:", e);
-      }
-      window.close();
-    }
-  </script>
-  
 </head>
 <body>
   {% load socialaccount %}
@@ -27,8 +13,8 @@
   <div class="login-with-sns-wrap">
     <div class="login-with-sns-box">
       <div class="login-with-sns-content">
-        <div></div>
-        <button type="button" onclick="location.href = '{% provider_login_url 'kakao' %}'">
+        <div class="login-with-sns-title">나맞지에 오신것을 환영합니다.</div>
+        <button class="login-with-sns-button" type="button" onclick="location.href = '{% provider_login_url 'kakao' %}'">
           <img class = "kakao" src="https://k.kakaocdn.net/14/dn/btroDszwNrM/I6efHub1SN5KCJqLm1Ovx1/o.jpg" alt="" >
         </button>
       </div>
