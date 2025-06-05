@@ -1,0 +1,85 @@
+textarea {
+  resize: none;
+}
+
+.naver-blog-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: row;
+}
+
+.naver-blog-input-container {
+  width: 50%;
+  height: 100%;
+  background-color: #f0f0f0;
+  border: 1px solid #000;
+}
+
+
+.naver-blog-output-container {
+  width: 50%;
+  height: 100%;
+  background-color: #f0f0f0;
+  border: 1px solid #000;
+}
+
+.naver-blog-title {
+  width: 50%;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.naver-blog-content {
+  width: 50%;
+  margin: 0 auto;
+}
+
+#naver-blog-input {
+  width: 100%;
+  height: 500px;
+  margin: 0 auto;
+}
+
+.naver-blog-button-container {
+  width: 50%;
+  margin: 0 auto;
+}
+
+#naver-blog-button {
+  width: 100%;
+  height: 40px;
+  margin: 0 auto;
+}
+
+.naver-blog-output-title {
+  width: 50%;
+  margin: 0 auto;
+  text-align: center;
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.naver-blog-output-content {
+  width: 50%;
+  margin: 0 auto;
+}
+
+#naver-blog-output {
+  width: 100%;
+  height: 500px;
+  margin: 0 auto;
+}
+
+.naver-blog-output-button-container {
+  width: 50%;
+  margin: 0 auto;
+}
+
+#naver-blog-output-button {
+  width: 100%;
+  height: 40px;
+  margin: 0 auto;
+}
+
+

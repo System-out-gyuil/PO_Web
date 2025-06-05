@@ -19,13 +19,13 @@ urlpatterns = [
     path('ads.txt', Ads.as_view(), name='ads'),
     path('robots.txt', TemplateView.as_view(template_name="robots.txt", content_type='text/plain')),
 
-    path('accounts/', include('allauth.urls')),
     path('board/', include('board.urls')),
     path('counsel/', include('counsel.urls')),
     path('member/', include('member.urls')),
     path('blog/', include('blog.urls')),
     path('po_admin/', include('po_admin.urls')),
     path('search/', include('search.urls')),
+    path('accounts/', include('allauth.urls')),
 ]
 
 urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

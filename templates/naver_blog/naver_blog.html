@@ -3,16 +3,56 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>나맞지 - 네이버 블로그 자동 작성</title>
+  <title>나맞지 - 네이버 블로그 작성</title>
+  {% load static %}
+  
+  <link rel="stylesheet" href="{% static 'base/base.css' %}">
+  <link rel="stylesheet" href="{% static 'naver_blog/naver_blog.css' %}">
 </head>
 <body>
+  {% include 'base/top_nav.html' %}
   <section id="naver-blog-section">
     <div class="naver-blog-container">
-      <div class="naver-blog-title">
-        <h1>나맞지 - 네이버 블로그 자동 작성</h1>
+
+      <div class="naver-blog-input-container">
+        <div class="naver-blog-title">
+          <h1>나맞지 - 네이버 블로그 작성</h1>
+        </div>
+
+        <div class="naver-blog-content">
+
+          <div class="naver-blog-input">
+            <textarea type="text" id="naver-blog-input" placeholder="프롬프트 입력하는 칸"></textarea>
+          </div>
+
+          <input type="file" id="naver-blog-input-file">
+          
+        </div>
+
+        <div class="naver-blog-button-container">
+          <button id="naver-blog-button">작성</button>
+        </div>
+
       </div>
+
+      <div class="naver-blog-output-container">
+
+        <div class="naver-blog-output-title">
+          GPT 응답
+        </div>
+
+        <div class="naver-blog-output-content">
+          <textarea type="text" id="naver-blog-output" placeholder="GPT 응답 출력 칸"></textarea>
+        </div>
+        
+        <div class="naver-blog-output-button-container">
+          <button id="naver-blog-output-button">위 글로 블로그 작성하기</button>
+        </div>
+      </div>
+
     </div>
   </section>
 
+  <script src="{% static 'naver_blog/naver_blog.js' %}"></script>
 </body>
 </html>
