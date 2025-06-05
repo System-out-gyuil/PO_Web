@@ -146,7 +146,7 @@ search_region_button.addEventListener('click', () => {
         const top = (screen.height - height) / 2;
 
         const popup = window.open(
-          "/accounts/kakao/login/",
+          "/member/",
           "KakaoLoginPopup",
           `width=${width},height=${height},top=${top},left=${left}`
         );

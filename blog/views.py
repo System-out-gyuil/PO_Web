@@ -16,24 +16,30 @@ class BlogGPTAPIView(View):
     def post(self, request):
         body = json.loads(request.body)
         user_input = body.get("input", "").strip()
+        file = body.get("file", "").strip()
+
+        print(file)
+        print(user_input)
 
         datas = 1
 
         text = f'dd'
 
-        llm = ChatOpenAI(
-            temperature=0,
-            model_name='gpt-4.1-mini',
-            openai_api_key=OPEN_AI_API_KEY
-        )
+        return JsonResponse({"response": "success"})
 
-        user_input = text + datas
+        # llm = ChatOpenAI(
+        #     temperature=0,
+        #     model_name='gpt-4.1-mini',
+        #     openai_api_key=OPEN_AI_API_KEY
+        # )
 
-        response = llm.invoke(user_input)
-        content = response.content.replace("**", "").replace("#", "").strip()
-        print("[GPT 응답 원본]:", content)
+        # user_input = text + datas
 
-        return JsonResponse({"response": content})
+        # response = llm.invoke(user_input)
+        # content = response.content.replace("**", "").replace("#", "").strip()
+        # print("[GPT 응답 원본]:", content)
+
+        # return JsonResponse({"response": content})
 
 
 class BlogWriteView(View):

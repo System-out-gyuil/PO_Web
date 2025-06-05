@@ -25,6 +25,7 @@ urlpatterns = [
     path('blog/', include('blog.urls')),
     path('po_admin/', include('po_admin.urls')),
     path('search/', include('search.urls')),
+    
     path('accounts/', include('allauth.urls')),
 ]
 
