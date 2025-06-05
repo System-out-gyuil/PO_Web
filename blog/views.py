@@ -37,7 +37,6 @@ class BlogGPTAPIView(View):
 
         file_list = []
 
-
         for file in files:
           full_text = ''
 

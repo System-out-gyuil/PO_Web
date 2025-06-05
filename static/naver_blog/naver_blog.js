@@ -7,7 +7,7 @@ const outputButton = document.querySelector('#naver-blog-output-button');
 const outputPageContainer = document.querySelector('.output-page-container');
 const outputTextareas = document.querySelector('.output-textareas');
 let num = 1;
-const local = 'http://127.0.0.1:8000';
+const local = 'https://namatji.com';
 
 inputButton.addEventListener('click', () => {
   const formData = new FormData();
