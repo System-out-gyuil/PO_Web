@@ -57,6 +57,8 @@ class AdminCounselListView(View):
         for day_str, ip_count in ip_count_by_day.items():
             grouped_counts_by_day[day_str]["ip_total"] = ip_count
 
+        # print(f"grouped_counts_by_day: {grouped_counts_by_day}")
+
         context = {
             'counsels': counsels,
             'inquiries': inquiries,
@@ -100,6 +102,8 @@ class CountByDateView(View):
             # ✅ IP 수를 counts에 통합
             for day_str, ip_set in ip_by_day.items():
                 grouped_counts_by_day[str(day_str)]["ip_total"] = len(ip_set)
+
+            print(f"grouped_counts_by_day: {grouped_counts_by_day}")
 
             # ✅ 응답 JSON 구성
             response = {

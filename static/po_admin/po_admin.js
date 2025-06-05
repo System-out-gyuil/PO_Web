@@ -54,6 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function fetchCounts(startDate = null, endDate = null) {
   let root = 'https://namatji.com';
+  // let root = 'http://127.0.0.1:8000';
   let url = `${root}/po_admin/counts-by-date/`;
   if (startDate && endDate) {
     url += `?start=${startDate}&end=${endDate}`;
@@ -65,6 +66,8 @@ function fetchCounts(startDate = null, endDate = null) {
       const count_thead = document.getElementById('count-thead');
       const count_tbody = document.getElementById('body-items');
       const range = document.getElementById('date-range');
+
+      console.log(data.counts);
 
       count_thead.innerHTML = '';
       count_tbody.innerHTML = '';
