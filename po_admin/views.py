@@ -9,6 +9,7 @@ from django.utils.timezone import localtime
 from django.http import JsonResponse
 from datetime import date
 from main.models import IpAddress
+from django.contrib.auth.models import User
 
 class AdminLoginView(View):
     def get(self, request):
@@ -31,6 +32,7 @@ class AdminCounselListView(View):
         # 기본 데이터 조회
         counsels = Counsel.objects.all().order_by('-created_at')
         inquiries = Inquiry.objects.all().order_by('-created_at')
+        kakaos = User.objects.all().order_by('-date_joined')
         counts = Count.objects.all()
 
         end_date = date.today()
@@ -61,6 +63,7 @@ class AdminCounselListView(View):
         context = {
             'counsels': counsels,
             'inquiries': inquiries,
+            'kakaos': kakaos,
             'counts': counts,
             'grouped_counts_by_day': dict(grouped_counts_by_day),  # ✅ 날짜별 카운트
             'ip_count_by_day': ip_count_by_day,  # ✅ 날짜별 중복 없는 IP

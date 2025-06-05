@@ -12,6 +12,7 @@
       <div class="nav-item counsel-nav-item">상담 신청 리스트</div>
       <div class="nav-item inquiry-nav-item">고객 문의 리스트</div>
       <div class="nav-item count-nav-item">조회수 통계</div>
+      <div class="nav-item kakao-nav-item">카카오</div>
     </div>
   </nav>
 
@@ -111,7 +112,6 @@
         <button id="prev-week-btn">지난 일주일 보기</button>
         <button id="next-week-btn">다음 일주일 보기</button>
         <div id="date-range"></div>
-  
         <!-- 조회수 테이블 -->
         <div id="count-table">
           <div id="count-thead"></div>
@@ -122,6 +122,39 @@
         
       </div>
     </div>
+  </section>
+
+  <section>
+    <div class="kakao-wrapper">
+      <h1>카카오 회원 리스트</h1>
+      <table class="kakao-table">
+        <colgroup>
+          <col style="width: 5%">
+          <col style="width: 35%">
+          <col style="width: 40%">
+          <col style="width: 20%">
+        </colgroup>
+        <thead>
+          <tr>
+            <th>번호</th>
+            <th>이름</th>
+            <th>이메일</th>
+            <th>최근 로그인</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for kakao in kakaos %}
+          <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>{{ kakao.username }}</td>
+            <td>{{ kakao.email }}</td>
+            <td>{{ kakao.last_login|date:"Y-m-d H:i" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    
   </section>
   
   

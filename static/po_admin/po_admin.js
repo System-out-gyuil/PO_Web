@@ -1,16 +1,18 @@
 const counselWrapper = document.querySelector('.counsel-wrapper');
 const inquiryWrapper = document.querySelector('.inquiry-wrapper');
 const countWrapper = document.querySelector('.count-wrapper');
-
+const kakaoWrapper = document.querySelector('.kakao-wrapper');
 const counselNavItem = document.querySelector('.counsel-nav-item');
 const inquiryNavItem = document.querySelector('.inquiry-nav-item');
 const countNavItem = document.querySelector('.count-nav-item');
+const kakaoNavItem = document.querySelector('.kakao-nav-item');
 
 // 모든 섹션 숨기기
 function hideAllSections() {
   counselWrapper.style.display = 'none';
   inquiryWrapper.style.display = 'none';
   countWrapper.style.display = 'none';
+  kakaoWrapper.style.display = 'none';
 }
 
 // 모든 탭 비활성화
@@ -18,6 +20,7 @@ function clearActiveTabs() {
   counselNavItem.classList.remove('active');
   inquiryNavItem.classList.remove('active');
   countNavItem.classList.remove('active');
+  kakaoNavItem.classList.remove('active');
 }
 
 // 상담 신청
@@ -42,6 +45,14 @@ countNavItem.addEventListener('click', () => {
   clearActiveTabs();
   countWrapper.style.display = 'flex';
   countNavItem.classList.add('active');
+});
+
+// 카카오 회원
+kakaoNavItem.addEventListener('click', () => {
+  hideAllSections();
+  clearActiveTabs();
+  kakaoWrapper.style.display = 'flex';
+  kakaoNavItem.classList.add('active');
 });
 
 // 초기 상태 설정 (처음에 상담 신청 리스트만 표시)
