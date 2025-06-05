@@ -66,7 +66,7 @@ CRONJOBS = [
     ('* 18 * * *', 'PO.cron.update_bizinfo'),
 ]
 
-SITE_ID = 16 #sitemap 
+SITE_ID = 18 #sitemap 
 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
