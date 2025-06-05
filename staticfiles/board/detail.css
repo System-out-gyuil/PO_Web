@@ -38,9 +38,13 @@ body {
   margin-bottom: 10px;
 }
 
-.detail-info-container {
+.detail-info-container1 {
   display: flex;
   flex-direction: row;
+}
+.detail-info-container2 {
+  display: flex;
+  flex-direction: column;
 }
 
 .description-wrap {

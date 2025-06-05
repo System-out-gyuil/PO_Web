@@ -22,10 +22,12 @@
         <div class="naver-blog-content">
 
           <div class="naver-blog-input">
-            <textarea type="text" id="naver-blog-input" placeholder="프롬프트 입력하는 칸"></textarea>
+            <textarea type="text" id="naver-blog-input" placeholder="프롬프트 입력하는 칸. 원고 다운로드는 모든 파일 응답 완료 후 버튼 클릭"></textarea>
           </div>
 
-          <input type="file" id="naver-blog-input-file">
+          <div class="naver-blog-input-file-container">
+            <input type="file" id="naver-blog-input-file" multiple>
+          </div>
           
         </div>
 
@@ -42,14 +44,26 @@
         </div>
 
         <div class="naver-blog-output-content">
-          <textarea type="text" id="naver-blog-output" placeholder="GPT 응답 출력 칸"></textarea>
+
+          <div class="output-textareas">
+          </div>
+
+          <div class="output-page-container">
+          </div>
         </div>
         
         <div class="naver-blog-output-button-container">
-          <button id="naver-blog-output-button">위 글로 블로그 작성하기</button>
+          {% comment %} <button id="naver-blog-output-button">선택된 글 저장하기</button> {% endcomment %}
         </div>
       </div>
 
+    </div>
+    <div class="naver-blog-write-container">
+      {% comment %} <button id="naver-blog-write-button">네이버 블로그 작성하기</button> {% endcomment %}
+    </div>
+
+    <div class="naver-blog-download-container">
+      <button id="naver-blog-download-button">원고 다운로드</button>
     </div>
   </section>
 
