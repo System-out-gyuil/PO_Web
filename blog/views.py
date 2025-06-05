@@ -34,13 +34,11 @@ class BlogView(View):
 @method_decorator(csrf_exempt, name='dispatch')
 class BlogGPTAPIView(View):
     def post(self, request):
-        
         def convert_hwp_to_pdf(hwp_path):
             output_dir = os.path.dirname(hwp_path)
             try:
                 result = subprocess.run([
-                    "libreoffice",
-                    "--headless",
+                    "libreoffice", "--headless",
                     "--convert-to", "pdf:writer_pdf_Export",
                     hwp_path,
                     "--outdir", output_dir
@@ -48,89 +46,86 @@ class BlogGPTAPIView(View):
 
                 print("🖥️ libreoffice stdout:", result.stdout.decode())
 
-                basename = os.path.splitext(os.path.basename(hwp_path))[0] + ".pdf"
-                converted_pdf = os.path.join(output_dir, basename)
+                pdf_name = os.path.splitext(os.path.basename(hwp_path))[0] + ".pdf"
+                converted_pdf = os.path.join(output_dir, pdf_name)
 
                 if os.path.exists(converted_pdf):
                     return converted_pdf
                 else:
-                    print(f"[❌ 변환 실패] {converted_pdf} 파일이 존재하지 않습니다.")
+                    print(f"[❌ 변환 실패] {converted_pdf} 존재하지 않음")
                     return ""
             except Exception as e:
                 print(f"[예외 발생] HWP → PDF 변환 실패: {e}")
                 return ""
-            
 
-        user_input = request.POST.get("input")
-        files = request.FILES.getlist("files")  # ✅ FormData에서 온 파일
-
+        user_input = request.POST.get("input", "")
+        files = request.FILES.getlist("files")
         file_list = []
 
         for file in files:
-          full_text = ''
+            full_text = ""
+            print(f"input: {user_input}")
+            print(f"file name: {file.name}, size: {file.size}")
 
-          llm = ChatOpenAI(
-              temperature=0,
-              model_name='gpt-4o',
-              openai_api_key=OPEN_AI_API_KEY
-          )
+            try:
+                if file.name.endswith(".txt"):
+                    full_text = file.read().decode("utf-8")
 
-          print("input:", user_input)
-          print("file name:", file.name)
-          print("file size:", file.size)
+                elif file.name.endswith(".pdf"):
+                    with pdfplumber.open(file) as pdf:
+                        for page in pdf.pages:
+                            text = page.extract_text()
+                            if text:
+                                full_text += text + "\n"
 
-          if file.name.endswith('.txt'):
-              content = file.read().decode('utf-8')  # 텍스트 파일인 경우
+                elif file.name.endswith(".hwp"):
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=".hwp") as tmp_hwp:
+                        for chunk in file.chunks():
+                            tmp_hwp.write(chunk)
+                        tmp_hwp_path = tmp_hwp.name
 
-          elif file.name.endswith('.pdf'):
-              with pdfplumber.open(file) as pdf:
-                      for page in pdf.pages:
-                          page_text = page.extract_text()
-                          if page_text:
-                              full_text += page_text + "\n"
+                    pdf_path = convert_hwp_to_pdf(tmp_hwp_path)
 
-          elif file.name.endswith('.hwp'):
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".hwp") as tmp_hwp:
-                for chunk in file.chunks():
-                    tmp_hwp.write(chunk)
-                tmp_hwp_path = tmp_hwp.name
+                    if pdf_path and os.path.exists(pdf_path):
+                        try:
+                            with pdfplumber.open(pdf_path) as pdf:
+                                for page in pdf.pages:
+                                    text = page.extract_text()
+                                    if text:
+                                        full_text += text + "\n"
+                        except Exception as e:
+                            print(f"[PDF 파싱 실패]: {e}")
+                        finally:
+                            os.remove(pdf_path)
+                    os.remove(tmp_hwp_path)
 
-            pdf_path = convert_hwp_to_pdf(tmp_hwp_path)
+            except Exception as e:
+                print(f"[파일 처리 중 오류]: {e}")
+                full_text = "(본문을 읽는 중 오류 발생)"
 
-            if pdf_path and os.path.exists(pdf_path):
-                with pdfplumber.open(pdf_path) as pdf:
-                    for page in pdf.pages:
-                        page_text = page.extract_text()
-                        if page_text:
-                            full_text += page_text + "\n"
+            # GPT 호출
+            llm = ChatOpenAI(temperature=0, model_name='gpt-4o', openai_api_key=OPEN_AI_API_KEY)
+            input_data = f"{user_input}\n\n{full_text}"
+            response = llm.invoke(input_data)
+            content = response.content.replace("**", "").replace("#", "").strip()
+            print("[GPT 응답]:", content)
 
-                # ✅ 사용 끝난 후 임시 파일 삭제
-                os.remove(tmp_hwp_path)
-                os.remove(pdf_path)  # 변환된 PDF도 필요 없으면 삭제
-              
+            file_list.append(content)
 
-          input_data = f"{user_input}\n\n{full_text}"
+        # 결과 저장
+        save_dir = os.path.join(settings.MEDIA_ROOT, 'naver_blog_원고')
+        os.makedirs(save_dir, exist_ok=True)
 
-          response = llm.invoke(input_data)
-          content = response.content.replace("**", "").replace("#", "").strip()
-          print("[GPT 응답 원본]:", content)
+        for file_content in file_list:
+            first_line = file_content.strip().split('\n')[0][:60]
+            safe_name = "".join(c if c.isalnum() else "_" for c in first_line)
+            filename = f"{safe_name}.txt"
+            file_path = os.path.join(save_dir, filename)
 
-          file_list.append(content)
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(file_content)
+            print(f"파일 저장 완료: {file_path}")
 
-        for file in file_list:
-          print(f'파일처리 : {file}')
-          save_dir = os.path.join(settings.MEDIA_ROOT, 'naver_blog_원고')
-          os.makedirs(save_dir, exist_ok=True)
-
-          first_line = file.strip().split('\n')[0][:60]  # 너무 긴 제목 방지
-          filename = f'{first_line}.txt'
-          file_path = os.path.join(save_dir, filename)
-
-          with open(file_path, 'w', encoding='utf-8') as f:
-            f.write(file)
-
-          print(f"파일 저장 완료: {file_path}")
-        
         return JsonResponse({"response": "파일 처리 성공", "previews": file_list})
     
 class DownloadZipView(View):
