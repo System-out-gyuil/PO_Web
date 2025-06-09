@@ -287,9 +287,17 @@ class BlogWriteView(View):
         def create_driver():
             options = webdriver.ChromeOptions()
             options.add_argument("--start-maximized")
-            # options.add_argument("user-data-dir=selenium")  # 쿠키 저장용
+            options.add_argument("--headless=new")  # 서버 환경이면 필수
+            options.add_argument("--no-sandbox")
+            options.add_argument("--disable-dev-shm-usage")
+
+            # 충돌 방지를 위한 임시 프로필 경로 사용
+            tmp_profile_dir = tempfile.mkdtemp()
+            options.add_argument(f"--user-data-dir={tmp_profile_dir}")
+
             driver = webdriver.Chrome(options=options)
             return driver
+
         
         def naver_login(driver):
             driver.get("https://nid.naver.com/nidlogin.login")
