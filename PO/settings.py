@@ -104,11 +104,9 @@ TEMPLATES = [
 
 SOCIALACCOUNT_ADAPTER = 'PO.adapters.MySocialAccountAdapter'
 SOCIALACCOUNT_LOGIN_ON_GET = True
-# LOGIN_REDIRECT_URL = '/search/'
+LOGIN_REDIRECT_URL = "/member/popup-close/"
 ACCOUNT_LOGOUT_REDIRECT_URL = '/'
 ACCOUNT_LOGOUT_ON_GET = True 
-
-LOGIN_REDIRECT_URL = "/member/popup-close/"
 
 WSGI_APPLICATION = "PO.wsgi.application"
 
