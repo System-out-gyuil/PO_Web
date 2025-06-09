@@ -6,9 +6,10 @@ const outputButton = document.querySelector('#naver-blog-output-button');
 
 const outputPageContainer = document.querySelector('.output-page-container');
 const outputTextareas = document.querySelector('.output-textareas');
+
 let num = 1;
-const local = 'https://namatji.com';
-// const local = 'http://127.0.0.1:8000';
+const server = 'https://namatji.com';
+const local = 'http://127.0.0.1:8000';
 
 inputButton.addEventListener('click', () => {
   const formData = new FormData();
@@ -28,7 +29,7 @@ inputButton.addEventListener('click', () => {
   outputPageContainer.innerHTML = pages;
   outputTextareas.innerHTML = textareas;
 
-  fetch(`${local}/blog/naver-blog/`, {
+  fetch(`${server}/blog/naver-blog/`, {
     method: 'POST',
     body: formData
   })
