@@ -109,10 +109,12 @@
       
       <div class="hr-div"></div>
       
+      {% if item.noti_summary != "오류" %}
       <div class="description-noti-summary">공고 내용 요약&nbsp;</div>
       <div>{{ item.noti_summary }}</div>
-      
       <div class="hr-div"></div>
+      {% endif %}
+      
 
       {% if item.application_form_path %}
       <div class="detail-info-container1">

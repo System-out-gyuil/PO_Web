@@ -5,7 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Document</title>
   <script>
-    window.close();
+    window.onload = function () {
+      const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+
+      if (isMobile) {
+        // ✅ 모바일: 현재 창에서 카카오 로그인 페이지로 이동
+        window.location.href = "/search/";
+      } else {
+        // ✅ 데스크탑: 팝업으로 카카오 로그인
+        window.close();
+      }
+    };
   </script>
 </head>
 <body>

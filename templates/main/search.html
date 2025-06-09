@@ -45,17 +45,24 @@
     {% if not is_authenticated %}
     <script>
       window.onload = function () {
+        const isMobile = /Mobi|Android/i.test(navigator.userAgent);
 
-        const width = 500;
-        const height = 600;
-        const left = (screen.width - width) / 2;
-        const top = (screen.height - height) / 2;
+        if (isMobile) {
+          // ✅ 모바일: 현재 창에서 카카오 로그인 페이지로 이동
+          window.location.href = "/member/";
+        } else {
+          // ✅ 데스크탑: 팝업으로 카카오 로그인
+          const width = 500;
+          const height = 600;
+          const left = (screen.width - width) / 2;
+          const top = (screen.height - height) / 2;
 
-        window.open(
-          "/member/",
-          "KakaoLoginPopup",
-          `width=${width},height=${height},top=${top},left=${left}`
-        );
+          window.open(
+            "/member/",
+            "KakaoLoginPopup",
+            `width=${width},height=${height},top=${top},left=${left}`
+          );
+        }
       };
     </script>
     {% endif %}

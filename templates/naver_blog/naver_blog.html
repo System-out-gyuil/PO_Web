@@ -59,7 +59,16 @@
 
     </div>
     <div class="naver-blog-write-container">
-      {% comment %} <button id="naver-blog-write-button">네이버 블로그 작성하기</button> {% endcomment %}
+      <div class="typing-container">
+        <input type="number" id="naver-blog-write-min-speed" placeholder="최소 초당 작성 속도(0~1, 기본값 0.05)">
+        <input type="number" id="naver-blog-write-max-speed" placeholder="최대 초당 작성 속도(0~1, 기본값 0.1)">
+        <input type="number" id="naver-blog-write-typo-chance" placeholder="오타 확률(0~1, 기본값 0.1)">
+      </div>
+      <div class="login-container">
+        <input type="text" id="naver-id" placeholder="네이버 아이디 입력">
+        <input type="text" id="naver-pw" placeholder="네이버 비밀번호 입력">
+        <button id="naver-blog-write-button">네이버 블로그 작성하기</button>
+      </div>
     </div>
 
     <div class="naver-blog-download-container">

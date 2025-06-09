@@ -122,3 +122,35 @@ textarea {
   height: 40px;
   margin: 0 auto;
 }
+
+.naver-blog-write-container {
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+  margin-top: 10px;
+}
+
+.typing-container {
+  width: 50%;
+  margin: 0 auto;
+  display: flex;
+  justify-content: center;
+}
+
+.typing-container input, .login-container input {
+  width: 33%;
+}
+
+.login-container {
+  width: 50%;
+  margin: 0 auto;
+  display: flex;
+  justify-content: center;
+  margin-top: 10px;
+}
+
+#naver-blog-write-button {
+  width: 33%;
+}
+
+
