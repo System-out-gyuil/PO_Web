@@ -6,8 +6,10 @@ const outputButton = document.querySelector('#naver-blog-output-button');
 
 const outputPageContainer = document.querySelector('.output-page-container');
 const outputTextareas = document.querySelector('.output-textareas');
+
 let num = 1;
-const local = 'http://127.0.0.1:8000';
+const local = 'https://namatji.com';
+// const local = 'http://127.0.0.1:8000';
 
 inputButton.addEventListener('click', () => {
   const formData = new FormData();
@@ -55,7 +57,7 @@ outputPageContainer.addEventListener('click', (e) => {
   });
 
   // ✅ 클릭한 요소만 흰색 테두리로 변경
-  e.target.style.border = '1px solid #fff';
+  e.target.style.border = '1px solid #f00';
 
   // ✅ 모든 tt 요소 숨기기
   document.querySelectorAll('*').forEach(el => {
@@ -103,18 +105,37 @@ downloadButton.addEventListener('click', () => {
   
 // });
 
-// const writeButton = document.querySelector('#naver-blog-write-button');
+const writeButton = document.querySelector('#naver-blog-write-button');
+const naverId = document.querySelector('#naver-id');
+const naverPw = document.querySelector('#naver-pw');
+const minSpeed = document.querySelector('#naver-blog-write-min-speed');
+const maxSpeed = document.querySelector('#naver-blog-write-max-speed');
+const typoChance = document.querySelector('#naver-blog-write-typo-chance');
 
-// writeButton.addEventListener('click', () => {
-//   console.log('네이버 블로그 작성하기 버튼 클릭');
-//   fetch(`${local}/blog/naver-blog/write/`, {
-//     method: 'POST',
-//     headers: {
-//       'Content-Type': 'application/json'
-//     },
-//   })
-// });
 
+writeButton.addEventListener('click', () => {
+  console.log('네이버 블로그 작성하기 버튼 클릭');
+  fetch(`${local}/blog/naver-blog/write/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      naverId: naverId.value,
+      naverPw: naverPw.value,
+      minSpeed: minSpeed.value,
+      maxSpeed: maxSpeed.value,
+      typoChance: typoChance.value
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    console.log(data);
+  })
+  .catch(error => {
+    console.error('Error:', error);
+  });
+});
 
 
 
