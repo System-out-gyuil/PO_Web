@@ -106,7 +106,7 @@ class BlogGPTAPIView(View):
                 full_text = "(본문을 읽는 중 오류 발생)"
 
             # GPT 호출
-            llm = ChatOpenAI(temperature=0, model_name='gpt-4o', openai_api_key=OPEN_AI_API_KEY)
+            llm = ChatOpenAI(temperature=0, model_name='gpt-4o-mini', openai_api_key=OPEN_AI_API_KEY)
             print(f"user_input: {user_input}")
             print(f"full_text: {full_text}")
             input_data = f"{user_input}\n\n{full_text}"
@@ -287,17 +287,8 @@ class BlogWriteView(View):
         def create_driver():
             options = webdriver.ChromeOptions()
             options.add_argument("--start-maximized")
-            options.add_argument("--headless=new")  # 서버 환경이면 필수
-            options.add_argument("--no-sandbox")
-            options.add_argument("--disable-dev-shm-usage")
-
-            # 충돌 방지를 위한 임시 프로필 경로 사용
-            tmp_profile_dir = tempfile.mkdtemp()
-            options.add_argument(f"--user-data-dir={tmp_profile_dir}")
-
             driver = webdriver.Chrome(options=options)
             return driver
-
         
         def naver_login(driver):
             driver.get("https://nid.naver.com/nidlogin.login")

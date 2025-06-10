@@ -23,6 +23,10 @@ def get_week_of_month(dt: date) -> int:
 class Ads(View):
     def get(self, request):
         return HttpResponse("google.com, pub-6882409851484122, DIRECT, f08c47fec0942fa0", content_type='text/plain')
+    
+class ImWeb(View):
+    def get(self, request):
+        return render(request, 'main/imweb.html')
 
 class MainView(View):
     def get(self, request):
