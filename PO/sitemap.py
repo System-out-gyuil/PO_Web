@@ -10,8 +10,6 @@ class StaticViewSitemap(Sitemap):
     def items(self):
         return [
             'main',
-            'po_admin_login',
-            'po_admin_list',
             'counsel_form',
             'board:list',
             'counsel_form',

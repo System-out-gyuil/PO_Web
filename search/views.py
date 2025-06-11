@@ -22,7 +22,6 @@ from django.utils.decorators import method_decorator
 from PO.management.commands.utils import update_count
 from django.contrib.auth.mixins import LoginRequiredMixin
 
-
 class SearchView(View):
     def get(self, request):
         update_count(request, "search")
