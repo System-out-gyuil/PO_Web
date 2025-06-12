@@ -16,7 +16,7 @@ class BizInfo(models.Model):
     print_file_path = models.CharField(max_length=200)  # 원문 파일 경로 (printFlpthNm)(다운로드)
     company_hall_path = models.CharField(max_length=200)  # 기업마당 공고원문 경로 (pblancUrl)
     support_field = models.CharField(max_length=200)  # 지원 분야 (pldirSportRealmMlsfcCodeNm)
-    application_form_name = models.CharField(max_length=200)  # 신청서 이름 (fileNm)
+    application_form_name = models.CharField(max_length=400)  # 신청서 이름 (fileNm)
     application_form_path = models.CharField(max_length=500)  # 신청서 경로 (flpthNm)
     iframe_src = models.URLField(max_length=1000, null=True, blank=True)  # 상세보기 iframe 링크
     employee_count = models.CharField(max_length=50, blank=True, null=True)
