@@ -163,16 +163,16 @@
       <table class="cust-user-table">
         <colgroup>
           <col style="width: 2%">
-          <col style="width: 10%">
-          <col style="width: 10%">
           <col style="width: 5%">
           <col style="width: 5%">
-          <col style="width: 10%">
-          <col style="width: 10%">
           <col style="width: 5%">
+          <col style="width: 3%">
           <col style="width: 10%">
-          <col style="width: 10%">
-          <col style="width: 10%">
+          <col style="width: 7%">
+          <col style="width: 5%">
+          <col style="width: 20%">
+          <col style="width: 5%">
+          <col style="width: 5%">
           <col style="width: 5%">
         </colgroup>
         <thead>
@@ -195,28 +195,46 @@
           {% for cust_user in cust_users %}
           <tr id="{{ cust_user.id }}">
             <td>{{ forloop.counter }}</td>
-            <td><input type="text" id="company_name{{ cust_user.id }}" value="{{ cust_user.company_name }}"></td>
-            <td><input type="text" id="region{{ cust_user.id }}" value="{{ cust_user.region }}"></td>
-            <td><input type="text" id="start_date{{ cust_user.id }}" value="{{ cust_user.start_date|date:"Y-m-d" }}"></td>
-            <td><input type="text" id="employee_count{{ cust_user.id }}" value="{{ cust_user.employee_count }}"></td>
-            <td><input type="text" id="industry{{ cust_user.id }}" value="{{ cust_user.industry }}"></td>
-            <td><input type="text" id="sales_for_year{{ cust_user.id }}" value="{{ cust_user.sales_for_year|intcomma }}"></td>
-            <td><input type="text" id="export_experience{{ cust_user.id }}" value="{{ cust_user.export_experience }}"></td>
-            <td><input type="text" id="job_description{{ cust_user.id }}" value="{{ cust_user.job_description }}"></td>
+            <td id="company_name{{ cust_user.id }}">{{ cust_user.company_name }}</td>
+            <td id="region{{ cust_user.id }}">{{ cust_user.region }}</td>
+            <td id="start_date{{ cust_user.id }}">{{ cust_user.start_date|date:"Y-m-d" }}</td>
+            <td id="employee_count{{ cust_user.id }}">{{ cust_user.employee_count }}</td>
+            <td id="industry{{ cust_user.id }}">{{ cust_user.industry }}</td>
+            <td id="sales_for_year{{ cust_user.id }}">{{ cust_user.sales_for_year|intcomma }}</td>
+            <td id="export_experience{{ cust_user.id }}">{{ cust_user.export_experience }}</td>
+            <td id="job_description{{ cust_user.id }}">{{ cust_user.job_description }}</td>
             <td><button class="possible_product">지원사업 보기</button></td>
-            <td>{{ cust_user.alarm }}</td>
-            <td class="update-btn">수정</td>
+            <td id="alarm{{ cust_user.id }}">{{ cust_user.alarm }}</td>
+            <td class="update-btn{{ cust_user.id }} update-btn">수정</td>
           </tr>
           {% endfor %}
           <tr>
             <td></td>
             <td><input type="text" id="company_name"></td>
-            <td><input type="text" id="region"></td>
+            <td>
+              <select id="region{{ cust_user.id }}">
+              {% for r in region_list %}
+                <option value="{{ r }}" {% if cust_user.region == r %}selected{% endif %}>{{ r }}</option>
+              {% endfor %}
+              </select>
+            </td>
             <td><input type="text" id="start_date"></td>
             <td><input type="text" id="employee_count"></td>
-            <td><input type="text" id="industry"></td>
+            <td>
+              <select id="industry">
+              {% for i in industry_list %}
+                <option value="{{ i }}">{{ i }}</option>
+              {% endfor %}
+              </select>
+            </td>
             <td><input type="text" id="sales_for_year"></td>
-            <td><input type="text" id="export_experience"></td>
+            <td>
+              <select id="export_experience">
+              {% for e in export_experience_list %}
+                <option value="{{ e }}">{{ e }}</option>
+              {% endfor %}
+              </select>
+            </td>
             <td><input type="text" id="job_description"></td>
             <td></td>
             <td></td>
@@ -233,13 +251,15 @@
       <h1>가능한 지원사업</h1>
       <table class="possible-product-table">
         <colgroup>
-          <col style="width: 20%">
-          <col style="width: 20%">
-          <col style="width: 50%">
           <col style="width: 10%">
+          <col style="width: 15%">
+          <col style="width: 15%">
+          <col style="width: 55%">
+          <col style="width: 5%">
         </colgroup>
         <thead>
           <tr>
+            <th>업로드일자</th>
             <th>공고명</th>
             <th>모집기간</th>
             <th>사업요약</th>

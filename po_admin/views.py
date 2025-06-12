@@ -65,8 +65,9 @@ class AdminCounselListView(View):
         for day_str, ip_count in ip_count_by_day.items():
             grouped_counts_by_day[day_str]["ip_total"] = ip_count
 
-        print(cust_users)
-
+        region_list = ["서울", "부산", "대구", "인천", "광주", "대전", "울산", "세종", "경기", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주"]
+        industry_list = ['농업, 임업 및 어업', '광업', '제조업', '전기, 가스, 증기 및 공기 조절 공급업', '수도, 하수 및 폐기물 처리, 원료 재생업', '건설업', '도매 및 소매업', '운수 및 창고업', '숙박 및 음식점업', '정보통신업', '금융 및 보험업', '부동산업', '전문, 과학 및 기술 서비스업', '사업시설 관리, 사업 지원 및 임대 서비스업', '교육서비스업', '보건업 및 사회복지 서비스업', '예술 스포츠 및 여가관련 서비스업', '협회 및 단체, 수리 및 기타 개인서비스업']
+        export_experience_list = ["있음", "없음", "희망"]
 
         context = {
             'counsels': counsels,
@@ -77,7 +78,10 @@ class AdminCounselListView(View):
             'grouped_counts_by_day': dict(grouped_counts_by_day),  # ✅ 날짜별 카운트
             'ip_count_by_day': ip_count_by_day,  # ✅ 날짜별 중복 없는 IP
             'start': start_date,
-            'end': end_date
+            'end': end_date,
+            'region_list': region_list,
+            'industry_list': industry_list,
+            'export_experience_list': export_experience_list
         }
 
         return render(request, 'po_admin/po_admin.html', context)
@@ -195,8 +199,6 @@ class CustUserPossibleProductView(View):
         elif year_diff >= 3:
             period = "3년 이상"
 
-        print(sales)
-
         if sales >= 3000000000:
             sales = "30억 이상"
         elif sales >= 1000000000:
@@ -230,8 +232,6 @@ class CustUserPossibleProductView(View):
         if export == "있음":
             export = "수출 실적 보유"
             
-        print(region, big_industry, sales, period, export, empl)
-
         # 지원사업 조회
         datas = BizInfo.objects.filter(
             (Q(region__contains=region) | Q(region__contains="전국")) &
@@ -244,8 +244,6 @@ class CustUserPossibleProductView(View):
         )
 
         data_list = list(datas.values()) 
-
-        print(data_list)
 
         return JsonResponse({"data": data_list})
 
