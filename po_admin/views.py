@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect
 from django.views import View
 from counsel.models import Counsel, Inquiry
+from board.models import BizInfo
 from config import ADMIN_PASSWORD  # 🔥 config에서 비밀번호 불러오기
 from main.models import Count, Count_by_date
 from collections import defaultdict
@@ -10,6 +11,10 @@ from django.http import JsonResponse
 from datetime import date
 from main.models import IpAddress
 from django.contrib.auth.models import User
+from po_admin.models import CustUser
+from django.views.decorators.csrf import csrf_exempt
+from django.db.models import Q
+
 
 class AdminLoginView(View):
     def get(self, request):
@@ -33,6 +38,7 @@ class AdminCounselListView(View):
         counsels = Counsel.objects.all().order_by('-created_at')
         inquiries = Inquiry.objects.all().order_by('-created_at')
         kakaos = User.objects.all().order_by('-date_joined')
+        cust_users = CustUser.objects.all().order_by('-created_at')
         counts = Count.objects.all()
 
         end_date = date.today()
@@ -59,11 +65,14 @@ class AdminCounselListView(View):
         for day_str, ip_count in ip_count_by_day.items():
             grouped_counts_by_day[day_str]["ip_total"] = ip_count
 
+        print(cust_users)
+
 
         context = {
             'counsels': counsels,
             'inquiries': inquiries,
             'kakaos': kakaos,
+            'cust_users': cust_users,
             'counts': counts,
             'grouped_counts_by_day': dict(grouped_counts_by_day),  # ✅ 날짜별 카운트
             'ip_count_by_day': ip_count_by_day,  # ✅ 날짜별 중복 없는 IP
@@ -117,3 +126,126 @@ class CountByDateView(View):
 
         except ValueError:
             return JsonResponse({"error": "잘못된 날짜 형식"}, status=400)
+
+
+
+class CustUserSaveView(View):
+    @csrf_exempt
+    def post(self, request):
+        company_name = request.POST.get("company_name")
+        region = request.POST.get("region")
+        start_date = request.POST.get("start_date")
+        employee_count = request.POST.get("employee_count")
+        industry = request.POST.get("industry")
+        sales_for_year = request.POST.get("sales_for_year")
+        export_experience = request.POST.get("export_experience")
+        job_description = request.POST.get("job_description")
+
+        cust_user = CustUser.objects.create(
+            company_name=company_name,
+            region=region,
+            start_date=start_date,
+            employee_count=employee_count,
+            industry=industry,
+            sales_for_year=int(sales_for_year),
+            export_experience=export_experience,
+            job_description=job_description
+        )
+
+        return JsonResponse({"success": True})
+    
+        
+class CustUserUpdateView(View):
+    def post(self, request):
+        cust_user_id = request.POST.get("cust_user_id")
+        cust_user = CustUser.objects.get(id=cust_user_id)
+
+        cust_user.company_name = request.POST.get("company_name")
+        cust_user.region = request.POST.get("region")
+        cust_user.start_date = request.POST.get("start_date")
+        cust_user.employee_count = request.POST.get("employee_count")
+        cust_user.industry = request.POST.get("industry")
+        cust_user.sales_for_year = request.POST.get("sales_for_year")
+        cust_user.export_experience = request.POST.get("export_experience")
+        cust_user.job_description = request.POST.get("job_description")
+
+        cust_user.save()
+        return JsonResponse({"success": True})
+
+class CustUserPossibleProductView(View):
+    def post(self, request):
+        cust_user_id = request.POST.get("cust_user_id")
+        cust_user = CustUser.objects.get(id=cust_user_id)
+
+        region = cust_user.region
+        big_industry = cust_user.industry
+        sales = int(cust_user.sales_for_year.replace(",", ""))
+        period = cust_user.start_date
+        export = cust_user.export_experience
+        empl = int(cust_user.employee_count)
+        employees = ""
+
+        today = datetime.today()
+        year_diff = today.year - period.year
+        if today.month < period.month:
+            year_diff -= 1
+
+        if year_diff < 3:
+            period = "3년 미만"
+        elif year_diff >= 3:
+            period = "3년 이상"
+
+        print(sales)
+
+        if sales >= 3000000000:
+            sales = "30억 이상"
+        elif sales >= 1000000000:
+            sales = "10~30억"
+        elif sales >= 500000000:
+            sales = "5~10억"
+        elif sales > 100000000:
+            sales = "1~5억"
+        elif sales <= 100000000:
+            sales = "1억 이하"
+        else:
+            sales = "매출없음"
+
+        if empl == 0:
+            employees = "직원 없음"
+        elif empl <= 4:
+            employees = "1~4인"
+        elif empl <= 9:
+            employees = "5~9인"
+        elif empl <= 10:
+            employees = "10인 이상"
+            
+
+        if employees in ["1~4인", "5~9인"] and big_industry in ["광업", "제조업", "건설업", "운수업"] :
+            empl = "소상공인"
+        elif employees == "1~4인":
+            empl = "소상공인"
+        elif employees in ["10인 이상", "5~9인"]:
+            empl = "중소기업"
+
+        if export == "있음":
+            export = "수출 실적 보유"
+            
+        print(region, big_industry, sales, period, export, empl)
+
+        # 지원사업 조회
+        datas = BizInfo.objects.filter(
+            (Q(region__contains=region) | Q(region__contains="전국")) &
+             Q(possible_industry__contains=big_industry) &
+             Q(revenue__contains=sales) &
+             Q(business_period__contains=period) &
+            (Q(export_performance__contains=export) | Q(export_performance__contains="무관")) &
+             Q(target__contains=empl)
+
+        )
+
+        data_list = list(datas.values()) 
+
+        print(data_list)
+
+        return JsonResponse({"data": data_list})
+

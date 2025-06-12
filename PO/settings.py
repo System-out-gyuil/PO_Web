@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django.contrib.sitemaps",
     "django_crontab",
+    'django.contrib.humanize',
     "corsheaders",
 
     # Allauth
