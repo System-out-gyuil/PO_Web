@@ -77,7 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function fetchCounts(startDate = null, endDate = null) {
 
-  let url = `${root}/po_admin/counts-by-date/`;
+  let url = `${root}po_admin/counts-by-date/`;
   if (startDate && endDate) {
     url += `?start=${startDate}&end=${endDate}`;
   }
