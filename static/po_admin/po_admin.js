@@ -215,7 +215,7 @@ document.getElementById("save-btn").addEventListener("click", () => {
     body: formData
   }).then(res => res.text())
     .then(data => {
-      // location.reload();
+      location.reload();
       
     }
   )
