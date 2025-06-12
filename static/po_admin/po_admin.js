@@ -183,7 +183,6 @@ document.getElementById("next-week-btn").addEventListener("click", () => {
 
 document.addEventListener("DOMContentLoaded", () => {
   fetchCounts();
-  console.log("DOMContentLoaded");
 });
 
 // --------------------------------------------------------------
@@ -216,7 +215,6 @@ document.getElementById("save-btn").addEventListener("click", () => {
     body: formData
   }).then(res => res.text())
     .then(data => {
-      console.log(data);
       location.reload();
       
     }
@@ -229,7 +227,6 @@ const possibleProductTbody = document.querySelector(".possible-product-tbody");
 const possibleProductModal = document.querySelector(".possible-product-modal-wrapper");
 
 custUserTbody.addEventListener("click", (e) => {
-  console.log(e.target);
   if (e.target.classList.contains("update-btn")) {
     const custUserId = e.target.parentElement.id;
     const companyName = e.target.parentElement.querySelector(`#company_name${custUserId}`).value;
@@ -240,8 +237,6 @@ custUserTbody.addEventListener("click", (e) => {
     const salesForYear = e.target.parentElement.querySelector(`#sales_for_year${custUserId}`).value;
     const exportExperience = e.target.parentElement.querySelector(`#export_experience${custUserId}`).value;
     const jobDescription = e.target.parentElement.querySelector(`#job_description${custUserId}`).value;
-
-    console.log(companyName, region, startDate, employeeCount, industry, salesForYear, exportExperience, jobDescription);
 
     const formData = new URLSearchParams();
     formData.append("cust_user_id", custUserId);
@@ -261,14 +256,12 @@ custUserTbody.addEventListener("click", (e) => {
       },
       body: formData
     }).then(res => res.text()).then(data => {
-      console.log(data);
-      // location.reload();
+      location.reload();
     }).catch(err => console.error(err));
 
   } else if (e.target.classList.contains("possible_product")) {
 
     const custUserId = e.target.parentElement.parentElement.id;
-    console.log(custUserId);
 
     const formData = new URLSearchParams();
     formData.append("cust_user_id", custUserId);
@@ -282,7 +275,6 @@ custUserTbody.addEventListener("click", (e) => {
     })
       .then(res => res.json())
       .then(data => {
-        console.log(data);
         possibleProductTbody.innerHTML = "";
         data.data.forEach(item => {
           item.reception_start = item.reception_start === "1900-01-01" ? "" : item.reception_start;
