@@ -9,8 +9,8 @@ const kakaoNavItem = document.querySelector('.kakao-nav-item');
 const custUserNavItem = document.querySelector('.cust-user-nav-item');
 const custUserWrapper = document.querySelector('.cust-user-wrapper');
 
-// const root = 'https://namatji.com/';
-const root = 'http://127.0.0.1:8000/';
+const root = 'https://namatji.com/';
+// const root = 'http://127.0.0.1:8000/';
 
 // 모든 섹션 숨기기
 function hideAllSections() {

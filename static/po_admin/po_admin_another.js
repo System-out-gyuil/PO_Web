@@ -1,5 +1,5 @@
-// const root = 'https://namatji.com/';
-const root = 'http://127.0.0.1:8000/';
+const root = 'https://namatji.com/';
+// const root = 'http://127.0.0.1:8000/';
 
 // --------------------------------------------------------------
 
