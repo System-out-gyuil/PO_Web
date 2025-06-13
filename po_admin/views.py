@@ -11,7 +11,7 @@ from django.http import JsonResponse
 from datetime import date
 from main.models import IpAddress
 from django.contrib.auth.models import User
-from po_admin.models import CustUser
+from po_admin.models import CustUser, AdminMember
 from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Q
 
@@ -21,19 +21,57 @@ class AdminLoginView(View):
         return render(request, 'po_admin/po_admin_login.html')
 
     def post(self, request):
-        password = request.POST.get('password')
+        member_id = request.POST.get('member_id')
+        member_pw = request.POST.get('member_pw')
 
-        if password == ADMIN_PASSWORD:
-            request.session['po_admin_authenticated'] = True  # 세션에 로그인 성공 기록
-            return redirect('po_admin_list')
-        else:
-            return render(request, 'po_admin/po_admin_login.html', {'error': '비밀번호가 틀렸습니다.'})
+        try:
+            member = AdminMember.objects.get(member_id=member_id, member_pw=member_pw)
+
+            # 로그인 성공 → 세션 저장
+            request.session['po_admin_authenticated'] = True
+            request.session['admin_member_id'] = member.id  # 👉 해당 행의 id 저장
+
+            if member.id == 1:
+                return redirect('po_admin_list')
+            else:
+                return redirect('po_admin_another')
+
+        except AdminMember.DoesNotExist:
+            return render(request, 'po_admin/po_admin_login.html', {
+                'error': '아이디 또는 비밀번호가 틀렸습니다.'
+            })
+        
+class AdminAnotherView(View):
+    def get(self, request):
+        if not request.session.get('po_admin_authenticated'):
+            return redirect('po_admin_login')
+        
+        member_id = request.session.get('admin_member_id')
+
+        cust_users = CustUser.objects.filter(admin_member_id=member_id).order_by('-created_at')
+
+        region_list = ["서울", "부산", "대구", "인천", "광주", "대전", "울산", "세종", "경기", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주"]
+        industry_list = ['농업, 임업 및 어업', '광업', '제조업', '전기, 가스, 증기 및 공기 조절 공급업', '수도, 하수 및 폐기물 처리, 원료 재생업', '건설업', '도매 및 소매업', '운수 및 창고업', '숙박 및 음식점업', '정보통신업', '금융 및 보험업', '부동산업', '전문, 과학 및 기술 서비스업', '사업시설 관리, 사업 지원 및 임대 서비스업', '교육서비스업', '보건업 및 사회복지 서비스업', '예술 스포츠 및 여가관련 서비스업', '협회 및 단체, 수리 및 기타 개인서비스업']
+        export_experience_list = ["있음", "없음", "희망"]
+
+        context = { 
+            'cust_users': cust_users,
+            'region_list': region_list,
+            'industry_list': industry_list,
+            'export_experience_list': export_experience_list
+        }
+        return render(request, 'po_admin/po_admin_another.html', context)
 
 class AdminCounselListView(View):
     def get(self, request):
         if not request.session.get('po_admin_authenticated'):
             return redirect('po_admin_login')
+        
+        member_id = request.session.get('admin_member_id')
 
+        if member_id != 1:
+            return redirect('po_admin_another')
+        
         # 기본 데이터 조회
         counsels = Counsel.objects.all().order_by('-created_at')
         inquiries = Inquiry.objects.all().order_by('-created_at')
@@ -138,6 +176,7 @@ class CustUserSaveView(View):
     def post(self, request):
         company_name = request.POST.get("company_name")
         region = request.POST.get("region")
+        region_detail = request.POST.get("region_detail")
         start_date = request.POST.get("start_date")
         employee_count = request.POST.get("employee_count")
         industry = request.POST.get("industry")
@@ -145,15 +184,20 @@ class CustUserSaveView(View):
         export_experience = request.POST.get("export_experience")
         job_description = request.POST.get("job_description")
 
+        member_id = request.session.get('admin_member_id')
+        admin_member = AdminMember.objects.get(id=member_id)
+
         cust_user = CustUser.objects.create(
             company_name=company_name,
             region=region,
+            region_detail=region_detail,
             start_date=start_date,
             employee_count=employee_count,
             industry=industry,
             sales_for_year=int(sales_for_year),
             export_experience=export_experience,
-            job_description=job_description
+            job_description=job_description,
+            admin_member_id=admin_member
         )
 
         return JsonResponse({"success": True})
@@ -166,6 +210,7 @@ class CustUserUpdateView(View):
 
         cust_user.company_name = request.POST.get("company_name")
         cust_user.region = request.POST.get("region")
+        cust_user.region_detail = request.POST.get("region_detail")
         cust_user.start_date = request.POST.get("start_date")
         cust_user.employee_count = request.POST.get("employee_count")
         cust_user.industry = request.POST.get("industry")
@@ -240,8 +285,7 @@ class CustUserPossibleProductView(View):
              Q(business_period__contains=period) &
             (Q(export_performance__contains=export) | Q(export_performance__contains="무관")) &
              Q(target__contains=empl)
-
-        )
+        ).order_by('-registered_at')
 
         data_list = list(datas.values()) 
 

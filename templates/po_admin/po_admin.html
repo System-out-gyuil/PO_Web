@@ -166,11 +166,13 @@
           <col style="width: 5%">
           <col style="width: 5%">
           <col style="width: 5%">
+          <col style="width: 5%">
           <col style="width: 3%">
           <col style="width: 10%">
           <col style="width: 7%">
           <col style="width: 5%">
           <col style="width: 20%">
+          <col style="width: 5%">
           <col style="width: 5%">
           <col style="width: 5%">
           <col style="width: 5%">
@@ -180,6 +182,7 @@
             <th>번호</th>
             <th>회사명</th>
             <th>지역</th>
+            <th>시/군/구</th>
             <th>사업개시일</th>
             <th>사원수</th>
             <th>업종</th>
@@ -188,6 +191,7 @@
             <th>사업내용</th>
             <th>가능한 지원사업</th>
             <th>알림</th>
+            <th>작성자</th>
             <th>기타</th>
           </tr>
         </thead>
@@ -196,19 +200,21 @@
           <tr id="{{ cust_user.id }}">
             <td>{{ forloop.counter }}</td>
             <td id="company_name{{ cust_user.id }}">{{ cust_user.company_name }}</td>
-            <td id="region{{ cust_user.id }}">{{ cust_user.region }}</td>
+            <td id="region{{ cust_user.id }}" class="region">{{ cust_user.region }}</td>
+            <td id="region_detail{{ cust_user.id }}" class="region_detail">{{ cust_user.region_detail }}</td>
             <td id="start_date{{ cust_user.id }}">{{ cust_user.start_date|date:"Y-m-d" }}</td>
             <td id="employee_count{{ cust_user.id }}">{{ cust_user.employee_count }}</td>
             <td id="industry{{ cust_user.id }}">{{ cust_user.industry }}</td>
             <td id="sales_for_year{{ cust_user.id }}">{{ cust_user.sales_for_year|intcomma }}</td>
             <td id="export_experience{{ cust_user.id }}">{{ cust_user.export_experience }}</td>
             <td id="job_description{{ cust_user.id }}">{{ cust_user.job_description }}</td>
-            <td><button class="possible_product">지원사업 보기</button></td>
+            <td class="possible_product">지원사업 보기</td>
             <td id="alarm{{ cust_user.id }}">{{ cust_user.alarm }}</td>
+            <td id="writer{{ cust_user.id }}">{{ cust_user.admin_member_id }}</td>
             <td class="update-btn{{ cust_user.id }} update-btn">수정</td>
           </tr>
           {% endfor %}
-          <tr>
+          <tr id="cust_user_id">
             <td></td>
             <td><input type="text" id="company_name"></td>
             <td>
@@ -217,6 +223,9 @@
                 <option value="{{ r }}" {% if cust_user.region == r %}selected{% endif %}>{{ r }}</option>
               {% endfor %}
               </select>
+            </td>
+            <td id="region_detail">
+              시/군/구
             </td>
             <td><input type="text" id="start_date"></td>
             <td><input type="text" id="employee_count"></td>
@@ -236,6 +245,7 @@
               </select>
             </td>
             <td><input type="text" id="job_description"></td>
+            <td></td>
             <td></td>
             <td></td>
             <td id="save-btn">저장</td>
@@ -274,6 +284,7 @@
     </div>
   </section>
   
+  <script src="{% static 'base/regions.js' %}"></script>
   <script src="{% static 'po_admin/po_admin.js' %}"></script>
 </body>
 </html>

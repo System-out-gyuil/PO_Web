@@ -17,7 +17,8 @@
 
   <form method="post">
     {% csrf_token %}
-    <input type="password" name="password" placeholder="비밀번호 입력" required>
+    <input type="text" name="member_id" placeholder="아이디 입력" required>
+    <input type="password" name="member_pw" placeholder="비밀번호 입력" required>
     <button type="submit">로그인</button>
   </form>
 </div>

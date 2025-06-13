@@ -190,6 +190,7 @@ document.addEventListener("DOMContentLoaded", () => {
 document.getElementById("save-btn").addEventListener("click", () => {
   const companyName = document.getElementById("company_name").value;
   const region = document.getElementById("region").value;
+  const region_detail = document.getElementById("region_detail_select").value;
   const startDate = document.getElementById("start_date").value;
   const employeeCount = document.getElementById("employee_count").value;
   const industry = document.getElementById("industry").value;
@@ -197,9 +198,12 @@ document.getElementById("save-btn").addEventListener("click", () => {
   const exportExperience = document.getElementById("export_experience").value;
   const jobDescription = document.getElementById("job_description").value;
 
+  
+
   const formData = new URLSearchParams();
   formData.append("company_name", companyName);
   formData.append("region", region);
+  formData.append("region_detail", region_detail);
   formData.append("start_date", startDate);
   formData.append("employee_count", employeeCount);
   formData.append("industry", industry);
@@ -235,6 +239,7 @@ custUserTbody.addEventListener("click", (e) => {
 
     const companyName = tr.querySelector(`#company_name${custUserId}`);
     const region = tr.querySelector(`#region${custUserId}`);
+    const region_detail = tr.querySelector(`#region_detail${custUserId}`);
     const startDate = tr.querySelector(`#start_date${custUserId}`);
     const employeeCount = tr.querySelector(`#employee_count${custUserId}`);
     const industry = tr.querySelector(`#industry${custUserId}`);
@@ -244,7 +249,7 @@ custUserTbody.addEventListener("click", (e) => {
     const updateBtn = tr.querySelector(`.update-btn${custUserId}`);
 
     companyName.innerHTML = `<input type='text' id='company_name' value='${companyName.innerText}'>`;
-    region.innerHTML = `<select id='region'>
+    region.innerHTML = `<select id='region_update'>
                           <option value='${region.innerText}' selected>${region.innerText}</option>
                           <option value='서울'>서울</option>
                           <option value='부산'>부산</option>
@@ -264,6 +269,11 @@ custUserTbody.addEventListener("click", (e) => {
                           <option value='경남'>경남</option>
                           <option value='제주'>제주</option>
                         </select>`;
+    
+   
+    region_detail.innerHTML = `<input type='text' id='region_detail_update${custUserId}' value='${region_detail.innerText}'>`;
+    
+
     startDate.innerHTML = `<input type='text' id='start_date' value='${startDate.innerText}'>`;
     employeeCount.innerHTML = `<input type='text' id='employee_count' value='${employeeCount.innerText}'>`;
     industry.innerHTML = `<select id='industry'>
@@ -302,7 +312,7 @@ custUserTbody.addEventListener("click", (e) => {
 
   } else if (e.target.classList.contains("possible_product")) {
 
-    const custUserId = e.target.parentElement.parentElement.id;
+    const custUserId = e.target.parentElement.id;
 
     const formData = new URLSearchParams();
     formData.append("cust_user_id", custUserId);
@@ -344,14 +354,15 @@ custUserTbody.addEventListener("click", (e) => {
         possibleProductModal.style.display = "block";
       })
       .catch(err => console.error(err));
-  }else if (e.target.classList.contains("save-btn")) {
+  } else if (e.target.classList.contains("save-btn")) {
 
     const custUserId = e.target.parentElement.id;
 
     const formData = new URLSearchParams();
 
     const companyName = document.getElementById("company_name").value;
-    const region = document.getElementById("region").value;
+    const region = document.getElementById("region_update").value;
+    const region_detail = document.getElementById(`region_detail_select`).value;
     const startDate = document.getElementById("start_date").value;
     const employeeCount = document.getElementById("employee_count").value;
     const industry = document.getElementById("industry").value;
@@ -359,11 +370,12 @@ custUserTbody.addEventListener("click", (e) => {
     const exportExperience = document.getElementById("export_experience").value;
     const jobDescription = document.getElementById("job_description").value;
 
-    console.log(custUserId, companyName, region, startDate, employeeCount, industry, salesForYear, exportExperience, jobDescription);
+    console.log(custUserId, companyName, region, region_detail, startDate, employeeCount, industry, salesForYear, exportExperience, jobDescription);
 
     formData.append("cust_user_id", custUserId);
     formData.append("company_name", companyName);
     formData.append("region", region);
+    formData.append("region_detail", region_detail);
     formData.append("start_date", startDate);
     formData.append("employee_count", employeeCount);
     formData.append("industry", industry);
@@ -381,6 +393,177 @@ custUserTbody.addEventListener("click", (e) => {
       location.reload();
     }).catch(err => console.error(err));
     
+  } else if (e.target.id === "region") {
+
+    const region_detail = document.getElementById(`region_detail`);
+    const selectedRegion = e.target.value;
+    console.log(selectedRegion);
+
+    let detailedArea = [];
+    switch (selectedRegion) {
+      case "서울":
+        detailedArea = seoulList;
+        break;
+  
+      case "인천":
+        detailedArea = incheonList;
+        break;
+  
+      case "대전":
+        detailedArea = daejeonList;
+        break;
+  
+      case "세종":
+        detailedArea = sejongList;
+        break;
+  
+      case "광주":
+        detailedArea = gwangjuList;
+        break;
+  
+      case "부산":
+        detailedArea = busanList;
+        break;
+  
+      case "대구":
+        detailedArea = daeguList;
+        break;
+  
+      case "울산":
+        detailedArea = ulsanList;
+        break;
+  
+      case "제주":
+        detailedArea = jejuList;
+        break;
+  
+      case "경기":
+        detailedArea = gyeonggiList;
+        break;
+  
+      case "강원":
+        detailedArea = gangwonList;
+        break;
+  
+      case "충북":
+        detailedArea = chungBukList;
+        break;
+  
+      case "충남":
+        detailedArea = chungNamList;
+        break;
+  
+      case "전북":
+        detailedArea = jeonBukList;
+        break;
+  
+      case "전남":
+        detailedArea = jeonNamList;
+        break;
+  
+      case "경북":
+        detailedArea = gyeongBukList;
+        break;
+  
+      case "경남":
+        detailedArea = gyeongNamList;
+        break;
+
+      case "제주":
+        detailedArea = jejuList;
+        break;
+    }
+
+    region_detail.innerHTML = `<select id='region_detail_select'>
+                                  ${detailedArea.map(item => `<option value='${item}'>${item}</option>`).join('')}
+                                </select>`;
+    
+  } else if (e.target.id === "region_update") {
+    const custUserId = e.target.parentElement.parentElement.id;
+
+    const region_detail = document.getElementById(`region_detail${custUserId}`);
+    const selectedRegion = e.target.value;
+    console.log(region_detail);
+
+    let detailedArea = [];
+    switch (selectedRegion) {
+      case "서울":
+        detailedArea = seoulList;
+        break;
+  
+      case "인천":
+        detailedArea = incheonList;
+        break;
+  
+      case "대전":
+        detailedArea = daejeonList;
+        break;
+  
+      case "세종":
+        detailedArea = sejongList;
+        break;
+  
+      case "광주":
+        detailedArea = gwangjuList;
+        break;
+  
+      case "부산":
+        detailedArea = busanList;
+        break;
+  
+      case "대구":
+        detailedArea = daeguList;
+        break;
+  
+      case "울산":
+        detailedArea = ulsanList;
+        break;
+  
+      case "제주":
+        detailedArea = jejuList;
+        break;
+  
+      case "경기":
+        detailedArea = gyeonggiList;
+        break;
+  
+      case "강원":
+        detailedArea = gangwonList;
+        break;
+  
+      case "충북":
+        detailedArea = chungBukList;
+        break;
+  
+      case "충남":
+        detailedArea = chungNamList;
+        break;
+  
+      case "전북":
+        detailedArea = jeonBukList;
+        break;
+  
+      case "전남":
+        detailedArea = jeonNamList;
+        break;
+  
+      case "경북":
+        detailedArea = gyeongBukList;
+        break;
+  
+      case "경남":
+        detailedArea = gyeongNamList;
+        break;
+      
+      case "제주":
+        detailedArea = jejuList;
+        break;
+    }
+
+    region_detail.innerHTML = `<select id='region_detail_select'>
+                                  ${detailedArea.map(item => `<option value='${item}'>${item}</option>`).join('')}
+                                </select>`;
+
   }
 
 });
