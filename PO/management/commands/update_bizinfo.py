@@ -19,6 +19,9 @@ warnings.filterwarnings("ignore", category=UserWarning)  # 경고 무시
 import pandas as pd
 from datetime import date, time, datetime
 from django.utils.timezone import make_aware
+from main.models import CustUser
+from django.db.models import Q
+from django.db.models import Max
 
 class Command(BaseCommand):
     help = "DB 업데이트"
@@ -108,8 +111,12 @@ class Command(BaseCommand):
 
             self.stdout.write(self.style.SUCCESS(f"{len(items)}건 처리 완료."))
 
+            self.update_cust_user_product()
+
         except Exception as e:
             self.stderr.write(self.style.ERROR(f"실패: {e}"))
+
+    
 
     def sanitize_filename(self, name):
         return re.sub(r"[^\w가-힣._]+", "_", name).strip("_")
@@ -276,3 +283,86 @@ class Command(BaseCommand):
         return deleted
 
         
+    def update_cust_user_product(self):
+            cust_users = CustUser.objects.all()
+            
+            for cust_user in cust_users:
+                
+                region = cust_user.region
+                big_industry = cust_user.industry
+                sales = int(cust_user.sales_for_year.replace(",", ""))
+                period = cust_user.start_date
+                export = cust_user.export_experience
+                empl = int(cust_user.employee_count)
+                employees = ""
+
+                today = datetime.today()
+                year_diff = today.year - period.year
+                if today.month < period.month:
+                    year_diff -= 1
+
+                if year_diff < 3:
+                    period = "3년 미만"
+                elif year_diff >= 3:
+                    period = "3년 이상"
+
+                if sales >= 3000000000:
+                    sales = "30억 이상"
+                elif sales >= 1000000000:
+                    sales = "10~30억"
+                elif sales >= 500000000:
+                    sales = "5~10억"
+                elif sales > 100000000:
+                    sales = "1~5억"
+                elif sales <= 100000000:
+                    sales = "1억 이하"
+                else:
+                    sales = "매출없음"
+
+                if empl == 0:
+                    employees = "직원 없음"
+                elif empl <= 4:
+                    employees = "1~4인"
+                elif empl <= 9:
+                    employees = "5~9인"
+                elif empl <= 10:
+                    employees = "10인 이상"
+                    
+
+                if employees in ["1~4인", "5~9인"] and big_industry in ["광업", "제조업", "건설업", "운수업"] :
+                    empl = "소상공인"
+                elif employees == "1~4인":
+                    empl = "소상공인"
+                elif employees in ["10인 이상", "5~9인"]:
+                    empl = "중소기업"
+
+                if export == "있음":
+                    export = "수출 실적 보유"
+                    
+                # ------------------- 지원사업 조회 -------------------
+                datas = BizInfo.objects.filter(
+                    (Q(region__contains=region) | Q(region__contains="전국")) &
+                    Q(possible_industry__contains=big_industry) &
+                    Q(revenue__contains=sales) &
+                    Q(business_period__contains=period) &
+                    (Q(export_performance__contains=export) | Q(export_performance__contains="무관")) &
+                    Q(target__contains=empl)
+                ).order_by('-registered_at')
+
+                # ① pblanc_id를 쉼표로 이어진 문자열로 저장
+                pblanc_ids = list(datas.values_list("pblanc_id", flat=True))
+                cust_user.possible_product = ",".join(pblanc_ids)
+
+                # ② 최신 registered_at 날짜 구해서 alarm 컬럼에 저장
+                latest_date = datas.aggregate(latest=Max('registered_at'))['latest']  # datetime 객체
+                # 또는 latest_date = datas.first().registered_at  # 이미 order_by('-registered_at') 했으므로 동일
+
+                if latest_date:
+                    # alarm이 CharField라면 문자열로 변환 (예: YYYY-MM-DD)
+                    cust_user.alarm = latest_date.strftime('%Y-%m-%d')
+                    # alarm이 DateTimeField/DateField라면 그대로 할당해도 됨
+                else:
+                    cust_user.alarm = ''  # 조회 결과가 없을 때 처리(필요 시)
+
+                cust_user.save()
+

@@ -1,11 +1,11 @@
-// const root = 'https://namatji.com/';
-const root = 'http://127.0.0.1:8000/';
+const root = 'https://namatji.com/';
+// const root = 'http://127.0.0.1:8000/';
 
 // --------------------------------------------------------------
 
 document.getElementById("save-btn").addEventListener("click", () => {
   const companyName = document.getElementById("company_name").value;
-  const region = document.getElementById("region").value;
+  const region = document.getElementById("region_select").value;
   const region_detail = document.getElementById("region_detail_select").value;
   const startDate = document.getElementById("start_date").value;
   const employeeCount = document.getElementById("employee_count").value;
@@ -14,8 +14,6 @@ document.getElementById("save-btn").addEventListener("click", () => {
   const exportExperience = document.getElementById("export_experience").value;
   const jobDescription = document.getElementById("job_description").value;
 
-  
-
   const formData = new URLSearchParams();
   formData.append("company_name", companyName);
   formData.append("region", region);
@@ -23,7 +21,7 @@ document.getElementById("save-btn").addEventListener("click", () => {
   formData.append("start_date", startDate);
   formData.append("employee_count", employeeCount);
   formData.append("industry", industry);
-  formData.append("sales_for_year", salesForYear);
+  formData.append("sales_for_year", salesForYear.replace(/,/g, ""));
   formData.append("export_experience", exportExperience);
   formData.append("job_description", jobDescription);
 
@@ -45,6 +43,13 @@ document.getElementById("save-btn").addEventListener("click", () => {
 const custUserTbody = document.querySelector(".cust-user-tbody");
 const possibleProductTbody = document.querySelector(".possible-product-tbody");
 const possibleProductModal = document.querySelector(".possible-product-modal-wrapper");
+
+custUserTbody.addEventListener("input", function (e) {
+  if (!e.target.classList.contains("comma-input")) return;
+
+  const raw = e.target.value.replace(/[^\d]/g, "");
+  e.target.value = raw ? raw.replace(/\B(?=(\d{3})+(?!\d))/g, ",") : "";
+});
 
 custUserTbody.addEventListener("click", (e) => {
   if (e.target.classList.contains("update-btn")) {
@@ -87,8 +92,9 @@ custUserTbody.addEventListener("click", (e) => {
                         </select>`;
     
    
-    region_detail.innerHTML = `<input type='text' id='region_detail_update${custUserId}' value='${region_detail.innerText}'>`;
-    
+    region_detail.innerHTML = `<select id='region_detail_update${custUserId}' class='region_detail_update'>
+                                <option value='${region_detail.innerText}' selected>${region_detail.innerText}</option>
+                               </select>`;
 
     startDate.innerHTML = `<input type='text' id='start_date' value='${startDate.innerText}'>`;
     employeeCount.innerHTML = `<input type='text' id='employee_count' value='${employeeCount.innerText}'>`;
@@ -113,7 +119,7 @@ custUserTbody.addEventListener("click", (e) => {
                             <option value='예술 스포츠 및 여가관련 서비스업'>예술 스포츠 및 여가관련 서비스업</option>
                             <option value='협회 및 단체, 수리 및 기타 개인서비스업'>협회 및 단체, 수리 및 기타 개인서비스업</option>
                           </select>`;
-    salesForYear.innerHTML = `<input type='text' id='sales_for_year' value='${salesForYear.innerText}'>`;
+    salesForYear.innerHTML = `<input type='text' id='sales_for_year_update${custUserId}' class='sales_for_year_update comma-input' value='${salesForYear.innerText}'>`;
     exportExperience.innerHTML = `<select id='export_experience'>
                                     <option value='${exportExperience.innerText}' selected>${exportExperience.innerText}</option>
                                     <option value="있음">있음</option>
@@ -125,6 +131,7 @@ custUserTbody.addEventListener("click", (e) => {
     updateBtn.innerHTML = `저장`;
     updateBtn.classList.add("save-btn");
     updateBtn.classList.remove("update-btn");
+
 
   } else if (e.target.classList.contains("possible_product")) {
 
@@ -141,9 +148,9 @@ custUserTbody.addEventListener("click", (e) => {
       body: formData
     })
       .then(res => res.json())
-      .then(data => {
+      .then(datas => {
         possibleProductTbody.innerHTML = "";
-        data.data.forEach(item => {
+        datas.datas.forEach(item => {
           item.reception_start = item.reception_start === "1900-01-01" ? "" : item.reception_start;
           item.reception_end = item.reception_end === "9999-12-31" ? "상시접수" : item.reception_end;
 
@@ -170,6 +177,8 @@ custUserTbody.addEventListener("click", (e) => {
         possibleProductModal.style.display = "block";
       })
       .catch(err => console.error(err));
+    
+    
   } else if (e.target.classList.contains("save-btn")) {
 
     const custUserId = e.target.parentElement.id;
@@ -178,11 +187,11 @@ custUserTbody.addEventListener("click", (e) => {
 
     const companyName = document.getElementById("company_name").value;
     const region = document.getElementById("region_update").value;
-    const region_detail = document.getElementById(`region_detail_select`).value;
+    const region_detail = document.getElementById(`region_detail_update${custUserId}`).value;
     const startDate = document.getElementById("start_date").value;
     const employeeCount = document.getElementById("employee_count").value;
     const industry = document.getElementById("industry").value;
-    const salesForYear = document.getElementById("sales_for_year").value;
+    const salesForYear = document.getElementById(`sales_for_year_update${custUserId}`).value;
     const exportExperience = document.getElementById("export_experience").value;
     const jobDescription = document.getElementById("job_description").value;
 
@@ -195,7 +204,7 @@ custUserTbody.addEventListener("click", (e) => {
     formData.append("start_date", startDate);
     formData.append("employee_count", employeeCount);
     formData.append("industry", industry);
-    formData.append("sales_for_year", salesForYear);
+    formData.append("sales_for_year", salesForYear.replace(/,/g, ""));
     formData.append("export_experience", exportExperience);
     formData.append("job_description", jobDescription);
 
@@ -209,11 +218,12 @@ custUserTbody.addEventListener("click", (e) => {
       location.reload();
     }).catch(err => console.error(err));
     
-  } else if (e.target.id === "region") {
+
+  } else if (e.target.id === "region_select") {
 
     const region_detail = document.getElementById(`region_detail`);
     const selectedRegion = e.target.value;
-    console.log(selectedRegion);
+    console.log(e.target);
 
     let detailedArea = [];
     switch (selectedRegion) {
@@ -283,6 +293,10 @@ custUserTbody.addEventListener("click", (e) => {
   
       case "경남":
         detailedArea = gyeongNamList;
+        break;
+
+      case "제주":
+        detailedArea = jejuList;
         break;
     }
 
@@ -293,9 +307,11 @@ custUserTbody.addEventListener("click", (e) => {
   } else if (e.target.id === "region_update") {
     const custUserId = e.target.parentElement.parentElement.id;
 
+    console.log(custUserId);
+
     const region_detail = document.getElementById(`region_detail${custUserId}`);
     const selectedRegion = e.target.value;
-    console.log(region_detail);
+    console.log(e.target);
 
     let detailedArea = [];
     switch (selectedRegion) {
@@ -366,9 +382,13 @@ custUserTbody.addEventListener("click", (e) => {
       case "경남":
         detailedArea = gyeongNamList;
         break;
+      
+      case "제주":
+        detailedArea = jejuList;
+        break;
     }
 
-    region_detail.innerHTML = `<select id='region_detail_select'>
+    region_detail.innerHTML = `<select id='region_detail_update${custUserId}'>
                                   ${detailedArea.map(item => `<option value='${item}'>${item}</option>`).join('')}
                                 </select>`;
 
@@ -400,3 +420,23 @@ function getCookie(name) {
 }
 
 const csrftoken = getCookie('csrftoken');
+
+// 컴마 추가 함수
+function addCommas(numStr) {
+  return numStr.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+// 숫자만 추출 함수
+function uncomma(str) {
+  return str.replace(/[^\d]/g, "");
+}
+
+// 이벤트 연결
+document.getElementById("sales_for_year").addEventListener("input", function (e) {
+  const val = uncomma(e.target.value); // 숫자만 남기기
+  if (val === "") {
+    e.target.value = "";
+    return;
+  }
+  e.target.value = addCommas(val); // 컴마 붙여서 다시 세팅
+});

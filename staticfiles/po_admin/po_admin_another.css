@@ -90,7 +90,7 @@ input[type="text"]:focus-visible {
   text-align: left;
 }
 
-#region, #industry, #export_experience, #region_detail_select{
+#region, #industry, #export_experience, #region_detail_select, #region_detail_update, #region_select, #region_update, .region_detail_update{
   border: none;
   width: 97%;
   text-align: center;
@@ -140,4 +140,6 @@ input[type="text"]:focus-visible {
   background-color: #959595;
 }
 
-
+.alarm-today {
+  background-color: #ffee007f;
+}

@@ -190,8 +190,21 @@
             <th>수출여부</th>
             <th>사업내용</th>
             <th>가능한 지원사업</th>
-            <th>알림</th>
-            <th>작성자</th>
+            <th>최신 공고 업로드일</th>
+            <th>
+              <select id="writer-filter">
+                <option value="all"
+                        {% if selected_writer == "all" or not selected_writer %}selected{% endif %}>
+                  전체
+                </option>
+                {% for w in writer_list %}
+                  <option value="{{ w }}"
+                          {% if w == selected_writer %}selected{% endif %}>
+                    {{ w }}
+                  </option>
+                {% endfor %}
+              </select>
+            </th>
             <th>기타</th>
           </tr>
         </thead>
@@ -205,11 +218,17 @@
             <td id="start_date{{ cust_user.id }}">{{ cust_user.start_date|date:"Y-m-d" }}</td>
             <td id="employee_count{{ cust_user.id }}">{{ cust_user.employee_count }}</td>
             <td id="industry{{ cust_user.id }}">{{ cust_user.industry }}</td>
-            <td id="sales_for_year{{ cust_user.id }}">{{ cust_user.sales_for_year|intcomma }}</td>
+            <td id="sales_for_year{{ cust_user.id }}">{{ cust_user.sales_for_year|add:"0"|intcomma }}</td>
             <td id="export_experience{{ cust_user.id }}">{{ cust_user.export_experience }}</td>
             <td id="job_description{{ cust_user.id }}">{{ cust_user.job_description }}</td>
             <td class="possible_product">지원사업 보기</td>
-            <td id="alarm{{ cust_user.id }}">{{ cust_user.alarm }}</td>
+            {% if cust_user.alarm|date:"Y-m-d" == today|date:"Y-m-d" or cust_user.alarm|date:"Y-m-d" == yesterday|date:"Y-m-d" %}
+            <td id="alarm{{ cust_user.id }}" class="alarm-today">
+              <span>{{ cust_user.alarm|date:"m-d" }}</span>
+            </td>
+            {% else %}
+            <td id="alarm{{ cust_user.id }}">{{ cust_user.alarm|date:"m-d" }}</td>
+            {% endif %}
             <td id="writer{{ cust_user.id }}">{{ cust_user.admin_member_id }}</td>
             <td class="update-btn{{ cust_user.id }} update-btn">수정</td>
           </tr>
@@ -218,7 +237,7 @@
             <td></td>
             <td><input type="text" id="company_name"></td>
             <td>
-              <select id="region{{ cust_user.id }}">
+              <select id="region_select">
               {% for r in region_list %}
                 <option value="{{ r }}" {% if cust_user.region == r %}selected{% endif %}>{{ r }}</option>
               {% endfor %}
@@ -236,7 +255,7 @@
               {% endfor %}
               </select>
             </td>
-            <td><input type="text" id="sales_for_year"></td>
+            <td><input type="text" id="sales_for_year" class="comma-input"></td>
             <td>
               <select id="export_experience">
               {% for e in export_experience_list %}

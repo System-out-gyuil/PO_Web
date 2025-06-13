@@ -22,7 +22,7 @@ class CustUser(models.Model):
     export_experience = models.CharField(max_length=100)
     job_description = models.TextField()
     possible_product = models.TextField()
-    alarm = models.CharField(max_length=100)
+    alarm = models.DateField(null=True, blank=True)
 
     # ✅ FK 설정: 자동 증가하는 AdminMember의 id 참조
     admin_member_id = models.ForeignKey(AdminMember, on_delete=models.CASCADE, default=1)

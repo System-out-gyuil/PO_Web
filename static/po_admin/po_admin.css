@@ -108,7 +108,7 @@ body {
 #count-thead .row,
 #body-items .row {
   display: grid;
-  grid-template-columns: 300px repeat(7, 1fr); /* 7일 기준 */
+  grid-template-columns: 300px repeat(8, 1fr); /* 7일 기준 */
   gap: 50px;
   padding: 10px 0;
   border-bottom: 1px solid;
@@ -121,6 +121,10 @@ body {
 
 .cell {
   text-align: center;
+}
+
+.total-cell {
+  font-weight: bold;
 }
 
 .page-name {
@@ -231,7 +235,7 @@ input[type="text"]:focus-visible {
   text-align: left;
 }
 
-#region, #industry, #export_experience, #region_detail_select{
+#region, #industry, #export_experience, #region_detail_select, #region_detail_update, #region_select, #region_update, .region_detail_update{
   border: none;
   width: 97%;
   text-align: center;
@@ -281,4 +285,12 @@ input[type="text"]:focus-visible {
   background-color: #959595;
 }
 
+.alarm-today {
+  background-color: #ffee007f;
+}
 
+#writer-filter {
+  border: none;
+  width: 97%;
+  text-align: center;
+}
