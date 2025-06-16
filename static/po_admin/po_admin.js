@@ -652,3 +652,20 @@ document.getElementById("writer-filter").addEventListener("change", function () 
   }
   window.location.href = url.toString();         // 새로고침
 });
+
+document.getElementById("file-input").addEventListener("change", function (e) {
+  const file = e.target.files[0];
+  const formData = new FormData();
+  formData.append("file", file);
+
+  fetch(`${root}po_admin/cust-user/upload/`, {
+    method: "POST",
+    headers: {
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    body: formData
+  }).then(res => res.text()).then(data => {
+    console.log(data);
+    location.reload();
+  }).catch(err => console.error(err));
+});

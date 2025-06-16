@@ -15,6 +15,8 @@ from po_admin.models import CustUser, AdminMember
 from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Q
 from django.db.models import Max
+import pandas as pd
+import re
 
 class AdminLoginView(View):
     def get(self, request):
@@ -458,3 +460,281 @@ class CustUserPossibleProductView(View):
         return JsonResponse(context, safe=False)
 
 
+class CustUserUploadView(View):
+    def post(self, request):
+
+        def korean_number_to_int(text, base_unit=10000):  # 기본단위 = 만
+            units = {
+                "억": 100000000,
+                "천": 10000000,
+                "백": 1000000,
+            }
+
+            num_map = {'공':0, '영':0, '일':1, '이':2, '삼':3, '사':4, '오':5, '육':6, '칠':7, '팔':8, '구':9}
+
+            text = text.replace(" ", "").replace("원", "")
+            total = 0
+
+            # 단위가 없으면 뒤에 '만' 단위가 생략됐다고 보고 처리
+            def append_unit_if_missing(text):
+                if not any(unit in text for unit in units):
+                    return text + "만"
+                return text
+
+            text = append_unit_if_missing(text)
+
+            pattern = re.compile(r"(?P<num>[일이삼사오육칠팔구\d]?)(?P<unit>억|천만|백만|만|천|백|십)")
+            for match in pattern.finditer(text):
+                num = match.group("num")
+                unit = match.group("unit")
+                value = int(num_map.get(num, num)) if num else 1
+                total += value * units[unit]
+
+            return total
+        
+        member_id = request.session.get('admin_member_id')
+        admin_member = AdminMember.objects.get(id=member_id)
+
+        excel_file = request.FILES.get("file")
+        if not excel_file:
+            return JsonResponse({"success": False, "error": "No file uploaded."}, status=400)
+
+        try:
+            # ✅ 엑셀 파일을 DataFrame으로 읽기
+            df = pd.read_excel(excel_file)
+
+            # ✅ dict로 변환 (리스트 형태의 딕셔너리)
+            records = df.to_dict(orient="records")
+
+            for record in records:
+
+                if not pd.isna(record["업체명"]) and not pd.isna(record["지역"]) and not pd.isna(record["주업종"]) and not pd.isna(record["설립일"]):
+
+                    print("***********************************************************")
+                    print(record)
+                    company_name = record["업체명"]
+                    region = record["지역"]
+                    region_detail = record["지역상세"]
+                    start_date = record["설립일"]
+                    employee_count = record["직원수"]
+                    industry = record["업종"]
+                    sales_for_year = record["24년 매출"]
+                    export_experience = record["수출"]
+                    job_description = ""
+
+                    if not pd.isna(record["기대출"]):
+                        job_description += f'기대출: {record["기대출"]}\n'
+                    if not pd.isna(record["신용점수(KCB/나이스)"]):
+                        job_description += f'신용점수(KCB/나이스): {record["신용점수(KCB/나이스)"]}\n'
+                    if not pd.isna(record["특이사항"]):
+                        job_description += f'특이사항: {record["특이사항"]}\n'
+
+
+                    if pd.isna(sales_for_year):
+                        sales_for_year = "매출 없음"
+                    else:
+                        sales_for_year = korean_number_to_int(sales_for_year)
+
+                    if pd.isna(employee_count):
+                        employee_count = "직원 없음"
+
+                    print(f'company_name: {type(company_name)}')
+                    print(f'region: {type(region)}')
+                    print(f'region_detail: {type(region_detail)}')
+                    print(f'start_date: {type(start_date)}')
+                    print(f'employee_count: {type(employee_count)}')
+                    print(f'industry: {type(industry)}')
+                    print(f'sales_for_year: {type(sales_for_year)}')
+                    print(f'export_experience: {type(export_experience)}')
+                    print(f'job_description: {type(job_description)}')
+
+                    
+                    member_id = request.session.get('admin_member_id')
+                    admin_member = AdminMember.objects.get(id=member_id)
+
+                    if not pd.isna(start_date):
+                        str_date = start_date.strftime("%Y-%m-%d")
+                    else:
+                        str_date = "1900-01-01"
+
+                    cust_user = CustUser.objects.create(
+                        company_name=company_name,
+                        region=region,
+                        region_detail=region_detail,
+                        start_date=str_date,
+                        employee_count=employee_count,
+                        industry=industry,
+                        sales_for_year=sales_for_year,
+                        export_experience=export_experience,
+                        job_description=job_description,
+                        admin_member_id=admin_member
+                    )
+
+                        
+                    sales = sales_for_year
+                    period = start_date
+                    export = export_experience
+                    employees = ""
+
+                    if employee_count != "직원 없음":
+                        empl = int(employee_count)
+                        if empl == 0:
+                            employees = "직원 없음"
+                        elif empl <= 4:
+                            employees = "1~4인"
+                        elif empl <= 9:
+                            employees = "5~9인"
+                        elif empl <= 10:
+                            employees = "10인 이상"
+
+                        if employees in ["1~4인", "5~9인"] and industry in ["광업", "제조업", "건설업", "운수업"] :
+                            empl = "소상공인"
+                        elif employees == "1~4인":
+                            empl = "소상공인"
+                        elif employees in ["10인 이상", "5~9인"]:
+                            empl = "중소기업"
+                    else:
+                        empl = "소상공인"
+
+                    today = datetime.today()
+                    year_diff = today.year - period.year
+
+                    if today.month < period.month:
+                        year_diff -= 1
+
+                    if year_diff < 3:
+                        period = "3년 미만"
+                    elif year_diff >= 3:
+                        period = "3년 이상"
+
+                    if type(sales) == str:
+                        pass
+                    else:
+                        if sales >= 3000000000:
+                            sales = "30억 이상"
+                        elif sales >= 1000000000:
+                            sales = "10~30억"
+                        elif sales >= 500000000:
+                            sales = "5~10억"
+                        elif sales > 100000000:
+                            sales = "1~5억"
+                        elif sales <= 100000000:
+                            sales = "1억 이하"
+
+                    
+
+                    if export == "있음":
+                        export = "수출 실적 보유"
+                        
+                    # ------------------- 지원사업 조회 -------------------
+                    print("***********************************************************")
+                    print(f'region: {region}')
+                    print(f'industry: {industry}')
+                    print(f'sales: {sales}')
+                    print(f'period: {period}')
+                    print(f'export: {export}')
+                    print(f'empl: {empl}')
+
+                    datas = BizInfo.objects.filter(
+                        (Q(region__contains=region) | Q(region__contains="전국")) &
+                        Q(possible_industry__contains=industry) &
+                        Q(revenue__contains=sales) &
+                        Q(business_period__contains=period) &
+                        (Q(export_performance__contains=export) | Q(export_performance__contains="무관")) &
+                        Q(target__contains=empl)
+                    ).order_by('-registered_at')
+
+                    # ① pblanc_id를 쉼표로 이어진 문자열로 저장
+                    pblanc_ids = list(datas.values_list("pblanc_id", flat=True))
+                    cust_user.possible_product = ",".join(pblanc_ids)
+
+                    # ② 최신 registered_at 날짜 구해서 alarm 컬럼에 저장
+                    latest_date = datas.aggregate(latest=Max('registered_at'))['latest']  # datetime 객체
+                    # 또는 latest_date = datas.first().registered_at  # 이미 order_by('-registered_at') 했으므로 동일
+
+                    if latest_date:
+                        # alarm이 CharField라면 문자열로 변환 (예: YYYY-MM-DD)
+                        cust_user.alarm = latest_date.strftime('%Y-%m-%d')
+                        # alarm이 DateTimeField/DateField라면 그대로 할당해도 됨
+                    else:
+                        cust_user.alarm = None # 조회 결과가 없을 때 처리(필요 시)
+
+                    cust_user.save()
+
+                else :
+                    if not pd.isna(record["업체명"]):
+                        print("****************************else*******************************")
+
+
+                        print(record)
+
+                        company_name = record["업체명"]
+                        region = record["지역"]
+                        region_detail = record["지역상세"]
+                        start_date = record["설립일"]
+
+                        if not pd.isna(start_date):
+                            str_date = start_date.strftime("%Y-%m-%d")
+                        else:
+                            str_date = "1900-01-01"
+
+                        employee_count = record["직원수"]
+                        industry = record["업종"]
+                        if pd.isna(industry):
+                            industry = "업종없음"
+
+                        sales_for_year = record["24년 매출"]
+                        export_experience = record["수출"]
+                        if pd.isna(export_experience):
+                            export_experience = "없음"
+
+                        job_description = ""
+
+
+                        print(f'record["업체명"]: {type(company_name)}')
+                        print(f'record["지역"]: {type(region)}')
+                        print(f'record["지역상세"]: {type(region_detail)}')
+                        print(f'record["설립일"]: {type(start_date)}')
+                        print(f'record["직원수"]: {type(employee_count)}')
+                        print(f'record["업종"]: {type(industry)}')
+                        print(f'record["24년 매출"]: {type(sales_for_year)}')
+                        print(f'record["수출"]: {type(export_experience)}')
+
+                        if not pd.isna(record["기대출"]):
+                            job_description += f'기대출: {record["기대출"]}\n'
+                        if not pd.isna(record["신용점수(KCB/나이스)"]):
+                            job_description += f'신용점수(KCB/나이스): {record["신용점수(KCB/나이스)"]}\n'
+                        if not pd.isna(record["특이사항"]):
+                            job_description += f'특이사항: {record["특이사항"]}\n'
+
+                        print(f'job_description: {job_description}')
+
+
+                        if pd.isna(sales_for_year):
+                            sales_for_year = "매출 없음"
+                        else:
+                            sales_for_year = korean_number_to_int(sales_for_year)
+
+                        if pd.isna(employee_count):
+                            employee_count = "직원 없음"
+
+                        cust_user = CustUser.objects.create(
+                            company_name=company_name,
+                            region=region,
+                            region_detail=region_detail,
+                            start_date=str_date,
+                            employee_count=employee_count,
+                            industry=industry,
+                            sales_for_year=sales_for_year,
+                            export_experience=export_experience,
+                            job_description=job_description,
+                            admin_member_id=admin_member
+                        )
+
+                        cust_user.save()
+
+            return JsonResponse({"success": True, "data": records})
+        
+        except Exception as e:
+            print("❌ 오류:", e)
+            return JsonResponse({"success": False, "error": str(e)}, status=500)

@@ -215,10 +215,28 @@
             <td id="company_name{{ cust_user.id }}">{{ cust_user.company_name }}</td>
             <td id="region{{ cust_user.id }}" class="region">{{ cust_user.region }}</td>
             <td id="region_detail{{ cust_user.id }}" class="region_detail">{{ cust_user.region_detail }}</td>
-            <td id="start_date{{ cust_user.id }}">{{ cust_user.start_date|date:"Y-m-d" }}</td>
-            <td id="employee_count{{ cust_user.id }}">{{ cust_user.employee_count }}</td>
+            <td id="start_date{{ cust_user.id }}">
+              {% if cust_user.start_date|date:"Y-m-d" == "1900-01-01" %}
+                없음
+              {% else %}
+                {{ cust_user.start_date|date:"Y-m-d" }}
+              {% endif %}
+            </td>
+            <td id="employee_count{{ cust_user.id }}">
+              {% if cust_user.employee_count == "직원 없음" %}
+                0
+              {% else %}
+                {{ cust_user.employee_count}}
+              {% endif %}
+            </td>
             <td id="industry{{ cust_user.id }}">{{ cust_user.industry }}</td>
-            <td id="sales_for_year{{ cust_user.id }}">{{ cust_user.sales_for_year|add:"0"|intcomma }}</td>
+            <td id="sales_for_year{{ cust_user.id }}">
+              {% if cust_user.sales_for_year == "매출 없음" %}
+                {{ cust_user.sales_for_year }}
+              {% else %}
+                {{ cust_user.sales_for_year|add:"0"|intcomma }}
+              {% endif %}
+            </td>
             <td id="export_experience{{ cust_user.id }}">{{ cust_user.export_experience }}</td>
             <td id="job_description{{ cust_user.id }}">{{ cust_user.job_description }}</td>
             <td class="possible_product">지원사업 보기</td>
@@ -271,6 +289,7 @@
           </tr>
         </tbody>
       </table>
+      <div><input type="file" id="file-input"></div>
     </div>
   </section>
 
