@@ -134,6 +134,15 @@ class AdminCounselListView(View):
 
         print(writer_list)
 
+        # 날짜 계산
+        today = date.today()
+        yesterday = today - timedelta(days=1)
+
+        # 토(5)·일(6)이면 금요일(4)까지 뒤로 이동
+        if yesterday.weekday() >= 5:
+            # ex) 토요일→1 day, 일요일→2 days 더 빼기
+            yesterday -= timedelta(days=yesterday.weekday() - 4)
+
         context = {
             'counsels': counsels,
             'inquiries': inquiries,
@@ -147,8 +156,8 @@ class AdminCounselListView(View):
             'region_list': region_list,
             'industry_list': industry_list,
             'export_experience_list': export_experience_list,
-            'today': date.today(),
-            'yesterday': date.today() - timedelta(days=1),
+            'today': today,
+            'yesterday': yesterday,
             "cust_users": cust_users,
             "writer_list": writer_list,
             "selected_writer": writer or "all",
@@ -417,23 +426,35 @@ class CustUserUpdateView(View):
         cust_user.save()
 
         return JsonResponse({"success": True})
-
+    
 class CustUserPossibleProductView(View):
     def post(self, request):
         cust_user_id = request.POST.get("cust_user_id")
         cust_user = CustUser.objects.get(id=cust_user_id)
 
         pblanc_ids = [pid.strip() for pid in cust_user.possible_product.split(",") if pid.strip()]
-        
-        # ✅ 최신순 정렬 추가
+
         data_list = list(
             BizInfo.objects.filter(pblanc_id__in=pblanc_ids)
-            .order_by('-registered_at')  # 최신순 정렬
+            .order_by('-registered_at')
             .values()
         )
 
-        print(data_list)
+        # 날짜 계산
+        today = date.today()
+        yesterday = today - timedelta(days=1)
 
-        return JsonResponse({"datas": data_list})
+        # 토(5)·일(6)이면 금요일(4)까지 뒤로 이동
+        if yesterday.weekday() >= 5:
+            # ex) 토요일→1 day, 일요일→2 days 더 빼기
+            yesterday -= timedelta(days=yesterday.weekday() - 4)
+
+        context = {
+            "datas": data_list,
+            "today": today,
+            "yesterday": yesterday,
+        }
+
+        return JsonResponse(context, safe=False)
 
 

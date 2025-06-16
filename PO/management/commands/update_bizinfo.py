@@ -19,7 +19,7 @@ warnings.filterwarnings("ignore", category=UserWarning)  # 경고 무시
 import pandas as pd
 from datetime import date, time, datetime
 from django.utils.timezone import make_aware
-from main.models import CustUser
+from po_admin.models import CustUser
 from django.db.models import Q
 from django.db.models import Max
 

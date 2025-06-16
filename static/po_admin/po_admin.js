@@ -335,6 +335,7 @@ custUserTbody.addEventListener("click", (e) => {
     })
       .then(res => res.json())
       .then(datas => {
+        console.log(datas);
         possibleProductTbody.innerHTML = "";
         datas.datas.forEach(item => {
           item.reception_start = item.reception_start === "1900-01-01" ? "" : item.reception_start;
@@ -350,15 +351,28 @@ custUserTbody.addEventListener("click", (e) => {
             receptionPeriod = `${item.reception_start} ~ ${item.reception_end}`;
           }
 
-          possibleProductTbody.innerHTML += `
+          if (item.registered_at == datas.today || item.registered_at == datas.yesterday) {
+            possibleProductTbody.innerHTML += `
             <tr>
-              <td>${item.registered_at}</td>
+              <td class="today-registered-at">${item.registered_at}</td>
               <td>${item.title}</td>
               <td>${receptionPeriod}</td>
               <td class="possible-product-summary">${item.noti_summary}</td>
               <td><a href="${root}board/detail/${item.pblanc_id}/" target="_blank">본문보기</a></td>
             </tr>
           `;
+          }else {
+            possibleProductTbody.innerHTML += `
+            <tr>
+              <td class="other-registered-at">${item.registered_at}</td>
+              <td>${item.title}</td>
+              <td>${receptionPeriod}</td>
+              <td class="possible-product-summary">${item.noti_summary}</td>
+              <td><a href="${root}board/detail/${item.pblanc_id}/" target="_blank">본문보기</a></td>
+            </tr>
+          `;
+          }
+
         });
         possibleProductModal.style.display = "block";
       })
