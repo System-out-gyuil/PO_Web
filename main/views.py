@@ -28,6 +28,10 @@ class ImWeb(View):
     def get(self, request):
         return render(request, 'main/imweb.html')
 
+class TestView(View):
+    def get(self, request):
+        return render(request, 'main/main_test.html')
+
 class MainView(View):
     def get(self, request):
         biz_list_10 = BizInfo.objects.all().order_by('-registered_at')[:15]

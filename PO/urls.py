@@ -1,7 +1,7 @@
 from django.views.generic import TemplateView
 from django.contrib import admin
 from django.urls import path, include
-from main.views import MainView, TermsOfServiceView, PersonalInfoView, Ads, ImWeb
+from main.views import MainView, TermsOfServiceView, PersonalInfoView, Ads, ImWeb, TestView
 from counsel.views import CounselFormView
 from django.conf import settings
 from django.conf.urls.static import static
@@ -26,6 +26,7 @@ urlpatterns = [
     path('po_admin/', include('po_admin.urls')),
     path('search/', include('search.urls')),
     path('imweb/', ImWeb.as_view(), name='imweb'),
+    path('test/', TestView.as_view(), name='test'),
     
     path('accounts/', include('allauth.urls')),
 ]
