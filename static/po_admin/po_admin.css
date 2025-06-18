@@ -236,17 +236,93 @@ input[type="text"]:focus-visible {
   text-align: left;
 }
 
-#region, #industry, #export_experience, #region_detail_select, #region_detail_update, #region_select, #region_update, .region_detail_update{
+#region, #industry, #export_experience, #region_detail_select, #region_detail_update, #region_select, #region_update, .region_detail_update, #industry-filter, #region-filter, #region-detail-filter, #export-experience-filter{
   border: none;
   width: 97%;
   text-align: center;
   height: 30px;
 }
 
+#industry-filter {
+  border: none;
+  width: 97%;
+  text-align: center;
+  font-weight: bold;
+  font-size: 15px;
+}
+
+#region-filter {
+  border: none;
+  width: 97%;
+  text-align: center;
+  font-weight: bold;
+  font-size: 15px;
+}
+
+#region-detail-filter {
+  border: none;
+  width: 97%;
+  text-align: center;
+  font-weight: bold;
+  font-size: 15px;
+}
+
+#export-experience-filter {
+  border: none;
+  width: 97%;
+  text-align: center;
+  font-weight: bold;
+  font-size: 15px;
+}
+
+#cust-user-reset-btn {
+  cursor: pointer;
+  background-color: #c2c2c26c;
+  padding: 0;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 20px;
+  font-weight: bold;
+  position: absolute;
+  left: 2%;
+}
+
+#cust-user-delete-btn {
+  cursor: pointer;
+  background-color: #c2c2c26c;
+  padding: 0;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 20px;
+  font-weight: bold;
+  position: absolute;
+  right: 2%;
+}
+
+.cust-user-title-wrapper {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-top: 20px;
+  margin-bottom: 20px;
+  position: relative;
+}
+
+.cust-user-title {
+  margin: 0 auto;
+}
+
 .possible_product {
   text-align: center;
   cursor: pointer;
   background-color: #c2c2c26c;
+  padding: 0;
+}
+
+.possible_product_none {
+  text-align: center;
+  background-color: #ffffff;
   padding: 0;
 }
 
@@ -299,3 +375,13 @@ input[type="text"]:focus-visible {
   font-size: 15px;
   height: 30px;
 }
+
+
+.cust-user-tr-hover:hover {
+  background-color: #db94946c;
+}
+
+.cust-user-tr-red {
+  background-color: #d656566c;
+}
+

@@ -17,6 +17,8 @@ from django.db.models import Q
 from django.db.models import Max
 import pandas as pd
 import re
+from .regions import get_region_detail_map
+import json
 
 class AdminLoginView(View):
     def get(self, request):
@@ -77,11 +79,13 @@ class AdminCounselListView(View):
         if member_id != 1:
             return redirect('po_admin_another')
         
+        
+        
         # 기본 데이터 조회
         counsels = Counsel.objects.all().order_by('-created_at')
         inquiries = Inquiry.objects.all().order_by('-created_at')
         kakaos = User.objects.all().order_by('-date_joined')
-        cust_users = CustUser.objects.all().order_by('-alarm')
+        
         counts = Count.objects.all()
 
         end_date = date.today()
@@ -109,11 +113,24 @@ class AdminCounselListView(View):
             grouped_counts_by_day[day_str]["ip_total"] = ip_count
 
         region_list = ["서울", "부산", "대구", "인천", "광주", "대전", "울산", "세종", "경기", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주"]
-        industry_list = ['농업, 임업 및 어업', '광업', '제조업', '전기, 가스, 증기 및 공기 조절 공급업', '수도, 하수 및 폐기물 처리, 원료 재생업', '건설업', '도매 및 소매업', '운수 및 창고업', '숙박 및 음식점업', '정보통신업', '금융 및 보험업', '부동산업', '전문, 과학 및 기술 서비스업', '사업시설 관리, 사업 지원 및 임대 서비스업', '교육서비스업', '보건업 및 사회복지 서비스업', '예술 스포츠 및 여가관련 서비스업', '협회 및 단체, 수리 및 기타 개인서비스업']
+        region_detail_map = get_region_detail_map()
+        industry_list = ['농업, 임업 및 어업', '광업', '제조업', '전기, 가스, 증기 및 공기 조절 공급업', '수도, 하수 및 폐기물 처리, 원료 재생업', '건설업', '도매 및 소매업', '운수 및 창고업', '숙박 및 음식점업', '정보통신업', '금융 및 보험업', '부동산업', '전문, 과학 및 기술 서비스업', '사업시설 관리, 사업 지원 및 임대 서비스업', '교육서비스업', '보건업 및 사회복지 서비스업', '예술 스포츠 및 여가관련 서비스업', '협회 및 단체, 수리 및 기타 개인서비스업', '업종없음']
         export_experience_list = ["있음", "없음", "희망"]
 
         # ① 선택된 작성자
         writer = request.GET.get("writer")          # ex) "po_admin"
+        industry = request.GET.get("industry")      # ex) "농업, 임업 및 어업"
+        if request.GET.get("region"):
+            region = request.GET.get("region")
+        else:
+            region = "all"
+
+        print(f'region: {region}')
+
+        region_detail_maped = region_detail_map[region]
+
+        region_detail = request.GET.get("region_detail")
+        export_experience = request.GET.get("export_experience")
 
         # ② 기본 쿼리셋
         cust_users_qs = CustUser.objects.all()
@@ -124,7 +141,45 @@ class AdminCounselListView(View):
                 admin_member_id__member_id=writer
             )
 
-        cust_users = cust_users_qs.order_by("-alarm")
+        # ④ 업종 필터 적용
+        if industry and industry != "all":
+            cust_users_qs = cust_users_qs.filter(
+                industry=industry
+            )
+
+        # ⑤ 지역 필터 적용
+        if region and region != "all":
+            cust_users_qs = cust_users_qs.filter(
+                region=region
+            )
+
+        # ⑥ 지역 세부 필터 적용
+        if region_detail and region_detail != "all":
+            cust_users_qs = cust_users_qs.filter(
+                region_detail=region_detail
+            )
+
+        # ⑦ 수출여부 필터 적용
+        if export_experience and export_experience != "all":
+            cust_users_qs = cust_users_qs.filter(
+                export_experience=export_experience
+            )
+
+        employee_count_order = ""
+        
+        if request.GET.get("employee_count"):
+            employee_count_order = request.GET.get("employee_count")
+            print(f'employee_count_order: {employee_count_order}')
+        
+        if employee_count_order == "asc":
+            cust_users = cust_users_qs.order_by("employee_count")
+
+        elif employee_count_order == "desc":
+            cust_users = cust_users_qs.order_by("-employee_count")
+
+        else:
+            cust_users = cust_users_qs.order_by('-alarm')
+
 
         # ④ 작성자 목록 (distinct)
         writer_list = (
@@ -135,6 +190,7 @@ class AdminCounselListView(View):
         )
 
         print(writer_list)
+
 
         # 날짜 계산
         today = date.today()
@@ -163,6 +219,12 @@ class AdminCounselListView(View):
             "cust_users": cust_users,
             "writer_list": writer_list,
             "selected_writer": writer or "all",
+            "selected_industry": industry or "all",
+            "selected_region": region or "all",
+            "region_detail_map": region_detail_maped,
+            "selected_region_detail": region_detail or "all",
+            "selected_export_experience": export_experience or "all",
+            "employee_count_order": employee_count_order,
         }
 
         return render(request, 'po_admin/po_admin.html', context)
@@ -339,33 +401,53 @@ class CustUserUpdateView(View):
         export_experience = request.POST.get("export_experience")
         job_description = request.POST.get("job_description")
 
+        print(f'start_date: {start_date}')
+
         cust_user.company_name = company_name
         cust_user.region = region
         cust_user.region_detail = region_detail
-        cust_user.start_date = start_date
         cust_user.employee_count = employee_count
         cust_user.industry = industry
         cust_user.sales_for_year = sales_for_year
         cust_user.export_experience = export_experience
         cust_user.job_description = job_description
 
-        print(f'sales_for_year: {sales_for_year}')
+        period = ""
+        
+        if sales_for_year == "매출 없음":
+            sales_for_year = 0
+
+        if start_date in ["없음", "", None]:
+            start_date = "1900-01-01"
+            start_date = datetime.strptime("1900-01-01", "%Y-%m-%d").date()
+
+        else :
+            today = datetime.today()
+            year_diff = today.year - start_date.year
+            if today.month < datetime.strptime(start_date, "%Y-%m-%d").month:
+                year_diff -= 1
+
+            if year_diff < 3:
+                period = "3년 미만"
+            elif year_diff >= 3:
+                period = "3년 이상"
+
+        print(f'start_date2: {start_date}')
+
+        cust_user.start_date = start_date
+
+
+        if industry == "없음":
+            industry = ""
 
         sales = int(sales_for_year)
-        period = start_date
+        
         export = export_experience
         empl = int(employee_count)
         employees = ""
 
         today = datetime.today()
-        year_diff = today.year - datetime.strptime(start_date, "%Y-%m-%d").year
-        if today.month < datetime.strptime(start_date, "%Y-%m-%d").month:
-            year_diff -= 1
-
-        if year_diff < 3:
-            period = "3년 미만"
-        elif year_diff >= 3:
-            period = "3년 이상"
+        
 
         if sales >= 3000000000:
             sales = "30억 이상"
@@ -378,7 +460,7 @@ class CustUserUpdateView(View):
         elif sales <= 100000000:
             sales = "1억 이하"
         else:
-            sales = "매출없음"
+            sales = "매출 없음"
 
         if empl == 0:
             employees = "직원 없음"
@@ -423,7 +505,7 @@ class CustUserUpdateView(View):
             cust_user.alarm = latest_date.strftime('%Y-%m-%d')
             # alarm이 DateTimeField/DateField라면 그대로 할당해도 됨
         else:
-            cust_user.alarm = ''  # 조회 결과가 없을 때 처리(필요 시)
+            cust_user.alarm = None  # 조회 결과가 없을 때 처리(필요 시)
 
         cust_user.save()
 
@@ -536,7 +618,7 @@ class CustUserUploadView(View):
                         sales_for_year = korean_number_to_int(sales_for_year)
 
                     if pd.isna(employee_count):
-                        employee_count = "직원 없음"
+                        employee_count = 0
 
                     print(f'company_name: {type(company_name)}')
                     print(f'region: {type(region)}')
@@ -738,3 +820,18 @@ class CustUserUploadView(View):
         except Exception as e:
             print("❌ 오류:", e)
             return JsonResponse({"success": False, "error": str(e)}, status=500)
+        
+
+class CustUserDeleteView(View):
+    def post(self, request):
+        data = json.loads(request.body)
+        cust_user_ids = data.get("cust_user_ids")
+
+        print(cust_user_ids)
+        print(type(cust_user_ids))
+
+        for cust_user_id in cust_user_ids:
+            CustUser.objects.get(id=cust_user_id).delete()
+
+        return JsonResponse({"success": True})
+

@@ -9,8 +9,8 @@ const kakaoNavItem = document.querySelector('.kakao-nav-item');
 const custUserNavItem = document.querySelector('.cust-user-nav-item');
 const custUserWrapper = document.querySelector('.cust-user-wrapper');
 
-const root = 'https://namatji.com/';
-// const root = 'http://127.0.0.1:8000/';
+// const root = 'https://namatji.com/';
+const root = 'http://127.0.0.1:8000/';
 
 // 모든 섹션 숨기기
 function hideAllSections() {
@@ -123,7 +123,7 @@ function fetchCounts(startDate = null, endDate = null) {
 
       let theadRow = `<div class="thead-cell">페이지</div>`;
       for (const d of dateList) theadRow += `<div class="thead-cell">${getDayName(d)}</div>`;
-      theadRow += `<div class="thead-cell total-head">합계</div>`;  /* ← 추가 */
+      theadRow += `<div class="thead-cell total-head">1주 합계</div>`;  /* ← 추가 */
       count_thead.innerHTML = `<div class="row">${theadRow}</div>`;
 
       /* ── BODY (일별 값 + 총합) ────────────────── */
@@ -415,7 +415,7 @@ custUserTbody.addEventListener("click", (e) => {
       },
       body: formData
     }).then(res => res.text()).then(data => {
-      location.reload();
+      location.reload(); 
     }).catch(err => console.error(err));
     
 
@@ -653,6 +653,123 @@ document.getElementById("writer-filter").addEventListener("change", function () 
   window.location.href = url.toString();         // 새로고침
 });
 
+document.getElementById("industry-filter").addEventListener("change", function () {
+  const industry = this.value;
+  const url = new URL(window.location.href);
+  
+  if (industry === "all") {
+    url.searchParams.delete("industry");
+  } else {
+    url.searchParams.set("industry", industry);
+  }
+  window.location.href = url.toString();
+});
+
+document.getElementById("region-filter").addEventListener("change", function () {
+  const region = this.value;
+  const url = new URL(window.location.href);
+
+  console.log(region);
+
+  if (region === "all") {
+    url.searchParams.delete("region");
+    url.searchParams.delete("region_detail");
+  } else {
+    url.searchParams.set("region", region);
+  }
+  window.location.href = url.toString();
+});
+
+document.getElementById("region-detail-filter").addEventListener("change", function () {
+  const region_detail = this.value;
+  const url = new URL(window.location.href);
+
+  if (region_detail === "all") {
+    url.searchParams.delete("region_detail");
+  } else {
+    url.searchParams.set("region_detail", region_detail);
+  }
+  window.location.href = url.toString();
+});
+
+document.getElementById("export-experience-filter").addEventListener("change", function () {
+  const export_experience = this.value;
+  const url = new URL(window.location.href);
+
+  if (export_experience === "all") {
+    url.searchParams.delete("export_experience");
+  } else {
+    url.searchParams.set("export_experience", export_experience);
+  }
+  window.location.href = url.toString();
+});
+
+
+
+// ------------------------------------------------------------
+
+// ---------------------------고객 정보 삭제----------------------------------
+document.getElementById("cust-user-delete-btn").addEventListener("click", function (e) {
+  document.querySelectorAll(".cust-user-tr").forEach(tr => {
+    tr.classList.add("cust-user-tr-hover");
+  });
+  const custUserId = [];
+  e.target.innerText = "선택된 고객 정보 삭제";
+  const tBody = document.querySelector(".cust-user-tbody");
+  tBody.addEventListener("click", function (f) {
+
+    const id = f.target.parentElement.id;
+    const index = custUserId.indexOf(id);
+
+    if (index !== -1) {
+      // 이미 있다면 제거
+      custUserId.splice(index, 1);
+      f.target.parentElement.classList.remove("cust-user-tr-red");
+    } else {
+      // 없으면 추가
+      custUserId.push(id);
+      f.target.parentElement.classList.add("cust-user-tr-red");
+    }
+
+  });
+
+  e.target.addEventListener("click", function () {
+    console.log(custUserId);
+    fetch(`${root}po_admin/cust-user/delete/`, {
+      method: "POST",
+      headers: {
+        "X-CSRFToken": getCookie("csrftoken"),
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        cust_user_ids: custUserId
+      })
+    }).then(res => res.json()).then(data => {
+      location.reload();
+    }).catch(err => console.error(err));
+  });
+
+});
+
+// --------------------직원 수 올름 내림차순-----------------------------
+const employeeCountTh = document.querySelector(".employee-count-th");
+
+employeeCountTh.addEventListener("click", function () {
+
+  if (employeeCountTh.innerText === "사원수 △") {
+    const url = new URL(window.location.href);
+    url.searchParams.set("employee_count", "asc");
+    window.location.href = url.toString();
+  } else {
+    const url = new URL(window.location.href);
+    url.searchParams.set("employee_count", "desc");
+    window.location.href = url.toString();
+  }
+
+  
+});
+
+// ------------------------------------------------------------
 document.getElementById("file-input").addEventListener("change", function (e) {
   const file = e.target.files[0];
   const formData = new FormData();
@@ -668,4 +785,16 @@ document.getElementById("file-input").addEventListener("change", function (e) {
     console.log(data);
     location.reload();
   }).catch(err => console.error(err));
+});
+
+// 초기화 버튼
+document.getElementById("cust-user-reset-btn").addEventListener("click", function () {
+  const url = new URL(window.location.href);
+  url.searchParams.delete("writer");
+  url.searchParams.delete("industry");
+  url.searchParams.delete("region");
+  url.searchParams.delete("region_detail");
+  url.searchParams.delete("export_experience");
+  url.searchParams.delete("employee_count");
+  window.location.href = url.toString();
 });

@@ -159,7 +159,11 @@
 
   <section>
     <div class="cust-user-wrapper">
-      <h1>고객 정보 리스트</h1>
+      <div class="cust-user-title-wrapper">
+        <button id="cust-user-reset-btn">필터 초기화</button>
+        <h1 class="cust-user-title">고객 정보 리스트</h1>
+        <button id="cust-user-delete-btn">고객 정보 삭제</button>
+      </div>
       <table class="cust-user-table">
         <colgroup>
           <col style="width: 2%">
@@ -181,25 +185,88 @@
           <tr>
             <th>번호</th>
             <th>회사명</th>
-            <th>지역</th>
-            <th>시/군/구</th>
+            <th>
+              <select id="region-filter">
+                <option value="all"
+                  {% if selected_region == "all" or not selected_region %}selected{% endif %}>
+                  지역
+                </option>
+                {% for r in region_list %}
+                  <option value="{{ r }}"
+                    {% if r == selected_region %}selected{% endif %}>
+                    {{ r }}
+                  </option>
+                {% endfor %}
+
+              </select>
+            </th>
+            <th>
+              <select id="region-detail-filter">
+                <option value="all"
+                  {% if selected_region_detail == "all" or not selected_region_detail %}selected{% endif %}>
+                  시/군/구
+                </option>
+                {% if selected_region != "all" %}
+                {% for r in region_detail_map %}
+                  <option value="{{ r }}"
+                    {% if r == selected_region_detail %}selected{% endif %}>
+                    {{ r }}
+                  </option>
+                {% endfor %}
+                {% endif %}
+              </select>
+            </th>
             <th>사업개시일</th>
-            <th>사원수</th>
-            <th>업종</th>
+            <th class="employee-count-th">
+              {% if employee_count_order == "desc" %}
+                사원수 △
+              {% else %}
+                사원수 ▽
+              {% endif %}
+            </th>
+            <th>
+              <select id="industry-filter">
+                <option value="all"
+                  {% if selected_industry == "all" or not selected_industry %}selected{% endif %}>
+                  업종
+                </option>
+                {% for i in industry_list %}
+                  <option value="{{ i }}"
+                    {% if i == selected_industry %}selected{% endif %}>
+                    {{ i }}
+                  </option>
+                {% endfor %}
+              </select>
+
+            </th>
             <th>연매출</th>
-            <th>수출여부</th>
+            <th>
+              <select id="export-experience-filter">
+                <option value="all"
+                  {% if selected_export_experience == "all" or not selected_export_experience %}selected{% endif %}>
+                  수출여부
+                </option>
+                {% for e in export_experience_list %}
+                  <option value="{{ e }}"
+                    {% if e == selected_export_experience %}selected{% endif %}>
+                    {{ e }}
+                  </option>
+                {% endfor %}
+
+              </select>
+            </th>
             <th>사업내용</th>
             <th>가능한<br>지원사업</th>
             <th>공고 최신<br>업로드일</th>
             <th>
               <select id="writer-filter">
                 <option value="all"
-                        {% if selected_writer == "all" or not selected_writer %}selected{% endif %}>
-                  전체
+                  {% if selected_writer == "all" or not selected_writer %}selected{% endif %}>
+                  작성자
                 </option>
                 {% for w in writer_list %}
                   <option value="{{ w }}"
-                          {% if w == selected_writer %}selected{% endif %}>
+                    {% if w == selected_writer %}selected{% endif %}>
                     {{ w }}
                   </option>
                 {% endfor %}
@@ -210,11 +277,15 @@
         </thead>
         <tbody class="cust-user-tbody">
           {% for cust_user in cust_users %}
-          <tr id="{{ cust_user.id }}">
-            <td>{{ forloop.counter }}</td>
+          <tr id="{{ cust_user.id }}" class="cust-user-tr">
+            <td id="{{ cust_user.id }}">{{ forloop.counter }}</td>
+
             <td id="company_name{{ cust_user.id }}">{{ cust_user.company_name }}</td>
+
             <td id="region{{ cust_user.id }}" class="region">{{ cust_user.region }}</td>
+
             <td id="region_detail{{ cust_user.id }}" class="region_detail">{{ cust_user.region_detail }}</td>
+
             <td id="start_date{{ cust_user.id }}">
               {% if cust_user.start_date|date:"Y-m-d" == "1900-01-01" %}
                 없음
@@ -222,14 +293,17 @@
                 {{ cust_user.start_date|date:"Y-m-d" }}
               {% endif %}
             </td>
+
             <td id="employee_count{{ cust_user.id }}">
-              {% if cust_user.employee_count == "직원 없음" %}
+              {% if cust_user.employee_count == 0 %}
                 0
               {% else %}
                 {{ cust_user.employee_count}}
               {% endif %}
             </td>
+
             <td id="industry{{ cust_user.id }}">{{ cust_user.industry }}</td>
+
             <td id="sales_for_year{{ cust_user.id }}">
               {% if cust_user.sales_for_year == "매출 없음" %}
                 {{ cust_user.sales_for_year }}
@@ -237,9 +311,17 @@
                 {{ cust_user.sales_for_year|add:"0"|intcomma }}
               {% endif %}
             </td>
+
             <td id="export_experience{{ cust_user.id }}">{{ cust_user.export_experience }}</td>
+
             <td id="job_description{{ cust_user.id }}">{{ cust_user.job_description }}</td>
+
+            {% if cust_user.possible_product %}
             <td class="possible_product">지원사업 보기</td>
+            {% else %}
+            <td class="possible_product_none">지원사업 없음</td>
+            {% endif %}
+
             {% if cust_user.alarm|date:"Y-m-d" == today|date:"Y-m-d" or cust_user.alarm|date:"Y-m-d" == yesterday|date:"Y-m-d" %}
             <td id="alarm{{ cust_user.id }}" class="alarm-today">
               <span>{{ cust_user.alarm|date:"m-d" }}</span>

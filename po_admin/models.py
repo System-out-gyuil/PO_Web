@@ -16,7 +16,7 @@ class CustUser(models.Model):
     region = models.CharField(max_length=100)
     region_detail = models.CharField(max_length=100, null=True, blank=True)
     start_date = models.DateField()
-    employee_count = models.CharField(max_length=100)
+    employee_count = models.IntegerField()
     industry = models.CharField(max_length=100)
     sales_for_year = models.CharField(max_length=100)
     export_experience = models.CharField(max_length=100)
