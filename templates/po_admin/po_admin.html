@@ -277,7 +277,11 @@
         </thead>
         <tbody class="cust-user-tbody">
           {% for cust_user in cust_users %}
+          {% if cust_user.recent %}
+          <tr id="{{ cust_user.id }}" class="cust-user-tr cust-user-tr-recent">
+          {% else %}
           <tr id="{{ cust_user.id }}" class="cust-user-tr">
+          {% endif %}
             <td id="{{ cust_user.id }}">{{ forloop.counter }}</td>
 
             <td id="company_name{{ cust_user.id }}">{{ cust_user.company_name }}</td>

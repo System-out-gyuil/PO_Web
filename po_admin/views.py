@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from django.utils.timezone import localtime
 from django.http import JsonResponse
 from datetime import date
+from django.utils.timezone import now
 from main.models import IpAddress
 from django.contrib.auth.models import User
 from po_admin.models import CustUser, AdminMember
@@ -189,17 +190,19 @@ class AdminCounselListView(View):
             .distinct()
         )
 
-        print(writer_list)
-
-
         # 날짜 계산
         today = date.today()
         yesterday = today - timedelta(days=1)
+        now_time = now()
+
+        for user in cust_users:
+            user.recent = (now_time - user.updated_at).total_seconds() < 3600
 
         # 토(5)·일(6)이면 금요일(4)까지 뒤로 이동
         if yesterday.weekday() >= 5:
             # ex) 토요일→1 day, 일요일→2 days 더 빼기
             yesterday -= timedelta(days=yesterday.weekday() - 4)
+
 
         context = {
             'counsels': counsels,
@@ -216,6 +219,7 @@ class AdminCounselListView(View):
             'export_experience_list': export_experience_list,
             'today': today,
             'yesterday': yesterday,
+            'now': now_time,
             "cust_users": cust_users,
             "writer_list": writer_list,
             "selected_writer": writer or "all",
@@ -294,6 +298,29 @@ class CustUserSaveView(View):
         member_id = request.session.get('admin_member_id')
         admin_member = AdminMember.objects.get(id=member_id)
 
+        if sales_for_year == "매출 없음":
+            sales_for_year = 0
+
+        if start_date in ["없음", "", None]:
+            start_date = "1900-01-01"
+            start_date = datetime.strptime(start_date, "%Y-%m-%d").date()
+
+        else :
+            today = datetime.today()
+            start_date = datetime.strptime(start_date, "%Y-%m-%d").date()
+            year_diff = today.year - start_date.year
+
+            if today.month < start_date.month:
+                year_diff -= 1
+
+            if year_diff < 3:
+                period = "3년 미만"
+            elif year_diff >= 3:
+                period = "3년 이상"
+
+        if industry == "없음":
+            industry = ""
+
         cust_user = CustUser.objects.create(
             company_name=company_name,
             region=region,
@@ -306,22 +333,15 @@ class CustUserSaveView(View):
             job_description=job_description,
             admin_member_id=admin_member
         )
-            
+
+        print(f'sales_for_year: {sales_for_year}')
+
         sales = int(sales_for_year)
-        period = start_date
         export = export_experience
         empl = int(employee_count)
         employees = ""
 
         today = datetime.today()
-        year_diff = today.year - datetime.strptime(period, "%Y-%m-%d").year
-        if today.month < datetime.strptime(period, "%Y-%m-%d").month:
-            year_diff -= 1
-
-        if year_diff < 3:
-            period = "3년 미만"
-        elif year_diff >= 3:
-            period = "3년 이상"
 
         if sales >= 3000000000:
             sales = "30억 이상"
@@ -334,7 +354,7 @@ class CustUserSaveView(View):
         elif sales <= 100000000:
             sales = "1억 이하"
         else:
-            sales = "매출없음"
+            sales = "매출 없음"
 
         if empl == 0:
             employees = "직원 없음"
@@ -379,7 +399,7 @@ class CustUserSaveView(View):
             cust_user.alarm = latest_date.strftime('%Y-%m-%d')
             # alarm이 DateTimeField/DateField라면 그대로 할당해도 됨
         else:
-            cust_user.alarm = ''  # 조회 결과가 없을 때 처리(필요 시)
+            cust_user.alarm = None  # 조회 결과가 없을 때 처리(필요 시)
 
         cust_user.save()
 
@@ -419,12 +439,14 @@ class CustUserUpdateView(View):
 
         if start_date in ["없음", "", None]:
             start_date = "1900-01-01"
-            start_date = datetime.strptime("1900-01-01", "%Y-%m-%d").date()
+            start_date = datetime.strptime(start_date, "%Y-%m-%d").date()
 
         else :
             today = datetime.today()
+            start_date = datetime.strptime(start_date, "%Y-%m-%d").date()
             year_diff = today.year - start_date.year
-            if today.month < datetime.strptime(start_date, "%Y-%m-%d").month:
+
+            if today.month < start_date.month:
                 year_diff -= 1
 
             if year_diff < 3:
@@ -432,10 +454,7 @@ class CustUserUpdateView(View):
             elif year_diff >= 3:
                 period = "3년 이상"
 
-        print(f'start_date2: {start_date}')
-
         cust_user.start_date = start_date
-
 
         if industry == "없음":
             industry = ""
@@ -447,7 +466,6 @@ class CustUserUpdateView(View):
         employees = ""
 
         today = datetime.today()
-        
 
         if sales >= 3000000000:
             sales = "30억 이상"
