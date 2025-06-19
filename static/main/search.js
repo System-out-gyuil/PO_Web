@@ -55,7 +55,7 @@ function WatingSearchResult() {
 }
 
 // 검색 결과 없음 창
-const searchNoneResultContainer = document.querySelector('.search-none-result-container');
+const searchNoneResultContainer = document.querySelector('.search-none-result-container-wrapper');
 
 function WatingNoneSearchResult() {
   businessStyleContainer.style.display = 'none';

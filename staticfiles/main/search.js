@@ -37,7 +37,7 @@ function animatePercent(targetPercent) {
 
 
 
-const selectedColor = 'rgb(167 255 162)';
+const selectedColor = '#bfc2fd';
 const defaultColor = '#fff';
 
 // 검색 결과 기다리는 창
@@ -55,7 +55,7 @@ function WatingSearchResult() {
 }
 
 // 검색 결과 없음 창
-const searchNoneResultContainer = document.querySelector('.search-none-result-container');
+const searchNoneResultContainer = document.querySelector('.search-none-result-container-wrapper');
 
 function WatingNoneSearchResult() {
   businessStyleContainer.style.display = 'none';

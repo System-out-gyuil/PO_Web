@@ -922,7 +922,7 @@ body {
 }
 
 .footer-container-text-box {
-  width: 70%;
+  width: 100%;
   height: 100%;
   margin: 0 auto;
 }
@@ -1168,7 +1168,7 @@ body {
   }
 
   .intro-container {
-    height: 1300px;
+    height: 1150px;
   }
 
   .namatji-intro-container {
@@ -1220,7 +1220,7 @@ body {
   }
 
   .bizinfo-container {
-    height: 2000px;
+    height: 1600px;
   }
 
   .bizinfo-contents {
@@ -1257,6 +1257,7 @@ body {
 
   .bizinfo-header {
     justify-content: flex-start;
+    height: 100px;
   }
 
   .bizinfo-contents-container-items {
