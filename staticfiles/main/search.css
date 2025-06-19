@@ -7,6 +7,17 @@
 
 body {
   padding-bottom: 170px;
+  background: linear-gradient(10deg, #93dafa, #cad8f4, #ffffff);
+
+}
+
+.search-background {
+  width: 100%;
+  height: 100%;
+}
+
+.industry-category-button {
+  cursor: pointer;
 }
 
 /* 각 항목별 진행도 퍼센트 표시 */
@@ -21,7 +32,7 @@ body {
   width: 100%;
   height: 100%;
   font-family: 'TmonMonsori', sans-serif;
-  color: #ffffff;
+  color: #5d60f5;
   font-size: 25px;
   font-weight: 600;
   line-height: 80px;
@@ -37,26 +48,92 @@ body {
   justify-content: center;
   width: 426px;
   height: 700px;
-  background-color: #18a0fb;
+  background: linear-gradient(150deg, #ffffff, #d4dff8);
   margin-top: 50px;
   border-radius: 15px;
   position: relative;
+  box-shadow: 10px 10px 10px 10px rgba(0, 0, 0, 0.1);
 }
 
+.search-flex-container {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+  width: 100%;
+}
+
+.search-title-first {
+  width: 20%;
+}
+.search-title-first2 {
+  width: 10%;
+}
+
+.search-img-box {
+  margin-bottom: -16%;
+  width: 20%;
+  height: 100%;
+  background-image: url("/static/images/search/Ai.gif");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.search-img2 {
+  width: 70%;
+  height: 40%;
+  background-image: url("/static/images/search/Fundamental Analysis.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  margin-top: 10%;
+  animation: pulse 2s ease-in-out infinite;
+  transition: transform 0.3s ease;
+}
+
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
 .search-title {
   font-family: 'TmonMonsori', sans-serif;
-  font-size: 40px;
+  font-size: 31px;
   font-weight: 600;
-  color: #fff;
-  margin: 30px;
+  color: #000000;
+  margin-bottom: 30px;
   margin-top: 80px;
 }
 .search-title2 {
   font-family: 'TmonMonsori', sans-serif;
-  font-size: 40px;
+  font-size: 31px;
   font-weight: 600;
-  color: #fff;
+  color: #000000;
   margin-top: -40px;
+}
+.search-title3 {
+  font-family: 'TmonMonsori', sans-serif;
+  font-size: 31px;
+  font-weight: 600;
+  color: #131cc5;
+  margin-top: -20px;
+  width: 100%;
+  text-align: end;
+  margin-right: 7%;
+}
+.search-title4 {
+  font-family: 'TmonMonsori', sans-serif;
+  font-size: 31px;
+  font-weight: 600;
+  color: #000000;
+  width: 100%;
+  text-align: end;
+  margin-right: 7%;
 }
 
 .search-title-sub {
@@ -71,14 +148,15 @@ body {
   display: flex;
   justify-content: center;
   width: 100%;
-  background-color: #318aff;
+  height: 100px;
+  background-color: #5d60f5;
   margin-top: auto;
-  border-radius: 15px;
+  border-radius: 0 0 15px 15px;
   cursor: pointer;
 }
 
 .search-btn {
-  background-color: #318aff;
+  background-color: #5d60f5;
   color: #fff;
   border: none;
   border-radius: 5px;
@@ -111,6 +189,11 @@ body {
   font-weight: 600;
   line-height: 35px;
   margin-top: 15px;
+  box-shadow: 10px 10px 20px 0 rgba(0, 0, 0, 0.1);
+}
+
+.search-title-region {
+  margin-bottom: 10%;
 }
 
 /* 사업자 보유 현황 선택 페이지 */
@@ -142,6 +225,7 @@ body {
   font-weight: 600;
   line-height: 35px;
   margin-top: 15px;
+  box-shadow: 20px 20px 20px 5px rgba(0, 0, 0, 0.1);
 }
 
 /* 업종 검색 페이지 */
@@ -163,7 +247,7 @@ body {
   font-family: 'Nanum Barun Gothic', sans-serif;
   font-size: 14px;
   font-weight: 600;
-  color: #fff;
+  color: #000000;
 }
 
 .industry-category-wrapper {
@@ -182,6 +266,7 @@ body {
   font-family: 'Nanum Barun Gothic', sans-serif;
   font-size: 18px;
   font-weight: 600;
+  box-shadow: 10px 10px 20px 10px rgba(0, 0, 0, 0.1);
 }
 
 .industry-category-wrapper input {
@@ -207,7 +292,7 @@ body {
   justify-content: space-around;
   gap: 10px;
   color: #fff;
-  background-color: #318aff;
+  background-color: #5d60f5;
   padding: 10px;
   border-radius: 5px;
   margin: 5px;
@@ -265,6 +350,7 @@ body {
   font-weight: 600;
   text-align: center;
   line-height: 35px;
+  box-shadow: 10px 10px 10px 5px rgba(0, 0, 0, 0.1);
 }
 
 .industry-table-big {
@@ -281,6 +367,7 @@ body {
 
 .industry-table-select {
   width: 50px;
+  cursor: pointer;
 }
 
 .industry-search-icon {
@@ -297,7 +384,7 @@ body {
   font-family: 'Nanum Barun Gothic', sans-serif;
   font-size: 14px;
   font-weight: 600;
-  color: #fff;
+  color: #000000;
   cursor: pointer;
 }
 
@@ -308,7 +395,7 @@ body {
   width: 426px;
   height: 700px;
   margin: 0 auto;
-  background-color: #e6f5ff;
+  background: linear-gradient(150deg, #ffffff, #d4dff8);
   border-radius: 15px;
   margin-top: 50px;
 }
@@ -364,7 +451,7 @@ body {
   width: 100%;
   height: 600px;
   text-align: center;
-  background-color: #e6f5ff;
+  background: linear-gradient(150deg, #ffffff, #d4dff8);
   overflow-y: auto;
   position: relative;
   border-radius: 15px;
@@ -490,6 +577,7 @@ body {
   font-weight: 600;
   text-align: center;
   line-height: 35px;
+  box-shadow: 10px 10px 10px 10px rgba(0, 0, 0, 0.1);
 }
 
 .business-period-year-wrapper input {
@@ -517,6 +605,7 @@ body {
   font-weight: 600;
   text-align: center;
   line-height: 35px;
+  box-shadow: 10px 10px 10px 10px rgba(0, 0, 0, 0.1);
 }
 
 .business-period-month-wrapper input {
@@ -543,6 +632,7 @@ body {
   line-height: 35px;
   cursor: pointer;
   margin-top: 15px;
+  box-shadow: 10px 10px 10px 5px rgba(0, 0, 0, 0.1);
 }
 
 .billing-last-year {
@@ -569,6 +659,7 @@ body {
   font-weight: 600;
   text-align: center;
   line-height: 35px;
+  box-shadow: 10px 10px 10px 5px rgba(0, 0, 0, 0.1);
 }
 
 .employee-number {
@@ -589,6 +680,7 @@ body {
   font-weight: 600;
   text-align: center;
   line-height: 35px;
+  box-shadow: 10px 10px 10px 5px rgba(0, 0, 0, 0.1);
 }
 
 .select-warning-container-wrapper {
@@ -635,7 +727,7 @@ body {
   height: 100%;
 }
 
-.search-result-container {
+/* .search-result-container {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -645,7 +737,7 @@ body {
   margin: 0 auto;
   border: 1px solid #5ec7ff;
   border-radius: 15px;
-}
+} */
 .search-none-result-container {
   display: none;
   flex-direction: column;
@@ -928,8 +1020,12 @@ ul {
     margin-bottom: 0px;
   }
 
+  .search-title2 {
+    margin-top: -20px;
+  }
+
   .search-title-region {
-    margin-top: 30px;
+    margin-top: 60px;
     margin-bottom: 30px;
   }
 
@@ -971,7 +1067,7 @@ ul {
     align-items: center;
     justify-content: center;
     width: 95%;
-    height: 550px;
+    height: 600px;
     background-color: #4294ff;
     border-radius: 15px;
   }
@@ -993,11 +1089,11 @@ ul {
   }
 
   .search-industry-container {
-    height: 550px;
+    height: 600px;
   }
 
   .industry-category-table {
-    height: 230px;
+    height: 300px;
     width: 360px;
   }
   .industry-category-wrapper {
@@ -1059,6 +1155,27 @@ ul {
 
   .search-result-container {
     width: 97%;
+  }
+
+  .search-title-first {
+    width: 25%;
+    margin-top: 0;
+  }
+
+  .search-title-first2 {
+    margin-top: 0;
+  }
+
+  .search-title3 {
+    margin-top: 0;
+  }
+
+  .search-img-box {
+    margin-left: -10%;
+    margin-right: -5%;
+    margin-bottom: -4%;
+    width: 35%;
+    height: 140%
   }
 }
 
@@ -1198,6 +1315,7 @@ ul {
     width: 97%;
   }
 }
+
 
 .search-region-container {
   display: flex;

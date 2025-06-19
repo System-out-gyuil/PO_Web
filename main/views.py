@@ -31,7 +31,7 @@ class ImWeb(View):
 
 class TestView(View):
     def get(self, request):
-        return render(request, 'main/main_test.html')
+        return render(request, 'main/search_test.html')
 
 class MainView(View):
     def get(self, request):

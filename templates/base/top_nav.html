@@ -1,14 +1,33 @@
-<header id="top-nav-section">
-  <div class="namatji-top-nav">
-    <div class="namatji-img-box" onclick="location.href='/'">
-      <div class="namatji-img"></div>
-    </div>
-    <div class="namatji-top-nav-buttons-box">
-      <div class="namatji-top-nav-buttons">
-        <a class="main-button" onclick="location.href='/search/'">AI 진단하기</a>
-        <a class="main-button" onclick="location.href='/board/'">지원사업</a>
-        <a class="main-button" onclick="location.href='/counsel/inquiry/'">고객문의</a>
+<header id="header">
+  <div class="header-container">
+
+    <div class="header-container-logo-box" onclick="location.href='/'">나맞지</div>
+
+    <div class="header-container-menu-box">
+      <div class="header-container-menu-box-item">
+        <div class="header-container-menu-box-item-text" onclick="location.href='/'">
+          HOME
+        </div>
       </div>
+      <div class="header-container-menu-box-item">
+        <div class="header-container-menu-box-item-text" onclick="window.location.href='{% url 'search' %}'">
+          AI 진단 하기
+        </div>
+      </div>
+      <div class="header-container-menu-box-item">
+        <div class="header-container-menu-box-item-text" onclick="location.href='/board/'">
+          지원사업
+        </div>
+      </div>
+      <div class="header-container-menu-box-item">
+        <div class="header-container-menu-box-item-text" onclick="location.href='/counsel/inquiry/'">
+          문의하기
+        </div>
+      </div>
+    </div>
+
+    <div class="header-container-button-box">
+      <div class="header-container-button-box-button">시작하기</div>
     </div>
   </div>
 </header>

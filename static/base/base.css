@@ -102,6 +102,104 @@ p {
   font-size: 10px;
 }
 
+.header-container {
+  width: 100%;
+  height: 80px;
+  background: linear-gradient(rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0) 100%);
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 100;
+  text-align: center;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  /* box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.1); */
+}
+
+.header-container-logo-box {
+  font-size: 36px;
+  font-weight: 700;
+  color: #ffffff;
+  text-align: center;
+  width: 40%;
+  cursor: pointer;
+}
+
+.header-container-menu-box {
+  width: 25%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+}
+
+.header-container-menu-box-item {
+  width: 25%;
+  height: 100%;
+}
+
+.header-container-menu-box-item-text {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+  text-align: center;
+  cursor: pointer;
+}
+
+.header-container-menu-box-item-text:hover {
+  color: #1100ff;
+}
+.header-container-button-box {
+  width: 35%;
+  height: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+}
+
+.header-container-button-box-button {
+  width: 70px;
+  height: 15px;
+  font-size: 15px;
+  line-height: 15px;
+  font-weight: 700;
+  color: #1100ff;
+  text-align: center;
+  background-color: #ffffff;
+  border-radius: 10px;
+  padding: 10px 20px;
+  cursor: pointer;
+}
+
+@media (max-width: 768px) {
+  .header-container-logo-box {
+    font-size: 25px;
+    font-weight: 700;
+    color: #ffffff;
+    text-align: center;
+    width: 25%;
+  }
+
+  .header-container-menu-box {
+    width: 75%;
+  }
+
+  .header-container-button-box {
+    display: none;
+  }
+
+  .header-container-menu-box-item {
+    width: 24%;
+  }
+
+  .header-container-menu-box-item-text {
+    font-size: 13px;
+  }
+}
+
 /* 모바일 화면일 때 */
 @media (max-width: 500px) {
 

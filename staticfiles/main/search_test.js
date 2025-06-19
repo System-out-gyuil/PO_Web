@@ -10,6 +10,11 @@ const selectedConditions = {
   employees: null
 };
 
+const search_region_btn_container = document.querySelector('.search-region-btn-container');
+
+
+
+
 const percentBox = document.querySelector('.percent-box-text');
 let currentPercent = 0; // 현재 퍼센트 상태 저장
 
@@ -51,7 +56,7 @@ function WatingSearchResult() {
   billingLastYearContainer.style.display = 'none';
   exportPerformanceContainer.style.display = 'none';
   employeeNumberContainer.style.display = 'none';
-  searchResultContainer.style.display = 'flex';
+  searchResultContainer.style.display = 'block';
 }
 
 // 검색 결과 없음 창
@@ -61,6 +66,8 @@ function WatingNoneSearchResult() {
   businessStyleContainer.style.display = 'none';
   searchNoneResultContainer.style.display = 'block';
 }
+
+
 
 // 지역 선택 창
 const search_region_container = document.querySelector('.search-region-container');
@@ -169,6 +176,8 @@ businessStyleItems.forEach(businessStyleItem => {
     });
 
     businessStyleItem.style.backgroundColor = selectedColor;
+
+    
 
   });
 });
