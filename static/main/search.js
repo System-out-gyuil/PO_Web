@@ -37,7 +37,7 @@ function animatePercent(targetPercent) {
 
 
 
-const selectedColor = 'rgb(167 255 162)';
+const selectedColor = '#bfc2fd';
 const defaultColor = '#fff';
 
 // 검색 결과 기다리는 창
