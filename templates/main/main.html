@@ -1,122 +1,226 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <!-- Google Tag Manager -->
-    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-      new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-      j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-      'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-      })(window,document,'script','dataLayer','GTM-W92B5DXF');</script>
-      <!-- End Google Tag Manager -->
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="naver-site-verification" content="6f35a4366ee38a7cfb2f2fecb1bf3304f131afb2" />
-    <meta property="og:type" content="website"> 
-    <meta property="og:title" content="나에게 맞는 지원금">
-    <meta property="og:image" content="https://namatji.com/static/images/NAMATJI_ICON.png">
-    <meta property="og:description" content="정책자금, 정부지원금, 소상공인 무상지원금까지! AI 기반 무료진단으로 우리 회사에 딱 맞는 정부지원금을 쉽게 찾아드립니다. 중소기업, 소상공인, 창업자금 지원금 신청방법도 간편 확인!">
-    <meta name="keywords" content="정책자금, 정부지원금, 무상지원금, 지원금 찾기, 중소기업 지원금, 소상공인 지원금, 창업 지원금, 정부 무상 지원금, 정부지원사업, 정책자금 신청방법, 소상공인 정책자금, 중소기업 정책자금, 예비창업자 지원금, 창업자금 정부지원금, 기업지원금, 벤처기업 지원금, 소상공인 무상지원금, 정책자금 대출, 정부지원금 조회">
-    <meta name="description" content="정책자금, 정부지원금, 소상공인 무상지원금까지! AI 기반 무료진단으로 우리 회사에 딱 맞는 정부지원금을 쉽게 찾아드립니다. 중소기업, 소상공인, 창업자금 지원금 신청방법도 간편 확인!">
-    <meta name="twitter:card" content="summary">
-    <meta name="twitter:title" content="나에게 맞는 지원금">
-    <meta name="twitter:description" content="나에게 맞는 AI 정부 지원금, 정책자금 찾기 서비스, 나맞지">  
-    <link rel="canonical" href="https://namatji.com">
-    {% load static %}
-    <link rel="stylesheet" href="{% static 'main/main.css' %}" />
-    <link rel="stylesheet" href="{% static 'base/base.css' %}" />
-    <link rel="icon" type="image/png" href="{% static 'images/NAMATJI_ICON.png' %}" />
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6882409851484122"
-     crossorigin="anonymous"></script>
-     <title>나맞지, ai 정부지원금·정책자금 찾기</title>
-    <!-- Meta Pixel Code -->
-    <script>
-      !function(f,b,e,v,n,t,s)
-      {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-      n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-      if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-      n.queue=[];t=b.createElement(e);t.async=!0;
-      t.src=v;s=b.getElementsByTagName(e)[0];
-      s.parentNode.insertBefore(t,s)}(window, document,'script',
-      'https://connect.facebook.net/en_US/fbevents.js');
-      fbq('init', '692464356832795');
-      fbq('track', 'PageView');
-      </script>
-      <noscript><img height="1" width="1" style="display:none"
-      src="https://www.facebook.com/tr?id=692464356832795&ev=PageView&noscript=1"
-      /></noscript>
-      <!-- End Meta Pixel Code -->
-  </head>
-  <body>
-    <!-- Google Tag Manager (noscript) -->
-    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-W92B5DXF"
-      height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
-      <!-- End Google Tag Manager (noscript) -->
-    {% comment %} 상단 네비게이션 바 {% endcomment %}
-    <nav>
-      {% include 'base/top_nav.html' %}
-    </nav>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  {% load static %}
+  <link rel="stylesheet" href="{% static 'base/base.css' %}">
+  <link rel="stylesheet" href="{% static 'main/main.css' %}">
+  <title>Document</title>
+</head>
+<body>
+    <section id="header">
+      <div class="header-container">
 
-    {% comment %} 메인 페이지 제목 {% endcomment %}
-    <section>
-      <div class="main-container">
-        <div class="banner-btn" onclick="window.location.href='{% url 'search' %}'">
-          <div class="banner-btn-text">AI 진단하기</div>
+        <div class="header-container-logo-box" onclick="location.href='/'">나맞지</div>
+
+        <div class="header-container-menu-box">
+          <div class="header-container-menu-box-item">
+            <div class="header-container-menu-box-item-text" onclick="location.href='/'">
+              HOME
+            </div>
+          </div>
+          <div class="header-container-menu-box-item">
+            <div class="header-container-menu-box-item-text" onclick="window.location.href='{% url 'search' %}'">
+              AI 진단 하기
+            </div>
+          </div>
+          <div class="header-container-menu-box-item">
+            <div class="header-container-menu-box-item-text" onclick="location.href='/board/'">
+              지원사업
+            </div>
+          </div>
+          <div class="header-container-menu-box-item">
+            <div class="header-container-menu-box-item-text" onclick="location.href='/counsel/inquiry/'">
+              문의하기
+            </div>
+          </div>
+        </div>
+
+        <div class="header-container-button-box">
+          <div class="header-container-button-box-button">시작하기</div>
         </div>
       </div>
     </section>
-
-    <section>
-      <div class="main-section-container">
-        <div class="main-section-box">
-          <div class="main-section-box-title">
-            <div class="main-section-box-title-text">최신 지원 사업</div>
-          </div>
-          <div class="main-section-box-list">
-            <ul>
-              <li class="main-section-box-list-item">
-                <div class="main-section-box-list-items">
-                  <div class="category-text">공고일자</div>|<div class="title-text">공고명</div>
+    <section id="ai-biz">
+      <div class="ai-banner-container">
+        <div>
+          <div class="ai-banner-text-box">
+            <div class="ai-banner-text-box-subtitle">매일 80개씩 쏟아지는 지원공고</div>
+            <div class="ai-banner-text-box-title">AI비서에게 물어보세요</div>
+            <div class="ai-banner-text-box-button">
+              <button class="ai-banner-text-box-button-text"  onclick="window.location.href='{% url 'search' %}'">AI 진단하기</button>
+            </div>
+            <div class="ai-banner-text-box-sub">나에게 딱 맞는 지원금</div>
+            <div class="ai-banner-mobile-image-box">
+              <div class="ai-banner-mobile-image">
+                <div class="ai-banner-mobile-inner-image"></div>
+                <div class="ai-banner-mobile-inner-button">
+                  <button class="ai-banner-mobile-inner-button-text" onclick="window.location.href='{% url 'search' %}'">AI 추천받기</button>
                 </div>
-              </li>
-              {% for biz in biz_list %}
-                <li class="main-section-box-list-item">
-                  <div class="main-section-box-list-items2">
-                    <div class="category-text-biz">{{ biz.registered_at|date:"m.d" }}</div>|<div class="title-text-biz" onclick="window.location.href='{% url 'board:detail' biz.pblanc_id %}'">{{ biz.title }}</div>
-                  </div>
-                </li>
-              {% endfor %}
-            </ul>
+              </div>
+            </div>
+            <div class="graph"></div>
+            <div class="calculator"></div>
+            <div class="money"></div>
           </div>
-        </div>  
-        <div class="main-section-box">
-          <div class="main-section-box-title">
-            <div class="main-section-box-title-text">{{ current_week_str }} 인기 지원사업</div>
-          </div>
-          <div class="main-section-box-list">
-            <ul>
-              <li class="main-section-box-list-item">
-                <div class="main-section-box-list-items">
-                  <div class="category-text">공고일자</div>|<div class="title-text">공고명</div>
-                </div>
-              </li>
-              {% for item in biz_top_10 %}
-                <li class="main-section-box-list-item">
-                  <div class="main-section-box-list-items2">
-                    <div class="category-text-biz">{{ item.registered_at|date:"m.d" }}</div>|<div class="title-text-biz" onclick="window.location.href='{% url 'board:detail' item.pblanc_id %}'">{{ item.title }}</div>
-                  </div>
-                </li>
-              {% endfor %}
-            </ul>
-          </div>
-        </div>  
-
-      <div>
+        </div>
+      </div>
     </section>
-    
+    <section>
+      <div class="biz-container">
+        <div class="biz-text-box">
+          <div class="biz-text-box-sub">하루에 몇 백개씩 쏟아져 나오는 지원금</div>
+          <div class="biz-text-box-title">대표님 혼자<br>다 찾아보시려구요?</div>
+          <div class="coins"></div>
+        </div>
+      </div>
+    </section>
+    <section>
+      <div class="biz-container2">
+        <div class="biz-text-box2">
+          <div class="biz-text-box-sub2">나만 모르는 내 지원금</div>
+          <div class="biz-text-box-title2">몰라서 못받는 정책 지원금,<br>지금 확인하고 놓치지 마세요!</div>
+          <div class="wallet"></div>
+        </div>
+      </div>
+    </section>
+    <section>
+      <div class="biz-container3">
+        <div class="biz-text-box3">
+          <div class="biz-text-box-title3">내가 받을 수 있는 지원금<br>3분이면 확인 끝!</div>
+          <div class="biz-text-box-button" >
+            <button class="biz-text-box-button-text" onclick="window.location.href='{% url 'search' %}'">AI 추천받기</button>
+          </div>
+          <div class="analysis"></div>
+        </div>
+      </div>
+    </section>
+    <section>
+      <div class="intro-container">
+        <div class="intro-text-box">
+          <div class="intro-text-box-title">
+          </div>
+          <div class="intro-text-box-sub">
+          </div>
+          <div class="intro-img-box1">
+            <div class="intro-img-box-img1"></div>
+            <div class="intro-img-box-img2"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section>
+      <div class="namatji-intro-container">
+        <div class="namatji-intro-text-box">
+          <div class="namatji-intro-text-sub-title-box">
+            <span class="namatji-intro-text-sub-AI">AI가</span><span class="namatji-intro-text-sub">추천해주는</span>
+          </div>
+          <div class="namatji-intro-text-box-title">
+            나에게 딱 맞는 지원금
+          </div>
+          <div class="namatji-intro-img-box">
+            <div class="namatji-intro-img-box-text">"정책은 많지만, <br>중요한 건 '나한테 맞는 것'이죠."</div>
+            <div class="namatji-intro-img-box-img"></div>
+            
+          </div>
+          <div class="namatji-intro-img-box-text2">AI가 대표님에게 꼭 맞는 정책지원금 만 뽑아드립니다.</div>
+        </div>
+      </div>
+    </section>
+    <section>
+      <div class="bizinfo-container">
+        <div class="bizinfo-content-box">
+          <div class="bizinfo-contents">
+            <div class="bizinfo-content-1">
+              <div class="bizinfo-header">
+                <div class="bizinfo-header-img"></div>
+                <div class="bizinfo-header-title">최신 지원 사업</div>
+              </div>
+              <div class="bizinfo-line"></div>
+              <div class="bizinfo-content-title-box">
+                <div class="bizinfo-content-title-box-date">공고일자</div>
+                <div class="bizinfo-content-title-box-title">공 고 명</div>
+              </div>
+              <div class="bizinfo-contents-container">
+                {% for biz in biz_list %}
+                  <div class="{% if forloop.counter|divisibleby:2 %}bizinfo-contents-container-items2{% else %}bizinfo-contents-container-items{% endif %}">
+                    <div class="bizinfo-contents-container-items-date">{{ biz.registered_at|date:"m.d" }}</div>
+                    <div class="bizinfo-contents-container-items-date-line">|</div>
+                    <div class="bizinfo-contents-container-items-title" onclick="window.location.href='{% url 'board:detail' biz.pblanc_id %}'">{{ biz.title }}</div>
+                  </div>
+                {% endfor %}
+              </div>
+            </div>
 
-    {% include 'base/footer.html' %}
-    {% comment %} 쿠팡 파트너스 배너 {% endcomment %}
+            <div class="bizinfo-content-2">
+              <div class="bizinfo-header">
+                <div class="bizinfo-header-img2"></div>
+                <div class="bizinfo-header-title">인기 지원 사업</div>
+              </div>
+              <div class="bizinfo-line"></div>
+              <div class="bizinfo-content-title-box">
+                <div class="bizinfo-content-title-box-date">공고일자</div>
+                <div class="bizinfo-content-title-box-title">공 고 명</div>
+              </div>
+              <div class="bizinfo-contents-container">
+                {% for biz in biz_top_10 %}
+                  <div class="{% if forloop.counter|divisibleby:2 %}bizinfo-contents-container-items2{% else %}bizinfo-contents-container-items{% endif %}">
+                  <div class="bizinfo-contents-container-items-date">{{ biz.registered_at|date:"m.d" }}</div>
+                  <div class="bizinfo-contents-container-items-date-line">|</div>
+                  <div class="bizinfo-contents-container-items-title" onclick="window.location.href='{% url 'board:detail' biz.pblanc_id %}'">{{ biz.title }}</div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </section>
+    <section>
+      <div class="namatji-container">
+        <div class="namatji-wrap">
+          <div class="namatji-wraper">
+            <div class="namatji-wraper-title-box">
+              <div class="namatji-wraper-title">나맞지 AI</div>
+              <div class="namatji-wraper-sub-title">AI가 고른 내 지원금. 3분 만에 확인하세요!</div>
+              <div class="namatji-wraper-img"></div>
+            </div>
+            <div class="namatji-wraper-img-box">
+              <div class="namatji-wraper-img-box-img"></div>
+            </div>
+          </div>
+
+          <div class="namatji-wraper-button-box">
+            <div class="namatji-wraper-button-box-button" onclick="window.location.href='{% url 'search' %}'">지금 확인하기</div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section>
+      <div class="footer-container">
+        <div class="footer-container-text-box">
+          <div class="footer-container-text-box-title">나에게 딱 맞는 지원금</div>
+          <div class="footer-container-text">
+            상호명: (주)피오코퍼레이션<br>
+            대표자명: 오원석<br>
+            사업자등록번호:360-81-03403<br>
+            <br>
+            주소: 인천시 연수구 인천타워대로 323, 에이동 31층 비28호<br>
+            고객센터: 0507-1474-1679 | 이메일: nicepo.corp@gmail.com<br>
+            <br>
+            | 개인정보처리방침 | 이용약관 | 회사소개 |<br>
+            Copyright ⓒ 2025 나맞지. All rights reserved.
+            
+          </div>
+        </div>
+      </div>
+
+    </section>
     {% include 'base/coupang_banner.html' %}
-
-  </body>
+    
+  <script src="{% static 'main/main.js' %}"></script>
+</body>
 </html>
