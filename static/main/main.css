@@ -947,6 +947,7 @@ body {
   body {
     padding-top: 100px;
   }
+
   .header-container-logo-box {
     font-size: 25px;
     font-weight: 700;
@@ -958,7 +959,6 @@ body {
   .header-container-menu-box {
     width: 55%;
   }
-
 
   .header-container-button-box {
     display: none;
@@ -1210,6 +1210,10 @@ body {
 
   .namatji-intro-img-box-text2 {
     font-size: 15px;
+  }
+  
+  .bizinfo-line {
+    width: 100%;
   }
 
   .bizinfo-container {
