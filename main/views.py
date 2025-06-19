@@ -19,6 +19,7 @@ def get_week_of_month(dt: date) -> int:
         return 1
     return delta_days // 7 + 1
 
+
 # 구글 애드센스 ads.txt 검증용
 class Ads(View):
     def get(self, request):
