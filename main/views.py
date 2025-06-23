@@ -37,9 +37,8 @@ class MainView(View):
     def get(self, request):
         biz_list_10 = BizInfo.objects.all().order_by('-registered_at')[:15]
 
-        biz_top_10 = BizTop.objects.all().order_by('-update_date')[:15]
+        biz_top_10 = BizTop.objects.all().order_by('-update_date')
 
-        # 인기 공고 직접 입력
         pblanc_ids = [biz.pblanc_id for biz in biz_top_10]
         print(pblanc_ids)
 
@@ -52,7 +51,7 @@ class MainView(View):
 
         context = {
             'biz_list': biz_list_10,
-            'biz_top_10': biz_top_10,
+            'biz_top_10': biz_top_10[:15],
             'current_week_str': current_week_str
         }
 
