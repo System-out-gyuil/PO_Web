@@ -27,11 +27,12 @@ class Command(BaseCommand):
         self.stdout.write(f"✔ 총 {len(items):,}건 수신")
 
         # ────────────────────────────────────────────────
-        # ①  최근 1주일(오늘 포함 7일) 이내만 필터링
-        one_week_ago = datetime.today().date() - timedelta(days=6)
+        # ①  최근 1주일 이내만 필터링
+        one_week_ago = datetime.today().date() - timedelta(days=7)
         recent_items = []
         for it in items:
             try:
+                self.stdout.write(f"registered_at: {type(it['registered_at'])}, {it['registered_at']}")
                 reg_date = datetime.strptime(it["registered_at"], "%Y-%m-%d").date()
                 if reg_date >= one_week_ago:
                     recent_items.append(it)
