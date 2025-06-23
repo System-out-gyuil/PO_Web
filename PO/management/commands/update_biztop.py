@@ -47,13 +47,16 @@ class Command(BaseCommand):
 
         # 4) 보정조회수 Top-15 선정
         top15_ids = sorted(
-            adjusted.keys(), 
-            key=lambda k: adjusted[k][1], 
+            adjusted.keys(),
+            key=lambda k: adjusted[k][1],   # views_adj
             reverse=True
         )[:15]
 
-        # 5) DB 저장(또는 업데이트)
-        self.save_to_db(items)
+        # 👉 상위 15개 item만 추출
+        top_items = [item for item in items if item["pblancId"] in top15_ids]
+
+        # 5) DB 저장(또는 업데이트) ― top_items만 넘김
+        self.save_to_db(top_items)
 
         self.stdout.write(self.style.SUCCESS("✅ BizTop 업데이트 완료"))
 
@@ -100,14 +103,8 @@ class Command(BaseCommand):
     # ──────────────────────────────────────────────────────────────────────────
     @transaction.atomic
     def save_to_db(self, items):
-        """
-        • items에 포함된 pblanc_id만 DB에 유지
-        • 이미 존재하면 title / update_date 갱신
-        • 존재하지 않는 레코드는 일괄 삭제
-        """
-        # 1) upsert + pblanc_id 집합 수집
         current_ids = []
-        for item in items:
+        for item in items:                # ← top-15만 들어옴
             api_id = item["pblancId"]
             current_ids.append(api_id)
 
@@ -119,6 +116,6 @@ class Command(BaseCommand):
                 },
             )
 
-        # 2) 이번에 안 들어온 공고 삭제
+        # 이번 top-15에 포함되지 않은 기존 레코드는 삭제
         deleted, _ = BizTop.objects.exclude(pblanc_id__in=current_ids).delete()
         self.stdout.write(f"🗑️ 삭제된 레코드: {deleted}")
