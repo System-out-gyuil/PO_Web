@@ -351,7 +351,7 @@ ul {
   transform: translateX(-50%) translateY(100%);
   width: 500px;
   height: 650px;
-  background-color: #ffffff;
+  background: linear-gradient(150deg, #ffffff, #d4dff8);
   border-radius: 10px 10px 0 0;
   animation: slideUp 0.5s ease-out forwards;
 }
@@ -375,7 +375,7 @@ ul {
 
 .consel-nav-modal-text {
   margin-top: 20px;
-  color: #0200ff;
+  color: #5d60f5;
 }
 
 .consel-nav-modal-text-box-title {
@@ -383,7 +383,6 @@ ul {
   font-weight: 700;
   color: #000000;
   padding-top: 60px;
-  letter-spacing: -5px;
   margin-top: 20px;
 }
 
@@ -431,7 +430,7 @@ input[type="checkbox"] {
   display: flex;
   justify-content: center;
   width: 100%;
-  background-color: #318aff;
+  background-color: #5d60f5;
   margin-top: auto;
   border-bottom-left-radius: 15px;
   border-bottom-right-radius: 15px;
@@ -439,7 +438,7 @@ input[type="checkbox"] {
 }
 
 .consel-nav-modal-text-box-btn {
-  background-color: #318aff;
+  background-color: #5d60f5;
   color: #fff;
   border: none;
   border-radius: 5px;
@@ -450,6 +449,10 @@ input[type="checkbox"] {
 }
 
 @media (max-width: 450px) {
+
+  .consel-nav-modal-text-box-title {
+    padding-top: 10px;
+  }
 
   body {
     padding-bottom: 200px;
@@ -476,6 +479,8 @@ input[type="checkbox"] {
 
   .consel-nav-modal-item-box {
     width: 365px;
+    height: 600px;
+    bottom: 15%;
   }
 
   .consel-nav-modal-text-box {

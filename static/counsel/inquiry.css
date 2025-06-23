@@ -1,18 +1,21 @@
+body {
+  background: linear-gradient(10deg, #93dafa, #cad8f4, #ffffff);
+}
+
 .inquiry-container {
   margin: 0 auto;
   width: 30%;
   height: 700px;
-  background-color: #f0f0f0;
-  /* background-color: #4294ff; */
+  background: linear-gradient(150deg, #ffffff, #d4dff8);
   margin-top: 50px;
   border-radius: 15px;
   display: flex;
   justify-content: center;
   align-items: center;
   flex-direction: column;
-  font-family: "Nanum Barun Gothic", sans-serif;
   font-size: 16px;
-  font-weight: 500;
+  font-weight: 600;
+  box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.1);
 }
 
 .inquiry-wrapper {
@@ -38,7 +41,6 @@
   font-size: 18px;
   font-weight: 600;
   color: #333;
-  font-family: 'Nanum Barun Gothic', sans-serif;
 }
 
 label {
@@ -54,7 +56,6 @@ label {
   background-color: #f8f8f8;
   margin: 0 auto;
   margin-top: 10px;
-  font-family: 'Nanum Barun Gothic', sans-serif;
   font-size: 18px;
   font-weight: 600;
   color: #333;
@@ -70,10 +71,10 @@ textarea {
   margin: 0 auto;
   margin-top: 10px;
   resize: none;
-  font-family: 'Nanum Barun Gothic', sans-serif;
   font-size: 18px;
   font-weight: 600;
   color: #333;
+  font-family: "Pretendard JP", -apple-system, BlinkMacSystemFont, "Basier Square", "Noto Sans KR", "Segoe UI", "Apple SD Gothic Neo", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 .inquiry-form-btn-wrap {
@@ -81,7 +82,7 @@ textarea {
   justify-content: center;
   width: 100%;
   height: 70px;
-  background-color: #318aff;
+  background-color: #5d60f5;
   margin-top: auto;
   border-bottom-left-radius: 15px;
   border-bottom-right-radius: 15px;
@@ -91,7 +92,7 @@ textarea {
 .inquiry-form-btn {
   width: 100%;
   height: 70px;
-  background-color: #318aff;
+  background-color: #5d60f5;
   color: #fff;
   border: none;
   border-bottom-left-radius: 15px;
@@ -99,7 +100,6 @@ textarea {
   cursor: pointer;
   font-size: 35px;
   font-weight: 600;
-  font-family: 'Nanum Barun Gothic', sans-serif;
 }
 
 input[type="checkbox"] {

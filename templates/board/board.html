@@ -49,20 +49,26 @@
   
   <div class="fixed-search-container">
     <div class="search-container">
-      <div class="board-feader-img"></div>
+      <div class="board-feader-img-box">
+        <div class="board-feader-img"></div>
+      </div>
       <div class="board-header">
         <h1>지원사업 목록</h1>
       </div>
-      <form method="get" action="{% url 'board:list' %}" style="display: flex; gap: 10px;">
-        <select id="select-type" class="select-type" name="select-type" default="title">
-          {% comment %} <option value="all">전체</option> {% endcomment %}
-          {% comment %} <option value="field">분야</option> {% endcomment %}
-          <option value="title">공고명</option>
-          <option value="region">지역</option>
-        </select>
-        <input class="board-search-input" type="text" id="search-input" name="keyword" placeholder="검색어를 입력하세요">
-        <button type="submit" id="search-button">검색</button>
-      </form>
+      <div class="board-search-container-box">
+        <div class="board-search-container">
+            <form method="get" action="{% url 'board:list' %}">
+            <select id="select-type" class="select-type" name="select-type" default="title">
+              {% comment %} <option value="all">전체</option> {% endcomment %}
+              {% comment %} <option value="field">분야</option> {% endcomment %}
+              <option value="title">공고명</option>
+              <option value="region">지역</option>
+            </select>
+            <input class="board-search-input" type="text" id="search-input" name="keyword" placeholder="검색어를 입력하세요">
+            <button type="submit" id="search-button">검색</button>
+          </form>
+        </div>
+      </div>
     </div>
   </div>
 

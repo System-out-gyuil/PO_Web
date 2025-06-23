@@ -65,7 +65,8 @@ body {
 }
 
 .search-title-first {
-  width: 20%;
+  width: 23%;
+  margin-top: 0;
 }
 .search-title-first2 {
   width: 10%;
@@ -399,6 +400,7 @@ body {
   background: linear-gradient(150deg, #ffffff, #d4dff8);
   border-radius: 15px;
   margin-top: 50px;
+  box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.1);
 }
 
 .ind-modal-container {
@@ -1105,7 +1107,7 @@ ul {
 
   body {
     padding-bottom: 100px;
-    padding-top: 80px;
+    padding-top: 100px;
   }
 
   .search-title {
@@ -1122,12 +1124,30 @@ ul {
     margin-bottom: 30px;
   }
 
+  .billing-last-year-title {
+    margin-top: 80px;
+    margin-bottom: 30px;
+  }
+
+  .business-period-title {
+    margin-top: 80px;
+    margin-bottom: 30px;
+  }
+
+  .industry-search-wrap {
+    margin-bottom: 10px;
+  }
+
   .consel-nav-modal-item-box {
     width: 365px;
   }
 
   .consel-nav-modal-text-box {
     width: 92%;
+  }
+
+  .search-btn-container {
+    height: 80px;
   }
 
 
@@ -1160,7 +1180,7 @@ ul {
     align-items: center;
     justify-content: center;
     width: 95%;
-    height: 600px;
+    height: 580px;
     background-color: #4294ff;
     border-radius: 15px;
   }
@@ -1192,6 +1212,7 @@ ul {
   .industry-category-wrapper {
     margin: 0 auto;
     width: 330px;
+    height: 30px;
   }
 
   .industry-category-wrapper input {
@@ -1200,6 +1221,7 @@ ul {
 
   .industry-table-header {
     width: 330px;
+    height: 30px;
   }
 
   .industry-table-row {
@@ -1219,8 +1241,8 @@ ul {
   }
 
   .ind-modal-wrap {
-    width: 360px;
-    height: 620px;
+    width: 95%;
+    height: 550px;
   }
 
   .modal-gpt-container {
@@ -1228,7 +1250,8 @@ ul {
   }
 
   .ind-modal-btn-container {
-    width: 92.24%;
+    width: 100%;
+    margin: 0 auto;
   }
 
   .billing-last-year-item {
@@ -1251,7 +1274,7 @@ ul {
   }
 
   .search-title-first {
-    width: 25%;
+    width: 30%;
     margin-top: 0;
   }
 
@@ -1273,6 +1296,7 @@ ul {
 
   .search-none-result-wait {
     margin-top: 0px;
+    font-size: 30px;
   }
 
   .search-none-result-container {
@@ -1308,6 +1332,20 @@ ul {
   .none-btn {
     width: 67%;
   }
+
+  .export-performance-title  {
+    margin-top: 80px;
+    margin-bottom: 30px;
+  }
+
+  .employee-number-title {
+    margin-top: 80px;
+    margin-bottom: 30px;
+  }
+
+  .search-flex-container {
+    height: 50px;
+  }
   
 }
 
@@ -1320,6 +1358,39 @@ ul {
   .search-title {
     margin-top: 50px;
     font-size: 35px;
+  }
+
+  .employee-number-title {
+    margin-top: 80px;
+    margin-bottom: 30px;
+  }
+
+  .business-period-title {
+    margin-top: 80px;
+    margin-bottom: 30px;
+  }
+
+  .billing-last-year-title {
+    margin-top: 80px;
+    margin-bottom: 30px;
+  }
+
+  .export-performance-title  {
+    margin-top: 80px;
+    margin-bottom: 30px;
+  }
+
+  .business-period-title {
+    margin-top: 80px;
+    margin-bottom: 30px;
+  }
+
+  .business-style-title {
+    margin-top: 80px;
+  }
+
+  .industry-search-title {
+    margin-top: 80px;
   }
 
   .consel-nav-modal-item-box {
@@ -1360,7 +1431,7 @@ ul {
     align-items: center;
     justify-content: center;
     width: 97%;
-    height: 600px;
+    height: 580px;
     background-color: #4294ff;
     border-radius: 15px;
   }
@@ -1390,11 +1461,12 @@ ul {
   }
 
   .industry-category-table {
-    height: 290px;
+    height: 260px;
   }
   .industry-category-wrapper {
     margin: 0 auto;
     width: 300px;
+    height: 30px;
   }
 
   .industry-category-wrapper input {
@@ -1404,6 +1476,7 @@ ul {
   .industry-table-header {
     width: 300px;
     margin: 0 auto;
+    height: 30px;
   }
 
   .industry-table-row {
@@ -1446,6 +1519,37 @@ ul {
   .search-result-container {
     width: 97%;
   }
+
+  .search-flex-container {
+    height: 50px;
+  }
+
+  /* .search-img-box {
+    margin-bottom: -20%;
+  } */
+
+  .search-title-first {
+    width: 33%;
+    margin-top: 0;
+  }
+
+  .search-title-first2 {
+    margin-top: 0;
+  }
+
+  .search-none-result-contens {
+    width: 97%;
+  }
+
+  .none-img2 {
+    width: 100%;
+    height: 33px;
+  }
+
+  .none-text3 {
+    width: 95%;
+  }
+  
 }
 
 
