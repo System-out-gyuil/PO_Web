@@ -31,9 +31,9 @@ class Command(BaseCommand):
         one_week_ago = datetime.today().date() - timedelta(days=7)
         recent_items = []
         for it in items:
-            self.stdout.write(f"registered_at: {type(it['registered_at'])}, {it['registered_at']}")
+            self.stdout.write(f"creatPnttm: {type(it['creatPnttm'])}, {it['creatPnttm']}")
             try:
-                reg_date = datetime.strptime(it["registered_at"], "%Y-%m-%d").date()
+                reg_date = datetime.strptime(it["creatPnttm"], "%Y-%m-%d").date()
                 if reg_date >= one_week_ago:
                     recent_items.append(it)
             except Exception:
