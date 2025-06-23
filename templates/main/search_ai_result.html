@@ -36,24 +36,26 @@
 <body>
   {% include 'base/top_nav.html' %}
   <div class="search-ai-result-container">
-    <div class="search-ai-result-title">
-      AI 비서가 찾은 <br>
-      대표님께 딱 맞는<br>
-      지원사업은!
+    <div class="search-ai-result-title-box">
+      <div class="search-ai-result-title">
+        AI 비서가 찾은 <br>
+        대표님께 딱 맞는 지원사업은!
+      </div>
+      <div class="search-ai-result-img"></div>
     </div>
     <div class="search-ai-result-content">
-      <ul>
-        <li class="main-section-box-list-item">
-          <div class="main-section-box-list-items">
-            <div class="category-text">점수</div>|<div class="title-text">공고명</div>|<div class="title-text-d-day">디데이</div>
-          </div>
-        </li>
+      <div class="main-section-box-list-items">
+        <div class="category-text">점수</div><div class="title-text">공고명</div><div class="title-text-d-day">디데이</div>
+      </div>
+      <ul class="main-section-box-list-ul">
+        {% comment %} <li class="main-section-box-list-item">
+        </li> {% endcomment %}
         {% for data in datas %}
         <li class="main-section-box-list-item">
           <div class="main-section-box-list-items2">
             <div class="detail-text-container">
-              <div class="category-text-biz">{{data.score}}점</div>|
-              <div class="title-text-biz">{{data.title}}</div>|
+              <div class="category-text-biz">{{data.score}}점</div>
+              <div class="title-text-biz">{{data.title}}</div>
               {% if data.d_day == "none" %}
               <div class="title-text-d-day-biz">상시</div>
               {% elif data.d_day == "0" %}

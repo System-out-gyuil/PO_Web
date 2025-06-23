@@ -198,6 +198,13 @@ p {
   .header-container-menu-box-item-text {
     font-size: 13px;
   }
+
+  .title-text {
+    width: 70%;
+  }
+  .title-text-d-day {
+    width: 25%;
+  }
 }
 
 /* 모바일 화면일 때 */
@@ -229,6 +236,30 @@ p {
     justify-content: flex-end;
   }
 
+  .header-container-logo-box {
+    font-size: 25px;
+    font-weight: 700;
+    color: #ffffff;
+    text-align: center;
+    width: 25%;
+  }
+
+  .header-container-menu-box {
+    width: 75%;
+  }
+
+  .header-container-button-box {
+    display: none;
+  }
+
+  .header-container-menu-box-item {
+    width: 24%;
+  }
+
+  .header-container-menu-box-item-text {
+    font-size: 13px;
+  }
+
   
 }
 
@@ -258,5 +289,33 @@ p {
 
   .namatji-top-nav-buttons  {
     justify-content: flex-end;
+  }
+
+  .header-container-logo-box {
+    font-size: 22px;
+    font-weight: 700;
+    color: #ffffff;
+    text-align: center;
+    width: 23%;
+  }
+
+  .header-container-menu-box {
+    width: 75%;
+  }
+
+  .header-container-button-box {
+    display: none;
+  }
+
+  .header-container-menu-box-item {
+    width: 24%;
+  }
+
+  .header-container-menu-box-item-text {
+    font-size: 13px;
+  }
+
+  .header-container-menu-box-item-text {
+    font-size: 12px;
   }
 }

@@ -108,7 +108,7 @@ body {
   font-size: 30px;
   font-weight: 500;
   color: #000;
-  margin-top: 200px;
+  margin-top: 50px;
   opacity: 0;
 
   transition: opacity 2s ease-in-out;
@@ -291,15 +291,15 @@ body {
 
 .biz-container {
   width: 100%;
-  height: 700px;
+  height: 350px;
   background-color: #fff;
 }
 
 .biz-text-box {
   width: 70%; 
-  height: 500px;
+  height: 350px;
   margin: 0 auto;
-  padding-top: 300px;
+  padding-top: 50px;
   position: relative;
 }
 
@@ -337,7 +337,7 @@ body {
   background-position: center;
   background-repeat: no-repeat;
   position: absolute;
-  top: 200px;
+  top: 40px;
   left: 0;
   opacity: 0;
 
@@ -347,15 +347,15 @@ body {
 
 .biz-container2 {
   width: 100%;
-  height: 700px;
+  height: 350px;
   background-color: #fff;
 }
 
 .biz-text-box2 {
   width: 70%;
-  height: 500px;
+  height: 350px;
   margin: 0 auto;
-  padding-top: 300px;
+  padding-top: 100px;
   position: relative;
 }
 
@@ -407,7 +407,7 @@ body {
 
 .biz-container3 {
   width: 100%;
-  height: 1000px;
+  height: 800px;
   background-color: #fff;
 }
 
@@ -415,7 +415,7 @@ body {
   width: 70%;
   height: 500px;
   margin: 0 auto;
-  padding-top: 300px;
+  padding-top: 200px;
   position: relative;
 }
 
@@ -491,7 +491,7 @@ body {
 
 .intro-container {
   width: 100%;
-  height: 2400px;
+  height: 2100px;
   background: linear-gradient(0deg, #ffffff, #3b5cf0);
 }
 
@@ -499,7 +499,7 @@ body {
   width: 70%;
   height: 2100px;
   margin: 0 auto;
-  padding-top: 200px;
+  padding-top: 50px;
 }
 
 .intro-text-box-title {
@@ -549,7 +549,7 @@ body {
   width: 680px;
   height: 560px;
   margin: 0 auto;
-  margin-top: 300px;
+  margin-top: 200px;
   opacity: 0;
 
   transform: translateY(80px);
@@ -560,13 +560,13 @@ body {
 
 .namatji-intro-container {
   width: 100%;
-  height: 1200px;
+  height: 900px;
   background-color: #fff;
 }
 
 .namatji-intro-text-box {
   width: 70%;
-  height: 1200px;
+  height: 900px;
   margin: 0 auto;
 }
 
@@ -607,7 +607,6 @@ body {
   display: flex;
   align-items: center;
   margin-left: 150px;
-  margin-top: 150px;
 }
 
 .namatji-intro-img-box-text {
@@ -653,13 +652,13 @@ body {
 
 .bizinfo-container {
   width: 100%;
-  height: 1100px;
+  height: 900px;
   background-color: #fff;
 }
 
 .bizinfo-content-box {
   width: 70%;
-  height: 1000px;
+  height: 900px;
   margin: 0 auto;
 }
 
@@ -830,7 +829,7 @@ body {
   display: flex;
   flex-direction: row;
   align-items: center;
-  margin-top: 200px;
+  margin-top: 100px;
 }
 
 .namatji-wraper-title-box {
@@ -966,7 +965,7 @@ body {
     display: none;
   }
   .ai-banner-mobile-image-box {
-    width: 120%;
+    width: 335px;
   }
 
   .ai-banner-text-box {
@@ -995,6 +994,7 @@ body {
   .ai-banner-text-box-title {
     text-align: center;
     font-size: 50px;
+    width: 280px;
   }
 
   .ai-banner-text-box-sub {
@@ -1080,10 +1080,10 @@ body {
   }
 
   .biz-container {
-    height: 350px;
+    height: 300px;
   }
   .biz-container2 {
-    height: 350px;
+    height: 300px;
     overflow: hidden;
   }
 
@@ -1129,7 +1129,7 @@ body {
   }
 
   .biz-container3 {
-    height: 600px;
+    height: 500px;
   }
 
   .biz-text-box-button {
