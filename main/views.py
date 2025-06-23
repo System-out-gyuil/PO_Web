@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.views import View
 from board.models import BizInfo
-from main.models import Count, IpAddress, Count_by_date
+from main.models import Count, IpAddress, Count_by_date, BizTop
 from django.http import HttpResponse
 from datetime import date, timedelta
 from PO.management.commands.utils import update_count
@@ -37,24 +37,11 @@ class MainView(View):
     def get(self, request):
         biz_list_10 = BizInfo.objects.all().order_by('-registered_at')[:15]
 
+        biz_top_10 = BizTop.objects.all().order_by('-update_date')[:15]
+
         # 인기 공고 직접 입력
-        pblanc_ids = [
-            'PBLN_000000000110190',
-            'PBLN_000000000110170',
-            'PBLN_000000000110168',
-            'PBLN_000000000110160',
-            'PBLN_000000000110189',
-            'PBLN_000000000110182',
-            'PBLN_000000000110162',
-            'PBLN_000000000110165',
-            'PBLN_000000000110184',
-            'PBLN_000000000110169',
-            'PBLN_000000000110167',
-            'PBLN_000000000110188',
-            'PBLN_000000000110185',
-            'PBLN_000000000110183',
-            'PBLN_000000000110164',
-        ]
+        pblanc_ids = [biz.pblanc_id for biz in biz_top_10]
+        print(pblanc_ids)
 
         biz_top_10 = list(BizInfo.objects.filter(pblanc_id__in=pblanc_ids))
 

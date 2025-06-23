@@ -45,15 +45,16 @@ class Command(BaseCommand):
             views_adj = views * factor
             adjusted[api_id] = (views, views_adj)
 
-        # 4) 보정조회수 Top-15 선정
-        top15_ids = sorted(
+        # 4) 보정조회수 Top-20 선정
+        # 실제로 화면에 나타나는 데이터는 15개지만 우리 데이터 베이스에 저장되지 않을 경우를 대비해서 20개 저장
+        top_ids = sorted(
             adjusted.keys(),
             key=lambda k: adjusted[k][1],   # views_adj
             reverse=True
-        )[:15]
+        )[:20]
 
-        # 👉 상위 15개 item만 추출
-        top_items = [item for item in items if item["pblancId"] in top15_ids]
+        # 👉 상위 20개 item만 추출
+        top_items = [item for item in items if item["pblancId"] in top_ids]
 
         # 5) DB 저장(또는 업데이트) ― top_items만 넘김
         self.save_to_db(top_items)
@@ -104,7 +105,7 @@ class Command(BaseCommand):
     @transaction.atomic
     def save_to_db(self, items):
         current_ids = []
-        for item in items:                # ← top-15만 들어옴
+        for item in items:                # ← top-20만 들어옴
             api_id = item["pblancId"]
             current_ids.append(api_id)
 
@@ -116,6 +117,6 @@ class Command(BaseCommand):
                 },
             )
 
-        # 이번 top-15에 포함되지 않은 기존 레코드는 삭제
+        # 이번 top-20에 포함되지 않은 기존 레코드는 삭제
         deleted, _ = BizTop.objects.exclude(pblanc_id__in=current_ids).delete()
         self.stdout.write(f"🗑️ 삭제된 레코드: {deleted}")
