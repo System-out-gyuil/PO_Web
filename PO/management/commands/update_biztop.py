@@ -19,46 +19,48 @@ API_PARAMS = {
 }
 
 class Command(BaseCommand):
-    help = "BizTop 업데이트 및 보정 조회수 계산"
+    help = 'BizTop 업데이트'
 
     def handle(self, *args, **kwargs):
         self.stdout.write("📡 BizInfo API 수집 시작…")
         items = self.fetch_api_items()
-
         self.stdout.write(f"✔ 총 {len(items):,}건 수신")
 
-        # 1) 공고별 노출-기여도 계산
-        exposure_scores = self.calc_exposure_scores(items)
+        # ────────────────────────────────────────────────
+        # ①  최근 1주일(오늘 포함 7일) 이내만 필터링
+        one_week_ago = datetime.today().date() - timedelta(days=6)
+        recent_items = []
+        for it in items:
+            try:
+                reg_date = datetime.strptime(it["registered_at"], "%Y-%m-%d").date()
+                if reg_date >= one_week_ago:
+                    recent_items.append(it)
+            except Exception:
+                continue
 
-        # 2) 기준값(최대 기여도) 구하기
+        self.stdout.write(f"🆕 최근 1주일 데이터: {len(recent_items):,}건")
+        if not recent_items:
+            self.stderr.write("❗ 최근 일주일 내 공고가 없습니다. 종료")
+            return
+        # ────────────────────────────────────────────────
+
+        # 이후 모든 로직에서 recent_items 사용
+        exposure_scores = self.calc_exposure_scores(recent_items)
         max_score = max(exposure_scores.values()) if exposure_scores else 1.0
-
-        self.stdout.write(f"📊 최대 노출-기여도(기준값) = {max_score:.1f}")
-
-        # 3) 보정조회수 계산 → dict[api_id] = (원뷰, 보정뷰)
+        # 보정조회수 계산
         adjusted = {}
-        for item in items:
-            api_id = item["pblancId"]          # 공고 고유키
-            views  = int(item.get("inqireCo", 0))
+        for it in recent_items:
+            api_id = it["pblancId"]
+            views  = int(it.get("inqireCo", 0))
             score  = exposure_scores.get(api_id, 1.0)
             factor = max_score / score if score else 1.0
-            views_adj = views * factor
-            adjusted[api_id] = (views, views_adj)
+            adjusted[api_id] = (views, views * factor)
 
-        # 4) 보정조회수 Top-20 선정
-        # 실제로 화면에 나타나는 데이터는 15개지만 우리 데이터 베이스에 저장되지 않을 경우를 대비해서 20개 저장
-        top_ids = sorted(
-            adjusted.keys(),
-            key=lambda k: adjusted[k][1],   # views_adj
-            reverse=True
-        )[:20]
+        # Top-20 추출
+        top_ids = sorted(adjusted, key=lambda k: adjusted[k][1], reverse=True)[:20]
+        top_items = [it for it in recent_items if it["pblancId"] in top_ids]
 
-        # 👉 상위 20개 item만 추출
-        top_items = [item for item in items if item["pblancId"] in top_ids]
-
-        # 5) DB 저장(또는 업데이트) ― top_items만 넘김
         self.save_to_db(top_items)
-
         self.stdout.write(self.style.SUCCESS("✅ BizTop 업데이트 완료"))
 
     # ──────────────────────────────────────────────────────────────────────────
