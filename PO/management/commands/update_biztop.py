@@ -31,8 +31,8 @@ class Command(BaseCommand):
         one_week_ago = datetime.today().date() - timedelta(days=7)
         recent_items = []
         for it in items:
+            self.stdout.write(f"registered_at: {type(it['registered_at'])}, {it['registered_at']}")
             try:
-                self.stdout.write(f"registered_at: {type(it['registered_at'])}, {it['registered_at']}")
                 reg_date = datetime.strptime(it["registered_at"], "%Y-%m-%d").date()
                 if reg_date >= one_week_ago:
                     recent_items.append(it)
