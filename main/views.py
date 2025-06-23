@@ -37,7 +37,7 @@ class MainView(View):
     def get(self, request):
         biz_list_10 = BizInfo.objects.all().order_by('-registered_at')[:15]
 
-        # 인기 공고 10개 직접 입력
+        # 인기 공고 직접 입력
         pblanc_ids = [
             'PBLN_000000000110190',
             'PBLN_000000000110170',

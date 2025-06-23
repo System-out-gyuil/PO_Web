@@ -39,3 +39,11 @@ class IpAddress(models.Model):
     def __str__(self):
         return f"{self.ip_address} - {self.created_at}"
 
+class BizTop(models.Model):
+    pblanc_id = models.CharField(max_length=100)
+    title = models.CharField(max_length=300)
+    update_date = models.CharField(max_length=100)
+
+    def __str__(self):
+        return f"{self.title} - {self.update_date}"
+

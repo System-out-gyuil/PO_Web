@@ -1,5 +1,7 @@
 body {
   padding-bottom: 140px;
+  background: linear-gradient(10deg, #93dafa, #cad8f4, #ffffff);
+  font-family: "Pretendard JP", -apple-system, BlinkMacSystemFont, "Basier Square", "Noto Sans KR", "Segoe UI", "Apple SD Gothic Neo", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 input {
@@ -69,16 +71,26 @@ a {
   font-size: 14px;
 }
 
+.board-feader-img {
+  width: 100px;
+  height: 100px;
+  background-image: url('../images/biz/Data\ Analytics\ Report.gif');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
 /* .page-num-btn {
   gap: 5px;
 } */
 
 .search-container {
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
   width: 95%;
   margin-bottom: 10px;
   position: relative;
+  align-items: center;
 }
 
 .search-container select {

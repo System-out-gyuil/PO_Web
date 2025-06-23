@@ -36,20 +36,23 @@
     'https://connect.facebook.net/en_US/fbevents.js');
     fbq('init', '692464356832795');
     fbq('track', 'PageView');
-    </script>
-    <noscript><img height="1" width="1" style="display:none"
+  </script>
+  <noscript>
+    <img height="1" width="1" style="display:none"
     src="https://www.facebook.com/tr?id=692464356832795&ev=PageView&noscript=1"
-    /></noscript>
+    />
+  </noscript>
     <!-- End Meta Pixel Code -->
 </head>
 <body>
   {% include 'base/top_nav.html' %}
-  <div class="board-header">
-    <h1>지원사업 목록</h1>
-  </div>
-
+  
   <div class="fixed-search-container">
     <div class="search-container">
+      <div class="board-feader-img"></div>
+      <div class="board-header">
+        <h1>지원사업 목록</h1>
+      </div>
       <form method="get" action="{% url 'board:list' %}" style="display: flex; gap: 10px;">
         <select id="select-type" class="select-type" name="select-type" default="title">
           {% comment %} <option value="all">전체</option> {% endcomment %}
