@@ -65,14 +65,12 @@
     <div class="detail-wrapper">
       <div class="detail-title">{{ item.title }}</div>
 
-      <div class="hr-div"></div>
 
       <div class="detail-info-container1">
         <div class="description-wrap">
           <div class="description-text">기관명 :&nbsp;</div><div class="detail-institution-name">{{ item.institution_name }} </div>
         </div>
         <div class="description-wrap">
-          {% comment %} <div class="description-text">대상 :&nbsp;</div><div class="detail-target">{{ item.target }} </div> {% endcomment %}
           <div class="description-text">분야 :&nbsp;</div><div class="detail-field">{{ item.field }} </div>
         </div>
         <div class="description-wrap">
@@ -80,7 +78,6 @@
         </div>
       </div>
 
-      <div class="hr-div"></div>
       
       <div class="detail-info-container1">
         {% if item.reception_start.year != 1900 and item.reception_end.year != 9999 %}
@@ -96,23 +93,21 @@
       </div>
 
 
-      <div class="hr-div"></div>
+      <div class="description-text-box">
+        <div class="description-text">사업 개요</div>
+        <div>{{ item.content|safe }}</div>
+      </div>
       
-      <div class="description-text">사업 개요</div>
-      <div>{{ item.content|safe }}</div>
-      
-      <div class="hr-div"></div>
       <div class="detail-info-container2">
         <div class="description-text detail-info-text">사업 신청 방법</div>
         <div>{{ item.enroll_method }}</div>
       </div>
       
-      <div class="hr-div"></div>
-      
       {% if item.noti_summary != "오류" %}
-      <div class="description-noti-summary">공고 내용 요약&nbsp;</div>
-      <div>{{ item.noti_summary }}</div>
-      <div class="hr-div"></div>
+      <div class="noti-box">
+        <div class="description-noti-summary">공고 내용 요약&nbsp;</div>
+        <div>{{ item.noti_summary }}</div>
+      </div>
       {% endif %}
       
 
@@ -139,7 +134,6 @@
       {% endif %}
     </div>
   </div>
-  <div class="hr-div-2"></div>
   <div class="hashtag-container">
     <div class="hashtag-text">해쉬태그</div>
     <div class="hashtag-items">

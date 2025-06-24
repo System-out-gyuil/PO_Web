@@ -1,7 +1,9 @@
 body {
-  font-family: "Nanum Barun Gothic", sans-serif;
+  background: linear-gradient(60deg, #fff5f5, #f4ebfa, #e4e9fd);
+  font-family: "Pretendard JP", -apple-system, BlinkMacSystemFont, "Basier Square", "Noto Sans KR", "Segoe UI", "Apple SD Gothic Neo", Roboto, "Helvetica Neue", Arial, sans-serif;
   margin-bottom: 200px;
   height: auto;
+  font-weight: 400;
 }
 
 .coupang-banner {
@@ -13,6 +15,12 @@ body {
   justify-content: center;
   align-items: center;
   height: 100px;
+}
+
+.board-top-nav-container h1 {
+  color: #9badff;
+  font-size: 40px;
+  font-weight: 800;
 }
 
 .board-detail-container {
@@ -33,23 +41,41 @@ body {
 }
 
 .detail-title {
+  background-color: #9badff;
+  border-radius: 15px;
+  text-align: center;
+  color: #fff;
   font-size: 24px;
   font-weight: bold;
   margin-bottom: 10px;
+  padding: 5px;
+  box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.1);
 }
 
 .detail-info-container1 {
+  background-color: #fff;
+  margin-bottom: 10px;
+  padding: 10px;
+  border-radius: 15px;
   display: flex;
   flex-direction: row;
+  box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.1);
 }
 .detail-info-container2 {
   display: flex;
   flex-direction: column;
+  background-color: #fff;
+  padding: 10px;
+  border-radius: 15px;
+  box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.1);
+  margin-bottom: 10px;
 }
 
 .description-wrap {
   display: flex;
   flex-direction: row;
+  justify-content: center;
+  align-items: center;
 }
 
 .detail-institution-name {
@@ -76,11 +102,28 @@ body {
   background-color: #000;
   margin: 10px 0;
 }
-.description-text {
+
+.description-text-box {
+  background-color: #fff;
+  padding: 10px;
+  border-radius: 15px;
+  box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.1);
   margin-bottom: 10px;
+}
+
+.description-text {
   font-size: 16px;
   font-weight: bold;
 }
+
+.noti-box {
+  background-color: #fff;
+  padding: 10px;
+  border-radius: 15px;
+  box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.1);
+  margin-bottom: 10px;
+}
+
 .description-noti-summary  {
   font-size: 16px;
   font-weight: bold;
@@ -98,6 +141,7 @@ body {
 
 iframe {
   margin-bottom: 20px;
+  border-radius: 15px;
 }
 
 .hr-div-2 {
@@ -113,6 +157,10 @@ iframe {
   flex-wrap: wrap; /* ✅ 줄바꿈 허용 */
   margin: 0 auto;
   width: 66%;
+  background-color: #fff;
+  padding: 10px;
+  border-radius: 15px;
+  box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.1);
 }
 
 .hashtag-text {
@@ -132,8 +180,16 @@ iframe {
   margin-bottom: 10px; /* ✅ 아래 여백 추가 */
   padding: 5px 10px;
   border-radius: 5px;
-  background-color: #f0f0f0;
+  background-color: #9badff;
+  color: #fff;
+  font-weight: 600;
+  /* cursor: pointer; */
 }
+
+/* .hashtag-item:hover {
+  background-color: #9badff;
+  color: #fff;
+} */
 
 
 @media (max-width: 768px) {
@@ -141,6 +197,18 @@ iframe {
   
   .board-detail-container {
     width: 95%;
+  }
+
+  .detail-info-container1 {
+    flex-direction: column;
+  }
+
+  .description-wrap {
+    justify-content: flex-start;
+  }
+
+  .hashtag-container {
+    width: 85%;
   }
 }
 

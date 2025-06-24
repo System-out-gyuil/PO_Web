@@ -59,8 +59,6 @@
         <div class="board-search-container">
             <form method="get" action="{% url 'board:list' %}">
             <select id="select-type" class="select-type" name="select-type" default="title">
-              {% comment %} <option value="all">전체</option> {% endcomment %}
-              {% comment %} <option value="field">분야</option> {% endcomment %}
               <option value="title">공고명</option>
               <option value="region">지역</option>
             </select>
@@ -77,13 +75,11 @@
     <thead>
       <colgroup>
         <col class="col-1">
-        {% comment %} <col style="width: 15%"> {% endcomment %}
         <col class="col-2">
         <col class="col-3">
       </colgroup>
       <tr class="table-head">
         <th class="th-1">등록일</th>
-        {% comment %} <th>분야</th> {% endcomment %}
         <th class="th-2">지역</th>
         <th class="th-3">공고명</th>
       </tr>
@@ -93,7 +89,6 @@
         {% for item in items %}
         <tr class="table-row">
           <td class="table-row-1">{{ item.registered_at }}</td>
-          {% comment %} <td>{{ item.field }}</td> {% endcomment %}
 
           {% if item.region %}
             <td class="table-row-2">{{ item.region.0 }}</td>
