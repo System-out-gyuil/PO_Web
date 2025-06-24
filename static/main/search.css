@@ -6,10 +6,10 @@
 }
 
 body {
-  padding-bottom: 170px;
+  padding-bottom: 100px;
+  padding-top: 60px;
   background: linear-gradient(10deg, #93dafa, #cad8f4, #ffffff);
   font-family: "Pretendard JP", -apple-system, BlinkMacSystemFont, "Basier Square", "Noto Sans KR", "Segoe UI", "Apple SD Gothic Neo", Roboto, "Helvetica Neue", Arial, sans-serif;
-
 }
 
 .search-background {
