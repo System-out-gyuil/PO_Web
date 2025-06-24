@@ -12,7 +12,7 @@ DEV_MODE = True
 DEBUG = DEV_MODE
 CORS_ALLOW_ALL_ORIGINS = DEV_MODE
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '13.124.116.146', '43.203.40.252', 'namatji.com', 'www.namatji.com']
+ALLOWED_HOSTS = ['localhost', '172.30.1.19', '127.0.0.1', '13.124.116.146', '43.203.40.252', 'namatji.com', 'www.namatji.com']
 
 INSTALLED_APPS = [
     "PO",

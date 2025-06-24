@@ -125,9 +125,9 @@ input[type="checkbox"] {
   gap: 10px;
 }
 
-@media (max-width: 450px) {
+@media (max-width: 500px) {
   .inquiry-container {
-    width: 97%;
+    width: 90%;
     margin-top: 0;
   }
 
@@ -140,7 +140,7 @@ input[type="checkbox"] {
 
 @media (max-width: 360px) {
   .inquiry-container {
-    width: 97%;
+    width: 90%;
     margin-top: 0;
   }
 
