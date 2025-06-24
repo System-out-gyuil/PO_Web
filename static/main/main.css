@@ -918,21 +918,21 @@ body {
 
   .graph {
     top: 10%;
-    left: -15%;
+    left: 0%;
   }
 
   .money {
     width: 220px;
     height: 220px;
     top: 16%;
-    right: -15%;
+    right: -10%;
   }
 
   .calculator {
     width: 250px;
     height: 250px;
-    top: 22%;
-    left: -25%;
+    top: 30%;
+    left: -10%;
   }
 
   .ai-banner-mobile-image {
@@ -1017,7 +1017,7 @@ body {
   }
 
   .biz-text-box2 {
-    width: 94%;
+    width: 97%;
     padding-top: 80px;
   }
 
@@ -1282,7 +1282,7 @@ body {
     font-size: 15px;
     margin-top: 38px;
   }
-
+/* 
   .graph {
     top: 9%;
     left: -18%;
@@ -1300,7 +1300,7 @@ body {
     height: 230px;
     top: 21%;
     left: -28%;
-  }
+  } */
 
   .ai-banner-mobile-inner-button-text {
     width: 160px;
@@ -1536,7 +1536,7 @@ body {
     font-size: 14px;
     margin-top: 36px;
   }
-
+/* 
   .graph {
     top: 8%;
     left: -20%;
@@ -1554,7 +1554,7 @@ body {
     height: 220px;
     top: 20%;
     left: -30%;
-  }
+  } */
 
   .ai-banner-mobile-inner-button-text {
     width: 155px;
@@ -1805,7 +1805,7 @@ body {
     margin-top: 34px;
   }
 
-  .graph {
+  /* .graph {
     top: 7%;
     left: -22%;
   }
@@ -1822,7 +1822,7 @@ body {
     height: 210px;
     top: 19%;
     left: -32%;
-  }
+  } */
 
   .ai-banner-mobile-inner-button-text {
     width: 150px;
