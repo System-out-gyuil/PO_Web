@@ -108,16 +108,14 @@
                   </div>
                 </div>
               </div>
+
+              
             </div>
           </div>
         </li>
         {% endfor %}
       </ul>
     </div>
-  </div>
-
-  <!-- 상담 신청 모달 -->
-  <nav>
     <div class="consel-nav-container">
       <div class="consel-nav-item">
         <div class="consel-nav-item-box">
@@ -127,6 +125,11 @@
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- 상담 신청 모달 -->
+  {% comment %} <nav> {% endcomment %}
+    
     <div class="consel-nav-modal-container">
       <div class="consel-nav-modal-item-box">
         <div class="consel-nav-modal-close-btn"></div>
@@ -160,7 +163,7 @@
         </div>
       </div>
     </div>
-  </nav>
+  {% comment %} </nav> {% endcomment %}
 
   <script src="{% static 'base/base.js' %}"></script>
   <script src="{% static 'main/search_ai_result.js' %}"></script>

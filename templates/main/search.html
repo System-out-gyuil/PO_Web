@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" style="height: 100%;">
 <head>
   <!-- Google Tag Manager -->
   <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
@@ -429,7 +429,7 @@
   </div>
   </section>
 
-  {% include 'base/coupang_banner.html' %}
+  {% comment %} {% include 'base/coupang_banner.html' %} {% endcomment %}
 
   <script>
     window.IS_AUTHENTICATED = {{ request.user.is_authenticated|yesno:"true,false" }};

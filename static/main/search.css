@@ -5,11 +5,39 @@
   font-style: normal;
 }
 
+/* html {
+  height: 100%;
+} */
+
 body {
-  padding-bottom: 100px;
-  padding-top: 60px;
+  height: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
   background: linear-gradient(10deg, #93dafa, #cad8f4, #ffffff);
   font-family: "Pretendard JP", -apple-system, BlinkMacSystemFont, "Basier Square", "Noto Sans KR", "Segoe UI", "Apple SD Gothic Neo", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding-bottom: 0px;
+}
+
+#region-section {
+  min-height: 100vh;
+  display: flex;
+  align-content: center;
+  justify-content: center;
+  align-items: center;
+}
+
+#main-content {
+  flex: 1 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .search-background {
@@ -393,7 +421,7 @@ body {
 /* 업종 검색 모달 */
 
 .ind-modal-wrap {
-  display: none;
+  /* display: none; */
   width: 426px;
   height: 700px;
   margin: 0 auto;
@@ -746,6 +774,7 @@ body {
   display: none;
   width: 100%;
   height: 100%;
+  margin-bottom: 100px;
 }
 
 .search-none-result-container {
@@ -1105,10 +1134,10 @@ ul {
 
 @media (max-width: 500px) {
 
-  body {
+  /* body {
     padding-bottom: 100px;
     padding-top: 100px;
-  }
+  } */
 
   .search-title {
     margin-top: 80px;
@@ -1351,9 +1380,9 @@ ul {
 
 @media (max-width: 360px) {
 
-  body {
+  /* body {
     padding-bottom: 200px;
-  }
+  } */
 
   .search-title {
     margin-top: 50px;
@@ -1552,6 +1581,87 @@ ul {
   
 }
 
+#region-section {
+  min-height: 100vh;
+  display: flex;
+  align-content: center;
+  justify-content: center;
+  align-items: center;
+}
+
+#business-style-section {
+  min-height: 100vh;
+  display: none;
+  align-content: center;
+  justify-content: center;
+  align-items: center;
+}
+
+#industry-section {
+  min-height: 100vh;
+  display: none;
+  align-content: center;
+  justify-content: center;
+  align-items: center;
+}
+
+#industry-search-section {
+  min-height: 100vh;
+  display: none;
+  align-content: center;
+  justify-content: center;
+  align-items: center;
+}
+
+#business-period-section {
+  min-height: 100vh;
+  display: none;
+  align-content: center;
+  justify-content: center;
+  align-items: center;
+}
+
+#billing-last-year-section {
+  min-height: 100vh;
+  display: none;
+  align-content: center;
+  justify-content: center;
+  align-items: center;
+}
+
+#export-performance-section {
+  min-height: 100vh;
+  display: none;
+  align-content: center;
+  justify-content: center;
+  align-items: center;
+}
+
+#employee-number-section {
+  min-height: 100vh;
+  display: none;
+  align-content: center;
+  justify-content: center;
+  align-items: center;
+}
+
+/* #search-none-result-section {
+  min-height: 100vh;
+  display: none;
+  align-content: center;
+  justify-content: center;
+  align-items: center;
+} */
+
+#first-section {
+  min-height: 100vh;
+  display: none;
+  align-content: center;
+  justify-content: center;
+  align-items: center;
+}
+
+/* 
 
 .search-region-container {
   display: flex;
@@ -1588,4 +1698,4 @@ ul {
 .search-result-container {
   display: none;
 }
-
+ */

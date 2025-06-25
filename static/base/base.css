@@ -1,7 +1,7 @@
 body {
   font-family: "Pretendard JP", -apple-system, BlinkMacSystemFont, "Basier Square", "Noto Sans KR", "Segoe UI", "Apple SD Gothic Neo", Roboto, "Helvetica Neue", Arial, sans-serif;
   font-weight: 300;
-  padding-bottom: 99px;
+  /* padding-bottom: 99px; */
   padding-top: 70px;
   margin: 0;
   height: 100%;
@@ -11,7 +11,7 @@ body {
 a,
 a:visited {
   text-decoration: none;
-  color: #00000073;
+  color: rgb(66, 66, 66);
 }
 
 select {

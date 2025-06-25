@@ -163,7 +163,7 @@
             <div class="bizinfo-content-2">
               <div class="bizinfo-header">
                 <div class="bizinfo-header-img2"></div>
-                <div class="bizinfo-header-title">인기 지원 사업</div>
+                <div class="bizinfo-header-title"><span class="red">인기</span> 지원 사업</div>
               </div>
               <div class="bizinfo-line"></div>
               <div class="bizinfo-content-title-box">
@@ -218,7 +218,7 @@
             주소: 인천시 연수구 인천타워대로 323, 에이동 31층 비28호<br>
             고객센터: 0507-1474-1679 | 이메일: nicepo.corp@gmail.com<br>
             <br>
-            | 개인정보처리방침 | 이용약관 | 회사소개 |<br>
+            | <a href="{% url 'personal_info' %}">개인정보처리방침</a> | <a href="{% url 'terms_of_service' %}">이용약관</a> | <a href="#">회사소개</a> |<br>
             Copyright ⓒ 2025 나맞지. All rights reserved.
             
           </div>
@@ -226,7 +226,7 @@
       </div>
 
     </section>
-    {% include 'base/coupang_banner.html' %}
+    {% comment %} {% include 'base/coupang_banner.html' %} {% endcomment %}
     
   <script src="{% static 'main/main.js' %}"></script>
 </body>

@@ -1,5 +1,14 @@
 body {
   background: linear-gradient(10deg, #93dafa, #cad8f4, #ffffff);
+  padding-top: 0;
+}
+
+form {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
 }
 
 .inquiry-container {
@@ -7,7 +16,7 @@ body {
   width: 30%;
   height: 700px;
   background: linear-gradient(150deg, #ffffff, #d4dff8);
-  margin-top: 50px;
+  /* margin-top: 50px; */
   border-radius: 15px;
   display: flex;
   justify-content: center;
