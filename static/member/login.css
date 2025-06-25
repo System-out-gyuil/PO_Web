@@ -43,15 +43,31 @@ button {
 }
 
 .login-with-sns-button {
-  width: 90%;
+  width: 100%;
   height: 55px;
   cursor: pointer;
+  margin: 0 auto;
 }
 
 .kakao {
-  width: 90%;
+  width: 80%;
   height: 55px;
 }
+
+@media (max-width: 600px) {
+  .login-with-sns-box {
+    width: 70%;
+    height: 65%;
+  }
+}
+
+@media (max-width: 500px) {
+  .login-with-sns-box {
+    width: 80%;
+    height: 60%;
+  }
+}
+
 
 
 
