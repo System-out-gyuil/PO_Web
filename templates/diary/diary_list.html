@@ -1,0 +1,1200 @@
+{% load entry_extras %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>영업 관리표</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; background: #f8f9fa; }
+        .container { max-width: 1500px; margin: auto; background: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 2px 8px #ddd; }
+        h1 { text-align: center; color: #333; }
+        table { 
+            /* width: 100%; */
+            border-collapse: collapse; 
+            margin-top: 20px; 
+        }
+        th, td { border: 1px solid #eee; padding: 0.5em 12px; text-align: center; min-width: 80px; height: 36px; box-sizing: border-box; }
+        th { background: #f1f3f6; }
+        tr:nth-child(even) { background: #fafbfc; }
+        input, select { width: 100%; height: 100%; box-sizing: border-box; padding: 8px; border: none; background: transparent; font-size: inherit; font-family: inherit; line-height: inherit; display: block; }
+        .add-btn { background: #007bff; color: #fff; border: none; padding: 7px 15px; border-radius: 5px; cursor: pointer; }
+        .add-btn:hover { background: #0056b3; }
+        .dropdown-edit { position: absolute; background: #fff; border: 1px solid #ccc; z-index: 4000; min-width: 180px; box-shadow: 0 2px 8px #ddd; padding: 10px; border-radius: 6px; }
+        .dropdown-edit input[type=text] { width: 70%; margin-bottom: 5px; }
+        .dropdown-edit ul { list-style: none; padding: 0; margin: 0; max-height: 180px; overflow-y: auto; }
+        .dropdown-edit li { display: flex; align-items: center; justify-content: space-between; padding: 2px 0; }
+        .dropdown-edit li span { flex: 1; cursor: pointer; padding: 2px 4px; border-radius: 3px; }
+        .dropdown-edit li span:hover { background: #f1f3f6; }
+        .dropdown-edit button { margin-left: 4px; font-size: 0.9em; }
+        .drag-cell, th.drag-cell {
+            border: none !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            width: 32px;
+            min-width: 32px;
+            max-width: 32px;
+            padding: 0 !important;
+        }
+        .drag-handle { display:none; cursor:grab; font-size:18px; color:#bbb; user-select:none; }
+        tr:hover .drag-handle { display:inline-block; }
+        tr.dragging { background: #f1f3f6 !important; }
+        .board-container {
+            display: flex;
+            gap: 16px;
+            margin: 30px 0 30px 0;
+            overflow-x: auto;
+        }
+        .board-col {
+            background: #f8f9fa;
+            border-radius: 8px;
+            min-width: 220px;
+            padding: 12px 10px 20px 10px;
+            box-shadow: 0 2px 8px #eee;
+            display: flex;
+            flex-direction: column;
+            max-height: 600px;
+        }
+        .board-col-title {
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-bottom: 10px;
+            color: #333;
+            padding: 4px 0 8px 0;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        .board-cards {
+            flex: 1 1 auto;
+            min-height: 40px;
+        }
+        .board-card {
+            background: #fff;
+            border-radius: 6px;
+            box-shadow: 0 1px 4px #e0e0e0;
+            margin-bottom: 10px;
+            padding: 12px 10px 8px 10px;
+            cursor: grab;
+            border-left: 4px solid #007bff;
+            transition: box-shadow 0.2s;
+        }
+        .board-card-title {
+            font-weight: bold;
+            font-size: 1em;
+            margin-bottom: 4px;
+            color: #222;
+        }
+        .board-card-amount {
+            color: #888;
+            font-size: 0.95em;
+            font-weight: 500;
+        }
+        .add-card-btn {
+            background: #f1f3f6;
+            color: #007bff;
+            border: none;
+            padding: 6px 0;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 8px;
+            font-size: 0.98em;
+        }
+        .add-card-btn:hover {
+            background: #e3eafc;
+        }
+        td {
+            white-space: nowrap;
+            overflow: visible;
+            text-overflow: unset;
+        }
+        td[data-field="name"] {
+            position: relative;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 4px;
+        }
+        td[data-field="name"] .name-text {
+            flex: 1 1 auto;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        td[data-field="name"] .more-btn-wrapper {
+            flex: 0 0 auto;
+            width: 32px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        td[data-field="name"] .more-btn {
+            display: none;
+            width: 28px;
+            height: 28px;
+            line-height: 28px;
+            text-align: center;
+            border-radius: 50%;
+            background: #f1f3f6;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        tr:hover td[data-field="name"] .more-btn {
+            display: inline-block;
+        }
+        .edit-col-btn, .del-col-btn { display: none; margin-left: 4px; }
+        th.col-active .edit-col-btn, th.col-active .del-col-btn { display: inline-block; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>영업 관리표</h1>
+    <div style="display:flex;gap:10px;margin-bottom:18px;">
+        <button id="tabTable" class="add-btn" style="background:#007bff;color:#fff;">테이블 보기</button>
+        {% comment %} <button id="tabBoard" class="add-btn" style="background:#eee;color:#333;">보드 보기</button> {% endcomment %}
+    </div>
+    <div id="tableView" style="overflow-x:auto; max-width:100%;">
+        <table id="entryTable" style="width:auto; min-width:unset;">
+                <thead>
+                <tr>
+                    <th class="drag-cell"></th>
+                <th>이름</th><th>구분</th><th>지역</th><th>상세지역</th><th>주소</th><th>담당자</th><th>연락처</th><th>이메일</th><th>TA</th><th>미팅</th><th>F/U 일정</th><th>영업진행</th><th>가능성</th><th>매출</th>
+                </tr>
+                
+                </thead>
+                <tbody id="entryTbody">
+                {% for entry in entries %}
+                <tr data-id="{{ entry.id }}">
+                    <td class="drag-cell"><span class="drag-handle">⋮⋮⋮</span></td>
+                <td data-field="name"><div class="name-text">{{ entry.name }}</div><div class="more-btn-wrapper"><div class="more-btn" style="cursor:pointer;">⋯</div></div></td>
+                <td data-field="category" data-value="{% if entry.category %}{{ entry.category.id }}{% endif %}" style="background:{% if entry.category.color %}{{ entry.category.color|to_rgba:'0.18' }}{% endif %};">{% if entry.category %}{{ entry.category }}{% else %}&nbsp;{% endif %}</td>
+                <td data-field="region" data-value="{% if entry.region %}{{ entry.region.id }}{% endif %}">{% if entry.region %}{{ entry.region }}{% else %}&nbsp;{% endif %}</td>
+                <td data-field="subregion">{{ entry.subregion }}</td>
+                <td data-field="address">{{ entry.address }}</td>
+                <td data-field="manager">{{ entry.manager }}</td>
+                <td data-field="phone">{{ entry.phone }}</td>
+                <td data-field="email">{{ entry.email }}</td>
+                <td data-field="ta_date">{{ entry.ta_date|date:'Y-m-d' }}</td>
+                <td data-field="meeting_date">{{ entry.meeting_date|date:'Y-m-d' }}</td>
+                <td data-field="fu_date">{{ entry.fu_date|date:'Y-m-d' }}</td>
+                <td data-field="status" data-value="{% if entry.status %}{{ entry.status.id }}{% endif %}" style="background:{% if entry.status and entry.status.color %}{{ entry.status.color|to_rgba:'0.18' }}{% endif %};">{% if entry.status %}{{ entry.status.name }}{% else %}&nbsp;{% endif %}</td>
+                <td data-field="possibility">{{ entry.possibility }}</td>
+                <td data-field="amount">{{ entry.amount }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="15">작성된 데이터가 없습니다.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div style="margin:10px 0 20px 0;">
+            <button id="addRowBtn" class="add-btn" style="width:180px;">+ 새로 만들기</button>
+        </div>
+        <div id="boardView">
+            <div class="board-container">
+                {% for col in board %}
+                <div class="board-col" data-status-id="{{ col.status.id }}" style="background:{% if col.status.color %}{{ col.status.color|to_rgba:'0.10' }}{% endif %};">
+                    <div class="board-col-title" style="background:{% if col.status.color %}{{ col.status.color|to_rgba:'0.18' }}{% endif %};border-left:6px solid {{ col.status.color|default:'#007bff' }};padding-left:10px;">{{ col.status.name }}</div>
+                    <div class="board-cards">
+                        {% for entry in col.entries %}
+                        <div class="board-card" data-entry-id="{{ entry.id }}">
+                            <div class="board-card-title">{{ entry.name }}</div>
+                            <div class="board-card-amount">{% if entry.amount %}₩{{ entry.amount }}{% endif %}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <button class="add-card-btn">+ 새로 만들기</button>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        <div id="calendar" style="margin-top:40px;"></div>
+        <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
+        <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+        <!-- 모달창 -->
+        <div id="memoModal" style="display:none;position:fixed;left:0;top:0;width:100vw;height:100vh;background:rgba(0,0,0,0.4);z-index:1000;align-items:center;justify-content:center;">
+          <div style="background:#fff;padding:24px 20px 16px 20px;border-radius:8px;min-width:350px;max-width:90vw;min-height:200px;max-height:80vh;overflow:auto;position:relative;">
+            <h3 id="modalTitle">F/U 메모</h3>
+            <textarea id="memoInput" style="width:100%;height:120px;"></textarea>
+            <div style="margin:10px 0;">
+              <b>미리보기:</b>
+              <div id="memoPreview" style="border:1px solid #eee;padding:8px 10px;background:#fafbfc;min-height:40px;"></div>
+            </div>
+            <button id="saveMemoBtn" style="background:#007bff;color:#fff;border:none;padding:7px 15px;border-radius:5px;">저장</button>
+            <button id="closeMemoBtn" style="margin-left:8px;">닫기</button>
+          </div>
+        </div>
+        <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+        <div id="detailModal" style="display:none;position:fixed;left:0;top:0;width:100vw;height:100vh;z-index:3000;background:rgba(0,0,0,0.3);align-items:center;justify-content:center;">
+          <div id="detailModalContent" style="background:#fff;min-width:400px;max-width:90vw;min-height:300px;max-height:90vh;overflow:auto;border-radius:10px;padding:30px 30px 20px 30px;position:relative;"></div>
+        </div>
+    </div>
+</div>
+<script>
+let dropdown = null;
+function closeDropdown() {
+    if (dropdown && dropdown.parentNode) {
+        dropdown.parentNode.removeChild(dropdown);
+        dropdown = null;
+    }
+}
+function refreshKanban() {
+    fetch('/').then(r=>r.text()).then(html=>{
+        const temp = document.createElement('div');
+        temp.innerHTML = html;
+        const newBoard = temp.querySelector('#boardView');
+        if (newBoard) {
+            document.getElementById('boardView').innerHTML = newBoard.innerHTML;
+            bindKanbanSortable(); // 드래그 기능 복구
+        }
+    });
+}
+function openDropdown(td, type, id, currentId, currentSubregion) {
+    closeDropdown();
+    dropdown = document.createElement('div');
+    dropdown.className = 'dropdown-edit';
+    dropdown.style.top = (td.getBoundingClientRect().top + window.scrollY + td.offsetHeight) + 'px';
+    dropdown.style.left = (td.getBoundingClientRect().left + window.scrollX) + 'px';
+    let label = type=="category"?"구분":(type=="region"?"지역":(type=="subregion"?"상세지역":"영업진행"));
+    if(type === 'region') {
+        // 지역만 선택하는 드롭다운
+        var regionNames = ['서울','경기','인천','대구','부산','광주','대전','울산','세종','강원','충북','충남','전북','전남'];
+        let selectedRegion = currentId || '서울';
+        let html = '<div><b>지역 선택</b><ul style="margin:8px 0 12px 0;max-height:120px;overflow-y:auto;">';
+        regionNames.forEach(function(region) {
+            html += '<li style="margin-bottom:2px;"><span data-region="'+region+'" style="cursor:pointer;'+(region==selectedRegion?'font-weight:bold;color:#007bff;':'')+'">'+region+'</span></li>';
+        });
+        html += '</ul></div>';
+        dropdown.innerHTML = html;
+        document.body.appendChild(dropdown);
+        // 지역 클릭 시 바로 저장
+        dropdown.querySelectorAll('span[data-region]').forEach(function(span) {
+            span.onclick = function() {
+                selectedRegion = this.getAttribute('data-region');
+                td.innerText = selectedRegion;
+                td.setAttribute('data-value', selectedRegion);
+                // 상세지역 td도 같이 변경 (첫 번째 값으로 초기화)
+                var subTd = td.parentElement.querySelector('td[data-field="subregion"]');
+                if(subTd) {
+                    var regionMap = {
+                        '서울': ['관악구','금천구','강남구','강서구','강동구','강북구','광진구','구로구','노원구','도봉구','동대문구','동작구','마포구','서대문구','서초구','성동구','성북구','송파구','양천구','영등포구','용산구','은평구','종로구','중구','중랑구'],
+                        '경기': ['수원시','고양시','성남시','용인시','부천시','안산시','안양시','남양주시','화성시','평택시','의정부시','시흥시','파주시','광명시','김포시','군포시','광주시','오산시','이천시','안성시','의왕시','하남시','여주시','양평군','동두천시','과천시','가평군','연천군'],
+                        '인천': ['계양구','남동구','동구','미추홀구','부평구','서구','연수구','중구','강화군','옹진군'],
+                        '대구': ['중구','동구','서구','남구','북구','수성구','달서구','달성군'],
+                        '부산': ['중구','서구','동구','영도구','부산진구','동래구','남구','북구','해운대구','사하구','금정구','강서구','연제구','수영구','사상구','기장군'],
+                        '광주': ['동구','서구','남구','북구','광산구'],
+                        '대전': ['동구','중구','서구','유성구','대덕구'],
+                        '울산': ['중구','남구','동구','북구','울주군'],
+                        '세종': ['세종시'],
+                        '강원': ['춘천시','원주시','강릉시','동해시','태백시','속초시','삼척시','홍천군','횡성군','영월군','평창군','정선군','철원군','화천군','양구군','인제군','고성군','양양군'],
+                        '충북': ['청주시','충주시','제천시','보은군','옥천군','영동군','증평군','진천군','괴산군','음성군','단양군'],
+                        '충남': ['천안시','공주시','보령시','아산시','서산시','논산시','계룡시','당진시','금산군','부여군','서천군','청양군','홍성군','예산군','태안군'],
+                        '전북': ['전주시','군산시','익산시','정읍시','남원시','김제시','완주군','진안군','무주군','장수군','임실군','순창군','고창군','부안군'],
+                        '전남': ['목포시','여수시','순천시','나주시','광양시','담양군','곡성군','구례군','고흥군','보성군','화순군','장흥군','강진군','해남군','영암군','무안군','함평군','영광군','장성군','완도군','진도군','신안군']
+                    };
+                    var firstSubregion = (regionMap[selectedRegion] || [])[0] || '';
+                    subTd.innerText = firstSubregion;
+                }
+                closeDropdown();
+                fetch('/diary/update/', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: 'id='+id+'&field=region&value='+encodeURIComponent(selectedRegion)
+                }).then(() => {
+                    fetch('/diary/update/?id='+id)
+                      .then(r=>r.json())
+                      .then(function(data){
+                          if(data.success && data.entry) {
+                              updateTableRow(data.entry);
+                              refreshKanban();
+                              if (typeof window._modalAfterUpdateAll === 'function') { window._modalAfterUpdateAll(id); window._modalAfterUpdateAll = null; }
+                          }
+                      });
+                });
+            };
+        });
+        document.addEventListener('mousedown', function handler(e) {
+            if(dropdown && !dropdown.contains(e.target)) { closeDropdown(); document.removeEventListener('mousedown', handler); }
+        });
+        return;
+    } else if(type === 'subregion') {
+        // 상세지역만 선택하는 드롭다운
+        var regionMap = {
+            '서울': ['관악구','금천구','강남구','강서구','강동구','강북구','광진구','구로구','노원구','도봉구','동대문구','동작구','마포구','서대문구','서초구','성동구','성북구','송파구','양천구','영등포구','용산구','은평구','종로구','중구','중랑구'],
+            '경기': ['수원시','고양시','성남시','용인시','부천시','안산시','안양시','남양주시','화성시','평택시','의정부시','시흥시','파주시','광명시','김포시','군포시','광주시','오산시','이천시','안성시','의왕시','하남시','여주시','양평군','동두천시','과천시','가평군','연천군'],
+            '인천': ['계양구','남동구','동구','미추홀구','부평구','서구','연수구','중구','강화군','옹진군'],
+            '대구': ['중구','동구','서구','남구','북구','수성구','달서구','달성군'],
+            '부산': ['중구','서구','동구','영도구','부산진구','동래구','남구','북구','해운대구','사하구','금정구','강서구','연제구','수영구','사상구','기장군'],
+            '광주': ['동구','서구','남구','북구','광산구'],
+            '대전': ['동구','중구','서구','유성구','대덕구'],
+            '울산': ['중구','남구','동구','북구','울주군'],
+            '세종': ['세종시'],
+            '강원': ['춘천시','원주시','강릉시','동해시','태백시','속초시','삼척시','홍천군','횡성군','영월군','평창군','정선군','철원군','화천군','양구군','인제군','고성군','양양군'],
+            '충북': ['청주시','충주시','제천시','보은군','옥천군','영동군','증평군','진천군','괴산군','음성군','단양군'],
+            '충남': ['천안시','공주시','보령시','아산시','서산시','논산시','계룡시','당진시','금산군','부여군','서천군','청양군','홍성군','예산군','태안군'],
+            '전북': ['전주시','군산시','익산시','정읍시','남원시','김제시','완주군','진안군','무주군','장수군','임실군','순창군','고창군','부안군'],
+            '전남': ['목포시','여수시','순천시','나주시','광양시','담양군','곡성군','구례군','고흥군','보성군','화순군','장흥군','강진군','해남군','영암군','무안군','함평군','영광군','장성군','완도군','진도군','신안군']
+        };
+        var currentRegion = td.parentElement.querySelector('td[data-field="region"]').innerText.trim();
+        var subregions = regionMap[currentRegion] || [];
+        let selectedSubregion = currentSubregion || '';
+        let html = '<div><b>상세지역 선택</b><ul style="margin:8px 0 12px 0;max-height:120px;overflow-y:auto;">';
+        subregions.forEach(function(sub) {
+            html += '<li style="margin-bottom:2px;"><span data-subregion="'+sub+'" style="cursor:pointer;'+(sub==selectedSubregion?'font-weight:bold;color:#007bff;':'')+'">'+sub+'</span></li>';
+        });
+        html += '</ul></div>';
+        dropdown.innerHTML = html;
+        document.body.appendChild(dropdown);
+        // 상세지역 클릭 시 바로 저장
+        dropdown.querySelectorAll('span[data-subregion]').forEach(function(span) {
+            span.onclick = function() {
+                selectedSubregion = this.getAttribute('data-subregion');
+                td.innerText = selectedSubregion;
+                closeDropdown();
+                fetch('/diary/update/', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: 'id='+id+'&field=subregion&value='+encodeURIComponent(selectedSubregion)
+                }).then(() => {
+                    fetch('/diary/update/?id='+id)
+                      .then(r=>r.json())
+                      .then(function(data){
+                          if(data.success && data.entry) {
+                              updateTableRow(data.entry);
+                              refreshKanban();
+                              if (typeof window._modalAfterUpdateAll === 'function') { window._modalAfterUpdateAll(id); window._modalAfterUpdateAll = null; }
+                          }
+                      });
+                });
+            };
+        });
+        document.addEventListener('mousedown', function handler(e) {
+            if(dropdown && !dropdown.contains(e.target)) { closeDropdown(); document.removeEventListener('mousedown', handler); }
+        });
+        return;
+    } else if(type === 'category') {
+        fetch('/diary/categories/').then(r=>r.json()).then(function(data){
+            let html = '<div><b>구분 선택</b><ul style="margin:8px 0 12px 0;max-height:120px;overflow-y:auto;">';
+            (data.categories||[]).forEach(function(cat){
+                html += `<li style="display:flex;align-items:center;gap:6px;">
+                    <span data-category="${cat.id}" style="cursor:pointer;background:${cat.color ? hexToRgba(cat.color, 0.18) : '#eee'};border-radius:4px;padding:2px 8px;min-width:60px;display:inline-block;">${cat.name}</span>
+                    <input type="color" value="${cat.color||'#eeeeee'}" data-color-edit="${cat.id}" style="width:24px;height:24px;border:none;vertical-align:middle;cursor:pointer;">
+                    <button data-edit="${cat.id}">✏️</button>
+                    <button data-del="${cat.id}">🗑️</button></li>`;
+            });
+            html += '</ul>';
+            html += '<input type="text" placeholder="새 구분 추가" style="width:70%;"> <button class="add-btn">추가</button></div>';
+            dropdown.innerHTML = html;
+            document.body.appendChild(dropdown);
+            // 선택
+            dropdown.querySelectorAll('span[data-category]').forEach(function(span){
+                span.onclick = function(){
+                    td.innerText = span.innerText;
+                    td.setAttribute('data-value', span.getAttribute('data-category'));
+                    td.style.background = span.style.background;
+                    closeDropdown();
+                    fetch('/diary/update/', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                        body: 'id='+id+'&field=category&value='+encodeURIComponent(span.getAttribute('data-category'))
+                    }).then(() => {
+                        fetch('/diary/update/?id='+id)
+                          .then(r=>r.json())
+                          .then(function(data){
+                              if(data.success && data.entry) {
+                                  updateTableRow(data.entry);
+                                  refreshKanban();
+                                  if (typeof window._modalAfterUpdateAll === 'function') { window._modalAfterUpdateAll(id); window._modalAfterUpdateAll = null; }
+                              }
+                          });
+                    });
+                };
+            });
+            // 컬러피커
+            dropdown.querySelectorAll('input[data-color-edit]').forEach(function(input){
+                input.onchange = function(e){
+                    fetch('/diary/categories/?id='+input.getAttribute('data-color-edit')+'&color='+encodeURIComponent(input.value), {method:'PUT'})
+                        .then(()=>openDropdown(td, 'category', id));
+                };
+            });
+            // 추가
+            dropdown.querySelector('.add-btn').onclick = function(){
+                const val = dropdown.querySelector('input[type=text]').value.trim();
+                if(val) fetch('/diary/categories/', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'name='+encodeURIComponent(val)})
+                    .then(()=>openDropdown(td, 'category', id));
+            };
+            // 삭제
+            dropdown.querySelectorAll('button[data-del]').forEach(function(btn){
+                btn.onclick = function(e){
+                    e.stopPropagation();
+                    if(confirm('삭제할까요?')) fetch('/diary/categories/?id='+btn.getAttribute('data-del'), {method:'DELETE'})
+                        .then(()=>openDropdown(td, 'category', id));
+                };
+            });
+            // 수정
+            dropdown.querySelectorAll('button[data-edit]').forEach(function(btn){
+                btn.onclick = function(e){
+                    e.stopPropagation();
+                    const li = btn.closest('li');
+                    const span = li.querySelector('span[data-category]');
+                    const old = span.innerText;
+                    const input = document.createElement('input');
+                    input.type = 'text'; input.value = old;
+                    span.replaceWith(input);
+                    input.focus();
+                    input.onkeydown = function(ev){
+                        if(ev.key==='Enter'){
+                            fetch('/diary/categories/?id='+btn.getAttribute('data-edit')+'&name='+encodeURIComponent(input.value), {method:'PUT'})
+                                .then(()=>openDropdown(td, 'category', id));
+                        }
+                    };
+                };
+            });
+            document.addEventListener('mousedown', function handler(e) {
+                if(dropdown && !dropdown.contains(e.target)) { closeDropdown(); document.removeEventListener('mousedown', handler); }
+            });
+        });
+        return;
+    }
+    if(type === 'status') {
+        fetch('/diary/statuses/').then(r=>r.json()).then(function(data){
+            let html = '<div><b>영업진행 선택</b><ul style="margin:8px 0 12px 0;max-height:120px;overflow-y:auto;">';
+            (data.statuses||[]).forEach(function(st){
+                html += `<li style="display:flex;align-items:center;gap:6px;">
+                    <span data-status="${st.id}" style="cursor:pointer;background:${st.color ? hexToRgba(st.color, 0.18) : '#eee'};border-radius:4px;padding:2px 8px;min-width:60px;display:inline-block;">${st.name}</span>
+                    <input type="color" value="${st.color||'#eeeeee'}" data-color-edit="${st.id}" style="width:24px;height:24px;border:none;vertical-align:middle;cursor:pointer;">
+                    <button data-edit="${st.id}">✏️</button>
+                    <button data-del="${st.id}">🗑️</button></li>`;
+            });
+            html += '</ul>';
+            html += '<input type="text" placeholder="새 영업진행 추가" style="width:70%;"> <button class="add-btn">추가</button></div>';
+            dropdown.innerHTML = html;
+            document.body.appendChild(dropdown);
+            // 선택
+            dropdown.querySelectorAll('span[data-status]').forEach(function(span){
+                span.onclick = function(){
+                    td.innerText = span.innerText;
+                    td.setAttribute('data-value', span.getAttribute('data-status'));
+                    td.style.background = span.style.background;
+                    closeDropdown();
+                    fetch('/diary/update/', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                        body: 'id='+id+'&field=status&value='+encodeURIComponent(span.getAttribute('data-status'))
+                    }).then(() => {
+                        fetch('/diary/update/?id='+id)
+                          .then(r=>r.json())
+                          .then(function(data){
+                              if(data.success && data.entry) {
+                                  updateTableRow(data.entry);
+                                  refreshKanban();
+                                  if (typeof window._modalAfterUpdateAll === 'function') { window._modalAfterUpdateAll(id); window._modalAfterUpdateAll = null; }
+                              }
+                          });
+                    });
+                };
+            });
+            // 컬러피커
+            dropdown.querySelectorAll('input[data-color-edit]').forEach(function(input){
+                input.onchange = function(e){
+                    fetch('/diary/statuses/?id='+input.getAttribute('data-color-edit')+'&color='+encodeURIComponent(input.value), {method:'PUT'})
+                        .then(()=>openDropdown(td, 'status', id));
+                };
+            });
+            // 추가
+            dropdown.querySelector('.add-btn').onclick = function(){
+                const val = dropdown.querySelector('input').value.trim();
+                if(val) fetch('/diary/statuses/', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'name='+encodeURIComponent(val)})
+                    .then(()=>openDropdown(td, 'status', id));
+            };
+            // 삭제
+            dropdown.querySelectorAll('button[data-del]').forEach(function(btn){
+                btn.onclick = function(e){
+                    e.stopPropagation();
+                    if(confirm('삭제할까요?')) fetch('/diary/statuses/?id='+btn.getAttribute('data-del'), {method:'DELETE'})
+                        .then(()=>openDropdown(td, 'status', id));
+                };
+            });
+            // 수정
+            dropdown.querySelectorAll('button[data-edit]').forEach(function(btn){
+                btn.onclick = function(e){
+                    e.stopPropagation();
+                    const li = btn.closest('li');
+                    const span = li.querySelector('span[data-status]');
+                    const old = span.innerText;
+                    const input = document.createElement('input');
+                    input.type = 'text'; input.value = old;
+                    span.replaceWith(input);
+                    input.focus();
+                    input.onkeydown = function(ev){
+                        if(ev.key==='Enter'){
+                            fetch('/diary/statuses/?id='+btn.getAttribute('data-edit')+'&name='+encodeURIComponent(input.value), {method:'PUT'})
+                                .then(()=>openDropdown(td, 'status', id));
+                        }
+                    };
+                };
+            });
+            document.addEventListener('mousedown', function handler(e) {
+                if(dropdown && !dropdown.contains(e.target)) { closeDropdown(); document.removeEventListener('mousedown', handler); }
+            });
+        });
+        return;
+    }
+}
+function bindKanbanSortable() {
+    document.querySelectorAll('.board-cards').forEach(function(col){
+        new Sortable(col, {
+            group: 'kanban',
+            animation: 150,
+            onAdd: function(evt){
+                const entryId = evt.item.getAttribute('data-entry-id');
+                const newStatusId = col.parentElement.getAttribute('data-status-id');
+                fetch('/diary/update/', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: 'id='+entryId+'&field=status&value='+encodeURIComponent(newStatusId)
+                }).then(()=>{ refreshKanban(); refreshTable(); });
+            }
+        });
+    });
+    // 칸반 카드 클릭 시 상세 모달
+    document.querySelectorAll('.board-card').forEach(function(card){
+        card.onclick = function(e) {
+            const entryId = card.getAttribute('data-entry-id');
+            if(entryId) {
+                fetch('/diary/update/?id='+entryId)
+                  .then(r=>r.json())
+                  .then(function(data){
+                      if(data.success && data.entry) showDetailModal(data.entry);
+                  });
+            }
+        };
+    });
+}
+function bindTableCellEvents() {
+    document.querySelectorAll('td[data-field]').forEach(function(td) {
+        const type = td.getAttribute('data-field');
+        // 드롭다운 셀
+        if(['category','region','status','subregion'].includes(type)) {
+            td.onclick = function(e) {
+                const id = td.parentElement.getAttribute('data-id');
+                if(type === 'region') {
+                    openDropdown(td, 'region', id, td.innerText.trim(), td.parentElement.querySelector('td[data-field="subregion"]').innerText.trim());
+                } else if(type === 'subregion') {
+                    openDropdown(td, 'subregion', id, td.parentElement.querySelector('td[data-field="region"]').innerText.trim(), td.innerText.trim());
+                } else if(type === 'category') {
+                    openDropdown(td, 'category', id, td.getAttribute('data-value'));
+                } else if(type === 'status') {
+                    openDropdown(td, 'status', id, td.getAttribute('data-value'));
+                }
+            };
+        } else {
+            // 인라인 편집 셀
+            td.onclick = function() {
+                if (td.querySelector('input')) return; // 이미 편집 중이면 무시
+                if(type === 'name') {
+                    const nameDiv = td.querySelector('.name-text');
+                    if(!nameDiv) return;
+                    const oldValue = nameDiv.innerText;
+                    const id = td.parentElement.getAttribute('data-id');
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.value = oldValue;
+                    input.style.width = '100%';
+                    input.style.height = '100%';
+                    input.style.boxSizing = 'border-box';
+                    input.style.border = 'none';
+                    input.style.background = 'transparent';
+                    input.style.padding = '0';
+                    input.style.margin = '0';
+                    input.style.fontSize = 'inherit';
+                    input.style.fontFamily = 'inherit';
+                    input.style.lineHeight = 'inherit';
+                    nameDiv.innerHTML = '';
+                    nameDiv.appendChild(input);
+                    // ...버튼 숨김
+                    const moreBtnWrapper = td.querySelector('.more-btn-wrapper');
+                    if(moreBtnWrapper) moreBtnWrapper.style.visibility = 'hidden';
+                    input.focus();
+                    function restoreCell(value) {
+                        td.innerHTML = `<div class="name-text">${value}</div><div class="more-btn-wrapper"><div class="more-btn" style="cursor:pointer;">⋯</div></div>`;
+                        // ...버튼 이벤트 재바인딩
+                        const newMoreBtn = td.querySelector('.more-btn');
+                        if(newMoreBtn) {
+                            newMoreBtn.onclick = function(e){
+                                e.stopPropagation();
+                                const tr = td.closest('tr');
+                                const id = tr.getAttribute('data-id');
+                                if(!id) { alert('ID 정보가 없습니다.'); return; }
+                                fetch('/diary/update/?id='+id)
+                                  .then(r => r.text())
+                                  .then(function(text){
+                                      console.log('응답본문:', text);
+                                      try {
+                                          const data = JSON.parse(text);
+                                          if(data.success) showDetailModal(data.entry);
+                                          else alert('상세정보 불러오기 실패: '+(data.error||''));
+                                      } catch(e) {
+                                          alert('상세정보 불러오기 실패: JSON 파싱 오류');
+                                          console.error(e);
+                                      }
+                                  })
+                                  .catch(function(err){
+                                      alert('상세정보 불러오기 실패: 네트워크 오류\n' + err);
+                                      console.error(err);
+                                  });
+                            };
+                        }
+                    }
+                    input.onblur = function() {
+                        const newValue = input.value;
+                        restoreCell(newValue);
+                        fetch('/diary/update/', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                            body: 'id='+id+'&field=name&value='+encodeURIComponent(newValue)
+                        });
+                    };
+                    input.onkeydown = function(e) {
+                        if (e.key === 'Enter') input.blur();
+                        if (e.key === 'Escape') restoreCell(oldValue);
+                    };
+                } else {
+                    const oldValue = td.innerText;
+                    const field = td.getAttribute('data-field');
+                    const id = td.parentElement.getAttribute('data-id');
+                    let inputType = 'text';
+                    if (['ta_date','meeting_date','fu_date'].includes(field)) inputType = 'date';
+                    const input = document.createElement('input');
+                    input.type = inputType;
+                    input.value = (inputType==='date' && oldValue) ? oldValue.trim().slice(0,10) : oldValue.trim();
+                    input.style.width = '100%';
+                    input.style.height = '100%';
+                    input.style.boxSizing = 'border-box';
+                    input.style.border = 'none';
+                    input.style.background = 'transparent';
+                    input.style.padding = '0';
+                    input.style.margin = '0';
+                    input.style.fontSize = 'inherit';
+                    input.style.fontFamily = 'inherit';
+                    input.style.lineHeight = 'inherit';
+                    td.innerHTML = '';
+                    td.appendChild(input);
+                    input.focus();
+                    input.onblur = function() {
+                        const newValue = input.value;
+                        if (newValue === oldValue || (inputType==='date' && (!newValue && !oldValue))) {
+                            td.innerText = oldValue;
+                            return;
+                        }
+                        td.innerText = newValue;
+                        fetch('/diary/update/', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                            body: 'id='+id+'&field='+field+'&value='+encodeURIComponent(newValue)
+                        }).then(function(response) {
+                            return response.json();
+                        }).then(function(data) {
+                            if(!data.success) alert('수정 실패: '+data.error);
+                            if(field==='fu_date' && window.calendar) window.calendar.refetchEvents();
+                            // 매출(금액) 수정 시, 영업진행 값이 있으면 칸반보드 갱신
+                            if(field==='amount') {
+                                const statusTd = td.parentElement.querySelector('td[data-field="status"]');
+                                if(statusTd && statusTd.innerText.trim()) {
+                                    refreshKanban();
+                                }
+                            }
+                        });
+                    };
+                    input.onkeydown = function(e) {
+                        if (e.key === 'Enter') input.blur();
+                        if (e.key === 'Escape') { td.innerText = oldValue; }
+                    };
+                }
+            };
+        }
+    });
+}
+document.addEventListener('DOMContentLoaded', function() {
+    bindTableCellEvents();
+    bindKanbanSortable();
+    // 캘린더 초기화
+    var calendar = null;
+    var calendarEl = document.getElementById('calendar');
+    if(calendarEl) {
+        calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            locale: 'ko',
+            height: 500,
+            events: '/diary/fu_events/',
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,listMonth'
+            },
+            eventClick: function(info) {
+                fetch('/diary/update/?id='+info.event.id)
+                  .then(r=>r.json())
+                  .then(function(data){
+                      if(data.success && data.entry) showDetailModal(data.entry);
+                  });
+            }
+        });
+        calendar.render();
+        window.calendar = calendar;
+    }
+    // 테이블 행 드래그앤드롭(SortableJS) 초기화
+    if(typeof Sortable !== 'undefined') {
+        new Sortable(document.getElementById('entryTbody'), {
+            handle: '.drag-handle',
+            animation: 150,
+            onEnd: function (evt) {
+                // 순서 변경 시 서버에 반영
+                const ids = Array.from(document.querySelectorAll('#entryTbody tr[data-id]')).map(tr => tr.getAttribute('data-id'));
+                fetch('/reorder/', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({order: ids})
+                }).then(res => res.json()).then(data => {
+                    if(!data.success) alert('순서 저장 실패: '+data.error);
+                }).catch(() => alert('순서 저장 중 오류 발생'));
+            }
+        });
+    }
+    // 새로 만들기 버튼 동작 복구
+    const addRowBtn = document.getElementById('addRowBtn');
+    const entryTable = document.getElementById('entryTable');
+    const entryTbody = document.getElementById('entryTbody');
+    let isAdding = false;
+    addRowBtn.onclick = function() {
+        if(isAdding) return;
+        isAdding = true;
+        const tr = document.createElement('tr');
+        tr.className = 'new-row';
+        // 맨 앞에 drag-cell td 추가
+        const dragTd = document.createElement('td');
+        dragTd.className = 'drag-cell';
+        tr.appendChild(dragTd);
+        const fields = ['name','category','region','subregion','address','manager','phone','email','ta_date','meeting_date','fu_date','status','possibility','amount'];
+        fields.forEach(function(field) {
+            const td = document.createElement('td');
+            td.setAttribute('data-field', field);
+            if(['ta_date','meeting_date','fu_date'].includes(field)) {
+                td.innerHTML = '<input type="date" style="width:100%;height:100%;box-sizing:border-box;padding:8px;border:none;background:transparent;font-size:inherit;font-family:inherit;line-height:inherit;display:block;">';
+            } else if(field==='category') {
+                td.innerText = '';
+            } else if(field==='region') {
+                td.innerText = '서울';
+                td.setAttribute('data-value', '서울');
+            } else if(field==='subregion') {
+                td.innerText = '관악구';
+            } else {
+                td.innerHTML = '<input type="text" style="width:100%;height:100%;box-sizing:border-box;padding:8px;border:none;background:transparent;font-size:inherit;font-family:inherit;line-height:inherit;display:block;">';
+            }
+            tr.appendChild(td);
+        });
+        // tbody에 '작성된 데이터가 없습니다.' 행이 있으면 삭제
+        const emptyRow = entryTbody.querySelector('tr td[colspan]');
+        if (emptyRow) {
+            emptyRow.parentElement.remove();
+        }
+        entryTbody.appendChild(tr);
+        tr.querySelector('input') && tr.querySelector('input').focus();
+        tr.addEventListener('focusout', function(e) {
+            setTimeout(function(){ isAdding=false; }, 200);
+        });
+        // 저장 로직
+        function saveNewRow() {
+            const data = {};
+            tr.querySelectorAll('td').forEach(function(td) {
+                const field = td.getAttribute('data-field');
+                if(!field) return;
+                const input = td.querySelector('input,select');
+                data[field] = input ? input.value : td.innerText;
+            });
+            if(!data.name) return; // 이름이 비어있으면 저장하지 않음
+            fetch('/diary/create/', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: 'name='+encodeURIComponent(data.name)+'&category='+encodeURIComponent(data.category)+'&region='+encodeURIComponent(data.region)+'&subregion='+encodeURIComponent(data.subregion)+'&address='+encodeURIComponent(data.address)+'&manager='+encodeURIComponent(data.manager)+'&phone='+encodeURIComponent(data.phone)+'&email='+encodeURIComponent(data.email)+'&ta_date='+encodeURIComponent(data.ta_date)+'&meeting_date='+encodeURIComponent(data.meeting_date)+'&fu_date='+encodeURIComponent(data.fu_date)+'&status='+encodeURIComponent(data.status)+'&possibility='+encodeURIComponent(data.possibility)+'&amount='+encodeURIComponent(data.amount)
+            }).then(function(response) {
+                return response.json();
+            }).then(function(resp) {
+                if(resp.success) location.reload();
+                else alert('저장 실패: '+resp.error);
+            });
+        }
+        // 셀에서 엔터/포커스아웃 시 저장
+        tr.querySelectorAll('input,select').forEach(function(input) {
+            input.onkeydown = function(e) { if(e.key==='Enter') saveNewRow(); };
+            input.onblur = function() { setTimeout(saveNewRow, 100); };
+        });
+        // region, subregion 셀 클릭 시 openDropdown
+        tr.querySelector('td[data-field="region"]').onclick = function() {
+            openDropdown(this, 'region', '', '서울', '관악구');
+        };
+        tr.querySelector('td[data-field="subregion"]').onclick = function() {
+            openDropdown(this, 'subregion', '', tr.querySelector('td[data-field="region"]').innerText, tr.querySelector('td[data-field="subregion"]').innerText);
+        };
+        // category 셀 클릭 시 openDropdown
+        tr.querySelector('td[data-field="category"]').onclick = function() {
+            openDropdown(this, 'category', '', '');
+        };
+    };
+    document.querySelectorAll('td[data-field="name"] .more-btn').forEach(function(btn){
+        btn.onclick = function(e){
+            e.stopPropagation();
+            const tr = btn.closest('tr');
+            const id = tr.getAttribute('data-id');
+            if(!id) { alert('ID 정보가 없습니다.'); return; }
+            fetch('/diary/update/?id='+id)
+              .then(r => r.text())
+              .then(function(text){
+                  console.log('응답본문:', text);
+                  try {
+                      const data = JSON.parse(text);
+                      if(data.success) showDetailModal(data.entry);
+                      else alert('상세정보 불러오기 실패: '+(data.error||''));
+                  } catch(e) {
+                      alert('상세정보 불러오기 실패: JSON 파싱 오류');
+                      console.error(e);
+                  }
+              })
+              .catch(function(err){
+                  alert('상세정보 불러오기 실패: 네트워크 오류\n' + err);
+                  console.error(err);
+              });
+        };
+    });
+    // 메모 모달 관련 함수 리팩토링
+    function openMemoModal(entryId, title, date) {
+        const modal = document.getElementById('memoModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const memoInput = document.getElementById('memoInput');
+        const memoPreview = document.getElementById('memoPreview');
+        const saveBtn = document.getElementById('saveMemoBtn');
+        const closeBtn = document.getElementById('closeMemoBtn');
+        let isEdit = false;
+        let currentMemo = '';
+        // 보기 모드로 전환
+        function setViewMode(mdText) {
+            isEdit = false;
+            memoInput.style.display = 'none';
+            saveBtn.style.display = 'none';
+            memoPreview.style.display = 'block';
+            memoPreview.innerHTML = marked.parse(mdText || '');
+            // 수정 버튼 추가
+            let editBtn = document.getElementById('editMemoBtn');
+            if (!editBtn) {
+                editBtn = document.createElement('button');
+                editBtn.id = 'editMemoBtn';
+                editBtn.textContent = '수정';
+                editBtn.style.marginLeft = '8px';
+                saveBtn.parentNode.insertBefore(editBtn, closeBtn);
+            }
+            editBtn.style.display = 'inline-block';
+            editBtn.onclick = function() {
+                setEditMode(currentMemo);
+            };
+        }
+        // 수정 모드로 전환
+        function setEditMode(mdText) {
+            isEdit = true;
+            memoInput.style.display = 'block';
+            saveBtn.style.display = 'inline-block';
+            memoPreview.style.display = 'block';
+            memoInput.value = mdText || '';
+            memoPreview.innerHTML = marked.parse(mdText || '');
+            let editBtn = document.getElementById('editMemoBtn');
+            if (editBtn) editBtn.style.display = 'none';
+            memoInput.oninput = function() {
+                memoPreview.innerHTML = marked.parse(memoInput.value || '');
+            };
+        }
+        // 저장
+        saveBtn.onclick = function() {
+            const newMemo = memoInput.value;
+            fetch('/fu_memo/' + entryId + '/', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: 'memo=' + encodeURIComponent(newMemo)
+            }).then(r => r.json()).then(function(resp) {
+                if (resp.success) {
+                    currentMemo = newMemo;
+                    setViewMode(currentMemo);
+                } else {
+                    alert('저장 실패: ' + (resp.error || ''));
+                }
+            });
+        };
+        closeBtn.onclick = function() {
+            modal.style.display = 'none';
+        };
+        // 최초 데이터 불러오기
+        fetch('/fu_memo/' + entryId + '/').then(r => r.json()).then(function(resp) {
+            if (resp.success) {
+                currentMemo = resp.memo || '';
+                modalTitle.textContent = (title || 'F/U 메모') + (date ? ' (' + date + ')' : '');
+                setViewMode(currentMemo);
+                modal.style.display = 'flex';
+            } else {
+                alert('메모 불러오기 실패: ' + (resp.error || ''));
+            }
+        });
+    }
+});
+function refreshTable() {
+    fetch('/').then(r=>r.text()).then(html=>{
+        const temp = document.createElement('div');
+        temp.innerHTML = html;
+        const newTable = temp.querySelector('#entryTable');
+        if (newTable) {
+            document.getElementById('entryTable').innerHTML = newTable.innerHTML;
+            bindTableCellEvents(); // 반드시 호출
+        }
+    });
+}
+function hexToRgba(hex, alpha) {
+    hex = hex.replace('#', '');
+    if (hex.length === 3) hex = hex.split('').map(x => x + x).join('');
+    const r = parseInt(hex.substring(0,2), 16);
+    const g = parseInt(hex.substring(2,4), 16);
+    const b = parseInt(hex.substring(4,6), 16);
+    return `rgba(${r},${g},${b},${alpha})`;
+}
+
+// 상세보기 모달 함수 추가
+function showDetailModal(entry) {
+    // 테이블과 동일한 필드 순서
+    const fieldOrder = [
+        'name','category_name','region_name','subregion','address','manager','phone','email','ta_date','meeting_date','fu_date','status_name','possibility','amount','created_at','updated_at'
+    ];
+    const fieldLabels = {
+        name: '이름',
+        category_name: '구분',
+        region_name: '지역',
+        subregion: '상세지역',
+        address: '주소',
+        manager: '담당자',
+        phone: '연락처',
+        email: '이메일',
+        ta_date: 'TA',
+        meeting_date: '미팅',
+        fu_date: 'F/U 일정',
+        status_name: '영업진행',
+        possibility: '가능성',
+        amount: '매출',
+        created_at: '생성일',
+        updated_at: '수정일',
+    };
+    let html = '<h3>상세 정보</h3><table style="width:100%">';
+    const readonlyFields = ['created_at', 'updated_at'];
+    const dropdownFields = ['category_name','region_name','status_name','subregion'];
+    let memoHtml = '';
+    fieldOrder.forEach(function(key) {
+        if (!(key in entry)) return;
+        let value = entry[key] ?? '';
+        let inputHtml = '';
+        if (dropdownFields.includes(key)) {
+            let btnStyle = '';
+            if(key==='category_name' && entry.category_color) btnStyle = `background:${hexToRgba(entry.category_color, 0.18)};`;
+            if(key==='status_name' && entry.status_color) btnStyle = `background:${hexToRgba(entry.status_color, 0.18)};`;
+            inputHtml = `<button type="button" class="add-btn" style="width:100%;background:#f8f9fa;color:#333;border:1px solid #eee;${btnStyle}" onclick="openDetailDropdown('${entry.id}','${key}',this)">${value||'선택'}</button>`;
+        } else if (key === 'address') {
+            inputHtml = `<input type="text" value="${value}" data-field="${key}" onchange="updateEntryField('${entry.id}', '${key}', this.value)">`;
+        } else if (readonlyFields.includes(key)) {
+            inputHtml = `<input type="text" value="${value}" readonly style="background:#f8f9fa;">`;
+        } else if (key.endsWith('_date')) {
+            inputHtml = `<input type="date" value="${value}" data-field="${key}" onchange="updateEntryField('${entry.id}', '${key}', this.value)">`;
+        } else {
+            inputHtml = `<input type="text" value="${value}" data-field="${key}" onchange="updateEntryField('${entry.id}', '${key}', this.value)">`;
+        }
+        html += `<tr><th style="text-align:right;padding:4px 8px;color:#888;">${fieldLabels[key] || key}</th><td style="padding:4px 8px;">${inputHtml}</td></tr>`;
+    });
+    // 메모는 textarea + 마크다운 렌더링 결과 동시 표시
+    if ('memo' in entry) {
+        memoHtml = `<div style="margin-top:18px;"><b>메모</b><br><textarea id="modalMemoInput" data-field="memo" style="width:98%;min-height:80px;">${entry.memo ?? ''}</textarea><div id="modalMemoPreview" style="border:1px solid #eee;padding:8px 10px;background:#fafbfc;min-height:40px;margin-top:6px;"></div></div>`;
+    }
+    html += '</table>' + memoHtml;
+    document.getElementById('detailModalContent').innerHTML = html + '<button onclick="closeDetailModal()" style="margin-top:16px;">닫기</button>';
+    document.getElementById('detailModal').style.display = 'flex';
+    // 메모 입력 시 마크다운 렌더링
+    if ('memo' in entry) {
+        const memoInput = document.getElementById('modalMemoInput');
+        const memoPreview = document.getElementById('modalMemoPreview');
+        if(memoInput && memoPreview) {
+            function renderPreview() {
+                memoPreview.innerHTML = marked.parse(memoInput.value || '');
+            }
+            memoInput.addEventListener('input', renderPreview);
+            renderPreview();
+            memoInput.onchange = function() {
+                updateEntryField(entry.id, 'memo', memoInput.value);
+            };
+        }
+    }
+}
+// 상세 모달용 드롭다운 오픈 함수
+function openDetailDropdown(id, key, btn) {
+    let type = '';
+    if(key==='category_name') type = 'category';
+    else if(key==='region_name') type = 'region';
+    else if(key==='status_name') type = 'status';
+    else if(key==='subregion') type = 'subregion';
+    else if(key==='address') type = 'address';
+    // 모달 내에서 드롭다운을 띄우기 위해 임시 td 생성
+    let fakeTd = document.createElement('td');
+    fakeTd.style.position = 'fixed';
+    fakeTd.style.left = (btn.getBoundingClientRect().left + window.scrollX) + 'px';
+    fakeTd.style.top = (btn.getBoundingClientRect().top + window.scrollY + btn.offsetHeight) + 'px';
+    document.body.appendChild(fakeTd);
+    // openDropdown은 td, type, id, currentId, currentSubregion 순서
+    let currentId = btn.innerText;
+    let currentSubregion = '';
+    if(type==='subregion') {
+        // region_name을 찾아서 전달
+        const regionVal = btn.closest('table').querySelector('button[onclick*="region_name"]').innerText;
+        currentId = regionVal;
+        currentSubregion = btn.innerText;
+    }
+    openDropdown(fakeTd, type, id, currentId, currentSubregion);
+    // 드롭다운에서 값 선택 후 모달도 갱신
+    function afterUpdateAll(id) {
+        fetch('/diary/update/?id='+id)
+        .then(r=>r.json())
+        .then(function(data){
+            if(data.success && data.entry) {
+                showDetailModal(data.entry);
+                updateTableRow(data.entry);
+                refreshKanban();
+            }
+        });
+    }
+    // 드롭다운 닫힐 때 fakeTd도 제거
+    const observer = new MutationObserver(function() {
+        if(!document.body.contains(fakeTd)) observer.disconnect();
+        if(!dropdown || !document.body.contains(dropdown)) {
+            fakeTd.remove();
+            observer.disconnect();
+        }
+    });
+    observer.observe(document.body, {childList:true, subtree:true});
+
+    // 드롭다운에서 값 선택 시 afterUpdateAll을 호출하도록 openDropdown 내부에 콜백을 전달
+    // openDropdown에서 값을 선택하는 부분에 아래와 같이 추가:
+    // if (typeof window._modalAfterUpdateAll === 'function') window._modalAfterUpdateAll(id);
+    window._modalAfterUpdateAll = afterUpdateAll;
+}
+function updateEntryField(id, field, value) {
+    fetch('/diary/update/', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'id='+encodeURIComponent(id)+'&field='+encodeURIComponent(field)+'&value='+encodeURIComponent(value)
+    })
+    .then(r=>r.json())
+    .then(function(data){
+        if(!data.success) {
+            alert('수정 실패: '+(data.error||''));
+            return;
+        }
+        // 항상 최신 entry로 모달/테이블/보드 동기화
+        return fetch('/diary/update/?id='+id);
+    })
+    .then(r => r ? r.json() : null)
+    .then(function(data){
+        if(data && data.success && data.entry) {
+            showDetailModal(data.entry);
+            updateTableRow(data.entry);
+            refreshKanban();
+            if(field === 'fu_date' && window.calendar) window.calendar.refetchEvents();
+        }
+    })
+    .catch(function(err){
+        alert('수정 실패: 네트워크 오류');
+        console.error(err);
+    });
+}
+function closeDetailModal() {
+    document.getElementById('detailModal').style.display = 'none';
+    bindTableCellEvents(); // ...버튼 이벤트 복구
+}
+function updateTableRow(entry) {
+    const tr = document.querySelector(`#entryTbody tr[data-id='${entry.id}']`);
+    if(tr) {
+        const fieldMap = {
+            name: 'name',
+            category: 'category',
+            region: 'region',
+            subregion: 'subregion',
+            address: 'address',
+            manager: 'manager',
+            phone: 'phone',
+            email: 'email',
+            ta_date: 'ta_date',
+            meeting_date: 'meeting_date',
+            fu_date: 'fu_date',
+            status: 'status',
+            possibility: 'possibility',
+            amount: 'amount'
+        };
+        for(const key in fieldMap) {
+            const td = tr.querySelector(`td[data-field='${fieldMap[key]}']`);
+            if(!td) continue;
+            if(key==='category') {
+                td.innerText = entry.category_name || '';
+                td.setAttribute('data-value', entry.category_id || '');
+                if(entry.category_color) {
+                    td.style.background = hexToRgba(entry.category_color, 0.18);
+                } else {
+                    td.style.background = '';
+                }
+            } else if(key==='region') {
+                td.innerText = entry.region_name || '';
+                td.setAttribute('data-value', entry.region_id || '');
+                td.style.background = '';
+            } else if(key==='status') {
+                td.innerText = entry.status_name || '';
+                td.setAttribute('data-value', entry.status_id || '');
+                if(entry.status_color) {
+                    td.style.background = hexToRgba(entry.status_color, 0.18);
+                } else {
+                    td.style.background = '';
+                }
+            } else if(key==='name') {
+                td.innerHTML = `<div class="name-text">${entry.name || ''}</div><div class="more-btn-wrapper"><div class="more-btn" style="cursor:pointer;">⋯</div></div>`;
+                const newMoreBtn = td.querySelector('.more-btn');
+                if(newMoreBtn) {
+                    newMoreBtn.onclick = function(e){
+                        e.stopPropagation();
+                        const tr = td.closest('tr');
+                        const id = tr.getAttribute('data-id');
+                        if(!id) { alert('ID 정보가 없습니다.'); return; }
+                        fetch('/diary/update/?id='+id)
+                          .then(r => r.text())
+                          .then(function(text){
+                              try {
+                                  const data = JSON.parse(text);
+                                  if(data.success) showDetailModal(data.entry);
+                                  else alert('상세정보 불러오기 실패: '+(data.error||''));
+                              } catch(e) {
+                                  alert('상세정보 불러오기 실패: JSON 파싱 오류');
+                                  console.error(e);
+                              }
+                          })
+                          .catch(function(err){
+                              alert('상세정보 불러오기 실패: 네트워크 오류\n' + err);
+                              console.error(err);
+                          });
+                    };
+                }
+            } else {
+                td.innerText = entry[key] ?? '';
+                td.style.background = '';
+            }
+        }
+    }
+}
+</script>
+</body>
+</html> 
