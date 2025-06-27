@@ -2598,7 +2598,7 @@ function updateTableRow(entry) {
         }
         
         // 서버에 새 속성 추가 요청
-        fetch('/add_attribute/', {
+        fetch('/diary/add_attribute/', {
             method: 'POST',
             headers: {'Content-Type': 'application/x-www-form-urlencoded'},
             body: 'name=' + encodeURIComponent(name) + '&type=' + encodeURIComponent(type)
