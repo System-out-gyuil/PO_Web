@@ -1764,7 +1764,7 @@ function showDetailModal(rowData, rowId) {
     const user = { id: 1 }; // 임시로 user id 1 사용
     
     // 백엔드에서 사용자의 속성 목록을 가져와야 함
-    fetch('/get_user_attributes/')
+    fetch('/diary/get_user_attributes/')
       .then(r => r.json())
       .then(function(attributesData) {
           if (!attributesData.success) {
@@ -1847,7 +1847,7 @@ function openDetailDropdown(rowId, fieldName, btn) {
     let dropdownType = '';
     
     // 속성 타입에 따라 드롭다운 타입 결정
-    fetch('/get_user_attributes/')
+    fetch('/diary/get_user_attributes/')
         .then(r => r.json())
         .then(function(attributesData) {
             if (!attributesData.success) {
