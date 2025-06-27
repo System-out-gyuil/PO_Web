@@ -375,23 +375,23 @@ a {
   }
 }
 
-@media (max-width: 360px) {
+@media (max-width: 380px) {
   .search-container {
     justify-content: flex-start;
     margin: 0 auto;
   }
 
   .search-container input {
-    width: 190px;
+    width: 52%;
   }
 
-  .fixed-search-container {
+  /* .fixed-search-container {
     position: fixed;
     top: 80px;
     left: 0;
     right: 0;
     z-index: 1000;
-  }
+  } */
 
   body {
     padding-top: 120px;

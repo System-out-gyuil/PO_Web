@@ -23,6 +23,9 @@ from po_admin.models import CustUser
 from django.db.models import Q
 from django.db.models import Max
 
+# 지원사업 정보 업데이트
+# 화면구성 X
+
 class Command(BaseCommand):
     help = "DB 업데이트"
 

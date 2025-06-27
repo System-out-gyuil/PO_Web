@@ -14,6 +14,7 @@ const percentBox = document.querySelector('.percent-box-text');
 let currentPercent = 0; // 현재 퍼센트 상태 저장
 
 function animatePercent(targetPercent) {
+  console.log(targetPercent);
   const duration = 500;
   const frameRate = 30;
   const totalFrames = duration / (1000 / frameRate);
@@ -21,7 +22,7 @@ function animatePercent(targetPercent) {
 
   let frame = 0;
 
-  const activePercentBox = document.querySelector('.search-container[style*="flex"] .percent-box-text');
+  const activePercentBox = document.querySelector('section[style*="flex"] .percent-box-text');
   if (!activePercentBox) return;
 
   const interval = setInterval(() => {
@@ -41,7 +42,7 @@ const selectedColor = '#bfc2fd';
 const defaultColor = '#fff';
 
 // 검색 결과 기다리는 창
-const searchResultContainer = document.querySelector('.search-result-container');
+const searchResultContainer = document.querySelector('#first-section');
 
 // 검색 결과 기다리는 창 빼고 display: none
 function WatingSearchResult() {
@@ -56,14 +57,16 @@ function WatingSearchResult() {
 
 // 검색 결과 없음 창
 const searchNoneResultContainer = document.querySelector('.search-none-result-container-wrapper');
+const html = document.querySelector('html');
 
 function WatingNoneSearchResult() {
   businessStyleContainer.style.display = 'none';
   searchNoneResultContainer.style.display = 'block';
+  html.style.removeProperty('height');
 }
 
 // 지역 선택 창
-const search_region_container = document.querySelector('.search-region-container');
+const search_region_container = document.querySelector('#region-section');
 const search_region_button = document.querySelector('.search-region-btn-container');
 regions = document.querySelectorAll('.region');
 
@@ -152,7 +155,7 @@ search_region_button.addEventListener('click', () => {
     
 
 // 사업자 현황 선택 창
-const businessStyleContainer = document.querySelector('.business-style-container');
+const businessStyleContainer = document.querySelector('#business-style-section');
 const businessStyleItems = document.querySelectorAll('.business-style-item-text');
 const search_business_btn_container = document.querySelector('.search-business-btn-container');
 function businessStyle() {
@@ -193,7 +196,7 @@ search_business_btn_container.addEventListener('click', () => {
 });
 
 // 업종 선택 창
-const search_industry_container = document.querySelector('.search-industry-container');
+const search_industry_container = document.querySelector('#industry-section');
 const industryInput = document.querySelector('.industry-category-input');
 const bigCategoryBox = document.querySelector('.industry-big-category');
 const smallCategoryBox = document.querySelector('.industry-small-category');
@@ -263,7 +266,7 @@ function industrySection(e) {
 // 사업개시일 선택 창
 const businessPeriodYear = document.querySelector('.business-period-year');
 const businessPeriodMonth = document.querySelector('.business-period-month');
-const businessPeriodContainer = document.querySelector('.business-period-container');
+const businessPeriodContainer = document.querySelector('#business-period-section');
 const businessPeriodButton = document.querySelector('.search-business-period-btn-container');
 
 // 연도: 숫자 2자리만 허용
@@ -311,7 +314,7 @@ businessPeriodButton.addEventListener('click', () => {
 
 // 전년도 매출 선택 창
 const billingLastYearItems = document.querySelectorAll('.billing-last-year-item');
-const billingLastYearContainer = document.querySelector('.billing-last-year-container');
+const billingLastYearContainer = document.querySelector('#billing-last-year-section');
 const billingLastYearButton = document.querySelector('.billing-last-year-button');
 const billingLastYearButtonContainer = document.querySelector('.search-billing-btn-container');
 
@@ -345,7 +348,7 @@ billingLastYearButtonContainer.addEventListener('click', () => {
 });
 
 // 수출 실적 선택 창
-const exportPerformanceContainer = document.querySelector('.export-performance-container');
+const exportPerformanceContainer = document.querySelector('#export-performance-section');
 const exportPerformances = document.querySelectorAll('.export-performance-item-text');
 const exportPerformanceButton = document.querySelector('.search-export-performance-btn-container');
 
@@ -383,7 +386,7 @@ exportPerformanceButton.addEventListener('click', () => {
 });
 
 // 직원수 선택 창
-const employeeNumberContainer = document.querySelector('.employee-number-container');
+const employeeNumberContainer = document.querySelector('#employee-number-section');
 const employeeNumberInput = document.querySelector('.employee-number-input');
 const employeeNumberButton = document.querySelector('.employee-number-button');
 const employeeNumberItems = document.querySelectorAll('.employee-number-item');
@@ -425,7 +428,7 @@ function search(selectedConditions) {
   window.location.href = `/search/ai-result/?${query}`;
 }
 
-const warningContainer = document.querySelector('.select-warning-container-wrapper');
+const warningContainer = document.querySelector('#select-warning-section');
 
 function warning() {
   console.log('warning');
@@ -454,20 +457,21 @@ const percentMap = {
 
 searchBackIcons.forEach(searchBackIcon => {
   searchBackIcon.addEventListener('click', () => {
-    let currentContainer = searchBackIcon.parentElement;
+    let currentContainer = searchBackIcon.parentElement.parentElement;
+    // console.log(currentContainer);
     let prevContainer;
 
-    if (currentContainer.classList.contains('business-style-container')) {
+    if (currentContainer.id === 'business-style-section') {
       prevContainer = search_region_container;
-    } else if (currentContainer.classList.contains('search-industry-container')) {
+    } else if (currentContainer.id === 'industry-section') {
       prevContainer = businessStyleContainer;
-    } else if (currentContainer.classList.contains('business-period-container')) {
+    } else if (currentContainer.id === 'business-period-section') {
       prevContainer = search_industry_container;
-    } else if (currentContainer.classList.contains('billing-last-year-container')) {
+    } else if (currentContainer.id === 'billing-last-year-section') {
       prevContainer = businessPeriodContainer;
-    } else if (currentContainer.classList.contains('export-performance-container')) {
+    } else if (currentContainer.id === 'export-performance-section') {
       prevContainer = billingLastYearContainer;
-    } else if (currentContainer.classList.contains('employee-number-container')) {
+    } else if (currentContainer.id === 'employee-number-section') {
       prevContainer = exportPerformanceContainer;
     }
 
@@ -476,7 +480,8 @@ searchBackIcons.forEach(searchBackIcon => {
       prevContainer.style.display = 'flex';
 
       // ✅ 퍼센트 복원 애니메이션
-      const containerClass = [...prevContainer.classList].find(cls => percentMap.hasOwnProperty(cls));
+      const containerClass = [...prevContainer.children[0].classList].find(cls => percentMap.hasOwnProperty(cls));
+      console.log("123", containerClass);
       if (containerClass) {
         animatePercent(percentMap[containerClass]);
       }
@@ -486,7 +491,7 @@ searchBackIcons.forEach(searchBackIcon => {
 
 
 const searchModalBtn = document.querySelector('.industry-search-text2');
-const indModalWrap = document.querySelector('.ind-modal-wrap');
+const indModalWrap = document.querySelector('#industry-search-section');
 const indModalCloseBtn = document.querySelector('.ind-modal-close-btn');
 const indIcon = document.querySelector('.industry-search-icon');
 

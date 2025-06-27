@@ -1,5 +1,14 @@
 body {
   background: linear-gradient(10deg, #93dafa, #cad8f4, #ffffff);
+  padding-top: 0;
+}
+
+form {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
 }
 
 .inquiry-container {
@@ -7,7 +16,7 @@ body {
   width: 30%;
   height: 700px;
   background: linear-gradient(150deg, #ffffff, #d4dff8);
-  margin-top: 50px;
+  /* margin-top: 50px; */
   border-radius: 15px;
   display: flex;
   justify-content: center;
@@ -125,9 +134,9 @@ input[type="checkbox"] {
   gap: 10px;
 }
 
-@media (max-width: 450px) {
+@media (max-width: 500px) {
   .inquiry-container {
-    width: 97%;
+    width: 90%;
     margin-top: 0;
   }
 
@@ -140,7 +149,7 @@ input[type="checkbox"] {
 
 @media (max-width: 360px) {
   .inquiry-container {
-    width: 97%;
+    width: 90%;
     margin-top: 0;
   }
 

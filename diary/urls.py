@@ -12,4 +12,11 @@ urlpatterns = [
     path('statuses/', views.status_list, name='status_list'),
     path('board/', views.board_view, name='board_view'),
     path('update/', views.update_entry, name='update_entry'),
+    path('create_new_row/', views.create_new_row, name='create_new_row'),
+    path('update_row_field/', views.update_row_field, name='update_row_field'),
+    path('dropdown_options/', views.dropdown_options, name='dropdown_options'),
+    path('add_attribute/', views.add_attribute, name='add_attribute'),
+    path('get_row_details/<int:row_id>/', views.get_row_details, name='get_row_details'),
+    path('debug_fu_data/', views.debug_fu_data, name='debug_fu_data'),
+    path('get_user_attributes/', views.get_user_attributes, name='get_user_attributes'),
 ] 

@@ -9,21 +9,11 @@ def get_field(entry, field):
         return val if val is not None else ''
     return entry.extra.get(field, '')
 
+# 딕셔너리용 get_item 필터 (values|get_item:attr.name)
 @register.filter
-def get_item(entry, attr_name):
+def get_item(dictionary, key):
     try:
-        from diary.models import CustomAttribute, AttributeValue, DropdownOption
-        attr = CustomAttribute.objects.get(name=attr_name, user=entry.user)
-        attr_value = AttributeValue.objects.filter(entry=entry, attribute=attr).first()
-        value = attr_value.value if attr_value else ''
-        # dropdown 타입이면 id를 값으로 변환
-        if attr.type.name == 'dropdown':
-            try:
-                option = DropdownOption.objects.get(id=value)
-                return option.value
-            except DropdownOption.DoesNotExist:
-                return value
-        return value
+        return dictionary.get(key, '')
     except Exception:
         return ''
 

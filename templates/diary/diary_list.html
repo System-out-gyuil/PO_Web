@@ -13,7 +13,8 @@
             border-collapse: collapse; 
             margin-top: 20px; 
         }
-        th, td { border: 1px solid #eee; padding: 0.5em 12px; text-align: center; min-width: 80px; height: 36px; box-sizing: border-box; }
+
+        th, td { border: 1px solid #eee; padding: 0.5em 12px; text-align: center; min-width: 140px; height: 36px; box-sizing: border-box; }
         th { background: #f1f3f6; }
         tr:nth-child(even) { background: #fafbfc; }
         input, select { width: 100%; height: 100%; box-sizing: border-box; padding: 8px; border: none; background: transparent; font-size: inherit; font-family: inherit; line-height: inherit; display: block; }
@@ -144,91 +145,265 @@
         }
         .edit-col-btn, .del-col-btn { display: none; margin-left: 4px; }
         th.col-active .edit-col-btn, th.col-active .del-col-btn { display: inline-block; }
+        td[data-field] { position: relative; }
+        .table-edit-input {
+            position: absolute;
+            left: 0; top: 0;
+            width: max-content;
+            min-width: 100%;
+            background: #fffbe6;
+            z-index: 10;
+            border: none;
+            font-size: inherit;
+            font-family: inherit;
+            line-height: inherit;
+            padding: 0;
+            margin: 0;
+        }
+        .fc-event {
+            background: transparent !important;
+            border: none !important;
+        }
+        
+        /* 정렬/필터 관련 스타일 */
+        .sort-filter-container {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            gap: 4px;
+        }
+        
+        .sort-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #666;
+            font-size: 12px;
+            padding: 2px;
+            border-radius: 3px;
+            transition: background 0.2s;
+        }
+        
+        .sort-btn:hover {
+            background: #e9ecef;
+        }
+        
+        .sort-btn.active {
+            color: #007bff;
+            background: #e3f2fd;
+        }
+        
+        .filter-input {
+            width: 100%;
+            margin-top: 4px;
+            padding: 4px 6px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            font-size: 11px;
+            background: #fff;
+        }
+        
+        .filter-input:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+        }
+        
+        .clear-filters-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        
+        .clear-filters-btn:hover {
+            background: #c82333;
+        }
+        
+        .filter-controls {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            gap: 10px;
+        }
+        
+        .filter-status {
+            font-size: 12px;
+            color: #666;
+        }
     </style>
+    <script>
+        window.ATTR_FIELDS = JSON.parse('{{ attributes_json|escapejs }}');
+        window.DROPDOWN_OPTIONS = JSON.parse('{{ dropdown_options|escapejs }}');
+        
+        // 정렬/필터 상태 관리
+        window.currentSort = { column: null, direction: null };
+        window.filters = {};
+        window.originalRows = [];
+    </script>
 </head>
 <body>
 <div class="container">
     <h1>영업 관리표</h1>
-    <div style="display:flex;gap:10px;margin-bottom:18px;">
-        <button id="tabTable" class="add-btn" style="background:#007bff;color:#fff;">테이블 보기</button>
-        {% comment %} <button id="tabBoard" class="add-btn" style="background:#eee;color:#333;">보드 보기</button> {% endcomment %}
+    
+    <!-- 필터 컨트롤 -->
+    <div class="filter-controls">
+        <span class="filter-status" id="filterStatus">전체 데이터 표시 중</span>
+        <button class="clear-filters-btn" onclick="clearAllFilters()">필터 초기화</button>
     </div>
+    
     <div id="tableView" style="overflow-x:auto; max-width:100%;">
         <table id="entryTable" style="width:auto; min-width:unset;">
-                <thead>
-                <tr>
-                    <th class="drag-cell"></th>
-                <th>이름</th><th>구분</th><th>지역</th><th>상세지역</th><th>주소</th><th>담당자</th><th>연락처</th><th>이메일</th><th>TA</th><th>미팅</th><th>F/U 일정</th><th>영업진행</th><th>가능성</th><th>매출</th>
-                </tr>
-                
-                </thead>
-                <tbody id="entryTbody">
-                {% for entry in entries %}
-                <tr data-id="{{ entry.id }}">
+            <thead>
+            <tr>
+                <th class="drag-cell"></th>
+                {% for attr in attributes %}
+                    <th data-column="{{ attr.name }}">
+                        <div class="sort-filter-container">
+                            <div class="header-content">
+                                <span>{{ attr.name }}</span>
+                                <button class="sort-btn" onclick="sortTable('{{ attr.name }}', 'asc')" title="오름차순 정렬">▲</button>
+                                <button class="sort-btn" onclick="sortTable('{{ attr.name }}', 'desc')" title="내림차순 정렬">▼</button>
+                            </div>
+                            <input type="text" class="filter-input" placeholder="필터..." 
+                                   onkeyup="filterTable('{{ attr.name }}', this.value)" 
+                                   data-column="{{ attr.name }}">
+                        </div>
+                    </th>
+                {% endfor %}
+                <th class="add-attribute-th" style="background:#f8f9fa;border:2px dashed #dee2e6;cursor:pointer;text-align:center;color:#6c757d;font-weight:normal;min-width:120px;" onclick="openAddAttributeModal()">
+                    + 속성 추가
+                </th>
+            </tr>
+            </thead>
+            <tbody id="entryTbody">
+                {% for row in rows %}
+                <tr data-id="{{ row.id }}">
                     <td class="drag-cell"><span class="drag-handle">⋮⋮⋮</span></td>
-                <td data-field="name"><div class="name-text">{{ entry.name }}</div><div class="more-btn-wrapper"><div class="more-btn" style="cursor:pointer;">⋯</div></div></td>
-                <td data-field="category" data-value="{% if entry.category %}{{ entry.category.id }}{% endif %}" style="background:{% if entry.category.color %}{{ entry.category.color|to_rgba:'0.18' }}{% endif %};">{% if entry.category %}{{ entry.category }}{% else %}&nbsp;{% endif %}</td>
-                <td data-field="region" data-value="{% if entry.region %}{{ entry.region.id }}{% endif %}">{% if entry.region %}{{ entry.region }}{% else %}&nbsp;{% endif %}</td>
-                <td data-field="subregion">{{ entry.subregion }}</td>
-                <td data-field="address">{{ entry.address }}</td>
-                <td data-field="manager">{{ entry.manager }}</td>
-                <td data-field="phone">{{ entry.phone }}</td>
-                <td data-field="email">{{ entry.email }}</td>
-                <td data-field="ta_date">{{ entry.ta_date|date:'Y-m-d' }}</td>
-                <td data-field="meeting_date">{{ entry.meeting_date|date:'Y-m-d' }}</td>
-                <td data-field="fu_date">{{ entry.fu_date|date:'Y-m-d' }}</td>
-                <td data-field="status" data-value="{% if entry.status %}{{ entry.status.id }}{% endif %}" style="background:{% if entry.status and entry.status.color %}{{ entry.status.color|to_rgba:'0.18' }}{% endif %};">{% if entry.status %}{{ entry.status.name }}{% else %}&nbsp;{% endif %}</td>
-                <td data-field="possibility">{{ entry.possibility }}</td>
-                <td data-field="amount">{{ entry.amount }}</td>
+                    {% for attr in attributes %}
+                        {% if attr.name == '이름' %}
+                            <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}">
+                                <div class="name-text">{{ row.values|get_item:attr.name|get_item:'label' }}</div>
+                                <div class="more-btn-wrapper"><div class="more-btn" style="cursor:pointer;">⋯</div></div>
+                            </td>
+                        {% elif attr.attributeType_name == 'dropdown' %}
+                            <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" style="background:{{ row.values|get_item:attr.name|get_item:'color'|default:''|to_rgba:'0.18' }};">
+                                {{ row.values|get_item:attr.name|get_item:'label' }}
+                            </td>
+                        {% elif attr.attributeType_name == 'datetime' %}
+                            <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}">
+                                {{ row.values|get_item:attr.name|get_item:'label' }}
+                            </td>
+                        {% else %}
+                            <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}">{{ row.values|get_item:attr.name|get_item:'label' }}</td>
+                        {% endif %}
+                    {% endfor %}
+                    <td class="add-attribute-cell" style="background:#f8f9fa;"></td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="15">작성된 데이터가 없습니다.</td></tr>
+                <tr>
+                    <td class="drag-cell"><span class="drag-handle">⋮⋮⋮</span></td>
+                    {% for attr in attributes %}
+                        {% if attr.name == '이름' %}
+                            <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}">
+                                <div class="name-text">작성된 데이터가 없습니다.</div>
+                                <div class="more-btn-wrapper"><div class="more-btn" style="cursor:pointer;">⋯</div></div>
+                            </td>
+                        {% elif attr.attributeType_name == 'dropdown' %}
+                            <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}">
+                                
+                            </td>
+                        {% elif attr.attributeType_name == 'datetime' %}
+                            <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}">
+                                
+                            </td>
+                        {% else %}
+                            <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}"></td>
+                        {% endif %}
+                    {% endfor %}
+                    <td class="add-attribute-cell" style="background:#f8f9fa;"></td>
+                </tr>
                 {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        <div style="margin:10px 0 20px 0;">
-            <button id="addRowBtn" class="add-btn" style="width:180px;">+ 새로 만들기</button>
-        </div>
-        <div id="boardView">
-            <div class="board-container">
-                {% for col in board %}
-                <div class="board-col" data-status-id="{{ col.status.id }}" style="background:{% if col.status.color %}{{ col.status.color|to_rgba:'0.10' }}{% endif %};">
-                    <div class="board-col-title" style="background:{% if col.status.color %}{{ col.status.color|to_rgba:'0.18' }}{% endif %};border-left:6px solid {{ col.status.color|default:'#007bff' }};padding-left:10px;">{{ col.status.name }}</div>
-                    <div class="board-cards">
-                        {% for entry in col.entries %}
-                        <div class="board-card" data-entry-id="{{ entry.id }}">
-                            <div class="board-card-title">{{ entry.name }}</div>
-                            <div class="board-card-amount">{% if entry.amount %}₩{{ entry.amount }}{% endif %}</div>
-                        </div>
-                        {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div style="margin:10px 0 20px 0;">
+        <button id="addRowBtn" class="add-btn" style="width:180px;">+ 새로 만들기</button>
+    </div>
+    <div id="boardView">
+        <div class="board-container">
+            {% for col in board %}
+            <div class="board-col" data-status-id="{{ col.status.id }}" style="background:{% if col.status.color %}{{ col.status.color|to_rgba:'0.10' }}{% endif %};">
+                <div class="board-col-title" style="background:{% if col.status.color %}{{ col.status.color|to_rgba:'0.18' }}{% endif %};border-left:6px solid {{ col.status.color|default:'#007bff' }};padding-left:10px;">{{ col.status.name }}</div>
+                <div class="board-cards">
+                    {% for entry in col.entries %}
+                    <div class="board-card" data-entry-id="{{ entry.id }}">
+                        <div class="board-card-title">{% if entry.name %}{{ entry.name }}{% else %}(이름 없음){% endif %}</div>
+                        <div class="board-card-amount">{% if entry.amount %}₩{{ entry.amount }}{% endif %}</div>
                     </div>
-                    <button class="add-card-btn">+ 새로 만들기</button>
+                    {% endfor %}
                 </div>
-                {% endfor %}
+                <button class="add-card-btn" style="display:none;"></button>
             </div>
+            {% endfor %}
         </div>
-        <div id="calendar" style="margin-top:40px;"></div>
-        <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
-        <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
-        <!-- 모달창 -->
-        <div id="memoModal" style="display:none;position:fixed;left:0;top:0;width:100vw;height:100vh;background:rgba(0,0,0,0.4);z-index:1000;align-items:center;justify-content:center;">
-          <div style="background:#fff;padding:24px 20px 16px 20px;border-radius:8px;min-width:350px;max-width:90vw;min-height:200px;max-height:80vh;overflow:auto;position:relative;">
-            <h3 id="modalTitle">F/U 메모</h3>
-            <textarea id="memoInput" style="width:100%;height:120px;"></textarea>
-            <div style="margin:10px 0;">
-              <b>미리보기:</b>
-              <div id="memoPreview" style="border:1px solid #eee;padding:8px 10px;background:#fafbfc;min-height:40px;"></div>
-            </div>
-            <button id="saveMemoBtn" style="background:#007bff;color:#fff;border:none;padding:7px 15px;border-radius:5px;">저장</button>
-            <button id="closeMemoBtn" style="margin-left:8px;">닫기</button>
-          </div>
+    </div>
+    <div id="calendar" style="margin-top:40px;"></div>
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+    <!-- 모달창 -->
+    <div id="memoModal" style="display:none;position:fixed;left:0;top:0;width:100vw;height:100vh;background:rgba(0,0,0,0.4);z-index:1000;align-items:center;justify-content:center;">
+      <div style="background:#fff;padding:24px 20px 16px 20px;border-radius:8px;min-width:350px;max-width:90vw;min-height:200px;max-height:80vh;overflow:auto;position:relative;">
+        <h3 id="modalTitle">F/U 메모</h3>
+        <textarea id="memoInput" style="width:100%;height:120px;"></textarea>
+        <div style="margin:10px 0;">
+          <b>미리보기:</b>
+          <div id="memoPreview" style="border:1px solid #eee;padding:8px 10px;background:#fafbfc;min-height:40px;"></div>
         </div>
-        <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
-        <div id="detailModal" style="display:none;position:fixed;left:0;top:0;width:100vw;height:100vh;z-index:3000;background:rgba(0,0,0,0.3);align-items:center;justify-content:center;">
-          <div id="detailModalContent" style="background:#fff;min-width:400px;max-width:90vw;min-height:300px;max-height:90vh;overflow:auto;border-radius:10px;padding:30px 30px 20px 30px;position:relative;"></div>
+        <button id="saveMemoBtn" style="background:#007bff;color:#fff;border:none;padding:7px 15px;border-radius:5px;">저장</button>
+        <button id="closeMemoBtn" style="margin-left:8px;">닫기</button>
+      </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+    <div id="detailModal" style="display:none;position:fixed;left:0;top:0;width:100vw;height:100vh;z-index:3000;background:rgba(0,0,0,0.3);align-items:center;justify-content:center;">
+      <div id="detailModalContent" style="background:#fff;min-width:400px;max-width:90vw;min-height:300px;max-height:90vh;overflow:auto;border-radius:10px;padding:30px 30px 20px 30px;position:relative;"></div>
+    </div>
+    
+    <!-- 속성 추가 모달 -->
+    <div id="addAttributeModal" style="display:none;position:fixed;left:0;top:0;width:100vw;height:100vh;background:rgba(0,0,0,0.4);z-index:2000;align-items:center;justify-content:center;">
+      <div style="background:#fff;padding:30px;border-radius:10px;min-width:400px;max-width:90vw;">
+        <h3 style="margin:0 0 20px 0;">새 속성 추가</h3>
+        <div style="margin-bottom:15px;">
+          <label style="display:block;margin-bottom:5px;font-weight:bold;">속성명:</label>
+          <input type="text" id="attributeName" placeholder="속성명을 입력하세요" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;">
         </div>
+        <div style="margin-bottom:20px;">
+          <label style="display:block;margin-bottom:5px;font-weight:bold;">속성 타입:</label>
+          <select id="attributeType" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;">
+            <option value="text">텍스트</option>
+            <option value="dropdown">드롭다운</option>
+            <option value="datetime">날짜</option>
+          </select>
+        </div>
+        <div style="text-align:right;">
+          <button onclick="closeAddAttributeModal()" style="margin-right:10px;padding:8px 16px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer;">취소</button>
+          <button onclick="saveNewAttribute()" style="padding:8px 16px;background:#007bff;color:#fff;border:none;border-radius:4px;cursor:pointer;">추가</button>
+        </div>
+      </div>
     </div>
 </div>
 <script>
@@ -256,7 +431,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
     dropdown.className = 'dropdown-edit';
     dropdown.style.top = (td.getBoundingClientRect().top + window.scrollY + td.offsetHeight) + 'px';
     dropdown.style.left = (td.getBoundingClientRect().left + window.scrollX) + 'px';
-    let label = type=="category"?"구분":(type=="region"?"지역":(type=="subregion"?"상세지역":"영업진행"));
+    
     if(type === 'region') {
         // 지역만 선택하는 드롭다운
         var regionNames = ['서울','경기','인천','대구','부산','광주','대전','울산','세종','강원','충북','충남','전북','전남'];
@@ -300,7 +475,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                 fetch('/diary/update/', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                    body: 'id='+id+'&field=region&value='+encodeURIComponent(selectedRegion)
+                    body: 'id='+id+'&field=지역&value='+encodeURIComponent(selectedRegion)
                 }).then(() => {
                     fetch('/diary/update/?id='+id)
                       .then(r=>r.json())
@@ -308,7 +483,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                           if(data.success && data.entry) {
                               updateTableRow(data.entry);
                               refreshKanban();
-                              if (typeof window._modalAfterUpdateAll === 'function') { window._modalAfterUpdateAll(id); window._modalAfterUpdateAll = null; }
+                              if (typeof window._modalAfterUpdateAll === 'function') window._modalAfterUpdateAll(id); window._modalAfterUpdateAll = null; 
                           }
                       });
                 });
@@ -318,7 +493,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
             if(dropdown && !dropdown.contains(e.target)) { closeDropdown(); document.removeEventListener('mousedown', handler); }
         });
         return;
-    } else if(type === 'subregion') {
+    } else if(type === 'region_detail') {
         // 상세지역만 선택하는 드롭다운
         var regionMap = {
             '서울': ['관악구','금천구','강남구','강서구','강동구','강북구','광진구','구로구','노원구','도봉구','동대문구','동작구','마포구','서대문구','서초구','성동구','성북구','송파구','양천구','영등포구','용산구','은평구','종로구','중구','중랑구'],
@@ -336,7 +511,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
             '전북': ['전주시','군산시','익산시','정읍시','남원시','김제시','완주군','진안군','무주군','장수군','임실군','순창군','고창군','부안군'],
             '전남': ['목포시','여수시','순천시','나주시','광양시','담양군','곡성군','구례군','고흥군','보성군','화순군','장흥군','강진군','해남군','영암군','무안군','함평군','영광군','장성군','완도군','진도군','신안군']
         };
-        var currentRegion = td.parentElement.querySelector('td[data-field="region"]').innerText.trim();
+        var currentRegion = td.parentElement.querySelector('td[data-field="지역"]').innerText.trim();
         var subregions = regionMap[currentRegion] || [];
         let selectedSubregion = currentSubregion || '';
         let html = '<div><b>상세지역 선택</b><ul style="margin:8px 0 12px 0;max-height:120px;overflow-y:auto;">';
@@ -352,10 +527,11 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                 selectedSubregion = this.getAttribute('data-subregion');
                 td.innerText = selectedSubregion;
                 closeDropdown();
+                // 서버에 상세지역 저장
                 fetch('/diary/update/', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                    body: 'id='+id+'&field=subregion&value='+encodeURIComponent(selectedSubregion)
+                    body: 'id='+id+'&field=상세지역&value='+encodeURIComponent(selectedSubregion)
                 }).then(() => {
                     fetch('/diary/update/?id='+id)
                       .then(r=>r.json())
@@ -363,183 +539,320 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                           if(data.success && data.entry) {
                               updateTableRow(data.entry);
                               refreshKanban();
-                              if (typeof window._modalAfterUpdateAll === 'function') { window._modalAfterUpdateAll(id); window._modalAfterUpdateAll = null; }
+                              if (typeof window._modalAfterUpdateAll === 'function') { 
+                                  window._modalAfterUpdateAll(id); 
+                                  window._modalAfterUpdateAll = null; 
+                              }
                           }
                       });
                 });
             };
         });
+    }
+    
+    // dropdown 타입인 경우 dropdown_options API 사용
+    if(window.DROPDOWN_OPTIONS && window.DROPDOWN_OPTIONS[type]) {
+        const options = window.DROPDOWN_OPTIONS[type];
+        let html = '<div><b>' + type + ' 선택</b><ul style="margin:8px 0 12px 0;max-height:120px;overflow-y:auto;">';
+        options.forEach(function(opt) {
+            html += `<li style="display:flex;align-items:center;gap:6px;">
+                <span data-option-id="${opt.id}" style="cursor:pointer;background:${opt.color ? hexToRgba(opt.color, 0.18) : '#eee'};border-radius:4px;padding:2px 8px;min-width:60px;display:inline-block;">${opt.option}</span>
+                <input type="color" value="${opt.color||'#eeeeee'}" data-color-edit="${opt.id}" style="width:24px;height:24px;border:none;vertical-align:middle;cursor:pointer;">
+                <button data-edit="${opt.id}">✏️</button>
+                <button data-del="${opt.id}">🗑️</button></li>`;
+        });
+        html += '</ul>';
+        html += '<input type="text" placeholder="새 옵션 추가" style="width:70%;"> <button class="add-btn">추가</button></div>';
+        dropdown.innerHTML = html;
+        document.body.appendChild(dropdown);
+        
+        // 옵션 선택
+        dropdown.querySelectorAll('span[data-option-id]').forEach(function(span){
+            span.onclick = function(){
+                td.innerText = span.innerText;
+                td.setAttribute('data-value', span.getAttribute('data-option-id'));
+                td.style.background = span.style.background;
+                closeDropdown();
+                fetch('/diary/update/', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: 'id='+id+'&field='+type+'&value='+encodeURIComponent(span.getAttribute('data-option-id'))
+                }).then(() => {
+                    fetch('/diary/update/?id='+id)
+                      .then(r=>r.json())
+                      .then(function(data){
+                          if(data.success && data.entry) {
+                              updateTableRow(data.entry);
+                              refreshKanban();
+                              if (typeof window._modalAfterUpdateAll === 'function') { 
+                                  window._modalAfterUpdateAll(id); 
+                                  window._modalAfterUpdateAll = null; 
+                              }
+                          }
+                      });
+                });
+            };
+        });
+        
+        // 컬러피커
+        dropdown.querySelectorAll('input[data-color-edit]').forEach(function(input){
+            input.onchange = function(e){
+                fetch('/diary/dropdown_options/?field=' + encodeURIComponent(type) + '&id=' + input.getAttribute('data-color-edit') + '&color=' + encodeURIComponent(input.value), {
+                    method: 'PUT'
+                }).then(r => r.json()).then(data => {
+                    if(data.success) {
+                        // 색상 변경 즉시 반영
+                        const span = input.closest('li').querySelector('span[data-option-id]');
+                        span.style.background = hexToRgba(input.value, 0.18);
+                        
+                        // 전역 DROPDOWN_OPTIONS도 업데이트
+                        if(window.DROPDOWN_OPTIONS && window.DROPDOWN_OPTIONS[type]) {
+                            const option = window.DROPDOWN_OPTIONS[type].find(opt => opt.id == input.getAttribute('data-color-edit'));
+                            if(option) option.color = input.value;
+                        }
+                    }
+                }).catch(error => {
+                    console.error('색상 변경 실패:', error);
+                });
+            };
+        });
+        
+        // 추가
+        dropdown.querySelector('.add-btn').onclick = function(){
+            const val = dropdown.querySelector('input[type=text]').value.trim();
+            if(val) {
+                fetch('/diary/dropdown_options/?field=' + encodeURIComponent(type), {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: 'name=' + encodeURIComponent(val)
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if(data.id && data.option) {
+                        // 새로 추가된 옵션을 드롭다운에 동적으로 추가
+                        const ul = dropdown.querySelector('ul');
+                        const li = document.createElement('li');
+                        li.style.cssText = 'display:flex;align-items:center;gap:6px;';
+                        li.innerHTML = `
+                            <span data-option-id="${data.id}" style="cursor:pointer;background:${data.color ? hexToRgba(data.color, 0.18) : '#eee'};border-radius:4px;padding:2px 8px;min-width:60px;display:inline-block;">${data.option}</span>
+                            <input type="color" value="${data.color||'#eeeeee'}" data-color-edit="${data.id}" style="width:24px;height:24px;border:none;vertical-align:middle;cursor:pointer;">
+                            <button data-edit="${data.id}">✏️</button>
+                            <button data-del="${data.id}">🗑️</button>
+                        `;
+                        ul.appendChild(li);
+                        
+                        // 새로 추가된 옵션에 이벤트 바인딩
+                        const span = li.querySelector('span[data-option-id]');
+                        span.onclick = function(){
+                            td.innerText = span.innerText;
+                            td.setAttribute('data-value', span.getAttribute('data-option-id'));
+                            td.style.background = span.style.background;
+                            closeDropdown();
+                            fetch('/diary/update/', {
+                                method: 'POST',
+                                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                                body: 'id='+id+'&field='+type+'&value='+encodeURIComponent(span.getAttribute('data-option-id'))
+                            }).then(() => {
+                                fetch('/diary/update/?id='+id)
+                                  .then(r=>r.json())
+                                  .then(function(data){
+                                      if(data.success && data.entry) {
+                                          updateTableRow(data.entry);
+                                          refreshKanban();
+                                          if (typeof window._modalAfterUpdateAll === 'function') { 
+                                              window._modalAfterUpdateAll(id); 
+                                              window._modalAfterUpdateAll = null; 
+                                          }
+                                      }
+                                  });
+                            });
+                        };
+                        
+                        // 컬러피커 이벤트
+                        const colorInput = li.querySelector('input[data-color-edit]');
+                        colorInput.onchange = function(e){
+                            fetch('/diary/dropdown_options/?field=' + encodeURIComponent(type) + '&id=' + colorInput.getAttribute('data-color-edit') + '&color=' + encodeURIComponent(colorInput.value), {
+                                method: 'PUT'
+                            }).then(r => r.json()).then(data => {
+                                if(data.success) {
+                                    // 색상 변경 즉시 반영
+                                    span.style.background = hexToRgba(colorInput.value, 0.18);
+                                }
+                            });
+                        };
+                        
+                        // 삭제 버튼 이벤트
+                        const delBtn = li.querySelector('button[data-del]');
+                        delBtn.onclick = function(e){
+                            e.stopPropagation();
+                            if(confirm('삭제할까요?')) {
+                                fetch('/diary/dropdown_options/?field=' + encodeURIComponent(type) + '&id=' + delBtn.getAttribute('data-del'), {
+                                    method: 'DELETE'
+                                }).then(r => r.json()).then(data => {
+                                    if(data.success) {
+                                        li.remove();
+                                    }
+                                });
+                            }
+                        };
+                        
+                        // 수정 버튼 이벤트
+                        const editBtn = li.querySelector('button[data-edit]');
+                        editBtn.onclick = function(e){
+                            e.stopPropagation();
+                            const old = span.innerText;
+                            const input = document.createElement('input');
+                            input.type = 'text'; input.value = old;
+                            input.className = 'table-edit-input';
+                            span.replaceWith(input);
+                            input.focus();
+                            input.onkeydown = function(ev){
+                                if(ev.key==='Enter'){
+                                    fetch('/diary/dropdown_options/?field=' + encodeURIComponent(type) + '&id=' + editBtn.getAttribute('data-edit') + '&name=' + encodeURIComponent(input.value), {
+                                        method: 'PUT'
+                                    }).then(r => r.json()).then(data => {
+                                        if(data.success) {
+                                            const newSpan = document.createElement('span');
+                                            newSpan.setAttribute('data-option-id', editBtn.getAttribute('data-edit'));
+                                            newSpan.style.cssText = span.style.cssText;
+                                            newSpan.innerText = input.value;
+                                            newSpan.onclick = span.onclick;
+                                            input.replaceWith(newSpan);
+                                            span = newSpan; // 참조 업데이트
+                                        }
+                                    });
+                                }
+                            };
+                        };
+                        
+                        // 입력 필드 초기화
+                        dropdown.querySelector('input[type=text]').value = '';
+                        
+                        // 전역 DROPDOWN_OPTIONS도 업데이트
+                        if(window.DROPDOWN_OPTIONS && window.DROPDOWN_OPTIONS[type]) {
+                            window.DROPDOWN_OPTIONS[type].push({
+                                id: data.id,
+                                option: data.option,
+                                color: data.color
+                            });
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('옵션 추가 실패:', error);
+                    alert('옵션 추가에 실패했습니다.');
+                });
+            }
+        };
+        
+        // 삭제
+        dropdown.querySelectorAll('button[data-del]').forEach(function(btn){
+            btn.onclick = function(e){
+                e.stopPropagation();
+                if(confirm('삭제할까요?')) {
+                    fetch('/diary/dropdown_options/?field=' + encodeURIComponent(type) + '&id=' + btn.getAttribute('data-del'), {
+                        method: 'DELETE'
+                    }).then(r => r.json()).then(data => {
+                        if(data.success) {
+                            // 해당 li 요소 제거
+                            btn.closest('li').remove();
+                            
+                            // 전역 DROPDOWN_OPTIONS에서도 제거
+                            if(window.DROPDOWN_OPTIONS && window.DROPDOWN_OPTIONS[type]) {
+                                const delId = btn.getAttribute('data-del');
+                                window.DROPDOWN_OPTIONS[type] = window.DROPDOWN_OPTIONS[type].filter(opt => opt.id != delId);
+                            }
+                        }
+                    }).catch(error => {
+                        console.error('삭제 실패:', error);
+                        alert('삭제에 실패했습니다.');
+                    });
+                }
+            };
+        });
+        
+        // 수정
+        dropdown.querySelectorAll('button[data-edit]').forEach(function(btn){
+            btn.onclick = function(e){
+                e.stopPropagation();
+                const li = btn.closest('li');
+                const span = li.querySelector('span[data-option-id]');
+                const old = span.innerText;
+                const input = document.createElement('input');
+                input.type = 'text'; input.value = old;
+                input.className = 'table-edit-input';
+                span.replaceWith(input);
+                input.focus();
+                input.onkeydown = function(ev){
+                    if(ev.key==='Enter'){
+                        fetch('/diary/dropdown_options/?field=' + encodeURIComponent(type) + '&id=' + btn.getAttribute('data-edit') + '&name=' + encodeURIComponent(input.value), {
+                            method: 'PUT'
+                        }).then(r => r.json()).then(data => {
+                            if(data.success) {
+                                // 수정된 내용 즉시 반영
+                                const newSpan = document.createElement('span');
+                                newSpan.setAttribute('data-option-id', btn.getAttribute('data-edit'));
+                                newSpan.style.cssText = input.previousElementSibling ? input.previousElementSibling.style.cssText : 'cursor:pointer;background:#eee;border-radius:4px;padding:2px 8px;min-width:60px;display:inline-block;';
+                                newSpan.innerText = input.value;
+                                
+                                // 클릭 이벤트 재바인딩
+                                newSpan.onclick = function(){
+                                    td.innerText = newSpan.innerText;
+                                    td.setAttribute('data-value', newSpan.getAttribute('data-option-id'));
+                                    td.style.background = newSpan.style.background;
+                                    closeDropdown();
+                                    fetch('/diary/update/', {
+                                        method: 'POST',
+                                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                                        body: 'id='+id+'&field='+type+'&value='+encodeURIComponent(newSpan.getAttribute('data-option-id'))
+                                    }).then(() => {
+                                        fetch('/diary/update/?id='+id)
+                                          .then(r=>r.json())
+                                          .then(function(data){
+                                              if(data.success && data.entry) {
+                                                  updateTableRow(data.entry);
+                                                  refreshKanban();
+                                                  if (typeof window._modalAfterUpdateAll === 'function') { 
+                                                      window._modalAfterUpdateAll(id); 
+                                                      window._modalAfterUpdateAll = null; 
+                                                  }
+                                              }
+                                          });
+                                    });
+                                };
+                                
+                                input.replaceWith(newSpan);
+                                
+                                // 전역 DROPDOWN_OPTIONS도 업데이트
+                                if(window.DROPDOWN_OPTIONS && window.DROPDOWN_OPTIONS[type]) {
+                                    const option = window.DROPDOWN_OPTIONS[type].find(opt => opt.id == btn.getAttribute('data-edit'));
+                                    if(option) option.option = input.value;
+                                }
+                            }
+                        }).catch(error => {
+                            console.error('수정 실패:', error);
+                            // 실패시 원래 값으로 복원
+                            const restoredSpan = document.createElement('span');
+                            restoredSpan.setAttribute('data-option-id', btn.getAttribute('data-edit'));
+                            restoredSpan.style.cssText = input.previousElementSibling ? input.previousElementSibling.style.cssText : 'cursor:pointer;background:#eee;border-radius:4px;padding:2px 8px;min-width:60px;display:inline-block;';
+                            restoredSpan.innerText = old;
+                            input.replaceWith(restoredSpan);
+                        });
+                    } else if(ev.key==='Escape') {
+                        // ESC 키로 취소
+                        const cancelSpan = document.createElement('span');
+                        cancelSpan.setAttribute('data-option-id', btn.getAttribute('data-edit'));
+                        cancelSpan.style.cssText = input.previousElementSibling ? input.previousElementSibling.style.cssText : 'cursor:pointer;background:#eee;border-radius:4px;padding:2px 8px;min-width:60px;display:inline-block;';
+                        cancelSpan.innerText = old;
+                        input.replaceWith(cancelSpan);
+                    }
+                };
+            };
+        });
+        
         document.addEventListener('mousedown', function handler(e) {
             if(dropdown && !dropdown.contains(e.target)) { closeDropdown(); document.removeEventListener('mousedown', handler); }
         });
-        return;
-    } else if(type === 'category') {
-        fetch('/diary/categories/').then(r=>r.json()).then(function(data){
-            let html = '<div><b>구분 선택</b><ul style="margin:8px 0 12px 0;max-height:120px;overflow-y:auto;">';
-            (data.categories||[]).forEach(function(cat){
-                html += `<li style="display:flex;align-items:center;gap:6px;">
-                    <span data-category="${cat.id}" style="cursor:pointer;background:${cat.color ? hexToRgba(cat.color, 0.18) : '#eee'};border-radius:4px;padding:2px 8px;min-width:60px;display:inline-block;">${cat.name}</span>
-                    <input type="color" value="${cat.color||'#eeeeee'}" data-color-edit="${cat.id}" style="width:24px;height:24px;border:none;vertical-align:middle;cursor:pointer;">
-                    <button data-edit="${cat.id}">✏️</button>
-                    <button data-del="${cat.id}">🗑️</button></li>`;
-            });
-            html += '</ul>';
-            html += '<input type="text" placeholder="새 구분 추가" style="width:70%;"> <button class="add-btn">추가</button></div>';
-            dropdown.innerHTML = html;
-            document.body.appendChild(dropdown);
-            // 선택
-            dropdown.querySelectorAll('span[data-category]').forEach(function(span){
-                span.onclick = function(){
-                    td.innerText = span.innerText;
-                    td.setAttribute('data-value', span.getAttribute('data-category'));
-                    td.style.background = span.style.background;
-                    closeDropdown();
-                    fetch('/diary/update/', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                        body: 'id='+id+'&field=category&value='+encodeURIComponent(span.getAttribute('data-category'))
-                    }).then(() => {
-                        fetch('/diary/update/?id='+id)
-                          .then(r=>r.json())
-                          .then(function(data){
-                              if(data.success && data.entry) {
-                                  updateTableRow(data.entry);
-                                  refreshKanban();
-                                  if (typeof window._modalAfterUpdateAll === 'function') { window._modalAfterUpdateAll(id); window._modalAfterUpdateAll = null; }
-                              }
-                          });
-                    });
-                };
-            });
-            // 컬러피커
-            dropdown.querySelectorAll('input[data-color-edit]').forEach(function(input){
-                input.onchange = function(e){
-                    fetch('/diary/categories/?id='+input.getAttribute('data-color-edit')+'&color='+encodeURIComponent(input.value), {method:'PUT'})
-                        .then(()=>openDropdown(td, 'category', id));
-                };
-            });
-            // 추가
-            dropdown.querySelector('.add-btn').onclick = function(){
-                const val = dropdown.querySelector('input[type=text]').value.trim();
-                if(val) fetch('/diary/categories/', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'name='+encodeURIComponent(val)})
-                    .then(()=>openDropdown(td, 'category', id));
-            };
-            // 삭제
-            dropdown.querySelectorAll('button[data-del]').forEach(function(btn){
-                btn.onclick = function(e){
-                    e.stopPropagation();
-                    if(confirm('삭제할까요?')) fetch('/diary/categories/?id='+btn.getAttribute('data-del'), {method:'DELETE'})
-                        .then(()=>openDropdown(td, 'category', id));
-                };
-            });
-            // 수정
-            dropdown.querySelectorAll('button[data-edit]').forEach(function(btn){
-                btn.onclick = function(e){
-                    e.stopPropagation();
-                    const li = btn.closest('li');
-                    const span = li.querySelector('span[data-category]');
-                    const old = span.innerText;
-                    const input = document.createElement('input');
-                    input.type = 'text'; input.value = old;
-                    span.replaceWith(input);
-                    input.focus();
-                    input.onkeydown = function(ev){
-                        if(ev.key==='Enter'){
-                            fetch('/diary/categories/?id='+btn.getAttribute('data-edit')+'&name='+encodeURIComponent(input.value), {method:'PUT'})
-                                .then(()=>openDropdown(td, 'category', id));
-                        }
-                    };
-                };
-            });
-            document.addEventListener('mousedown', function handler(e) {
-                if(dropdown && !dropdown.contains(e.target)) { closeDropdown(); document.removeEventListener('mousedown', handler); }
-            });
-        });
-        return;
-    }
-    if(type === 'status') {
-        fetch('/diary/statuses/').then(r=>r.json()).then(function(data){
-            let html = '<div><b>영업진행 선택</b><ul style="margin:8px 0 12px 0;max-height:120px;overflow-y:auto;">';
-            (data.statuses||[]).forEach(function(st){
-                html += `<li style="display:flex;align-items:center;gap:6px;">
-                    <span data-status="${st.id}" style="cursor:pointer;background:${st.color ? hexToRgba(st.color, 0.18) : '#eee'};border-radius:4px;padding:2px 8px;min-width:60px;display:inline-block;">${st.name}</span>
-                    <input type="color" value="${st.color||'#eeeeee'}" data-color-edit="${st.id}" style="width:24px;height:24px;border:none;vertical-align:middle;cursor:pointer;">
-                    <button data-edit="${st.id}">✏️</button>
-                    <button data-del="${st.id}">🗑️</button></li>`;
-            });
-            html += '</ul>';
-            html += '<input type="text" placeholder="새 영업진행 추가" style="width:70%;"> <button class="add-btn">추가</button></div>';
-            dropdown.innerHTML = html;
-            document.body.appendChild(dropdown);
-            // 선택
-            dropdown.querySelectorAll('span[data-status]').forEach(function(span){
-                span.onclick = function(){
-                    td.innerText = span.innerText;
-                    td.setAttribute('data-value', span.getAttribute('data-status'));
-                    td.style.background = span.style.background;
-                    closeDropdown();
-                    fetch('/diary/update/', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                        body: 'id='+id+'&field=status&value='+encodeURIComponent(span.getAttribute('data-status'))
-                    }).then(() => {
-                        fetch('/diary/update/?id='+id)
-                          .then(r=>r.json())
-                          .then(function(data){
-                              if(data.success && data.entry) {
-                                  updateTableRow(data.entry);
-                                  refreshKanban();
-                                  if (typeof window._modalAfterUpdateAll === 'function') { window._modalAfterUpdateAll(id); window._modalAfterUpdateAll = null; }
-                              }
-                          });
-                    });
-                };
-            });
-            // 컬러피커
-            dropdown.querySelectorAll('input[data-color-edit]').forEach(function(input){
-                input.onchange = function(e){
-                    fetch('/diary/statuses/?id='+input.getAttribute('data-color-edit')+'&color='+encodeURIComponent(input.value), {method:'PUT'})
-                        .then(()=>openDropdown(td, 'status', id));
-                };
-            });
-            // 추가
-            dropdown.querySelector('.add-btn').onclick = function(){
-                const val = dropdown.querySelector('input').value.trim();
-                if(val) fetch('/diary/statuses/', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'name='+encodeURIComponent(val)})
-                    .then(()=>openDropdown(td, 'status', id));
-            };
-            // 삭제
-            dropdown.querySelectorAll('button[data-del]').forEach(function(btn){
-                btn.onclick = function(e){
-                    e.stopPropagation();
-                    if(confirm('삭제할까요?')) fetch('/diary/statuses/?id='+btn.getAttribute('data-del'), {method:'DELETE'})
-                        .then(()=>openDropdown(td, 'status', id));
-                };
-            });
-            // 수정
-            dropdown.querySelectorAll('button[data-edit]').forEach(function(btn){
-                btn.onclick = function(e){
-                    e.stopPropagation();
-                    const li = btn.closest('li');
-                    const span = li.querySelector('span[data-status]');
-                    const old = span.innerText;
-                    const input = document.createElement('input');
-                    input.type = 'text'; input.value = old;
-                    span.replaceWith(input);
-                    input.focus();
-                    input.onkeydown = function(ev){
-                        if(ev.key==='Enter'){
-                            fetch('/diary/statuses/?id='+btn.getAttribute('data-edit')+'&name='+encodeURIComponent(input.value), {method:'PUT'})
-                                .then(()=>openDropdown(td, 'status', id));
-                        }
-                    };
-                };
-            });
-            document.addEventListener('mousedown', function handler(e) {
-                if(dropdown && !dropdown.contains(e.target)) { closeDropdown(); document.removeEventListener('mousedown', handler); }
-            });
-        });
-        return;
     }
 }
 function bindKanbanSortable() {
@@ -550,11 +863,18 @@ function bindKanbanSortable() {
             onAdd: function(evt){
                 const entryId = evt.item.getAttribute('data-entry-id');
                 const newStatusId = col.parentElement.getAttribute('data-status-id');
-                fetch('/diary/update/', {
+                fetch('/diary/update_row_field/', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                    body: 'id='+entryId+'&field=status&value='+encodeURIComponent(newStatusId)
-                }).then(()=>{ refreshKanban(); refreshTable(); });
+                    body: 'id='+entryId+'&field=영업진행&value='+encodeURIComponent(newStatusId)
+                }).then(()=>{ 
+                    refreshKanban(); 
+                    refreshTable(); 
+                    // 캘린더도 새로고침 (영업진행 변경 시에도 F/U 일정이 관련될 수 있음)
+                    if (window.calendar) {
+                        window.calendar.refetchEvents();
+                    }
+                });
             }
         });
     });
@@ -563,37 +883,154 @@ function bindKanbanSortable() {
         card.onclick = function(e) {
             const entryId = card.getAttribute('data-entry-id');
             if(entryId) {
-                fetch('/diary/update/?id='+entryId)
+                // 새로운 Row 시스템의 get_row_details 엔드포인트 사용
+                fetch('/get_row_details/'+entryId+'/')
                   .then(r=>r.json())
                   .then(function(data){
-                      if(data.success && data.entry) showDetailModal(data.entry);
+                      if(data.success) showDetailModal(data.row_data, data.row_id);
+                      else alert('상세정보 불러오기 실패: '+(data.error||''));
                   });
             }
+        };
+    });
+    // 새 카드 추가 버튼 이벤트
+    document.querySelectorAll('.add-card-btn').forEach(function(btn){
+        btn.onclick = function() {
+            const statusId = btn.closest('.board-col').getAttribute('data-status-id');
+            // 새 행 생성 - 영업진행 필드를 해당 컬럼의 상태로 설정
+            fetch('/diary/create_new_row/', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: 'field=영업진행&value='+encodeURIComponent(statusId)
+            }).then(function(response) {
+                return response.json();
+            }).then(function(data) {
+                if (data.success && data.id) {
+                    // 칸반보드와 테이블 새로고침
+                    refreshKanban();
+                    refreshTable();
+                } else {
+                    alert('새 카드 생성 실패: ' + (data.error || ''));
+                }
+            }).catch(function(error) {
+                console.error('새 카드 생성 중 오류:', error);
+                alert('새 카드 생성 중 오류 발생: ' + error.message);
+            });
         };
     });
 }
 function bindTableCellEvents() {
     document.querySelectorAll('td[data-field]').forEach(function(td) {
         const type = td.getAttribute('data-field');
-        // 드롭다운 셀
-        if(['category','region','status','subregion'].includes(type)) {
+        const dataType = td.getAttribute('data-type');
+        if (dataType === 'datetime') {
+            const input = td.querySelector('input[type="date"]');
+            if (input) {
+                input.onchange = function() {
+                    const id = td.parentElement.getAttribute('data-id');
+                    const newValue = input.value;
+                    fetch('/diary/update/', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                        body: 'id=' + id + '&field=' + type + '&value=' + encodeURIComponent(newValue)
+                    }).then(function(response) {
+                        return response.json();
+                    }).then(function(data) {
+                        if (!data.success) alert('수정 실패: ' + data.error);
+                        // 필요시 테이블/보드 갱신
+                    });
+                };
+            } else {
+                // input이 없는 경우 클릭 시 생성
+                td.onclick = function() {
+                    if (td.querySelector('input')) return;
+                    td.style.width = td.offsetWidth + 'px';
+                    
+                    const oldValue = td.innerText.trim();
+                    const id = td.parentElement.getAttribute('data-id');
+                    
+                    const input = document.createElement('input');
+                    input.type = 'date';
+                    input.value = oldValue ? oldValue.slice(0,10) : '';
+                    input.className = 'table-edit-input';
+                    input.style.position = 'absolute';
+                    input.style.left = '0';
+                    input.style.top = '0';
+                    input.style.width = 'max-content';
+                    input.style.minWidth = '100%';
+                    input.style.background = '#fffbe6';
+                    input.style.zIndex = '10';
+                    input.style.border = 'none';
+                    input.style.fontSize = 'inherit';
+                    input.style.fontFamily = 'inherit';
+                    input.style.lineHeight = 'inherit';
+                    input.style.padding = '0';
+                    input.style.margin = '0';
+                    
+                    td.appendChild(input);
+                    input.focus();
+                    
+                    input.onblur = function() {
+                        const newValue = input.value;
+                        td.innerText = newValue;
+                        td.style.width = '';
+                        
+                        // 서버에 업데이트
+                        fetch('/diary/update/', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                            body: 'id='+id+'&field='+encodeURIComponent(type)+'&value='+encodeURIComponent(newValue)
+                        }).then(function(response) {
+                            return response.json();
+                        }).then(function(data) {
+                            if (!data.success) alert('수정 실패: ' + (data.error || ''));
+                        }).catch(function(error) {
+                            console.error('업데이트 중 오류:', error);
+                        });
+                    };
+                    
+                    input.onkeydown = function(e) {
+                        if (e.key === 'Enter') input.blur();
+                        if (e.key === 'Escape') { 
+                            td.innerText = oldValue;
+                            td.style.width = '';
+                        }
+                    };
+                };
+            }
+        } else if(dataType === 'dropdown' || dataType === 'region' || dataType === 'region_detail') {
             td.onclick = function(e) {
                 const id = td.parentElement.getAttribute('data-id');
-                if(type === 'region') {
-                    openDropdown(td, 'region', id, td.innerText.trim(), td.parentElement.querySelector('td[data-field="subregion"]').innerText.trim());
-                } else if(type === 'subregion') {
-                    openDropdown(td, 'subregion', id, td.parentElement.querySelector('td[data-field="region"]').innerText.trim(), td.innerText.trim());
-                } else if(type === 'category') {
-                    openDropdown(td, 'category', id, td.getAttribute('data-value'));
-                } else if(type === 'status') {
-                    openDropdown(td, 'status', id, td.getAttribute('data-value'));
+                if(dataType === 'region') {
+                    // 이름 필드인 경우 .name-text에서 값 추출, 다른 필드는 td.innerText 사용
+                    const currentValue = (type === '이름') ? 
+                        (td.querySelector('.name-text')?.innerText.trim() || '') : 
+                        td.innerText.trim();
+                    const regionValue = td.parentElement.querySelector('td[data-field="지역"]');
+                    const regionText = regionValue ? 
+                        (regionValue.getAttribute('data-field') === '이름' ? 
+                            (regionValue.querySelector('.name-text')?.innerText.trim() || '') : 
+                            regionValue.innerText.trim()) : '';
+                    openDropdown(td, 'region', id, currentValue, regionText);
+                } else if(dataType === 'region_detail') {
+                    const regionTd = td.parentElement.querySelector('td[data-field="지역"]');
+                    const regionValue = regionTd ? 
+                        (regionTd.getAttribute('data-field') === '이름' ? 
+                            (regionTd.querySelector('.name-text')?.innerText.trim() || '') : 
+                            regionTd.innerText.trim()) : '';
+                    const currentValue = (type === '이름') ? 
+                        (td.querySelector('.name-text')?.innerText.trim() || '') : 
+                        td.innerText.trim();
+                    openDropdown(td, 'region_detail', id, regionValue, currentValue);
+                } else if(dataType === 'dropdown') {
+                    openDropdown(td, type, id, td.getAttribute('data-value'));
                 }
             };
         } else {
-            // 인라인 편집 셀
             td.onclick = function() {
-                if (td.querySelector('input')) return; // 이미 편집 중이면 무시
-                if(type === 'name') {
+                if (td.querySelector('input')) return;
+                td.style.width = td.offsetWidth + 'px';
+                if(type === '이름') {
                     const nameDiv = td.querySelector('.name-text');
                     if(!nameDiv) return;
                     const oldValue = nameDiv.innerText;
@@ -601,16 +1038,7 @@ function bindTableCellEvents() {
                     const input = document.createElement('input');
                     input.type = 'text';
                     input.value = oldValue;
-                    input.style.width = '100%';
-                    input.style.height = '100%';
-                    input.style.boxSizing = 'border-box';
-                    input.style.border = 'none';
-                    input.style.background = 'transparent';
-                    input.style.padding = '0';
-                    input.style.margin = '0';
-                    input.style.fontSize = 'inherit';
-                    input.style.fontFamily = 'inherit';
-                    input.style.lineHeight = 'inherit';
+                    input.className = 'table-edit-input';
                     nameDiv.innerHTML = '';
                     nameDiv.appendChild(input);
                     // ...버튼 숨김
@@ -627,18 +1055,12 @@ function bindTableCellEvents() {
                                 const tr = td.closest('tr');
                                 const id = tr.getAttribute('data-id');
                                 if(!id) { alert('ID 정보가 없습니다.'); return; }
-                                fetch('/diary/update/?id='+id)
-                                  .then(r => r.text())
-                                  .then(function(text){
-                                      console.log('응답본문:', text);
-                                      try {
-                                          const data = JSON.parse(text);
-                                          if(data.success) showDetailModal(data.entry);
-                                          else alert('상세정보 불러오기 실패: '+(data.error||''));
-                                      } catch(e) {
-                                          alert('상세정보 불러오기 실패: JSON 파싱 오류');
-                                          console.error(e);
-                                      }
+                                // 새로운 Row 시스템의 get_row_details 엔드포인트 사용
+                                fetch('/get_row_details/'+id+'/')
+                                  .then(r => r.json())
+                                  .then(function(data){
+                                      if(data.success) showDetailModal(data.row_data, data.row_id);
+                                      else alert('상세정보 불러오기 실패: '+(data.error||''));
                                   })
                                   .catch(function(err){
                                       alert('상세정보 불러오기 실패: 네트워크 오류\n' + err);
@@ -646,6 +1068,8 @@ function bindTableCellEvents() {
                                   });
                             };
                         }
+                        // 편집 종료 시 td width 해제
+                        td.style.width = '';
                     }
                     input.onblur = function() {
                         const newValue = input.value;
@@ -653,7 +1077,7 @@ function bindTableCellEvents() {
                         fetch('/diary/update/', {
                             method: 'POST',
                             headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                            body: 'id='+id+'&field=name&value='+encodeURIComponent(newValue)
+                            body: 'id='+id+'&field=이름&value='+encodeURIComponent(newValue)
                         });
                     };
                     input.onkeydown = function(e) {
@@ -661,61 +1085,88 @@ function bindTableCellEvents() {
                         if (e.key === 'Escape') restoreCell(oldValue);
                     };
                 } else {
-                    const oldValue = td.innerText;
-                    const field = td.getAttribute('data-field');
+                    // 일반 텍스트 필드들 처리
+                    // 이름 필드인 경우 .name-text에서 값 추출, 다른 필드는 td.innerText 사용
+                    const oldValue = (type === '이름') ? 
+                        (td.querySelector('.name-text')?.innerText || '') : 
+                        td.innerText;
                     const id = td.parentElement.getAttribute('data-id');
+                    
                     let inputType = 'text';
-                    if (['ta_date','meeting_date','fu_date'].includes(field)) inputType = 'date';
+                    // 날짜 필드들은 date input 사용
+                    if (['TA','미팅','F/U 일정'].includes(type) || dataType === 'datetime') {
+                        inputType = 'date';
+                    }
+                    
                     const input = document.createElement('input');
                     input.type = inputType;
                     input.value = (inputType==='date' && oldValue) ? oldValue.trim().slice(0,10) : oldValue.trim();
-                    input.style.width = '100%';
-                    input.style.height = '100%';
-                    input.style.boxSizing = 'border-box';
+                    input.className = 'table-edit-input';
+                    input.style.position = 'absolute';
+                    input.style.left = '0';
+                    input.style.top = '0';
+                    input.style.width = 'max-content';
+                    input.style.minWidth = '100%';
+                    input.style.background = '#fffbe6';
+                    input.style.zIndex = '10';
                     input.style.border = 'none';
-                    input.style.background = 'transparent';
-                    input.style.padding = '0';
-                    input.style.margin = '0';
                     input.style.fontSize = 'inherit';
                     input.style.fontFamily = 'inherit';
                     input.style.lineHeight = 'inherit';
-                    td.innerHTML = '';
+                    input.style.padding = '0';
+                    input.style.margin = '0';
+                    
                     td.appendChild(input);
                     input.focus();
+                    if(inputType === 'text') input.select();
+                    
                     input.onblur = function() {
                         const newValue = input.value;
-                        if (newValue === oldValue || (inputType==='date' && (!newValue && !oldValue))) {
-                            td.innerText = oldValue;
-                            return;
+                        // 이름 필드인 경우 .name-text 업데이트, 다른 필드는 td.innerText 업데이트
+                        if(type === '이름') {
+                            const nameTextDiv = td.querySelector('.name-text');
+                            if(nameTextDiv) nameTextDiv.innerText = newValue;
+                            if(input.parentNode) input.parentNode.removeChild(input);
+                        } else {
+                            td.innerText = newValue;
                         }
-                        td.innerText = newValue;
+                        // 편집 종료 시 td width 해제
+                        td.style.width = '';
+                        
+                        // 서버에 업데이트
                         fetch('/diary/update/', {
                             method: 'POST',
                             headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                            body: 'id='+id+'&field='+field+'&value='+encodeURIComponent(newValue)
+                            body: 'id='+id+'&field='+encodeURIComponent(type)+'&value='+encodeURIComponent(newValue)
                         }).then(function(response) {
                             return response.json();
                         }).then(function(data) {
-                            if(!data.success) alert('수정 실패: '+data.error);
-                            if(field==='fu_date' && window.calendar) window.calendar.refetchEvents();
-                            // 매출(금액) 수정 시, 영업진행 값이 있으면 칸반보드 갱신
-                            if(field==='amount') {
-                                const statusTd = td.parentElement.querySelector('td[data-field="status"]');
-                                if(statusTd && statusTd.innerText.trim()) {
-                                    refreshKanban();
-                                }
-                            }
+                            if (!data.success) alert('수정 실패: ' + (data.error || ''));
+                        }).catch(function(error) {
+                            console.error('업데이트 중 오류:', error);
                         });
                     };
+                    
                     input.onkeydown = function(e) {
                         if (e.key === 'Enter') input.blur();
-                        if (e.key === 'Escape') { td.innerText = oldValue; }
+                        if (e.key === 'Escape') { 
+                            // 이름 필드인 경우 .name-text 복원, 다른 필드는 td.innerText 복원
+                            if(type === '이름') {
+                                const nameTextDiv = td.querySelector('.name-text');
+                                if(nameTextDiv) nameTextDiv.innerText = oldValue;
+                                if(input.parentNode) input.parentNode.removeChild(input);
+                            } else {
+                                td.innerText = oldValue;
+                            }
+                            td.style.width = '';
+                        }
                     };
                 }
             };
         }
     });
 }
+
 document.addEventListener('DOMContentLoaded', function() {
     bindTableCellEvents();
     bindKanbanSortable();
@@ -733,11 +1184,43 @@ document.addEventListener('DOMContentLoaded', function() {
                 center: 'title',
                 right: 'dayGridMonth,listMonth'
             },
+            eventContent: function(arg) {
+                const name = arg.event.title;
+                const meetingDate = arg.event.extendedProps.meeting_date;
+                const status = arg.event.extendedProps.status_name;
+                const statusColor = arg.event.extendedProps.status_color || '#bbb';
+                function hexToRgba(hex, alpha) {
+                    hex = hex.replace('#', '');
+                    if (hex.length === 3) hex = hex.split('').map(x => x + x).join('');
+                    const r = parseInt(hex.substring(0,2), 16);
+                    const g = parseInt(hex.substring(2,4), 16);
+                    const b = parseInt(hex.substring(4,6), 16);
+                    return `rgba(${r},${g},${b},${alpha})`;
+                }
+                let html = `<div style='width:100%;height:100%;box-sizing:border-box;padding:4px 6px 2px 6px; border-radius:8px; background:${hexToRgba(statusColor,0.12)}; color:#222;'>` +
+                    `<div style='font-weight:bold; font-size:1em; margin-bottom:2px;'>${name}</div>` +
+                    `<div style='font-size:0.95em; margin-bottom:2px;'>${meetingDate||''}</div>` +
+                    (status ? `<span style='display:inline-block;background:${statusColor};color:#fff;padding:2px 8px;border-radius:6px;font-size:0.92em;'>${status}</span>` : '') +
+                    `</div>`;
+                return { html };
+            },
             eventClick: function(info) {
-                fetch('/diary/update/?id='+info.event.id)
-                  .then(r=>r.json())
-                  .then(function(data){
-                      if(data.success && data.entry) showDetailModal(data.entry);
+                // 새로운 Row 시스템에 맞게 수정
+                fetch('/get_row_details/' + info.event.id + '/')
+                  .then(r => {
+                      if (!r.ok) throw new Error('Network response was not ok');
+                      return r.json();
+                  })
+                  .then(function(data) {
+                      if (data.success && data.row_data) {
+                          showDetailModal(data.row_data, data.row_id);
+                      } else {
+                          alert(data.error || '데이터를 불러올 수 없습니다.');
+                      }
+                  })
+                  .catch(function(error) {
+                      console.error('Error:', error);
+                      alert('데이터를 불러오는 중 오류가 발생했습니다.');
                   });
             }
         });
@@ -770,103 +1253,351 @@ document.addEventListener('DOMContentLoaded', function() {
     addRowBtn.onclick = function() {
         if(isAdding) return;
         isAdding = true;
+        
+        // 새 행을 먼저 테이블에 추가 (임시 ID 사용)
+        const tempId = 'temp_' + Date.now();
         const tr = document.createElement('tr');
         tr.className = 'new-row';
+        tr.setAttribute('data-id', tempId);
+        tr.setAttribute('data-is-new', 'true');
+        
         // 맨 앞에 drag-cell td 추가
         const dragTd = document.createElement('td');
         dragTd.className = 'drag-cell';
+        const dragHandle = document.createElement('span');
+        dragHandle.className = 'drag-handle';
+        dragHandle.textContent = '⋮⋮⋮';
+        dragTd.appendChild(dragHandle);
         tr.appendChild(dragTd);
-        const fields = ['name','category','region','subregion','address','manager','phone','email','ta_date','meeting_date','fu_date','status','possibility','amount'];
+        
+        const fields = window.ATTR_FIELDS.map(attr => attr['name']);
+        
         fields.forEach(function(field) {
             const td = document.createElement('td');
             td.setAttribute('data-field', field);
-            if(['ta_date','meeting_date','fu_date'].includes(field)) {
-                td.innerHTML = '<input type="date" style="width:100%;height:100%;box-sizing:border-box;padding:8px;border:none;background:transparent;font-size:inherit;font-family:inherit;line-height:inherit;display:block;">';
-            } else if(field==='category') {
+            
+            // 타입 정보도 활용 가능
+            const attrObj = window.ATTR_FIELDS.find(a => a['name'] === field);
+            
+            let type = 'text'; // 기본값
+            if (attrObj && attrObj.attributeType__name) {
+                type = attrObj.attributeType__name;
+            }
+            
+            td.setAttribute('data-type', type);
+            
+            if(field === '이름') {
+                // 이름 필드는 특별한 구조
+                td.innerHTML = '<div class="name-text">새 항목</div><div class="more-btn-wrapper"><div class="more-btn" style="cursor:pointer;">⋯</div></div>';
+                td.style.display = 'flex';
+                td.style.flexDirection = 'row';
+                td.style.alignItems = 'center';
+                td.style.justifyContent = 'flex-start';
+                td.style.gap = '4px';
+                td.style.position = 'relative';
+            } else if(['ta_date','meeting_date','fu_date'].includes(field) || type === 'datetime') {
                 td.innerText = '';
-            } else if(field==='region') {
+            } else if(type === 'dropdown') {
+                td.innerText = '';
+            } else if(field==='지역') {
                 td.innerText = '서울';
                 td.setAttribute('data-value', '서울');
-            } else if(field==='subregion') {
+            } else if(field==='상세지역') {
                 td.innerText = '관악구';
             } else {
-                td.innerHTML = '<input type="text" style="width:100%;height:100%;box-sizing:border-box;padding:8px;border:none;background:transparent;font-size:inherit;font-family:inherit;line-height:inherit;display:block;">';
+                td.innerText = '';
             }
             tr.appendChild(td);
         });
+        
         // tbody에 '작성된 데이터가 없습니다.' 행이 있으면 삭제
         const emptyRow = entryTbody.querySelector('tr td[colspan]');
         if (emptyRow) {
             emptyRow.parentElement.remove();
         }
         entryTbody.appendChild(tr);
-        tr.querySelector('input') && tr.querySelector('input').focus();
-        tr.addEventListener('focusout', function(e) {
-            setTimeout(function(){ isAdding=false; }, 200);
+        
+        // 새로 추가된 행에 특별한 이벤트 바인딩 (Attribute 시스템 사용)
+        bindNewRowAttributeEvents(tr);
+        
+        // 이름 필드에 포커스하여 편집 모드로 진입
+        const nameCell = tr.querySelector('td[data-field="이름"]');
+        if(nameCell) {
+            setTimeout(() => {
+                nameCell.click(); // 클릭으로 편집 모드 진입
+            }, 100);
+        }
+        
+        isAdding = false;
+    };
+
+    // 새로 추가된 행에 이벤트 바인딩하는 함수
+    function bindNewRowEvents(tr) {
+        tr.querySelectorAll('td[data-field]').forEach(function(td) {
+            const field = td.getAttribute('data-field');
+            const type = td.getAttribute('data-type');
+            
+            // datetime 타입 필드들 - 기존 행과 동일한 로직
+            if (type === 'datetime') {
+                const input = td.querySelector('input[type="date"]');
+                if (input) {
+                    input.onchange = function() {
+                        const newValue = input.value;
+                        // 새 행이므로 저장은 나중에 일괄 처리
+                    };
+                }
+            }
+            // dropdown 타입이나 특수 지역 필드들
+            else if(type === 'dropdown' || field === '지역' || field === '상세지역') {
+                console.log(`필드 "${field}"에 드롭다운 이벤트 바인딩, type: ${type}`);
+                td.style.cursor = 'pointer';
+                td.onclick = function(e) {
+                    console.log(`드롭다운 클릭됨 - 필드: ${field}, type: ${type}`);
+                    e.stopPropagation();
+                    let dropdownType = '';
+                    if(type === 'dropdown') {
+                        // 필드명을 그대로 사용 (영어 매핑 제거)
+                        dropdownType = field;
+                        console.log(`dropdown 타입: ${field}`);
+                    } else if(field === '지역') {
+                        dropdownType = 'region';
+                        console.log('지역 드롭다운으로 설정');
+                    } else if(field === '상세지역') {
+                        dropdownType = 'region_detail';
+                        console.log('상세지역 드롭다운으로 설정');
+                    }
+                    
+                    if(dropdownType) {
+                        // 이름 필드인 경우 .name-text에서 값 추출, 다른 필드는 td.innerText 사용
+                        const currentValue = (field === '이름') ? 
+                            (td.querySelector('.name-text')?.innerText || '') : 
+                            (td.innerText || '');
+                        const currentSubregion = dropdownType === 'region_detail' ? 
+                            tr.querySelector('td[data-field="상세지역"]').innerText : '';
+                        console.log(`드롭다운 열기 시도 - dropdownType: ${dropdownType}, currentValue: ${currentValue}`);
+                        // 새 행에서는 특별한 드롭다운 처리
+                        openNewRowDropdown(td, dropdownType, currentValue, currentSubregion, tr);
+                    } else {
+                        console.log('dropdownType이 설정되지 않았음');
+                    }
+                };
+            }
+            // 이름 필드 특별 처리
+            else if(field === '이름') {
+                td.onclick = function(e) {
+                    e.stopPropagation();
+                    if(e.target.classList.contains('more-btn')) return; // more 버튼 클릭은 별도 처리
+                    
+                    const nameTextDiv = td.querySelector('.name-text');
+                    const oldValue = nameTextDiv.innerText;
+                    
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.value = oldValue;
+                    input.className = 'table-edit-input';
+                    input.style.position = 'absolute';
+                    input.style.left = '0';
+                    input.style.top = '0';
+                    input.style.width = 'max-content';
+                    input.style.minWidth = '100%';
+                    input.style.background = '#fffbe6';
+                    input.style.zIndex = '10';
+                    input.style.border = 'none';
+                    input.style.fontSize = 'inherit';
+                    input.style.fontFamily = 'inherit';
+                    input.style.lineHeight = 'inherit';
+                    input.style.padding = '0';
+                    input.style.margin = '0';
+                    
+                    td.appendChild(input);
+                    input.focus();
+                    input.select();
+                    
+                    function restoreCell(newValue) {
+                        nameTextDiv.innerText = newValue;
+                        if(input.parentNode) input.parentNode.removeChild(input);
+                    }
+                    
+                    input.onblur = function() {
+                        const newValue = input.value;
+                        restoreCell(newValue);
+                    };
+                    
+                    input.onkeydown = function(e) {
+                        if (e.key === 'Enter') input.blur();
+                        if (e.key === 'Escape') restoreCell(oldValue);
+                    };
+                };
+                
+                // 새로 추가된 행의 more 버튼 이벤트 (저장 후 사용 가능)
+                const moreBtn = td.querySelector('.more-btn');
+                if(moreBtn) {
+                    moreBtn.onclick = function(e) {
+                        e.stopPropagation();
+                        const tr = td.closest('tr');
+                        const id = tr.getAttribute('data-id');
+                        if(!id) { 
+                            alert('저장 후 사용 가능합니다.'); 
+                            return; 
+                        }
+                        fetch('/diary/update/?id='+id)
+                          .then(r => r.text())
+                          .then(function(text){
+                              try {
+                                  const data = JSON.parse(text);
+                                  if(data.success) showDetailModal(data.entry);
+                                  else alert('상세정보 불러오기 실패: '+(data.error||''));
+                              } catch(e) {
+                                  alert('상세정보 불러오기 실패: JSON 파싱 오류');
+                                  console.error(e);
+                              }
+                          })
+                          .catch(function(err){
+                              alert('상세정보 불러오기 실패: 네트워크 오류\n' + err);
+                              console.error(err);
+                          });
+                    };
+                }
+            }
+            // 일반 텍스트 필드들
+            else {
+                td.onclick = function(e) {
+                    e.stopPropagation();
+                    const oldValue = td.innerText;
+                    
+                    let inputType = 'text';
+                    // 날짜 필드들은 date input 사용
+                    if (['TA','미팅','F/U 일정'].includes(field) || type === 'datetime') {
+                        inputType = 'date';
+                    }
+                    
+                    const input = document.createElement('input');
+                    input.type = inputType;
+                    input.value = (inputType==='date' && oldValue) ? oldValue.trim().slice(0,10) : oldValue.trim();
+                    input.className = 'table-edit-input';
+                    
+                    td.innerHTML = '';
+                    td.appendChild(input);
+                    input.focus();
+                    if(inputType === 'text') input.select();
+                    
+                    input.onblur = function() {
+                        const newValue = input.value;
+                        td.innerText = newValue;
+                    };
+                    
+                    input.onkeydown = function(e) {
+                        if (e.key === 'Enter') input.blur();
+                        if (e.key === 'Escape') { td.innerText = oldValue; }
+                    };
+                };
+            }
         });
-        // 저장 로직
-        function saveNewRow() {
-            const data = {};
-            tr.querySelectorAll('td').forEach(function(td) {
-                const field = td.getAttribute('data-field');
-                if(!field) return;
-                const input = td.querySelector('input,select');
-                data[field] = input ? input.value : td.innerText;
+    }
+
+    // 새 행용 드롭다운 함수 (ID 없이 처리)
+    function openNewRowDropdown(td, type, currentValue, currentSubregion, tr) {
+        console.log('openNewRowDropdown 호출됨');
+        console.log('파라미터:', {type, currentValue, currentSubregion});
+        console.log('DROPDOWN_OPTIONS 확인:', window.DROPDOWN_OPTIONS);
+        
+        closeDropdown();
+        dropdown = document.createElement('div');
+        dropdown.className = 'dropdown-edit';
+        dropdown.style.top = (td.getBoundingClientRect().top + window.scrollY + td.offsetHeight) + 'px';
+        dropdown.style.left = (td.getBoundingClientRect().left + window.scrollX) + 'px';
+        
+        if(type === 'region') {
+            // 지역 드롭다운
+            var regionNames = ['서울','경기','인천','대구','부산','광주','대전','울산','세종','강원','충북','충남','전북','전남'];
+            let selectedRegion = currentValue || '서울';
+            let html = '<div><b>지역 선택</b><ul style="margin:8px 0 12px 0;max-height:120px;overflow-y:auto;">';
+            regionNames.forEach(function(region) {
+                html += '<li style="margin-bottom:2px;"><span data-region="'+region+'" style="cursor:pointer;'+(region==selectedRegion?'font-weight:bold;color:#007bff;':'')+'">'+region+'</span></li>';
             });
-            if(!data.name) return; // 이름이 비어있으면 저장하지 않음
-            fetch('/diary/create/', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                body: 'name='+encodeURIComponent(data.name)+'&category='+encodeURIComponent(data.category)+'&region='+encodeURIComponent(data.region)+'&subregion='+encodeURIComponent(data.subregion)+'&address='+encodeURIComponent(data.address)+'&manager='+encodeURIComponent(data.manager)+'&phone='+encodeURIComponent(data.phone)+'&email='+encodeURIComponent(data.email)+'&ta_date='+encodeURIComponent(data.ta_date)+'&meeting_date='+encodeURIComponent(data.meeting_date)+'&fu_date='+encodeURIComponent(data.fu_date)+'&status='+encodeURIComponent(data.status)+'&possibility='+encodeURIComponent(data.possibility)+'&amount='+encodeURIComponent(data.amount)
-            }).then(function(response) {
-                return response.json();
-            }).then(function(resp) {
-                if(resp.success) location.reload();
-                else alert('저장 실패: '+resp.error);
+            html += '</ul></div>';
+            dropdown.innerHTML = html;
+            document.body.appendChild(dropdown);
+            
+            dropdown.querySelectorAll('span[data-region]').forEach(function(span) {
+                span.onclick = function() {
+                    selectedRegion = this.getAttribute('data-region');
+                    td.innerText = selectedRegion;
+                    td.setAttribute('data-value', selectedRegion);
+                    // 상세지역도 업데이트
+                    var subTd = tr.querySelector('td[data-field="상세지역"]');
+                    if(subTd) {
+                        var regionMap = {
+                            '서울': ['관악구','금천구','강남구','강서구','강동구','강북구','광진구','구로구','노원구','도봉구','동대문구','동작구','마포구','서대문구','서초구','성동구','성북구','송파구','양천구','영등포구','용산구','은평구','종로구','중구','중랑구'],
+                            '경기': ['수원시','고양시','성남시','용인시','부천시','안산시','안양시','남양주시','화성시','평택시','의정부시','시흥시','파주시','광명시','김포시','군포시','광주시','오산시','이천시','안성시','의왕시','하남시','여주시','양평군','동두천시','과천시','가평군','연천군']
+                        };
+                        var firstSubregion = (regionMap[selectedRegion] || [])[0] || '';
+                        subTd.innerText = firstSubregion;
+                    }
+                    closeDropdown();
+                    // 지역 값 저장
+                    saveNewRowField(tr, '지역', selectedRegion);
+                };
+            });
+        } else if(type === 'region_detail') {
+            // 상세지역 드롭다운
+            var regionMap = {
+                '서울': ['관악구','금천구','강남구','강서구','강동구','강북구','광진구','구로구','노원구','도봉구','동대문구','동작구','마포구','서대문구','서초구','성동구','성북구','송파구','양천구','영등포구','용산구','은평구','종로구','중구','중랑구'],
+                '경기': ['수원시','고양시','성남시','용인시','부천시','안산시','안양시','남양주시','화성시','평택시','의정부시','시흥시','파주시','광명시','김포시','군포시','광주시','오산시','이천시','안성시','의왕시','하남시','여주시','양평군','동두천시','과천시','가평군','연천군']
+            };
+            var currentRegion = tr.querySelector('td[data-field="지역"]').innerText.trim();
+            var subregions = regionMap[currentRegion] || [];
+            let selectedSubregion = currentSubregion || '';
+            let html = '<div><b>상세지역 선택</b><ul style="margin:8px 0 12px 0;max-height:120px;overflow-y:auto;">';
+            subregions.forEach(function(sub) {
+                html += '<li style="margin-bottom:2px;"><span data-subregion="'+sub+'" style="cursor:pointer;'+(sub==selectedSubregion?'font-weight:bold;color:#007bff;':'')+'">'+sub+'</span></li>';
+            });
+            html += '</ul></div>';
+            dropdown.innerHTML = html;
+            document.body.appendChild(dropdown);
+            
+            dropdown.querySelectorAll('span[data-subregion]').forEach(function(span) {
+                span.onclick = function() {
+                    selectedSubregion = this.getAttribute('data-subregion');
+                    td.innerText = selectedSubregion;
+                    closeDropdown();
+                    // 상세지역 값 저장
+                    saveNewRowField(tr, '상세지역', selectedSubregion);
+                };
+            });
+        } else if(window.DROPDOWN_OPTIONS && window.DROPDOWN_OPTIONS[type]) {
+            // 일반 드롭다운 (구분, 영업진행, 가능성 등)
+            const options = window.DROPDOWN_OPTIONS[type];
+            let html = '<div><b>' + type + ' 선택</b><ul style="margin:8px 0 12px 0;max-height:120px;overflow-y:auto;">';
+            options.forEach(function(opt) {
+                html += `<li style="display:flex;align-items:center;gap:6px;">
+                    <span data-option-id="${opt.id}" style="cursor:pointer;background:${opt.color ? hexToRgba(opt.color, 0.18) : '#eee'};border-radius:4px;padding:2px 8px;min-width:60px;display:inline-block;">${opt.option}</span>
+                </li>`;
+            });
+            html += '</ul></div>';
+            dropdown.innerHTML = html;
+            document.body.appendChild(dropdown);
+            
+            // 옵션 선택
+            dropdown.querySelectorAll('span[data-option-id]').forEach(function(span){
+                span.onclick = function(){
+                    td.innerText = span.innerText;
+                    td.setAttribute('data-value', span.getAttribute('data-option-id'));
+                    td.style.background = span.style.background;
+                    closeDropdown();
+                };
             });
         }
-        // 셀에서 엔터/포커스아웃 시 저장
-        tr.querySelectorAll('input,select').forEach(function(input) {
-            input.onkeydown = function(e) { if(e.key==='Enter') saveNewRow(); };
-            input.onblur = function() { setTimeout(saveNewRow, 100); };
+        
+        // 외부 클릭 시 드롭다운 닫기
+        document.addEventListener('mousedown', function handler(e) {
+            if(dropdown && !dropdown.contains(e.target)) { 
+                closeDropdown(); 
+                document.removeEventListener('mousedown', handler); 
+            }
         });
-        // region, subregion 셀 클릭 시 openDropdown
-        tr.querySelector('td[data-field="region"]').onclick = function() {
-            openDropdown(this, 'region', '', '서울', '관악구');
-        };
-        tr.querySelector('td[data-field="subregion"]').onclick = function() {
-            openDropdown(this, 'subregion', '', tr.querySelector('td[data-field="region"]').innerText, tr.querySelector('td[data-field="subregion"]').innerText);
-        };
-        // category 셀 클릭 시 openDropdown
-        tr.querySelector('td[data-field="category"]').onclick = function() {
-            openDropdown(this, 'category', '', '');
-        };
-    };
-    document.querySelectorAll('td[data-field="name"] .more-btn').forEach(function(btn){
-        btn.onclick = function(e){
-            e.stopPropagation();
-            const tr = btn.closest('tr');
-            const id = tr.getAttribute('data-id');
-            if(!id) { alert('ID 정보가 없습니다.'); return; }
-            fetch('/diary/update/?id='+id)
-              .then(r => r.text())
-              .then(function(text){
-                  console.log('응답본문:', text);
-                  try {
-                      const data = JSON.parse(text);
-                      if(data.success) showDetailModal(data.entry);
-                      else alert('상세정보 불러오기 실패: '+(data.error||''));
-                  } catch(e) {
-                      alert('상세정보 불러오기 실패: JSON 파싱 오류');
-                      console.error(e);
-                  }
-              })
-              .catch(function(err){
-                  alert('상세정보 불러오기 실패: 네트워크 오류\n' + err);
-                  console.error(err);
-              });
-        };
-    });
+    }
+
     // 메모 모달 관련 함수 리팩토링
     function openMemoModal(entryId, title, date) {
         const modal = document.getElementById('memoModal');
@@ -943,6 +1674,33 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+    // 상세 모달 외부 클릭 시 닫기
+    document.getElementById('detailModal').addEventListener('mousedown', function(e) {
+        if (e.target === this) {
+            closeDetailModal();
+        }
+    });
+
+    // 기존 행들의 more 버튼 이벤트 바인딩
+    document.querySelectorAll('td[data-field="이름"] .more-btn').forEach(function(btn){
+        btn.onclick = function(e){
+            e.stopPropagation();
+            const tr = btn.closest('tr');
+            const id = tr.getAttribute('data-id');
+            if(!id) { alert('ID 정보가 없습니다.'); return; }
+            // 새로운 Row 시스템의 get_row_details 엔드포인트 사용
+            fetch('/get_row_details/'+id+'/')
+              .then(r => r.json())
+              .then(function(data){
+                  if(data.success) showDetailModal(data.row_data, data.row_id);
+                  else alert('상세정보 불러오기 실패: '+(data.error||''));
+              })
+              .catch(function(err){
+                  alert('상세정보 불러오기 실패: 네트워크 오류\n' + err);
+                  console.error(err);
+              });
+        };
+    });
 });
 function refreshTable() {
     fetch('/').then(r=>r.text()).then(html=>{
@@ -951,7 +1709,43 @@ function refreshTable() {
         const newTable = temp.querySelector('#entryTable');
         if (newTable) {
             document.getElementById('entryTable').innerHTML = newTable.innerHTML;
-            bindTableCellEvents(); // 반드시 호출
+            bindTableCellEvents(); // 테이블 이벤트 복구
+            
+            // 정렬/필터 데이터 재초기화
+            initializeTableData();
+            
+            // 현재 필터 상태 재적용
+            if (Object.keys(window.filters).length > 0) {
+                Object.entries(window.filters).forEach(([column, filterValue]) => {
+                    // 필터 입력창에 값 복원
+                    const filterInput = document.querySelector(`input[data-column="${column}"]`);
+                    if (filterInput) {
+                        filterInput.value = filterValue;
+                    }
+                    
+                    // 필터 재적용
+                    window.originalRows.forEach(row => {
+                        let shouldShow = true;
+                        
+                        for (const [filterColumn, filterVal] of Object.entries(window.filters)) {
+                            const cellValue = getCellValue(row, filterColumn).toLowerCase();
+                            if (!cellValue.includes(filterVal)) {
+                                shouldShow = false;
+                                break;
+                            }
+                        }
+                        
+                        row.style.display = shouldShow ? '' : 'none';
+                    });
+                });
+            }
+            
+            // 현재 정렬 상태 재적용
+            if (window.currentSort.column) {
+                sortTable(window.currentSort.column, window.currentSort.direction);
+            }
+            
+            updateFilterStatus();
         }
     });
 }
@@ -964,128 +1758,225 @@ function hexToRgba(hex, alpha) {
     return `rgba(${r},${g},${b},${alpha})`;
 }
 
-// 상세보기 모달 함수 추가
-function showDetailModal(entry) {
-    // 테이블과 동일한 필드 순서
-    const fieldOrder = [
-        'name','category_name','region_name','subregion','address','manager','phone','email','ta_date','meeting_date','fu_date','status_name','possibility','amount','created_at','updated_at'
-    ];
-    const fieldLabels = {
-        name: '이름',
-        category_name: '구분',
-        region_name: '지역',
-        subregion: '상세지역',
-        address: '주소',
-        manager: '담당자',
-        phone: '연락처',
-        email: '이메일',
-        ta_date: 'TA',
-        meeting_date: '미팅',
-        fu_date: 'F/U 일정',
-        status_name: '영업진행',
-        possibility: '가능성',
-        amount: '매출',
-        created_at: '생성일',
-        updated_at: '수정일',
-    };
-    let html = '<h3>상세 정보</h3><table style="width:100%">';
-    const readonlyFields = ['created_at', 'updated_at'];
-    const dropdownFields = ['category_name','region_name','status_name','subregion'];
-    let memoHtml = '';
-    fieldOrder.forEach(function(key) {
-        if (!(key in entry)) return;
-        let value = entry[key] ?? '';
-        let inputHtml = '';
-        if (dropdownFields.includes(key)) {
-            let btnStyle = '';
-            if(key==='category_name' && entry.category_color) btnStyle = `background:${hexToRgba(entry.category_color, 0.18)};`;
-            if(key==='status_name' && entry.status_color) btnStyle = `background:${hexToRgba(entry.status_color, 0.18)};`;
-            inputHtml = `<button type="button" class="add-btn" style="width:100%;background:#f8f9fa;color:#333;border:1px solid #eee;${btnStyle}" onclick="openDetailDropdown('${entry.id}','${key}',this)">${value||'선택'}</button>`;
-        } else if (key === 'address') {
-            inputHtml = `<input type="text" value="${value}" data-field="${key}" onchange="updateEntryField('${entry.id}', '${key}', this.value)">`;
-        } else if (readonlyFields.includes(key)) {
-            inputHtml = `<input type="text" value="${value}" readonly style="background:#f8f9fa;">`;
-        } else if (key.endsWith('_date')) {
-            inputHtml = `<input type="date" value="${value}" data-field="${key}" onchange="updateEntryField('${entry.id}', '${key}', this.value)">`;
-        } else {
-            inputHtml = `<input type="text" value="${value}" data-field="${key}" onchange="updateEntryField('${entry.id}', '${key}', this.value)">`;
-        }
-        html += `<tr><th style="text-align:right;padding:4px 8px;color:#888;">${fieldLabels[key] || key}</th><td style="padding:4px 8px;">${inputHtml}</td></tr>`;
-    });
-    // 메모는 textarea + 마크다운 렌더링 결과 동시 표시
-    if ('memo' in entry) {
-        memoHtml = `<div style="margin-top:18px;"><b>메모</b><br><textarea id="modalMemoInput" data-field="memo" style="width:98%;min-height:80px;">${entry.memo ?? ''}</textarea><div id="modalMemoPreview" style="border:1px solid #eee;padding:8px 10px;background:#fafbfc;min-height:40px;margin-top:6px;"></div></div>`;
-    }
-    html += '</table>' + memoHtml;
-    document.getElementById('detailModalContent').innerHTML = html + '<button onclick="closeDetailModal()" style="margin-top:16px;">닫기</button>';
-    document.getElementById('detailModal').style.display = 'flex';
-    // 메모 입력 시 마크다운 렌더링
-    if ('memo' in entry) {
-        const memoInput = document.getElementById('modalMemoInput');
-        const memoPreview = document.getElementById('modalMemoPreview');
-        if(memoInput && memoPreview) {
-            function renderPreview() {
-                memoPreview.innerHTML = marked.parse(memoInput.value || '');
-            }
-            memoInput.addEventListener('input', renderPreview);
-            renderPreview();
-            memoInput.onchange = function() {
-                updateEntryField(entry.id, 'memo', memoInput.value);
-            };
-        }
-    }
+// 상세보기 모달 함수 - 새로운 Row 시스템에 맞게 수정
+function showDetailModal(rowData, rowId) {
+    // 사용자의 속성들을 기준으로 표시
+    const user = { id: 1 }; // 임시로 user id 1 사용
+    
+    // 백엔드에서 사용자의 속성 목록을 가져와야 함
+    fetch('/get_user_attributes/')
+      .then(r => r.json())
+      .then(function(attributesData) {
+          if (!attributesData.success) {
+              alert('속성 정보를 불러올 수 없습니다.');
+              return;
+          }
+          
+          let html = '<h3>상세 정보</h3><table style="width:100%">';
+          const readonlyFields = ['생성일', '수정일'];
+          
+          attributesData.attributes.forEach(function(attr) {
+              const value = rowData[attr.name] || '';
+              let inputHtml = '';
+              
+              if (readonlyFields.includes(attr.name)) {
+                  inputHtml = `<input type="text" value="${value}" readonly style="background:#f8f9fa;">`;
+              } else if (attr.attributeType === 'dropdown') {
+                  inputHtml = `<button type="button" class="add-btn" style="width:100%;background:#f8f9fa;color:#333;border:1px solid #eee;" onclick="openDetailDropdown('${rowId}','${attr.name}',this)">${value||'선택'}</button>`;
+              } else if (attr.attributeType === 'datetime') {
+                  // 날짜 형식 변환
+                  let dateValue = '';
+                  if (value) {
+                      try {
+                          const dt = new Date(value);
+                          dateValue = dt.toISOString().split('T')[0];
+                      } catch(e) {
+                          dateValue = value;
+                      }
+                  }
+                  inputHtml = `<input type="date" value="${dateValue}" data-field="${attr.name}" onchange="updateRowField('${rowId}', '${attr.name}', this.value)">`;
+              } else {
+                  inputHtml = `<input type="text" value="${value}" data-field="${attr.name}" onchange="updateRowField('${rowId}', '${attr.name}', this.value)">`;
+              }
+              
+              html += `<tr><th style="text-align:right;padding:4px 8px;color:#888;">${attr.name}</th><td style="padding:4px 8px;">${inputHtml}</td></tr>`;
+          });
+          
+          html += '</table>';
+          document.getElementById('detailModalContent').innerHTML = html;
+          document.getElementById('detailModal').style.display = 'flex';
+      });
 }
+
+// 새로운 필드 업데이트 함수
+function updateRowField(rowId, field, value) {
+    fetch('/diary/update_row_field/', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'id='+encodeURIComponent(rowId)+'&field='+encodeURIComponent(field)+'&value='+encodeURIComponent(value)
+    })
+    .then(r=>r.json())
+    .then(function(data){
+        if(!data.success) {
+            alert('수정 실패: '+(data.error||''));
+            return;
+        }
+        // 성공 시 테이블과 칸반보드 새로고침
+        refreshTable();
+        refreshKanban();
+        // F/U 일정 필드인 경우 캘린더도 새로고침
+        if(field === 'F/U 일정' && window.calendar) {
+            window.calendar.refetchEvents();
+        }
+        // 모달 데이터도 새로고침
+        fetch('/get_row_details/'+rowId+'/')
+          .then(r => r.json())
+          .then(function(data){
+              if(data.success) showDetailModal(data.row_data, data.row_id);
+          });
+    })
+    .catch(function(err){
+        alert('수정 실패: 네트워크 오류');
+        console.error(err);
+    });
+}
+
 // 상세 모달용 드롭다운 오픈 함수
-function openDetailDropdown(id, key, btn) {
-    let type = '';
-    if(key==='category_name') type = 'category';
-    else if(key==='region_name') type = 'region';
-    else if(key==='status_name') type = 'status';
-    else if(key==='subregion') type = 'subregion';
-    else if(key==='address') type = 'address';
-    // 모달 내에서 드롭다운을 띄우기 위해 임시 td 생성
-    let fakeTd = document.createElement('td');
-    fakeTd.style.position = 'fixed';
-    fakeTd.style.left = (btn.getBoundingClientRect().left + window.scrollX) + 'px';
-    fakeTd.style.top = (btn.getBoundingClientRect().top + window.scrollY + btn.offsetHeight) + 'px';
-    document.body.appendChild(fakeTd);
-    // openDropdown은 td, type, id, currentId, currentSubregion 순서
-    let currentId = btn.innerText;
-    let currentSubregion = '';
-    if(type==='subregion') {
-        // region_name을 찾아서 전달
-        const regionVal = btn.closest('table').querySelector('button[onclick*="region_name"]').innerText;
-        currentId = regionVal;
-        currentSubregion = btn.innerText;
-    }
-    openDropdown(fakeTd, type, id, currentId, currentSubregion);
-    // 드롭다운에서 값 선택 후 모달도 갱신
-    function afterUpdateAll(id) {
-        fetch('/diary/update/?id='+id)
-        .then(r=>r.json())
-        .then(function(data){
-            if(data.success && data.entry) {
-                showDetailModal(data.entry);
-                updateTableRow(data.entry);
-                refreshKanban();
+function openDetailDropdown(rowId, fieldName, btn) {
+    // 새로운 시스템에서는 fieldName을 그대로 사용
+    let dropdownType = '';
+    
+    // 속성 타입에 따라 드롭다운 타입 결정
+    fetch('/get_user_attributes/')
+        .then(r => r.json())
+        .then(function(attributesData) {
+            if (!attributesData.success) {
+                alert('속성 정보를 불러올 수 없습니다.');
+                return;
+            }
+            
+            const attr = attributesData.attributes.find(a => a.name === fieldName);
+            if (!attr) {
+                alert('해당 속성을 찾을 수 없습니다.');
+                return;
+            }
+            
+            if (attr.attributeType === 'dropdown') {
+                // 드롭다운 옵션들을 가져와서 표시
+                showModalDropdownOptions(rowId, fieldName, btn);
+            } else {
+                alert('드롭다운 타입이 아닙니다.');
+            }
+        });
+}
+
+// 모달용 드롭다운 옵션 표시 함수
+function showModalDropdownOptions(rowId, fieldName, btn) {
+    fetch('/diary/dropdown_options/?field=' + encodeURIComponent(fieldName))
+        .then(r => r.json())
+        .then(function(data) {
+            if (!data.options) {
+                alert('드롭다운 옵션을 불러올 수 없습니다.');
+                return;
+            }
+            
+            // 드롭다운 메뉴 생성
+            const dropdown = document.createElement('div');
+            dropdown.style.position = 'fixed';
+            dropdown.style.left = (btn.getBoundingClientRect().left + window.scrollX) + 'px';
+            dropdown.style.top = (btn.getBoundingClientRect().top + window.scrollY + btn.offsetHeight) + 'px';
+            dropdown.style.backgroundColor = 'white';
+            dropdown.style.border = '1px solid #ccc';
+            dropdown.style.borderRadius = '4px';
+            dropdown.style.boxShadow = '0 2px 10px rgba(0,0,0,0.1)';
+            dropdown.style.zIndex = '10000';
+            dropdown.style.minWidth = '150px';
+            dropdown.style.maxHeight = '200px';
+            dropdown.style.overflowY = 'auto';
+            
+            let html = '';
+            data.options.forEach(function(option) {
+                const bgColor = option.color ? `background-color: ${option.color}; color: white;` : '';
+                html += `<div class="dropdown-option" style="padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #eee; ${bgColor}" 
+                            onclick="selectModalDropdownOption('${rowId}', '${fieldName}', '${option.id}', '${option.option}', this)">${option.option}</div>`;
+            });
+            
+            // 새 옵션 추가 버튼
+            html += `<div style="padding: 8px 12px; cursor: pointer; border-top: 2px solid #eee; background: #f8f9fa; font-weight: bold;" 
+                        onclick="addNewModalDropdownOption('${rowId}', '${fieldName}', this)">+ 새 옵션 추가</div>`;
+            
+            dropdown.innerHTML = html;
+            document.body.appendChild(dropdown);
+            
+            // 드롭다운 외부 클릭 시 닫기
+            function closeDropdown(e) {
+                if (!dropdown.contains(e.target)) {
+                    dropdown.remove();
+                    document.removeEventListener('click', closeDropdown);
+                }
+            }
+            setTimeout(() => document.addEventListener('click', closeDropdown), 100);
+        });
+}
+
+// 모달용 드롭다운 옵션 선택 함수
+function selectModalDropdownOption(rowId, fieldName, optionId, optionText, element) {
+    // 서버에 업데이트 요청
+    fetch('/diary/update_row_field/', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'id=' + encodeURIComponent(rowId) + '&field=' + encodeURIComponent(fieldName) + '&value=' + encodeURIComponent(optionId)
+    })
+    .then(r => r.json())
+    .then(function(data) {
+        if (data.success) {
+            // 드롭다운 닫기
+            element.closest('div').remove();
+            
+            // 모달 새로고침
+            fetch('/get_row_details/' + rowId + '/')
+                .then(r => r.json())
+                .then(function(data) {
+                    if (data.success) {
+                        showDetailModal(data.row_data, data.row_id);
+                    }
+                });
+                
+            // 테이블과 칸반보드 새로고침
+            refreshTable();
+            refreshKanban();
+            
+            // F/U 일정 필드인 경우 캘린더도 새로고침
+            if (fieldName === 'F/U 일정' && window.calendar) {
+                window.calendar.refetchEvents();
+            }
+        } else {
+            alert('수정 실패: ' + (data.error || ''));
+        }
+    });
+}
+
+// 모달용 새 드롭다운 옵션 추가 함수
+function addNewModalDropdownOption(rowId, fieldName, element) {
+    const newOption = prompt('새 옵션을 입력하세요:');
+    if (newOption && newOption.trim()) {
+        fetch('/diary/dropdown_options/?field=' + encodeURIComponent(fieldName), {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: 'name=' + encodeURIComponent(newOption.trim())
+        })
+        .then(r => r.json())
+        .then(function(data) {
+            if (data.id) {
+                // 새 옵션 추가 성공, 해당 옵션으로 선택
+                selectModalDropdownOption(rowId, fieldName, data.id, data.option, element);
+            } else {
+                alert('옵션 추가 실패: ' + (data.error || ''));
             }
         });
     }
-    // 드롭다운 닫힐 때 fakeTd도 제거
-    const observer = new MutationObserver(function() {
-        if(!document.body.contains(fakeTd)) observer.disconnect();
-        if(!dropdown || !document.body.contains(dropdown)) {
-            fakeTd.remove();
-            observer.disconnect();
-        }
-    });
-    observer.observe(document.body, {childList:true, subtree:true});
-
-    // 드롭다운에서 값 선택 시 afterUpdateAll을 호출하도록 openDropdown 내부에 콜백을 전달
-    // openDropdown에서 값을 선택하는 부분에 아래와 같이 추가:
-    // if (typeof window._modalAfterUpdateAll === 'function') window._modalAfterUpdateAll(id);
-    window._modalAfterUpdateAll = afterUpdateAll;
 }
+
 function updateEntryField(id, field, value) {
     fetch('/diary/update/', {
         method: 'POST',
@@ -1117,7 +2008,6 @@ function updateEntryField(id, field, value) {
 }
 function closeDetailModal() {
     document.getElementById('detailModal').style.display = 'none';
-    bindTableCellEvents(); // ...버튼 이벤트 복구
 }
 function updateTableRow(entry) {
     const tr = document.querySelector(`#entryTbody tr[data-id='${entry.id}']`);
@@ -1195,6 +2085,802 @@ function updateTableRow(entry) {
         }
     }
 }
+
+    // 새 행용 Attribute 시스템 이벤트 바인딩
+    function bindNewRowAttributeEvents(tr) {
+        tr.querySelectorAll('td[data-field]').forEach(function(td) {
+            const field = td.getAttribute('data-field');
+            const type = td.getAttribute('data-type');
+            
+            console.log(`새 행 필드 "${field}" 이벤트 바인딩, type: ${type}`);
+            
+            // datetime 타입 필드들
+            if (type === 'datetime') {
+                const input = td.querySelector('input[type="date"]');
+                if (input) {
+                    input.onchange = function() {
+                        const newValue = input.value;
+                        console.log(`새 행 datetime 필드 "${field}" 값 변경:`, newValue);
+                        // 새 행 필드 저장
+                        saveNewRowField(tr, field, newValue);
+                    };
+                }
+            }
+            // dropdown 타입이나 특수 지역 필드들
+            else if(type === 'dropdown' || field === '지역' || field === '상세지역') {
+                td.style.cursor = 'pointer';
+                td.onclick = function(e) {
+                    console.log(`새 행 드롭다운 클릭됨 - 필드: ${field}, type: ${type}`);
+                    e.stopPropagation();
+                    
+                    let dropdownType = '';
+                    if(type === 'dropdown') {
+                        // 필드명을 그대로 사용 (영어 매핑 제거)
+                        dropdownType = field;
+                        console.log(`dropdown 타입: ${field}`);
+                    } else if(field === '지역') {
+                        dropdownType = 'region';
+                        console.log('지역 드롭다운으로 설정');
+                    } else if(field === '상세지역') {
+                        dropdownType = 'region_detail';
+                        console.log('상세지역 드롭다운으로 설정');
+                    }
+                    
+                    if(dropdownType) {
+                        // 이름 필드인 경우 .name-text에서 값 추출, 다른 필드는 td.innerText 사용
+                        const currentValue = (field === '이름') ? 
+                            (td.querySelector('.name-text')?.innerText || '') : 
+                            (td.innerText || '');
+                        const currentSubregion = dropdownType === 'region_detail' ? 
+                            tr.querySelector('td[data-field="상세지역"]').innerText : '';
+                        
+                        // 새 행용 드롭다운 열기
+                        openNewRowAttributeDropdown(td, dropdownType, currentValue, currentSubregion, tr);
+                    }
+                };
+            }
+            // 이름 필드 특별 처리
+            else if(field === '이름') {
+                td.onclick = function(e) {
+                    e.stopPropagation();
+                    if(e.target.classList.contains('more-btn')) return;
+                    
+                    const nameTextDiv = td.querySelector('.name-text');
+                    const oldValue = nameTextDiv.innerText;
+                    
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.value = oldValue;
+                    input.className = 'table-edit-input';
+                    input.style.position = 'absolute';
+                    input.style.left = '0';
+                    input.style.top = '0';
+                    input.style.width = 'max-content';
+                    input.style.minWidth = '100%';
+                    input.style.background = '#fffbe6';
+                    input.style.zIndex = '10';
+                    input.style.border = 'none';
+                    input.style.fontSize = 'inherit';
+                    input.style.fontFamily = 'inherit';
+                    input.style.lineHeight = 'inherit';
+                    input.style.padding = '0';
+                    input.style.margin = '0';
+                    
+                    td.appendChild(input);
+                    input.focus();
+                    input.select();
+                    
+                    function restoreCell(newValue) {
+                        nameTextDiv.innerText = newValue;
+                        if(input.parentNode) input.parentNode.removeChild(input);
+                    }
+                    
+                    input.onblur = function() {
+                        const newValue = input.value;
+                        restoreCell(newValue);
+                        console.log(`새 행 이름 필드 값 변경:`, newValue);
+                        // 새 행 필드 저장
+                        saveNewRowField(tr, field, newValue);
+                    };
+                    
+                    input.onkeydown = function(e) {
+                        if (e.key === 'Enter') input.blur();
+                        if (e.key === 'Escape') restoreCell(oldValue);
+                    };
+                };
+            }
+            // 일반 텍스트 필드들
+            else {
+                td.onclick = function(e) {
+                    e.stopPropagation();
+                    const oldValue = td.innerText;
+                    
+                    let inputType = 'text';
+                    // 날짜 필드들은 date input 사용
+                    if (['TA','미팅','F/U 일정'].includes(field) || type === 'datetime') {
+                        inputType = 'date';
+                    }
+                    
+                    const input = document.createElement('input');
+                    input.type = inputType;
+                    input.value = (inputType==='date' && oldValue) ? oldValue.trim().slice(0,10) : oldValue.trim();
+                    input.className = 'table-edit-input';
+                    
+                    td.innerHTML = '';
+                    td.appendChild(input);
+                    input.focus();
+                    if(inputType === 'text') input.select();
+                    
+                    input.onblur = function() {
+                        const newValue = input.value;
+                        td.innerText = newValue;
+                        console.log(`새 행 일반 필드 "${field}" 값 변경:`, newValue);
+                        // 새 행 필드 저장
+                        saveNewRowField(tr, field, newValue);
+                    };
+                    
+                    input.onkeydown = function(e) {
+                        if (e.key === 'Enter') input.blur();
+                        if (e.key === 'Escape') { td.innerText = oldValue; }
+                    };
+                };
+            }
+        });
+    }
+    
+    // 새 행 필드 값 저장 함수 (수정됨)
+    function saveNewRowField(tr, field, value) {
+        const currentId = tr.getAttribute('data-id');
+        console.log(`새 행 필드 저장: ${field} = ${value}, 현재 ID: ${currentId}`);
+        
+        // 임시 ID인 경우 (새 행 생성)
+        if (currentId && currentId.startsWith('temp_')) {
+            console.log('새 행 생성 중...');
+            fetch('/diary/create_new_row/', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: 'field=' + encodeURIComponent(field) + '&value=' + encodeURIComponent(value)
+            }).then(function(response) {
+                console.log(`새 행 생성 응답 상태:`, response.status);
+                return response.json();
+            }).then(function(data) {
+                console.log(`새 행 생성 응답:`, data);
+                if (data.success && data.id) {
+                    // 임시 ID를 실제 ID로 변경
+                    tr.setAttribute('data-id', data.id);
+                    tr.removeAttribute('data-is-new');
+                    console.log(`새 행 ID 업데이트: ${currentId} -> ${data.id}`);
+                    
+                    // 영업진행 필드인 경우 칸반보드 새로고침
+                    if (field === '영업진행') {
+                        refreshKanban();
+                    }
+                    // F/U 일정 필드인 경우 캘린더 새로고침
+                    if (field === 'F/U 일정' && window.calendar) {
+                        window.calendar.refetchEvents();
+                    }
+                } else {
+                    console.error(`새 행 생성 실패:`, data.error);
+                    alert('새 행 생성 실패: ' + (data.error || ''));
+                }
+            }).catch(function(error) {
+                console.error(`새 행 생성 중 오류:`, error);
+                alert('새 행 생성 중 오류 발생: ' + error.message);
+            });
+        }
+        // 실제 ID가 있는 경우 (기존 행 업데이트)
+        else if (currentId && !currentId.startsWith('temp_')) {
+            console.log('기존 행 업데이트 중...');
+            fetch('/diary/update_row_field/', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: 'id=' + encodeURIComponent(currentId) + '&field=' + encodeURIComponent(field) + '&value=' + encodeURIComponent(value)
+            }).then(function(response) {
+                console.log(`${field} 필드 업데이트 응답 상태:`, response.status);
+                return response.json();
+            }).then(function(data) {
+                console.log(`${field} 필드 업데이트 응답:`, data);
+                if (data.success) {
+                    // 영업진행 필드인 경우 칸반보드 새로고침
+                    if (field === '영업진행') {
+                        refreshKanban();
+                    }
+                    // F/U 일정 필드인 경우 캘린더 새로고침
+                    if (field === 'F/U 일정' && window.calendar) {
+                        window.calendar.refetchEvents();
+                    }
+                } else {
+                    console.error(`${field} 필드 업데이트 실패:`, data.error);
+                    alert('업데이트 실패: ' + (data.error || ''));
+                }
+            }).catch(function(error) {
+                console.error(`${field} 필드 업데이트 중 오류:`, error);
+                alert('업데이트 중 오류 발생: ' + error.message);
+            });
+        } else {
+            console.error('유효하지 않은 행 ID:', currentId);
+        }
+    }
+    
+    // 새 행용 드롭다운 함수 (Attribute 시스템)
+    function openNewRowAttributeDropdown(td, type, currentValue, currentSubregion, tr) {
+        console.log('새 행 attribute 드롭다운 호출됨');
+        console.log('파라미터:', {type, currentValue, currentSubregion});
+        
+        closeDropdown();
+        dropdown = document.createElement('div');
+        dropdown.className = 'dropdown-edit';
+        dropdown.style.top = (td.getBoundingClientRect().top + window.scrollY + td.offsetHeight) + 'px';
+        dropdown.style.left = (td.getBoundingClientRect().left + window.scrollX) + 'px';
+        
+        if(type === 'region') {
+            // 지역 드롭다운 (하드코딩된 값들)
+            var regionNames = ['서울','경기','인천','대구','부산','광주','대전','울산','세종','강원','충북','충남','전북','전남'];
+            let selectedRegion = currentValue || '서울';
+            let html = '<div><b>지역 선택</b><ul style="margin:8px 0 12px 0;max-height:120px;overflow-y:auto;">';
+            regionNames.forEach(function(region) {
+                html += '<li style="margin-bottom:2px;"><span data-region="'+region+'" style="cursor:pointer;'+(region==selectedRegion?'font-weight:bold;color:#007bff;':'')+'">'+region+'</span></li>';
+            });
+            html += '</ul></div>';
+            dropdown.innerHTML = html;
+            document.body.appendChild(dropdown);
+            
+            dropdown.querySelectorAll('span[data-region]').forEach(function(span) {
+                span.onclick = function() {
+                    selectedRegion = this.getAttribute('data-region');
+                    td.innerText = selectedRegion;
+                    td.setAttribute('data-value', selectedRegion);
+                    // 상세지역도 업데이트
+                    var subTd = tr.querySelector('td[data-field="상세지역"]');
+                    if(subTd) {
+                        var regionMap = {
+                            '서울': ['관악구','금천구','강남구','강서구','강동구','강북구','광진구','구로구','노원구','도봉구','동대문구','동작구','마포구','서대문구','서초구','성동구','성북구','송파구','양천구','영등포구','용산구','은평구','종로구','중구','중랑구'],
+                            '경기': ['수원시','고양시','성남시','용인시','부천시','안산시','안양시','남양주시','화성시','평택시','의정부시','시흥시','파주시','광명시','김포시','군포시','광주시','오산시','이천시','안성시','의왕시','하남시','여주시','양평군','동두천시','과천시','가평군','연천군']
+                        };
+                        var firstSubregion = (regionMap[selectedRegion] || [])[0] || '';
+                        subTd.innerText = firstSubregion;
+                    }
+                    closeDropdown();
+                    // 지역 값 저장
+                    saveNewRowField(tr, '지역', selectedRegion);
+                };
+            });
+        } else if(type === 'region_detail') {
+            // 상세지역 드롭다운 (하드코딩된 값들)
+            var regionMap = {
+                '서울': ['관악구','금천구','강남구','강서구','강동구','강북구','광진구','구로구','노원구','도봉구','동대문구','동작구','마포구','서대문구','서초구','성동구','성북구','송파구','양천구','영등포구','용산구','은평구','종로구','중구','중랑구'],
+                '경기': ['수원시','고양시','성남시','용인시','부천시','안산시','안양시','남양주시','화성시','평택시','의정부시','시흥시','파주시','광명시','김포시','군포시','광주시','오산시','이천시','안성시','의왕시','하남시','여주시','양평군','동두천시','과천시','가평군','연천군']
+            };
+            var currentRegion = tr.querySelector('td[data-field="지역"]').innerText.trim();
+            var subregions = regionMap[currentRegion] || [];
+            let selectedSubregion = currentSubregion || '';
+            let html = '<div><b>상세지역 선택</b><ul style="margin:8px 0 12px 0;max-height:120px;overflow-y:auto;">';
+            subregions.forEach(function(sub) {
+                html += '<li style="margin-bottom:2px;"><span data-subregion="'+sub+'" style="cursor:pointer;'+(sub==selectedSubregion?'font-weight:bold;color:#007bff;':'')+'">'+sub+'</span></li>';
+            });
+            html += '</ul></div>';
+            dropdown.innerHTML = html;
+            document.body.appendChild(dropdown);
+            
+            dropdown.querySelectorAll('span[data-subregion]').forEach(function(span) {
+                span.onclick = function() {
+                    selectedSubregion = this.getAttribute('data-subregion');
+                    td.innerText = selectedSubregion;
+                    closeDropdown();
+                    // 상세지역 값 저장
+                    saveNewRowField(tr, '상세지역', selectedSubregion);
+                };
+            });
+        } else {
+            // dropdown_options API를 사용하는 드롭다운 (구분, 영업진행, 가능성 등)
+            fetch('/diary/dropdown_options/?field=' + encodeURIComponent(type))
+                .then(r => r.json())
+                .then(function(data) {
+                    if (data.options) {
+                        const options = data.options;
+                        let html = '<div><b>' + type + ' 선택</b><ul style="margin:8px 0 12px 0;max-height:120px;overflow-y:auto;">';
+                        options.forEach(function(opt) {
+                            html += `<li style="display:flex;align-items:center;gap:6px;">
+                                <span data-option-id="${opt.id}" style="cursor:pointer;background:${opt.color ? hexToRgba(opt.color, 0.18) : '#eee'};border-radius:4px;padding:2px 8px;min-width:60px;display:inline-block;">${opt.option}</span>
+                                <input type="color" value="${opt.color||'#eeeeee'}" data-color-edit="${opt.id}" style="width:24px;height:24px;border:none;vertical-align:middle;cursor:pointer;">
+                                <button data-edit="${opt.id}">✏️</button>
+                                <button data-del="${opt.id}">🗑️</button>
+                            </li>`;
+                        });
+                        html += '</ul>';
+                        html += '<input type="text" placeholder="새 옵션 추가" style="width:70%;"> <button class="add-btn">추가</button></div>';
+                        dropdown.innerHTML = html;
+                        document.body.appendChild(dropdown);
+                        
+                        // 옵션 선택
+                        dropdown.querySelectorAll('span[data-option-id]').forEach(function(span){
+                            span.onclick = function(){
+                                td.innerText = span.innerText;
+                                td.setAttribute('data-value', span.getAttribute('data-option-id'));
+                                td.style.background = span.style.background;
+                                closeDropdown();
+                                // 드롭다운 값 저장
+                                saveNewRowField(tr, type, span.getAttribute('data-option-id'));
+                            };
+                        });
+                        
+                        // 새 항목 추가
+                        dropdown.querySelector('.add-btn').onclick = function(){
+                            const val = dropdown.querySelector('input[type=text]').value.trim();
+                            if(val) {
+                                fetch('/diary/dropdown_options/?field=' + encodeURIComponent(type), {
+                                    method: 'POST',
+                                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                                    body: 'name=' + encodeURIComponent(val)
+                                })
+                                .then(r => r.json())
+                                .then(data => {
+                                    if(data.id && data.option) {
+                                        // 새로 추가된 옵션을 드롭다운에 동적으로 추가
+                                        const ul = dropdown.querySelector('ul');
+                                        const li = document.createElement('li');
+                                        li.style.cssText = 'display:flex;align-items:center;gap:6px;';
+                                        li.innerHTML = `
+                                            <span data-option-id="${data.id}" style="cursor:pointer;background:${data.color ? hexToRgba(data.color, 0.18) : '#eee'};border-radius:4px;padding:2px 8px;min-width:60px;display:inline-block;">${data.option}</span>
+                                            <input type="color" value="${data.color||'#eeeeee'}" data-color-edit="${data.id}" style="width:24px;height:24px;border:none;vertical-align:middle;cursor:pointer;">
+                                            <button data-edit="${data.id}">✏️</button>
+                                            <button data-del="${data.id}">🗑️</button>
+                                        `;
+                                        ul.appendChild(li);
+                                        
+                                        // 새로 추가된 옵션에 이벤트 바인딩
+                                        const span = li.querySelector('span[data-option-id]');
+                                        span.onclick = function(){
+                                            td.innerText = span.innerText;
+                                            td.setAttribute('data-value', span.getAttribute('data-option-id'));
+                                            td.style.background = span.style.background;
+                                            closeDropdown();
+                                            // 드롭다운 값 저장
+                                            saveNewRowField(tr, type, span.getAttribute('data-option-id'));
+                                        };
+                                        
+                                        // 새 옵션의 컬러피커, 삭제, 수정 버튼 이벤트 바인딩
+                                        bindNewRowDropdownItemEvents(li, type, tr);
+                                        
+                                        // 입력 필드 초기화
+                                        dropdown.querySelector('input[type=text]').value = '';
+                                    }
+                                })
+                                .catch(error => {
+                                    console.error('옵션 추가 실패:', error);
+                                    alert('옵션 추가에 실패했습니다.');
+                                });
+                            }
+                        };
+                        
+                        // 기존 옵션들에 이벤트 바인딩
+                        dropdown.querySelectorAll('li').forEach(function(li) {
+                            bindNewRowDropdownItemEvents(li, type, tr);
+                        });
+                    }
+                })
+                .catch(function(error) {
+                    console.error('드롭다운 옵션 로드 실패:', error);
+                });
+        }
+        
+        // 외부 클릭 시 드롭다운 닫기
+        document.addEventListener('mousedown', function handler(e) {
+            if(dropdown && !dropdown.contains(e.target)) { 
+                closeDropdown(); 
+                document.removeEventListener('mousedown', handler); 
+            }
+        });
+    }
+    
+    // 새 행 드롭다운 항목에 이벤트 바인딩하는 함수
+    function bindNewRowDropdownItemEvents(li, type, tr) {
+        // 컬러피커 이벤트
+        const colorInput = li.querySelector('input[data-color-edit]');
+        if(colorInput) {
+            colorInput.onchange = function(e){
+                fetch('/diary/dropdown_options/?field=' + encodeURIComponent(type) + '&id=' + colorInput.getAttribute('data-color-edit') + '&color=' + encodeURIComponent(colorInput.value), {
+                    method: 'PUT'
+                }).then(r => r.json()).then(data => {
+                    if(data.success) {
+                        // 색상 변경 즉시 반영
+                        const span = li.querySelector('span[data-option-id]');
+                        span.style.background = hexToRgba(colorInput.value, 0.18);
+                    }
+                }).catch(error => {
+                    console.error('색상 변경 실패:', error);
+                });
+            };
+        }
+        
+        // 삭제 버튼 이벤트
+        const delBtn = li.querySelector('button[data-del]');
+        if(delBtn) {
+            delBtn.onclick = function(e){
+                e.stopPropagation();
+                if(confirm('삭제할까요?')) {
+                    fetch('/diary/dropdown_options/?field=' + encodeURIComponent(type) + '&id=' + delBtn.getAttribute('data-del'), {
+                        method: 'DELETE'
+                    }).then(r => r.json()).then(data => {
+                        if(data.success) {
+                            li.remove();
+                        }
+                    }).catch(error => {
+                        console.error('삭제 실패:', error);
+                        alert('삭제에 실패했습니다.');
+                    });
+                }
+            };
+        }
+        
+        // 수정 버튼 이벤트
+        const editBtn = li.querySelector('button[data-edit]');
+        if(editBtn) {
+            editBtn.onclick = function(e){
+                e.stopPropagation();
+                const span = li.querySelector('span[data-option-id]');
+                const old = span.innerText;
+                const input = document.createElement('input');
+                input.type = 'text'; input.value = old;
+                input.className = 'table-edit-input';
+                span.replaceWith(input);
+                input.focus();
+                input.onkeydown = function(ev){
+                    if(ev.key==='Enter'){
+                        fetch('/diary/dropdown_options/?field=' + encodeURIComponent(type) + '&id=' + editBtn.getAttribute('data-edit') + '&name=' + encodeURIComponent(input.value), {
+                            method: 'PUT'
+                        }).then(r => r.json()).then(data => {
+                            if(data.success) {
+                                // 수정된 내용 즉시 반영
+                                const newSpan = document.createElement('span');
+                                newSpan.setAttribute('data-option-id', editBtn.getAttribute('data-edit'));
+                                newSpan.style.cssText = 'cursor:pointer;background:#eee;border-radius:4px;padding:2px 8px;min-width:60px;display:inline-block;';
+                                newSpan.innerText = input.value;
+                                
+                                // 클릭 이벤트 재바인딩
+                                newSpan.onclick = function(){
+                                    const td = tr.querySelector('td[data-field="' + type + '"]');
+                                    if(td) {
+                                        td.innerText = newSpan.innerText;
+                                        td.setAttribute('data-value', newSpan.getAttribute('data-option-id'));
+                                        td.style.background = newSpan.style.background;
+                                        closeDropdown();
+                                        // 드롭다운 값 저장
+                                        saveNewRowField(tr, type, newSpan.getAttribute('data-option-id'));
+                                    }
+                                };
+                                
+                                input.replaceWith(newSpan);
+                            }
+                        }).catch(error => {
+                            console.error('수정 실패:', error);
+                            // 실패시 원래 값으로 복원
+                            const restoredSpan = document.createElement('span');
+                            restoredSpan.setAttribute('data-option-id', editBtn.getAttribute('data-edit'));
+                            restoredSpan.style.cssText = 'cursor:pointer;background:#eee;border-radius:4px;padding:2px 8px;min-width:60px;display:inline-block;';
+                            restoredSpan.innerText = old;
+                            input.replaceWith(restoredSpan);
+                        });
+                    } else if(ev.key==='Escape') {
+                        // ESC 키로 취소
+                        const cancelSpan = document.createElement('span');
+                        cancelSpan.setAttribute('data-option-id', editBtn.getAttribute('data-edit'));
+                        cancelSpan.style.cssText = 'cursor:pointer;background:#eee;border-radius:4px;padding:2px 8px;min-width:60px;display:inline-block;';
+                        cancelSpan.innerText = old;
+                        input.replaceWith(cancelSpan);
+                    }
+                };
+            };
+        }
+    }
+    
+    // 페이지 로드 시 칸반보드 이벤트 바인딩
+    bindKanbanSortable();
+
+    // 속성 추가 모달 관련 함수들
+    function openAddAttributeModal() {
+        document.getElementById('addAttributeModal').style.display = 'flex';
+        document.getElementById('attributeName').value = '';
+        document.getElementById('attributeType').value = 'text';
+    }
+
+    function closeAddAttributeModal() {
+        document.getElementById('addAttributeModal').style.display = 'none';
+    }
+
+    function saveNewAttribute() {
+        const name = document.getElementById('attributeName').value.trim();
+        const type = document.getElementById('attributeType').value;
+        
+        if (!name) {
+            alert('속성명을 입력해주세요.');
+            return;
+        }
+        
+        // 서버에 새 속성 추가 요청
+        fetch('/add_attribute/', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: 'name=' + encodeURIComponent(name) + '&type=' + encodeURIComponent(type)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // 성공 시 페이지 새로고침
+                window.location.reload();
+            } else {
+                alert('속성 추가 실패: ' + (data.error || '알 수 없는 오류'));
+            }
+        })
+        .catch(error => {
+            console.error('속성 추가 중 오류:', error);
+            alert('속성 추가 중 오류가 발생했습니다.');
+        });
+    }
+
+    // 모달 외부 클릭 시 닫기
+    document.getElementById('addAttributeModal').onclick = function(e) {
+        if (e.target === this) {
+            closeAddAttributeModal();
+        }
+    };
+
+    // 캘린더 상세 모달 함수
+    function showCalendarDetailModal(rowData) {
+        // 모달 HTML 생성
+        const modalHTML = `
+            <div id="calendarDetailModal" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;">
+                <div style="background:white;border-radius:8px;padding:20px;width:400px;max-width:90%;max-height:80%;overflow-y:auto;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+                        <h3 style="margin:0;color:#333;">일정 상세 정보</h3>
+                        <button onclick="closeCalendarDetailModal()" style="background:none;border:none;font-size:20px;cursor:pointer;">&times;</button>
+                    </div>
+                    <div id="calendarDetailContent">
+                        ${Object.keys(rowData).map(key => {
+                            let value = rowData[key] || '(정보 없음)';
+                            
+                            // 날짜 필드 포맷팅
+                            if (key.includes('일정') || key.includes('날짜') || key === '미팅') {
+                                if (value && value !== '(정보 없음)') {
+                                    try {
+                                        const date = new Date(value);
+                                        if (!isNaN(date.getTime())) {
+                                            value = date.toLocaleDateString('ko-KR');
+                                        }
+                                    } catch (e) {
+                                        // 날짜 파싱 실패 시 원본 값 유지
+                                    }
+                                }
+                            }
+                            
+                            return `
+                                <div style="margin-bottom:12px;">
+                                    <strong style="color:#666;display:inline-block;width:100px;">${key}:</strong>
+                                    <span style="color:#333;">${value}</span>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // 기존 모달 제거 후 새 모달 추가
+        const existingModal = document.getElementById('calendarDetailModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+        
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+    }
+
+    function closeCalendarDetailModal() {
+        const modal = document.getElementById('calendarDetailModal');
+        if (modal) {
+            modal.remove();
+        }
+    }
+
+    // 캘린더 모달 외부 클릭 시 닫기
+    document.addEventListener('click', function(e) {
+        if (e.target && e.target.id === 'calendarDetailModal') {
+            closeCalendarDetailModal();
+        }
+    });
+
+    // 정렬/필터 기능
+    function initializeTableData() {
+        const tbody = document.getElementById('entryTbody');
+        if (tbody) {
+            window.originalRows = Array.from(tbody.querySelectorAll('tr'));
+        }
+    }
+
+    function sortTable(column, direction) {
+        const tbody = document.getElementById('entryTbody');
+        if (!tbody) return;
+
+        // 현재 정렬 상태 업데이트
+        window.currentSort = { column, direction };
+        
+        // 정렬 버튼 활성화 상태 업데이트
+        updateSortButtonStates(column, direction);
+
+        // 현재 표시된 행들을 가져오기
+        const rows = Array.from(tbody.querySelectorAll('tr:not([style*="display: none"])'));
+        
+        // 정렬 실행
+        rows.sort((a, b) => {
+            const aValue = getCellValue(a, column);
+            const bValue = getCellValue(b, column);
+            
+            // 숫자인지 확인
+            const aNum = parseFloat(aValue.replace(/[^0-9.-]/g, ''));
+            const bNum = parseFloat(bValue.replace(/[^0-9.-]/g, ''));
+            
+            let comparison = 0;
+            
+            if (!isNaN(aNum) && !isNaN(bNum)) {
+                // 숫자 비교
+                comparison = aNum - bNum;
+            } else {
+                // 문자열 비교
+                comparison = aValue.localeCompare(bValue, 'ko');
+            }
+            
+            return direction === 'asc' ? comparison : -comparison;
+        });
+
+        // 정렬된 행들을 다시 DOM에 추가
+        rows.forEach(row => tbody.appendChild(row));
+        
+        updateFilterStatus();
+    }
+
+    function getCellValue(row, column) {
+        const cells = row.querySelectorAll('td');
+        const attributes = window.ATTR_FIELDS || [];
+        
+        // 속성 인덱스 찾기 (드래그 셀 제외하고 시작)
+        const columnIndex = attributes.findIndex(attr => attr.name === column) + 1;
+        
+        if (columnIndex > 0 && columnIndex < cells.length) {
+            const cell = cells[columnIndex];
+            
+            // 텍스트 입력 필드가 있는 경우
+            const input = cell.querySelector('input[type="text"]');
+            if (input) {
+                return input.value || '';
+            }
+            
+            // 선택 필드가 있는 경우
+            const select = cell.querySelector('select');
+            if (select) {
+                return select.selectedOptions[0]?.text || '';
+            }
+            
+            // 일반 텍스트인 경우
+            return cell.textContent.trim();
+        }
+        
+        return '';
+    }
+
+    function filterTable(column, filterValue) {
+        const tbody = document.getElementById('entryTbody');
+        if (!tbody) return;
+
+        // 필터 값 업데이트
+        if (filterValue.trim() === '') {
+            delete window.filters[column];
+        } else {
+            window.filters[column] = filterValue.toLowerCase();
+        }
+
+        // 모든 행에 대해 필터 적용
+        window.originalRows.forEach(row => {
+            let shouldShow = true;
+            
+            // 모든 활성 필터 검사
+            for (const [filterColumn, filterVal] of Object.entries(window.filters)) {
+                const cellValue = getCellValue(row, filterColumn).toLowerCase();
+                if (!cellValue.includes(filterVal)) {
+                    shouldShow = false;
+                    break;
+                }
+            }
+            
+            row.style.display = shouldShow ? '' : 'none';
+        });
+
+        // 현재 정렬이 활성화되어 있으면 다시 정렬
+        if (window.currentSort.column) {
+            sortTable(window.currentSort.column, window.currentSort.direction);
+        }
+        
+        updateFilterStatus();
+    }
+
+    function clearAllFilters() {
+        // 모든 필터 입력창 초기화
+        const filterInputs = document.querySelectorAll('.filter-input');
+        filterInputs.forEach(input => {
+            input.value = '';
+        });
+
+        // 필터 상태 초기화
+        window.filters = {};
+
+        // 모든 행 표시
+        window.originalRows.forEach(row => {
+            row.style.display = '';
+        });
+
+        // 정렬 상태 초기화
+        window.currentSort = { column: null, direction: null };
+        updateSortButtonStates();
+        
+        updateFilterStatus();
+    }
+
+    function updateSortButtonStates(activeColumn = null, activeDirection = null) {
+        // 모든 정렬 버튼 비활성화
+        document.querySelectorAll('.sort-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+
+        // 활성 정렬 버튼 표시
+        if (activeColumn && activeDirection) {
+            const headerTh = document.querySelector(`th[data-column="${activeColumn}"]`);
+            if (headerTh) {
+                const buttons = headerTh.querySelectorAll('.sort-btn');
+                buttons.forEach(btn => {
+                    if ((activeDirection === 'asc' && btn.textContent === '▲') ||
+                        (activeDirection === 'desc' && btn.textContent === '▼')) {
+                        btn.classList.add('active');
+                    }
+                });
+            }
+        }
+    }
+
+    function updateFilterStatus() {
+        const statusElement = document.getElementById('filterStatus');
+        if (!statusElement) return;
+
+        const totalRows = window.originalRows.length;
+        const visibleRows = window.originalRows.filter(row => 
+            row.style.display !== 'none'
+        ).length;
+
+        const activeFilters = Object.keys(window.filters).length;
+        const sortActive = window.currentSort.column !== null;
+
+        let statusText = '';
+        
+        if (activeFilters === 0 && !sortActive) {
+            statusText = `전체 데이터 표시 중 (${totalRows}건)`;
+        } else {
+            statusText = `${visibleRows}/${totalRows}건 표시`;
+            
+            if (activeFilters > 0) {
+                statusText += ` (필터 ${activeFilters}개 적용)`;
+            }
+            
+            if (sortActive) {
+                statusText += ` (${window.currentSort.column} ${window.currentSort.direction === 'asc' ? '오름차순' : '내림차순'} 정렬)`;
+            }
+        }
+
+        statusElement.textContent = statusText;
+    }
+
+    // 페이지 로드 시 초기화
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeTableData();
+        updateFilterStatus();
+    });
+
 </script>
 </body>
 </html> 

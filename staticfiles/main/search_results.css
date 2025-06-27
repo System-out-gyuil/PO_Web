@@ -1,8 +1,14 @@
+@media (max-width: 3000px) and (min-width: 768px) {
+  html {
+    height: 100%;
+  }
+}
+
 body {
   margin: 0;
   background: linear-gradient(10deg, #93dafa, #cad8f4, #ffffff);
   font-family: "Pretendard JP", -apple-system, BlinkMacSystemFont, "Basier Square", "Noto Sans KR", "Segoe UI", "Apple SD Gothic Neo", Roboto, "Helvetica Neue", Arial, sans-serif;
-
+  padding-top: 0;
 }
 
 a {
@@ -21,6 +27,7 @@ ul {
   align-items: flex-end;
   justify-content: center;
   margin: 0 auto;
+  margin-top: 60px;
 }
 
 .search-ai-result-container {
@@ -289,10 +296,10 @@ ul {
 }
 
 .consel-nav-container {
-  position: fixed;
+  /* position: fixed;
   bottom: 0px;
   left: 0;
-  display: contents;
+  display: contents; */
   width: 100%;
   height: 100px;
 }
@@ -454,9 +461,9 @@ input[type="checkbox"] {
     padding-top: 10px;
   }
 
-  body {
+  /* body {
     padding-bottom: 200px;
-  }
+  } */
 
   .search-ai-result-title-box {
     flex-direction: column;
@@ -529,9 +536,9 @@ input[type="checkbox"] {
 
 @media (max-width: 360px) {
 
-  body {
+  /* body {
     padding-bottom: 200px;
-  }
+  } */
 
   .search-ai-result-title {
     font-size: 24px;
