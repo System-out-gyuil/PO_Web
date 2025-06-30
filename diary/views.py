@@ -542,14 +542,14 @@ def update_entry(request):
             return JsonResponse({'success': False, 'error': 'Missing id or field'})
             
         try:
-            from .models import Row
-            row = Row.objects.get(id=row_id, user=request.user)
+            # 사용자 ID를 1로 고정
+            user = User.objects.get(id=1)
+            row = Row.objects.get(id=row_id, user=user)
         except Row.DoesNotExist:
             return JsonResponse({'success': False, 'error': 'Row not found'})
         except ValueError:
             return JsonResponse({'success': False, 'error': 'Invalid row ID'})
             
-        user = User.objects.get(id=1)
         try:
             attr = Attribute.objects.get(name=field)
         except Attribute.DoesNotExist:
@@ -646,12 +646,12 @@ def update_row_field(request):
             return JsonResponse({'success': False, 'error': 'Missing id or field'})
             
         try:
-            row = Row.objects.get(id=row_id, user=request.user)
+            # 사용자 ID를 1로 고정
+            user = User.objects.get(id=1)
+            row = Row.objects.get(id=row_id, user=user)
         except Row.DoesNotExist:
             return JsonResponse({'success': False, 'error': 'Row not found'})
             
-        user = User.objects.get(id=1)
-        
         try:
             attr = Attribute.objects.get(name=field)
         except Attribute.DoesNotExist:
@@ -1177,9 +1177,12 @@ def delete_file(request):
             })
         
         try:
+            # 사용자 ID를 1로 고정
+            user = User.objects.get(id=1)
+            
             # Row와 Attribute 조회
-            row = Row.objects.get(id=row_id, user=request.user)
-            attribute = Attribute.objects.get(name=field_name, user=request.user)
+            row = Row.objects.get(id=row_id, user=user)
+            attribute = Attribute.objects.get(name=field_name, user=user)
             
             # 파일 타입 속성인지 확인
             if attribute.type != 'file':

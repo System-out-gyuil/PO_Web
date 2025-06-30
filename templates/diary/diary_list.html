@@ -2071,7 +2071,17 @@ function hexToRgba(hex, alpha) {
 
 // 상세보기 모달 함수 - 새로운 Row 시스템에 맞게 수정
 function showDetailModal(rowData, rowId) {
-    // 현재 rowId를 전역 변수로 저장
+    console.log('===== showDetailModal 시작 =====');
+    console.log('rowData:', rowData);
+    console.log('rowId:', rowId);
+    console.log('rowData["음성파일"]:', rowData['음성파일']);
+    console.log('rowData 전체 속성:');
+    Object.keys(rowData).forEach(key => {
+        console.log(`- ${key}:`, rowData[key]);
+    });
+    console.log('================================');
+    
+    // 현재 상세 조회 중인 행 ID 저장
     window.currentDetailRowId = rowId;
     
     // 사용자의 속성들을 기준으로 표시
@@ -2212,6 +2222,10 @@ function showDetailModal(rowData, rowId) {
           
           // 음성파일 관리 영역 업데이트 ("음성파일" 속성 사용)
           updateAudioFileManagement(audioFileValue);
+          
+          // 전역 변수에 현재 행 ID 저장
+          window.currentDetailRowId = rowId;
+          window.currentRowId = rowId;
           
           document.getElementById('detailModal').style.display = 'flex';
       });
@@ -3651,6 +3665,9 @@ function closeDetailModal() {
 
     // 음성파일 관리 영역 업데이트 함수
     function updateAudioFileManagement(audioFileValue) {
+        console.log('updateAudioFileManagement 호출됨:', audioFileValue);
+        console.log('audioFileValue 타입:', typeof audioFileValue);
+        
         const existingArea = document.getElementById('existingAudioFileArea');
         const newArea = document.getElementById('newAudioFileArea');
         const audioFileInput = document.getElementById('audioFile');
@@ -3662,25 +3679,51 @@ function closeDetailModal() {
         try {
             if (audioFileValue && typeof audioFileValue === 'string' && audioFileValue.startsWith('{')) {
                 audioFileInfo = JSON.parse(audioFileValue);
+                console.log('JSON 파싱 성공:', audioFileInfo);
+            } else if (audioFileValue && typeof audioFileValue === 'object') {
+                // 이미 객체인 경우
+                audioFileInfo = audioFileValue;
+                console.log('이미 객체 형태:', audioFileInfo);
+            } else {
+                console.log('JSON 형태가 아님 또는 빈 값:', audioFileValue);
             }
         } catch (e) {
             // JSON 파싱 실패 시 null로 처리
+            console.log('JSON 파싱 실패:', e);
             audioFileInfo = null;
         }
         
-        if (audioFileInfo && audioFileInfo.original_filename) {
+        console.log('최종 audioFileInfo:', audioFileInfo);
+        
+        if (audioFileInfo && (audioFileInfo.original_filename || audioFileInfo.stored_filename)) {
+            console.log('기존 음성파일 표시 모드');
+            console.log('original_filename:', audioFileInfo.original_filename);
+            console.log('stored_filename:', audioFileInfo.stored_filename);
+            console.log('download_url:', audioFileInfo.download_url);
             // 기존 음성파일이 S3에 저장되어 있는 경우
             existingArea.style.display = 'block';
             newArea.style.display = 'none';
             
             const downloadLink = document.getElementById('existingAudioDownload');
-            downloadLink.textContent = `🎵 ${audioFileInfo.original_filename}`;
+            const fileName = audioFileInfo.original_filename || audioFileInfo.stored_filename || '음성파일';
+            downloadLink.textContent = `🎵 ${fileName}`;
             downloadLink.href = audioFileInfo.download_url;
-            downloadLink.download = audioFileInfo.original_filename;
+            downloadLink.download = fileName;
             
             // 전역 변수에 파일 정보 저장
             window.currentAudioFileInfo = audioFileInfo;
         } else {
+            console.log('새 파일 업로드 표시 모드');
+            console.log('audioFileInfo:', audioFileInfo);
+            if (audioFileInfo) {
+                console.log('audioFileInfo의 모든 속성:');
+                console.log('- original_filename:', audioFileInfo.original_filename);
+                console.log('- stored_filename:', audioFileInfo.stored_filename);
+                console.log('- download_url:', audioFileInfo.download_url);
+                console.log('- file_size:', audioFileInfo.file_size);
+                console.log('- content_type:', audioFileInfo.content_type);
+                console.log('- converted_text:', audioFileInfo.converted_text);
+            }
             // 기존 음성파일이 없는 경우
             existingArea.style.display = 'none';
             newArea.style.display = 'block';
