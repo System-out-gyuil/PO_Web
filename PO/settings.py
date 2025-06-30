@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from config import Django_SECRET_KEY, MYSQL_PASSWORD, MYSQL_HOST_IP
+from config import Django_SECRET_KEY, MYSQL_PASSWORD, MYSQL_HOST_IP, AWS_S3_ACCESS_KEY, AWS_S3_SECRET_KEY, AWS_S3_BUCKET_NAME, AWS_S3_REGION, AWS_S3_SIGNATURE_VERSION, AWS_LOCATION
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -43,6 +43,9 @@ INSTALLED_APPS = [
     "allauth.account",
     "allauth.socialaccount",
     "allauth.socialaccount.providers.kakao",
+
+    # AWS S3
+    "storages",
 ]
 
 AUTHENTICATION_BACKENDS = [
@@ -65,6 +68,14 @@ SOCIALACCOUNT_PROVIDERS = {
     }
 }
 
+AWS_ACCESS_KEY_ID = AWS_S3_ACCESS_KEY
+AWS_SECRET_ACCESS_KEY = AWS_S3_SECRET_KEY
+AWS_STORAGE_BUCKET_NAME = AWS_S3_BUCKET_NAME
+AWS_S3_REGION_NAME = AWS_S3_REGION
+AWS_S3_SIGNATURE_VERSION = AWS_S3_SIGNATURE_VERSION
+AWS_LOCATION = AWS_LOCATION
+AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com'
+MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/{AWS_LOCATION}/'
 
 # 매일 18시마다 bizinfo api data update, * * * * * 순서대로 분, 시, 일, 월, 요일
 CRONJOBS = [

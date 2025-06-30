@@ -21,4 +21,9 @@ urlpatterns = [
     path('debug_fu_data/', views.debug_fu_data, name='debug_fu_data'),
     path('get_user_attributes/', views.get_user_attributes, name='get_user_attributes'),
     path('get_kanban_data/', views.get_kanban_data, name='get_kanban_data'),
+    path('upload_file/', views.upload_file, name='upload_file'),
+    path('download_file/<int:row_id>/<str:field_name>/', views.download_file, name='download_file'),
+    path('delete_file/', views.delete_file, name='delete_file'),
+    path('convert_audio_to_text/', views.convert_audio_to_text, name='convert_audio_to_text'),
+    path('upload_audio_file/', views.upload_audio_file, name='upload_audio_file'),
 ] 

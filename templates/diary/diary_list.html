@@ -415,6 +415,14 @@
                             <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" class="{% if attr.assential %}essential-column{% endif %}">
                                 {{ row.values|get_item:attr.name|get_item:'label' }}
                             </td>
+                        {% elif attr.attributeType_name == 'file' %}
+                            <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" class="{% if attr.assential %}essential-column{% endif %}">
+                                {% if row.values|get_item:attr.name|get_item:'label' %}
+                                    <span style="color: #007bff; font-size: 12px;">📎 {{ row.values|get_item:attr.name|get_item:'label' }}</span>
+                                {% else %}
+                                    <span style="color: #6c757d; font-size: 12px;">파일 없음</span>
+                                {% endif %}
+                            </td>
                         {% else %}
                             <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" class="{% if attr.assential %}essential-column{% endif %}">{{ row.values|get_item:attr.name|get_item:'label' }}</td>
                         {% endif %}
@@ -437,6 +445,10 @@
                         {% elif attr.attributeType_name == 'datetime' %}
                             <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" class="{% if attr.assential %}essential-column{% endif %}">
                                 
+                            </td>
+                        {% elif attr.attributeType_name == 'file' %}
+                            <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" class="{% if attr.assential %}essential-column{% endif %}">
+                                <span style="color: #6c757d; font-size: 12px;">파일 없음</span>
                             </td>
                         {% else %}
                             <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" class="{% if attr.assential %}essential-column{% endif %}"></td>
@@ -511,7 +523,63 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
     <div id="detailModal" style="display:none;position:fixed;left:0;top:0;width:100vw;height:100vh;z-index:3000;background:rgba(0,0,0,0.3);align-items:center;justify-content:center;">
-      <div id="detailModalContent" style="background:#fff;min-width:400px;max-width:90vw;min-height:300px;max-height:90vh;overflow:auto;border-radius:10px;padding:30px 30px 20px 30px;position:relative;"></div>
+      <div style="background:#fff;width:90vw;height:90vh;border-radius:10px;position:relative;display:flex;">
+        <!-- 닫기 버튼 -->
+        <button onclick="closeDetailModal()" style="position:absolute;top:10px;right:15px;background:none;border:none;font-size:20px;cursor:pointer;z-index:10;">&times;</button>
+        
+        <!-- 좌측: 기존 상세 정보 -->
+        <div id="detailModalContent" style="flex:1;padding:30px;overflow:auto;border-right:1px solid #eee;">
+          <!-- 여기에 기존 상세 정보가 들어감 -->
+        </div>
+        
+        <!-- 우측: 음성파일 업로드 및 텍스트 영역 -->
+        <div style="flex:1;padding:30px;overflow:auto;display:flex;flex-direction:column;gap:20px;">
+          <h3>음성 기록</h3>
+          
+          <!-- 기존 음성파일 관리 영역 -->
+          <div id="existingAudioFileArea" style="display:none;border:2px solid #28a745;border-radius:8px;padding:20px;background:#f8fff8;">
+            <h4 style="margin:0 0 15px 0;color:#28a745;">기존 음성파일</h4>
+            <div style="display:flex;align-items:center;gap:15px;flex-wrap:wrap;">
+              <a id="existingAudioDownload" href="#" download="" 
+                 style="color:#007bff;text-decoration:none;cursor:pointer;font-weight:bold;"
+                 onclick="downloadExistingAudioFile()">
+                🎵 파일명.mp3
+              </a>
+              <button type="button" onclick="changeAudioFile()" 
+                      style="padding:8px 16px;background:#28a745;color:white;border:none;border-radius:4px;cursor:pointer;">
+                파일 변경
+              </button>
+              <button type="button" onclick="deleteAudioFile()" 
+                      style="padding:8px 16px;background:#dc3545;color:white;border:none;border-radius:4px;cursor:pointer;">
+                삭제
+              </button>
+            </div>
+          </div>
+          
+          <!-- 새 음성파일 업로드 영역 -->
+          <div id="newAudioFileArea" style="border:2px dashed #ddd;border-radius:8px;padding:20px;text-align:center;background:#f9f9f9;">
+            <input type="file" id="audioFile" accept="audio/*" style="display:none;" onchange="handleAudioUpload(this)">
+            <button type="button" onclick="document.getElementById('audioFile').click()" 
+                    style="padding:12px 24px;background:#007bff;color:white;border:none;border-radius:6px;cursor:pointer;font-size:14px;">
+              음성파일 선택
+            </button>
+            <div id="audioFileName" style="margin-top:10px;color:#666;font-size:12px;">선택된 파일이 없습니다</div>
+            <div id="audioUploadStatus" style="margin-top:10px;font-size:12px;"></div>
+          </div>
+          
+          <!-- 변환된 텍스트 표시 및 편집 영역 -->
+          <div style="flex:1;display:flex;flex-direction:column;">
+            <h4 style="margin-bottom:10px;">변환된 텍스트</h4>
+            <textarea id="convertedText" 
+                      style="flex:1;min-height:300px;padding:15px;border:1px solid #ddd;border-radius:6px;font-size:14px;line-height:1.6;resize:none;" 
+                      placeholder="음성파일을 업로드하면 변환된 텍스트가 여기에 표시됩니다."></textarea>
+            <button type="button" onclick="saveConvertedText()" 
+                    style="margin-top:10px;padding:10px 20px;background:#28a745;color:white;border:none;border-radius:6px;cursor:pointer;">
+              텍스트 저장
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
     
     <!-- 속성 추가 모달 -->
@@ -528,6 +596,7 @@
             <option value="text">텍스트</option>
             <option value="dropdown">드롭다운</option>
             <option value="datetime">날짜</option>
+            <option value="file">파일</option>
           </select>
         </div>
         <div style="text-align:right;">
@@ -2002,6 +2071,9 @@ function hexToRgba(hex, alpha) {
 
 // 상세보기 모달 함수 - 새로운 Row 시스템에 맞게 수정
 function showDetailModal(rowData, rowId) {
+    // 현재 rowId를 전역 변수로 저장
+    window.currentDetailRowId = rowId;
+    
     // 사용자의 속성들을 기준으로 표시
     const user = { id: 1 }; // 임시로 user id 1 사용
     
@@ -2026,10 +2098,18 @@ function showDetailModal(rowData, rowId) {
           
           let html = '<h3>상세 정보</h3><table style="width:100%">';
           const readonlyFields = ['생성일', '수정일'];
+          let textAttributeValue = ''; // text 타입 속성의 값을 저장
+          let audioFileValue = ''; // 음성파일 속성의 값을 저장
           
           sortedAttributes.forEach(function(attr) {
               const value = rowData[attr.name] || '';
               let inputHtml = '';
+              
+              // 음성파일 컬럼은 좌측에 표시하지 않음
+              if (attr.name === '음성파일') {
+                  audioFileValue = value;
+                  return; // 이 속성은 좌측 테이블에 추가하지 않음
+              }
               
               if (readonlyFields.includes(attr.name)) {
                   inputHtml = `<input type="text" value="${value}" readonly style="background:#f8f9fa;">`;
@@ -2053,6 +2133,65 @@ function showDetailModal(rowData, rowId) {
                       }
                   }
                   inputHtml = `<input type="date" value="${dateValue}" data-field="${attr.name}" onchange="updateRowField('${rowId}', '${attr.name}', this.value)">`;
+              } else if (attr.type === 'file') {
+                  // 파일 업로드 처리
+                  let fileInfo = null;
+                  try {
+                      // value에 파일 정보가 JSON으로 저장되어 있는지 확인
+                      if (value && typeof value === 'object' && value.original_filename) {
+                          fileInfo = value;
+                      } else if (value && typeof value === 'string' && value.startsWith('{')) {
+                          fileInfo = JSON.parse(value);
+                      }
+                  } catch (e) {
+                      // JSON 파싱 실패 시 null로 유지
+                  }
+                  
+                  if (fileInfo && fileInfo.original_filename) {
+                      // 파일이 이미 업로드된 경우
+                      inputHtml = `
+                          <div style="display: flex; align-items: center; gap: 10px;">
+                              <button type="button" onclick="document.getElementById('file_${attr.name}_${rowId}').click()" 
+                                      style="padding: 6px 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                  수정
+                              </button>
+                              <a href="${fileInfo.download_url}" download="${fileInfo.original_filename}" 
+                                 style="color: #007bff; text-decoration: none; cursor: pointer;"
+                                 onclick="downloadFile('${fileInfo.download_url}', '${fileInfo.original_filename}')">
+                                  📎 ${fileInfo.original_filename}
+                              </a>
+                              <button type="button" onclick="deleteFile('${rowId}', '${attr.name}')" 
+                                      style="padding: 4px 8px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                                  삭제
+                              </button>
+                              <input type="file" id="file_${attr.name}_${rowId}" style="display: none;" onchange="handleFileUpload('${rowId}', '${attr.name}', this)">
+                          </div>
+                      `;
+                  } else {
+                      // 파일이 업로드되지 않은 경우
+                      inputHtml = `
+                          <div style="display: flex; align-items: center; gap: 10px;">
+                              <input type="file" id="file_${attr.name}_${rowId}" style="display: none;" onchange="handleFileUpload('${rowId}', '${attr.name}', this)">
+                              <button type="button" onclick="document.getElementById('file_${attr.name}_${rowId}').click()" 
+                                      style="padding: 6px 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                  파일 선택
+                              </button>
+                              <span style="color: #666; font-size: 12px;">파일이 선택되지 않음</span>
+                          </div>
+                      `;
+                  }
+              } else if (attr.type === 'text') {
+                  // "변환된 텍스트"는 우측에만 표시하므로 좌측에서 제외
+                  if (attr.name === '변환된 텍스트') {
+                      return; // 이 속성은 건너뛰기
+                  }
+                  
+                  // text 타입은 좌측에서 바로 편집 가능
+                  textAttributeValue = value;
+                  window.currentTextAttributeName = attr.name; // text 속성명 저장
+                  
+                  // 좌측에서 바로 편집 가능한 일반 텍스트 입력창
+                  inputHtml = `<input type="text" value="${value}" data-field="${attr.name}" onchange="updateRowField('${rowId}', '${attr.name}', this.value)">`;
               } else {
                   inputHtml = `<input type="text" value="${value}" data-field="${attr.name}" onchange="updateRowField('${rowId}', '${attr.name}', this.value)">`;
               }
@@ -2062,6 +2201,18 @@ function showDetailModal(rowData, rowId) {
           
           html += '</table>';
           document.getElementById('detailModalContent').innerHTML = html;
+          
+          // 우측 텍스트 영역에 변환된 텍스트 컬럼 값 로드
+          const convertedTextArea = document.getElementById('convertedText');
+          if (convertedTextArea) {
+              // "변환된 텍스트" 속성 값 찾기
+              const convertedTextAttribute = rowData['변환된 텍스트'];
+              convertedTextArea.value = convertedTextAttribute || '';
+          }
+          
+          // 음성파일 관리 영역 업데이트 ("음성파일" 속성 사용)
+          updateAudioFileManagement(audioFileValue);
+          
           document.getElementById('detailModal').style.display = 'flex';
       });
 }
@@ -2385,82 +2536,11 @@ function updateEntryField(id, field, value) {
 }
 function closeDetailModal() {
     document.getElementById('detailModal').style.display = 'none';
-}
-function updateTableRow(entry) {
-    const tr = document.querySelector(`#entryTbody tr[data-id='${entry.id}']`);
-    if(tr) {
-        const fieldMap = {
-            name: 'name',
-            category: 'category',
-            region: 'region',
-            subregion: 'subregion',
-            address: 'address',
-            manager: 'manager',
-            phone: 'phone',
-            email: 'email',
-            ta_date: 'ta_date',
-            meeting_date: 'meeting_date',
-            fu_date: 'fu_date',
-            status: 'status',
-            possibility: 'possibility',
-            amount: 'amount'
-        };
-        for(const key in fieldMap) {
-            const td = tr.querySelector(`td[data-field='${fieldMap[key]}']`);
-            if(!td) continue;
-            if(key==='category') {
-                td.innerText = entry.category_name || '';
-                td.setAttribute('data-value', entry.category_id || '');
-                if(entry.category_color) {
-                    td.style.background = hexToRgba(entry.category_color, 0.18);
-                } else {
-                    td.style.background = '';
-                }
-            } else if(key==='region') {
-                td.innerText = entry.region_name || '';
-                td.setAttribute('data-value', entry.region_id || '');
-                td.style.background = '';
-            } else if(key==='status') {
-                td.innerText = entry.status_name || '';
-                td.setAttribute('data-value', entry.status_id || '');
-                if(entry.status_color) {
-                    td.style.background = hexToRgba(entry.status_color, 0.18);
-                } else {
-                    td.style.background = '';
-                }
-            } else if(key==='name') {
-                td.innerHTML = `<div class="name-text">${entry.name || ''}</div><div class="more-btn-wrapper"><div class="more-btn" style="cursor:pointer;">⋯</div></div>`;
-                const newMoreBtn = td.querySelector('.more-btn');
-                if(newMoreBtn) {
-                    newMoreBtn.onclick = function(e){
-                        e.stopPropagation();
-                        const tr = td.closest('tr');
-                        const id = tr.getAttribute('data-id');
-                        if(!id) { alert('ID 정보가 없습니다.'); return; }
-                        fetch('/diary/update/?id='+id)
-                          .then(r => r.text())
-                          .then(function(text){
-                              try {
-                                  const data = JSON.parse(text);
-                                  if(data.success) showDetailModal(data.entry);
-                                  else alert('상세정보 불러오기 실패: '+(data.error||''));
-                              } catch(e) {
-                                  alert('상세정보 불러오기 실패: JSON 파싱 오류');
-                                  console.error(e);
-                              }
-                          })
-                          .catch(function(err){
-                              alert('상세정보 불러오기 실패: 네트워크 오류\n' + err);
-                              console.error(err);
-                          });
-                    };
-                }
-            } else {
-                td.innerText = entry[key] ?? '';
-                td.style.background = '';
-            }
-        }
-    }
+    
+    // 전역 변수 초기화
+    window.currentDetailRowId = null;
+    window.currentTextAttributeName = null;
+    window.currentAudioFileInfo = null;
 }
 
     // 새 행용 Attribute 시스템 이벤트 바인딩
@@ -3365,6 +3445,342 @@ function updateTableRow(entry) {
         }
     }
 
+    // 파일 업로드 처리 함수
+    function handleFileUpload(rowId, fieldName, fileInput) {
+        const file = fileInput.files[0];
+        if (!file) {
+            return;
+        }
+        
+        console.log('파일 업로드 시작:', file.name, file.size, file.type);
+        
+        // FormData 생성
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('row_id', rowId);
+        formData.append('field_name', fieldName);
+        
+        // 업로드 중 표시
+        const uploadingText = '업로드 중...';
+        
+        // 파일 업로드 요청
+        fetch('/diary/upload_file/', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('파일 업로드 응답:', data);
+            
+            if (data.success) {
+                // 업로드 성공 - 상세 모달 새로고침
+                alert('파일 업로드 완료!\n파일명: ' + file.name);
+                
+                // 모달 데이터 새로고침
+                fetch('/diary/get_row_details/' + rowId + '/')
+                    .then(r => r.json())
+                    .then(function(data) {
+                        if (data.success) {
+                            showDetailModal(data.row_data, data.row_id);
+                        }
+                    });
+                
+                // 테이블과 칸반보드도 새로고침
+                refreshTable();
+                refreshKanban();
+            } else {
+                alert('파일 업로드 실패: ' + (data.error || '알 수 없는 오류'));
+            }
+        })
+        .catch(error => {
+            console.error('파일 업로드 오류:', error);
+            alert('파일 업로드 중 오류가 발생했습니다.');
+        });
+        
+        // 파일 입력 초기화
+        fileInput.value = '';
+    }
+
+    // 파일 다운로드 함수
+    function downloadFile(downloadUrl, filename) {
+        // 새 탭에서 파일 다운로드
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = filename;
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    // 파일 삭제 함수
+    function deleteFile(rowId, fieldName) {
+        if (!confirm('파일을 삭제하시겠습니까?\n삭제된 파일은 복구할 수 없습니다.')) {
+            return;
+        }
+        
+        // 파일 삭제 요청
+        fetch('/diary/delete_file/', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: 'row_id=' + encodeURIComponent(rowId) + '&field_name=' + encodeURIComponent(fieldName)
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('파일 삭제 응답:', data);
+            
+            if (data.success) {
+                alert('파일이 성공적으로 삭제되었습니다.');
+                
+                // 모달 데이터 새로고침
+                fetch('/diary/get_row_details/' + rowId + '/')
+                    .then(r => r.json())
+                    .then(function(data) {
+                        if (data.success) {
+                            showDetailModal(data.row_data, data.row_id);
+                        }
+                    });
+                
+                // 테이블과 칸반보드도 새로고침
+                refreshTable();
+                refreshKanban();
+            } else {
+                alert('파일 삭제 실패: ' + (data.error || '알 수 없는 오류'));
+            }
+        })
+        .catch(error => {
+            console.error('파일 삭제 오류:', error);
+            alert('파일 삭제 중 오류가 발생했습니다.');
+        });
+    }
+
+    // 음성파일 업로드 처리 함수
+    function handleAudioUpload(fileInput) {
+        const file = fileInput.files[0];
+        if (!file) {
+            return;
+        }
+        
+        // 오디오 파일 검증
+        if (!file.type.startsWith('audio/')) {
+            alert('오디오 파일만 업로드 가능합니다.');
+            fileInput.value = '';
+            return;
+        }
+        
+        console.log('음성파일 업로드 시작:', file.name, file.size, file.type);
+        
+        // UI 업데이트
+        const audioFileName = document.getElementById('audioFileName');
+        const audioUploadStatus = document.getElementById('audioUploadStatus');
+        
+        if (audioFileName) {
+            audioFileName.textContent = file.name;
+            audioFileName.style.color = '#333';
+        }
+        if (audioUploadStatus) {
+            audioUploadStatus.textContent = '업로드 중...';
+            audioUploadStatus.style.color = '#007bff';
+        }
+        
+        // FormData 생성
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('row_id', window.currentDetailRowId);
+        formData.append('field_name', '음성파일');  // 필드명 추가
+        
+        // 음성파일 업로드 및 텍스트 변환 요청
+        fetch('/diary/upload_audio_file/', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('음성파일 처리 응답:', data);
+            
+            if (data.success) {
+                // 변환된 텍스트를 우측 텍스트 영역에 표시
+                const convertedTextArea = document.getElementById('convertedText');
+                if (convertedTextArea && data.converted_text) {
+                    convertedTextArea.value = data.converted_text;
+                }
+                
+                // 업로드 상태 메시지 업데이트
+                audioUploadStatus.textContent = '업로드 완료!';
+                audioUploadStatus.style.color = 'green';
+                
+                // 음성파일 관리 영역 업데이트
+                updateAudioFileManagement(JSON.stringify(data.file_info));
+                
+                // 테이블과 칸반보드 새로고침
+                refreshTable();
+                refreshKanban();
+                
+                alert('음성파일 업로드 및 텍스트 변환이 완료되었습니다.');
+            } else {
+                audioUploadStatus.textContent = '업로드 실패: ' + (data.error || '알 수 없는 오류');
+                audioUploadStatus.style.color = 'red';
+                alert('업로드 실패: ' + (data.error || '알 수 없는 오류'));
+            }
+        })
+        .catch(error => {
+            console.error('음성파일 처리 오류:', error);
+            if (audioUploadStatus) {
+                audioUploadStatus.textContent = '처리 중 오류 발생';
+                audioUploadStatus.style.color = '#dc3545';
+            }
+            alert('음성파일 처리 중 오류가 발생했습니다.');
+        });
+    }
+
+    // 변환된 텍스트 저장 함수
+    function saveConvertedText() {
+        const convertedTextArea = document.getElementById('convertedText');
+        const textValue = convertedTextArea ? convertedTextArea.value : '';
+        
+        if (!window.currentRowId) {
+            alert('현재 선택된 행이 없습니다.');
+            return;
+        }
+        
+        // "변환된 텍스트" 속성에 저장
+        updateRowField(window.currentRowId, '변환된 텍스트', textValue);
+        
+        alert('변환된 텍스트가 저장되었습니다.');
+    }
+
+    // 음성파일 관리 영역 업데이트 함수
+    function updateAudioFileManagement(audioFileValue) {
+        const existingArea = document.getElementById('existingAudioFileArea');
+        const newArea = document.getElementById('newAudioFileArea');
+        const audioFileInput = document.getElementById('audioFile');
+        const audioFileName = document.getElementById('audioFileName');
+        const audioUploadStatus = document.getElementById('audioUploadStatus');
+        
+        // 음성파일 값이 JSON인지 확인 (S3에 저장된 파일)
+        let audioFileInfo = null;
+        try {
+            if (audioFileValue && typeof audioFileValue === 'string' && audioFileValue.startsWith('{')) {
+                audioFileInfo = JSON.parse(audioFileValue);
+            }
+        } catch (e) {
+            // JSON 파싱 실패 시 null로 처리
+            audioFileInfo = null;
+        }
+        
+        if (audioFileInfo && audioFileInfo.original_filename) {
+            // 기존 음성파일이 S3에 저장되어 있는 경우
+            existingArea.style.display = 'block';
+            newArea.style.display = 'none';
+            
+            const downloadLink = document.getElementById('existingAudioDownload');
+            downloadLink.textContent = `🎵 ${audioFileInfo.original_filename}`;
+            downloadLink.href = audioFileInfo.download_url;
+            downloadLink.download = audioFileInfo.original_filename;
+            
+            // 전역 변수에 파일 정보 저장
+            window.currentAudioFileInfo = audioFileInfo;
+        } else {
+            // 기존 음성파일이 없는 경우
+            existingArea.style.display = 'none';
+            newArea.style.display = 'block';
+            
+            // 새 파일 업로드 영역 초기화
+            if (audioFileInput) audioFileInput.value = '';
+            if (audioFileName) audioFileName.textContent = '선택된 파일이 없습니다';
+            if (audioUploadStatus) audioUploadStatus.textContent = '';
+            
+            // 전역 변수 초기화
+            window.currentAudioFileInfo = null;
+        }
+    }
+
+    // 음성파일 변경 함수
+    function changeAudioFile() {
+        const audioFileInput = document.getElementById('audioFile');
+        if (audioFileInput) {
+            audioFileInput.click();
+        }
+    }
+
+    // 기존 음성파일 다운로드 함수
+    function downloadExistingAudioFile() {
+        if (window.currentAudioFileInfo && window.currentAudioFileInfo.download_url) {
+            const link = document.createElement('a');
+            link.href = window.currentAudioFileInfo.download_url;
+            link.download = window.currentAudioFileInfo.original_filename;
+            link.target = '_blank';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    }
+
+    // 음성파일 삭제 함수
+    function deleteAudioFile() {
+        if (!confirm('음성파일을 삭제하시겠습니까?\n삭제된 파일과 텍스트는 복구할 수 없습니다.')) {
+            return;
+        }
+        
+        // 음성파일 컬럼 값을 빈 문자열로 업데이트
+        fetch('/diary/update_row_field/', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: 'id=' + encodeURIComponent(window.currentDetailRowId) + 
+                  '&field=음성파일' + 
+                  '&value='
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('음성파일 삭제 응답:', data);
+            
+            if (data.success) {
+                alert('음성파일이 성공적으로 삭제되었습니다.');
+                
+                // 우측 텍스트 영역 초기화
+                const convertedTextArea = document.getElementById('convertedText');
+                if (convertedTextArea) {
+                    convertedTextArea.value = '';
+                }
+                
+                // 음성파일 관리 영역 업데이트
+                updateAudioFileManagement('');
+                
+                // 테이블과 칸반보드 새로고침
+                refreshTable();
+                refreshKanban();
+            } else {
+                alert('음성파일 삭제 실패: ' + (data.error || '알 수 없는 오류'));
+            }
+        })
+        .catch(error => {
+            console.error('음성파일 삭제 오류:', error);
+            alert('음성파일 삭제 중 오류가 발생했습니다.');
+        });
+    }
+
+    function focusTextArea() {
+        const textArea = document.getElementById('convertedText');
+        if (textArea) {
+            textArea.focus();
+            textArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }
+
+    // 텍스트 영역 내용 변경 시 좌측 입력창 동기화
+    function syncTextToLeft() {
+        const textArea = document.getElementById('convertedText');
+        if (!textArea || !window.currentTextAttributeName) return;
+        
+        const leftInput = document.querySelector(`input[data-field="${window.currentTextAttributeName}"]`);
+        if (leftInput) {
+            // 텍스트가 길면 앞부분만 표시
+            const displayText = textArea.value.length > 50 ? 
+                textArea.value.substring(0, 50) + '...' : 
+                textArea.value;
+            leftInput.value = displayText;
+        }
+    }
 </script>
 </body>
 </html> 

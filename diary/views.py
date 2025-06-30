@@ -16,22 +16,37 @@ from django.views.decorators.csrf import csrf_exempt
 from django.core.serializers.json import DjangoJSONEncoder
 from .models import DiaryEntry, Category, Region, SalesStatus, BaseAttribute, Attribute, AttributeValue, User, DropdownAttribute, Row, AttributeType
 from django.db import models
+import boto3
+from django.conf import settings
+import uuid
+import os
+from botocore.exceptions import ClientError
 # 다이어리 목록 및 작성 폼
 
 def diary_list(request):
     user = User.objects.get(id=1)
-    attributes = Attribute.objects.all().order_by('-assential', 'id')  # 필수 속성 먼저, 그 다음 id 순
-    user_attributes = Attribute.objects.filter(user=user).order_by('-assential', 'id')  # 필수 속성 먼저
+    
+    # detail 필터링 추가: 기본적으로 detail=False인 속성만 표시
+    show_detail = request.GET.get('detail', '0') == '1'  # detail=1이면 상세 속성도 표시
+    
+    # 속성 필터링: detail 값에 따라 필터링
+    if show_detail:
+        attributes = Attribute.objects.all().order_by('-assential', 'id')  # 모든 속성
+        user_attributes = Attribute.objects.filter(user=user).order_by('-assential', 'id')  # 모든 사용자 속성
+    else:
+        attributes = Attribute.objects.filter(detail=False).order_by('-assential', 'id')  # detail=False 속성만
+        user_attributes = Attribute.objects.filter(user=user, detail=False).order_by('-assential', 'id')  # detail=False 사용자 속성만
+    
     attr_map = {attr.name: attr for attr in user_attributes}
     
-    # 기존 단일 행 값들 제거하고, 실제 Row 데이터 가져오기
+    # 행 데이터는 모든 행을 가져옴 (필터링은 속성 레벨에서 처리)
     rows = Row.objects.filter(user=user).order_by('order')
     
-    # 각 행의 속성 값들을 가져오기
+    # 각 행의 속성 값들을 가져오기 (필터링된 속성만)
     rows_data = []
     for row in rows:
         row_values = {}
-        for attr in user_attributes:
+        for attr in user_attributes:  # 이미 필터링된 속성들만 사용
             attr_value = AttributeValue.objects.filter(attribute=attr, row=row).first()
             value = attr_value.value if attr_value else ''
             
@@ -41,6 +56,19 @@ def diary_list(request):
                     row_values[attr.name] = {'label': dropdown.option, 'color': dropdown.color}
                 else:
                     row_values[attr.name] = {'label': value, 'color': ''}
+            elif attr.attributeType and attr.attributeType.name == 'file' and value:
+                # 파일 타입의 경우 JSON 파싱하여 파일명 표시
+                try:
+                    file_info = json.loads(value)
+                    row_values[attr.name] = {
+                        'label': file_info.get('original_filename', '파일'),
+                        'color': '',
+                        'download_url': file_info.get('download_url', ''),
+                        'file_size': file_info.get('file_size', 0),
+                        'content_type': file_info.get('content_type', '')
+                    }
+                except (json.JSONDecodeError, TypeError):
+                    row_values[attr.name] = {'label': '파일 정보 오류', 'color': ''}
             elif attr.attributeType and attr.attributeType.name == 'datetime' and value:
                 # datetime 타입의 경우 날짜 포맷 적용
                 try:
@@ -69,7 +97,7 @@ def diary_list(request):
             'values': row_values
         })
     
-    # 칸반보드용 dropdown 속성들 가져오기 (필수/비필수 순서 유지)
+    # 칸반보드용 dropdown 속성들 가져오기 (필터링된 속성 중에서)
     dropdown_attributes = user_attributes.filter(attributeType__name='dropdown').order_by('-assential', 'name')
     
     # 칸반보드 데이터 생성 - 기본적으로 '영업진행' 속성 사용, 없으면 첫 번째 dropdown 속성 사용
@@ -128,14 +156,14 @@ def diary_list(request):
     attributes_obj_list = [SimpleNamespace(**{k.replace('attributeType__name', 'attributeType_name'): v for k, v in d.items()}) for d in attributes_list]
     attributes_json = json.dumps(attributes_list, ensure_ascii=False)
     
-    # dropdown 속성별 옵션 딕셔너리 생성 (Attribute 기반)
+    # dropdown 속성별 옵션 딕셔너리 생성 (필터링된 Attribute 기반)
     dropdown_attrs = user_attributes.filter(attributeType__name='dropdown')
     dropdown_options_dict = {}
     for attr in dropdown_attrs:
         options = DropdownAttribute.objects.filter(attribute=attr).values('id', 'option', 'color')
         dropdown_options_dict[attr.name] = list(options)
 
-    # dropdown 속성들을 JSON으로 전달
+    # dropdown 속성들을 JSON으로 전달 (필터링된 것만)
     dropdown_attributes_json = json.dumps([
         {'name': attr.name, 'id': attr.id} 
         for attr in dropdown_attributes
@@ -487,7 +515,7 @@ def board_view(request):
                 'name': row_values.get('이름', ''),
                 'amount': row_values.get('매출', ''),
             }
-            entries.append(SimpleNamespace(**entry_data))
+            entries.append(entry_data)
         
         # 상태 정보를 SimpleNamespace로 변환
         status_data = {
@@ -515,7 +543,7 @@ def update_entry(request):
             
         try:
             from .models import Row
-            row = Row.objects.get(id=row_id)
+            row = Row.objects.get(id=row_id, user=request.user)
         except Row.DoesNotExist:
             return JsonResponse({'success': False, 'error': 'Row not found'})
         except ValueError:
@@ -618,7 +646,7 @@ def update_row_field(request):
             return JsonResponse({'success': False, 'error': 'Missing id or field'})
             
         try:
-            row = Row.objects.get(id=row_id)
+            row = Row.objects.get(id=row_id, user=request.user)
         except Row.DoesNotExist:
             return JsonResponse({'success': False, 'error': 'Row not found'})
             
@@ -771,6 +799,13 @@ def get_row_details(request, row_id):
                         ).first()
                         if dropdown:
                             value = dropdown.option
+                # 파일 타입인 경우 JSON 파싱하여 객체로 반환
+                elif attr_value.attribute.attributeType and attr_value.attribute.attributeType.name == 'file':
+                    if value:
+                        try:
+                            value = json.loads(value)  # JSON 문자열을 객체로 변환
+                        except (json.JSONDecodeError, TypeError):
+                            value = None  # 파싱 실패 시 None
                 
                 row_data[attr_name] = value
         
@@ -962,3 +997,616 @@ def delete_attribute(request):
             return JsonResponse({'success': False, 'error': str(e)})
     
     return JsonResponse({'error': 'Invalid method'}, status=405)
+
+@csrf_exempt
+def upload_file(request):
+    """파일 업로드 및 S3 저장"""
+    if request.method == 'POST':
+        row_id = request.POST.get('row_id')
+        field_name = request.POST.get('field_name')
+        uploaded_file = request.FILES.get('file')
+        
+        print(f"=== 파일 업로드 시작 ===")
+        print(f"Row ID: {row_id}")
+        print(f"Field Name: {field_name}")
+        
+        if not row_id or not field_name:
+            return JsonResponse({
+                'success': False,
+                'error': 'Row ID와 Field Name이 필요합니다.'
+            })
+        
+        if uploaded_file:
+            print(f"파일명: {uploaded_file.name}")
+            print(f"파일 크기: {uploaded_file.size} bytes")
+            print(f"파일 타입: {uploaded_file.content_type}")
+            
+            try:
+                # Row와 Attribute 가져오기
+                user = User.objects.get(id=1)
+                row = Row.objects.get(id=row_id, user=user)
+                attribute = Attribute.objects.get(name=field_name, user=user)
+                
+                # 속성이 file 타입인지 확인
+                if not attribute.attributeType or attribute.attributeType.name != 'file':
+                    return JsonResponse({
+                        'success': False,
+                        'error': '파일 타입 속성이 아닙니다.'
+                    })
+                
+                # S3 클라이언트 생성
+                s3_client = boto3.client(
+                    's3',
+                    aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+                    aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+                    region_name=settings.AWS_S3_REGION_NAME
+                )
+                
+                # 파일명 생성 (중복 방지를 위해 UUID 사용)
+                file_extension = os.path.splitext(uploaded_file.name)[1]
+                unique_filename = f"{uuid.uuid4()}{file_extension}"
+                s3_key = f"{settings.AWS_LOCATION}/{unique_filename}"
+                
+                print(f"S3 업로드 시작...")
+                print(f"버킷: {settings.AWS_STORAGE_BUCKET_NAME}")
+                print(f"키: {s3_key}")
+                
+                # S3에 파일 업로드
+                s3_client.upload_fileobj(
+                    uploaded_file,
+                    settings.AWS_STORAGE_BUCKET_NAME,
+                    s3_key,
+                    ExtraArgs={
+                        'ContentType': uploaded_file.content_type,
+                        'ContentDisposition': f'attachment; filename="{uploaded_file.name}"'
+                    }
+                )
+                
+                # 다운로드 URL 생성
+                download_url = f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/{s3_key}"
+                
+                # 파일 정보 JSON 생성
+                file_data = {
+                    'original_filename': uploaded_file.name,
+                    'stored_filename': unique_filename,
+                    's3_key': s3_key,
+                    'download_url': download_url,
+                    'file_size': uploaded_file.size,
+                    'content_type': uploaded_file.content_type,
+                    'uploaded_at': timezone.now().isoformat()
+                }
+                
+                # AttributeValue에 파일 정보 저장
+                attr_value, created = AttributeValue.objects.get_or_create(
+                    row=row,
+                    attribute=attribute,
+                    defaults={'value': ''}
+                )
+                attr_value.set_file_info(file_data)
+                attr_value.save()
+                
+                print(f"=== S3 업로드 및 DB 저장 성공 ===")
+                print(f"업로드된 파일 경로: {s3_key}")
+                print(f"다운로드 URL: {download_url}")
+                print(f"원본 파일명: {uploaded_file.name}")
+                print(f"저장된 파일명: {unique_filename}")
+                print(f"DB 저장 완료: {'새로 생성' if created else '업데이트'}")
+                
+                # 서명된 URL 생성 (1시간 유효)
+                try:
+                    signed_url = s3_client.generate_presigned_url(
+                        'get_object',
+                        Params={
+                            'Bucket': settings.AWS_STORAGE_BUCKET_NAME,
+                            'Key': s3_key
+                        },
+                        ExpiresIn=3600  # 1시간
+                    )
+                    print(f"서명된 다운로드 URL (1시간 유효): {signed_url}")
+                except Exception as e:
+                    print(f"서명된 URL 생성 실패: {e}")
+                    signed_url = download_url
+                
+                return JsonResponse({
+                    'success': True,
+                    'message': 'S3 파일 업로드 및 DB 저장 성공',
+                    'file_info': {
+                        'original_name': uploaded_file.name,
+                        'stored_name': unique_filename,
+                        'size': uploaded_file.size,
+                        'content_type': uploaded_file.content_type,
+                        'download_url': download_url,
+                        'signed_url': signed_url,
+                        's3_key': s3_key
+                    }
+                })
+                
+            except Row.DoesNotExist:
+                return JsonResponse({
+                    'success': False,
+                    'error': '해당 행을 찾을 수 없습니다.'
+                })
+            except Attribute.DoesNotExist:
+                return JsonResponse({
+                    'success': False,
+                    'error': '해당 속성을 찾을 수 없습니다.'
+                })
+            except ClientError as e:
+                error_code = e.response['Error']['Code']
+                error_message = e.response['Error']['Message']
+                print(f"=== S3 업로드 실패 ===")
+                print(f"에러 코드: {error_code}")
+                print(f"에러 메시지: {error_message}")
+                
+                return JsonResponse({
+                    'success': False,
+                    'error': f'S3 업로드 실패: {error_message}'
+                })
+                
+            except Exception as e:
+                print(f"=== 예상치 못한 오류 ===")
+                print(f"오류: {str(e)}")
+                
+                return JsonResponse({
+                    'success': False,
+                    'error': f'파일 업로드 중 오류 발생: {str(e)}'
+                })
+        else:
+            print("업로드된 파일이 없습니다.")
+            return JsonResponse({
+                'success': False,
+                'error': '업로드된 파일이 없습니다.'
+            })
+    
+    return JsonResponse({'error': 'Invalid method'}, status=405)
+
+@csrf_exempt
+def delete_file(request):
+    if request.method == 'POST':
+        row_id = request.POST.get('row_id')
+        field_name = request.POST.get('field_name')
+        
+        print(f"Received Row ID: {row_id}")
+        print(f"Received Field Name: {field_name}")
+        
+        # 필수 파라미터 검증
+        if not row_id or not field_name:
+            return JsonResponse({
+                'success': False,
+                'error': 'row_id와 field_name이 필요합니다.'
+            })
+        
+        try:
+            # Row와 Attribute 조회
+            row = Row.objects.get(id=row_id, user=request.user)
+            attribute = Attribute.objects.get(name=field_name, user=request.user)
+            
+            # 파일 타입 속성인지 확인
+            if attribute.type != 'file':
+                return JsonResponse({
+                    'success': False,
+                    'error': '파일 타입이 아닙니다.'
+                })
+            
+            # AttributeValue 조회
+            try:
+                attribute_value = AttributeValue.objects.get(row=row, attribute=attribute)
+                
+                # 파일 정보 파싱
+                if attribute_value.value:
+                    try:
+                        file_info = json.loads(attribute_value.value)
+                        s3_key = file_info.get('s3_key')
+                        original_filename = file_info.get('original_filename', 'unknown')
+                        
+                        if s3_key:
+                            # S3에서 파일 삭제 시도
+                            try:
+                                s3_client = boto3.client(
+                                    's3',
+                                    aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+                                    aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+                                    region_name=settings.AWS_S3_REGION_NAME
+                                )
+                                
+                                s3_client.delete_object(
+                                    Bucket=settings.AWS_STORAGE_BUCKET_NAME,
+                                    Key=s3_key
+                                )
+                                print(f"S3에서 파일 삭제 성공: {s3_key}")
+                                
+                            except ClientError as e:
+                                print(f"S3 파일 삭제 실패: {e}")
+                                # S3 삭제 실패해도 계속 진행
+                        
+                        # 데이터베이스에서 AttributeValue 삭제
+                        attribute_value.delete()
+                        print(f"데이터베이스에서 AttributeValue 삭제 성공")
+                        
+                        return JsonResponse({
+                            'success': True,
+                            'message': f'파일 "{original_filename}"이(가) 성공적으로 삭제되었습니다.'
+                        })
+                        
+                    except json.JSONDecodeError:
+                        return JsonResponse({
+                            'success': False,
+                            'error': '파일 정보를 파싱할 수 없습니다.'
+                        })
+                else:
+                    return JsonResponse({
+                        'success': False,
+                        'error': '파일 정보가 없습니다.'
+                    })
+                    
+            except AttributeValue.DoesNotExist:
+                return JsonResponse({
+                    'success': False,
+                    'error': '삭제할 파일이 없습니다.'
+                })
+                
+        except Row.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'error': '해당 행을 찾을 수 없습니다.'
+            })
+        except Attribute.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'error': '해당 속성을 찾을 수 없습니다.'
+            })
+        except Exception as e:
+            print(f"파일 삭제 중 오류: {e}")
+            return JsonResponse({
+                'success': False,
+                'error': f'파일 삭제 중 오류가 발생했습니다: {str(e)}'
+            })
+    
+    return JsonResponse({
+        'success': False,
+        'error': 'POST 요청만 허용됩니다.'
+    })
+
+@csrf_exempt
+def convert_audio_to_text(request):
+    """음성파일을 텍스트로 변환하는 뷰 (현재는 임시 텍스트 반환)"""
+    
+    if request.method == 'POST':
+        audio_file = request.FILES.get('audio_file')
+        row_id = request.POST.get('row_id')
+        
+        print(f"Received audio file: {audio_file}")
+        print(f"Received row ID: {row_id}")
+        
+        # 필수 파라미터 검증
+        if not audio_file:
+            return JsonResponse({
+                'success': False,
+                'error': '음성파일이 필요합니다.'
+            })
+        
+        if not row_id:
+            return JsonResponse({
+                'success': False,
+                'error': 'row_id가 필요합니다.'
+            })
+        
+        try:
+            # 사용자 ID를 1로 고정 (이미 import된 User 모델 사용)
+            user = User.objects.get(id=1)
+            
+            # Row 존재 여부 확인
+            row = Row.objects.get(id=row_id, user=user)
+            
+            # 오디오 파일 검증
+            if not audio_file.content_type.startswith('audio/'):
+                return JsonResponse({
+                    'success': False,
+                    'error': '오디오 파일만 업로드 가능합니다.'
+                })
+            
+            # 파일 크기 제한 (예: 50MB)
+            max_size = 50 * 1024 * 1024  # 50MB
+            if audio_file.size > max_size:
+                return JsonResponse({
+                    'success': False,
+                    'error': '파일 크기가 50MB를 초과합니다.'
+                })
+            
+            print(f"음성파일 정보:")
+            print(f"  파일명: {audio_file.name}")
+            print(f"  크기: {audio_file.size} bytes")
+            print(f"  타입: {audio_file.content_type}")
+            
+            # TODO: 실제 음성 인식 API 호출
+            # 현재는 임시 텍스트 반환
+            sample_texts = [
+                "안녕하세요. 이것은 음성에서 변환된 텍스트입니다. 실제 음성 인식 기능이 구현되면 이 부분이 실제 변환된 텍스트로 대체됩니다.",
+                "고객과의 상담 내용을 요약하면 다음과 같습니다. 주요 요구사항은 제품의 기능 개선과 가격 조정에 관한 내용이었습니다.",
+                "회의에서 논의된 주요 안건은 프로젝트 일정 조정과 리소스 배분에 관한 것이었습니다. 다음 주까지 세부 계획을 수립하기로 하였습니다.",
+                "오늘 진행한 업무는 데이터 분석과 보고서 작성이었습니다. 주요 발견사항과 개선 방안을 포함하여 최종 보고서를 완성하였습니다."
+            ]
+            
+            import random
+            converted_text = random.choice(sample_texts)
+            
+            return JsonResponse({
+                'success': True,
+                'converted_text': converted_text,
+                'file_info': {
+                    'filename': audio_file.name,
+                    'size': audio_file.size,
+                    'type': audio_file.content_type
+                }
+            })
+            
+        except Row.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'error': '해당 행을 찾을 수 없습니다.'
+            })
+        except Exception as e:
+            print(f"음성 변환 중 오류: {e}")
+            return JsonResponse({
+                'success': False,
+                'error': f'음성 변환 중 오류가 발생했습니다: {str(e)}'
+            })
+    
+    return JsonResponse({
+        'success': False,
+        'error': 'POST 요청만 허용됩니다.'
+    })
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def upload_audio_file(request):
+    """음성파일을 업로드하고 변환된 텍스트를 저장하는 뷰"""
+    
+    if request.method == 'POST':
+        audio_file = request.FILES.get('file')
+        row_id = request.POST.get('row_id')
+        field_name = request.POST.get('field_name', '음성파일')
+        
+        print(f"Received audio file: {audio_file}")
+        print(f"Received row ID: {row_id}")
+        print(f"Received field name: {field_name}")
+        
+        # 필수 파라미터 검증
+        if not audio_file:
+            return JsonResponse({
+                'success': False,
+                'error': '음성파일이 필요합니다.'
+            })
+        
+        if not row_id:
+            return JsonResponse({
+                'success': False,
+                'error': 'row_id가 필요합니다.'
+            })
+        
+        # 파일 크기 제한 (100MB)
+        max_file_size = 100 * 1024 * 1024  # 100MB
+        if audio_file.size > max_file_size:
+            return JsonResponse({
+                'success': False,
+                'error': '파일 크기가 100MB를 초과합니다.'
+            })
+        
+        try:
+            # 사용자 ID를 1로 고정 (이미 import된 User 모델 사용)
+            user = User.objects.get(id=1)
+            
+            # Row 존재 여부 확인
+            row = Row.objects.get(id=row_id, user=user)
+            
+            # 음성파일 속성과 변환된 텍스트 속성 조회
+            audio_attribute = Attribute.objects.get(name='음성파일', user=user)
+            converted_text_attribute = Attribute.objects.get(name='변환된 텍스트', user=user)
+            
+            # 오디오 파일 검증
+            if not audio_file.content_type.startswith('audio/'):
+                return JsonResponse({
+                    'success': False,
+                    'error': '오디오 파일만 업로드 가능합니다.'
+                })
+            
+            # 임시 텍스트 변환 (실제로는 STT API 호출)
+            # 여기서는 파일명을 기반으로 임시 텍스트 생성
+            converted_text = f"[음성파일 '{audio_file.name}' 변환 결과] 안녕하세요. 이것은 음성 인식으로 변환된 텍스트 샘플입니다. 실제 구현 시에는 STT API를 호출하여 실제 음성을 텍스트로 변환합니다."
+            
+            # S3에 파일 업로드
+            try:
+                # 고유한 파일명 생성
+                file_extension = os.path.splitext(audio_file.name)[1]
+                unique_filename = f"{uuid.uuid4()}{file_extension}"
+                s3_key = f"audio_files/{unique_filename}"
+                
+                # S3 클라이언트 생성
+                s3_client = boto3.client(
+                    's3',
+                    aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+                    aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+                    region_name=settings.AWS_S3_REGION_NAME
+                )
+                
+                # S3에 파일 업로드
+                s3_client.upload_fileobj(
+                    audio_file,
+                    settings.AWS_STORAGE_BUCKET_NAME,
+                    s3_key,
+                    ExtraArgs={
+                        'ContentType': audio_file.content_type,
+                        'ContentDisposition': f'attachment; filename="{audio_file.name}"'
+                    }
+                )
+                
+                # 다운로드 URL 생성
+                download_url = f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{s3_key}"
+                
+                print(f"S3 업로드 성공:")
+                print(f"  원본 파일명: {audio_file.name}")
+                print(f"  S3 파일명: {unique_filename}")
+                print(f"  다운로드 URL: {download_url}")
+                
+            except Exception as e:
+                print(f"S3 업로드 실패: {e}")
+                return JsonResponse({
+                    'success': False,
+                    'error': f'파일 업로드 실패: {str(e)}'
+                })
+            
+            # 음성 변환 처리 (현재는 임시 텍스트)
+            sample_texts = [
+                "안녕하세요. 이것은 음성에서 변환된 텍스트입니다. 실제 음성 인식 기능이 구현되면 이 부분이 실제 변환된 텍스트로 대체됩니다.",
+                "고객과의 상담 내용을 요약하면 다음과 같습니다. 주요 요구사항은 제품의 기능 개선과 가격 조정에 관한 내용이었습니다.",
+                "회의에서 논의된 주요 안건은 프로젝트 일정 조정과 리소스 배분에 관한 것이었습니다. 다음 주까지 세부 계획을 수립하기로 하였습니다.",
+                "오늘 진행한 업무는 데이터 분석과 보고서 작성이었습니다. 주요 발견사항과 개선 방안을 포함하여 최종 보고서를 완성하였습니다."
+            ]
+            
+            import random
+            converted_text = random.choice(sample_texts)
+            
+            # 파일 정보와 변환된 텍스트를 포함한 JSON 데이터 생성
+            file_data = {
+                'original_filename': audio_file.name,
+                'stored_filename': unique_filename,
+                'download_url': download_url,
+                'file_size': audio_file.size,
+                'content_type': audio_file.content_type,
+                'converted_text': converted_text,
+                'upload_date': timezone.now().isoformat()
+            }
+            
+            # 음성파일 속성에 파일 정보 저장 (AttributeValue 모델 사용)
+            audio_attr_value, created = AttributeValue.objects.get_or_create(
+                row=row,
+                attribute=audio_attribute,
+                defaults={'value': json.dumps(file_data, ensure_ascii=False)}
+            )
+            if not created:
+                audio_attr_value.value = json.dumps(file_data, ensure_ascii=False)
+                audio_attr_value.save()
+            
+            # 변환된 텍스트 속성에 텍스트 저장
+            text_attr_value, created = AttributeValue.objects.get_or_create(
+                row=row,
+                attribute=converted_text_attribute,
+                defaults={'value': converted_text}
+            )
+            if not created:
+                text_attr_value.value = converted_text
+                text_attr_value.save()
+            
+            print(f"Row ID {row_id}의 음성파일과 변환된 텍스트 저장 완료")
+            
+            return JsonResponse({
+                'success': True,
+                'converted_text': converted_text,
+                'file_info': {
+                    'original_filename': audio_file.name,
+                    'download_url': download_url,
+                    'file_size': audio_file.size,
+                    'content_type': audio_file.content_type
+                },
+                'message': '음성파일 업로드 및 변환이 완료되었습니다.'
+            })
+                
+        except Row.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'error': '해당 행을 찾을 수 없습니다.'
+            })
+        except Exception as e:
+            print(f"음성파일 처리 중 오류: {e}")
+            return JsonResponse({
+                'success': False,
+                'error': f'처리 중 오류가 발생했습니다: {str(e)}'
+            })
+    
+    return JsonResponse({
+        'success': False,
+        'error': 'POST 요청만 허용됩니다.'
+    })
+
+@require_GET
+def download_file(request, row_id, field_name):
+    """S3에 저장된 파일을 다운로드하는 뷰"""
+    try:
+        # 사용자 ID를 1로 고정 (이미 import된 User 모델 사용)
+        user = User.objects.get(id=1)
+        
+        # Row와 Attribute 조회
+        row = Row.objects.get(id=row_id, user=user)
+        attribute = Attribute.objects.get(name=field_name, user=user)
+        
+        # AttributeValue 조회
+        try:
+            attribute_value = AttributeValue.objects.get(row=row, attribute=attribute)
+            
+            if attribute_value.value:
+                try:
+                    file_info = json.loads(attribute_value.value)
+                    s3_key = file_info.get('s3_key')
+                    original_filename = file_info.get('original_filename', 'download')
+                    
+                    if s3_key:
+                        # S3에서 서명된 다운로드 URL 생성
+                        s3_client = boto3.client(
+                            's3',
+                            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+                            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+                            region_name=settings.AWS_S3_REGION_NAME
+                        )
+                        
+                        signed_url = s3_client.generate_presigned_url(
+                            'get_object',
+                            Params={
+                                'Bucket': settings.AWS_STORAGE_BUCKET_NAME,
+                                'Key': s3_key
+                            },
+                            ExpiresIn=3600  # 1시간
+                        )
+                        
+                        # 리다이렉트로 다운로드
+                        from django.http import HttpResponseRedirect
+                        return HttpResponseRedirect(signed_url)
+                        
+                    else:
+                        return JsonResponse({
+                            'success': False,
+                            'error': 'S3 키가 없습니다.'
+                        })
+                        
+                except json.JSONDecodeError:
+                    return JsonResponse({
+                        'success': False,
+                        'error': '파일 정보를 파싱할 수 없습니다.'
+                    })
+            else:
+                return JsonResponse({
+                    'success': False,
+                    'error': '파일 정보가 없습니다.'
+                })
+                    
+        except AttributeValue.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'error': '파일이 없습니다.'
+            })
+                
+    except Row.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': '해당 행을 찾을 수 없습니다.'
+        })
+    except Attribute.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': '해당 속성을 찾을 수 없습니다.'
+        })
+    except Exception as e:
+        print(f"파일 다운로드 중 오류: {e}")
+        return JsonResponse({
+            'success': False,
+            'error': f'파일 다운로드 중 오류가 발생했습니다: {str(e)}'
+        })

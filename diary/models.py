@@ -69,6 +69,13 @@ class BaseAttribute(models.Model):
     def __str__(self):
         return self.name
 
+class BaseAttributeDetail(models.Model):
+    name = models.CharField(max_length=50, unique=True)
+    attributeType = models.ForeignKey(AttributeType, on_delete=models.SET_NULL, null=True, blank=True, related_name='base_attribute_details')
+    
+    def __str__(self):
+        return self.name
+
 class Attribute(models.Model):
     name = models.CharField(max_length=50, unique=True)
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='attributes')
@@ -89,9 +96,25 @@ class Row(models.Model):
 class AttributeValue(models.Model):
     attribute = models.ForeignKey(Attribute, on_delete=models.SET_NULL, null=True, blank=True, related_name='values')
     row = models.ForeignKey(Row, on_delete=models.CASCADE, related_name='values', null=True, blank=True)
-    value = models.CharField(max_length=50)
+    value = models.TextField()  # CharField에서 TextField로 변경하여 JSON 저장 가능
+    
     def __str__(self):
         return self.value
+    
+    def get_file_info(self):
+        """파일 타입인 경우 JSON 파싱하여 파일 정보 반환"""
+        if self.attribute and self.attribute.attributeType and self.attribute.attributeType.name == 'file':
+            try:
+                import json
+                return json.loads(self.value)
+            except (json.JSONDecodeError, TypeError):
+                return None
+        return None
+    
+    def set_file_info(self, file_data):
+        """파일 정보를 JSON으로 저장"""
+        import json
+        self.value = json.dumps(file_data, ensure_ascii=False)
     
 class DropdownAttribute(models.Model):
     attribute = models.ForeignKey(Attribute, on_delete=models.SET_NULL, null=True, blank=True, related_name='dropdown_attributes')
