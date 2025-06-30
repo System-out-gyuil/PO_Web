@@ -682,7 +682,10 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                       .then(function(data){
                           if(data.success && data.entry) {
                               updateTableRow(data.entry);
-                              refreshKanban();
+                              // 칸반보드가 활성화되어 있고 업데이트된 필드가 현재 칸반보드 속성과 일치하는 경우에만 새로고침
+                              if (window.kanbanAttribute && '지역' === window.kanbanAttribute) {
+                                  refreshKanban();
+                              }
                               if (typeof window._modalAfterUpdateAll === 'function') window._modalAfterUpdateAll(id); window._modalAfterUpdateAll = null; 
                           }
                       });
@@ -738,7 +741,10 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                       .then(function(data){
                           if(data.success && data.entry) {
                               updateTableRow(data.entry);
-                              refreshKanban();
+                              // 칸반보드가 활성화되어 있고 업데이트된 필드가 현재 칸반보드 속성과 일치하는 경우에만 새로고침
+                              if (window.kanbanAttribute && '상세지역' === window.kanbanAttribute) {
+                                  refreshKanban();
+                              }
                               if (typeof window._modalAfterUpdateAll === 'function') { 
                                   window._modalAfterUpdateAll(id); 
                                   window._modalAfterUpdateAll = null; 
@@ -769,28 +775,56 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
         // 옵션 선택
         dropdown.querySelectorAll('span[data-option-id]').forEach(function(span){
             span.onclick = function(){
-                td.innerText = span.innerText;
-                td.setAttribute('data-value', span.getAttribute('data-option-id'));
+                const selectedOptionId = span.getAttribute('data-option-id');
+                const selectedOptionText = span.innerText;
+                const fieldName = td.getAttribute('data-field');
+                const tr = td.closest('tr');
+                const rowId = tr.getAttribute('data-id');
+                
+                // UI 업데이트
+                td.innerText = selectedOptionText;
+                td.setAttribute('data-value', selectedOptionId);
                 td.style.background = span.style.background;
                 closeDropdown();
-                fetch('/diary/update/', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                    body: 'id='+id+'&field='+type+'&value='+encodeURIComponent(span.getAttribute('data-option-id'))
-                }).then(() => {
-                    fetch('/diary/update/?id='+id)
-                      .then(r=>r.json())
-                      .then(function(data){
-                          if(data.success && data.entry) {
-                              updateTableRow(data.entry);
-                              refreshKanban();
-                              if (typeof window._modalAfterUpdateAll === 'function') { 
-                                  window._modalAfterUpdateAll(id); 
-                                  window._modalAfterUpdateAll = null; 
-                              }
-                          }
-                      });
-                });
+                
+                // 서버에 데이터 저장
+                if (rowId && fieldName) {
+                    fetch('/diary/update_row_field/', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                        body: 'id=' + encodeURIComponent(rowId) + '&field=' + encodeURIComponent(fieldName) + '&value=' + encodeURIComponent(selectedOptionId)
+                    })
+                    .then(r => r.json())
+                    .then(function(data) {
+                        if (data.success) {
+                            // 성공 시 칸반보드 업데이트 (드롭다운 속성이 현재 칸반보드와 관련된 경우)
+                            const currentKanbanAttr = document.getElementById('kanbanAttributeSelect') ? 
+                                document.getElementById('kanbanAttributeSelect').value : 
+                                window.SELECTED_KANBAN_ATTR;
+                            
+                            // 변경된 필드가 현재 칸반보드에서 사용 중인 속성이면 칸반보드 새로고침
+                            if (fieldName === currentKanbanAttr) {
+                                console.log('칸반보드 속성이 변경되어 새로고침합니다:', fieldName);
+                                refreshKanban();
+                            }
+                            
+                            // F/U 일정 필드인 경우 캘린더도 새로고침
+                            if (fieldName === 'F/U 일정' && window.calendar) {
+                                window.calendar.refetchEvents();
+                            }
+                        } else {
+                            alert('저장 실패: ' + (data.error || ''));
+                            // 실패 시 UI 롤백
+                            location.reload();
+                        }
+                    })
+                    .catch(function(err) {
+                        alert('저장 실패: 네트워크 오류');
+                        console.error(err);
+                        // 실패 시 UI 롤백
+                        location.reload();
+                    });
+                }
             };
         });
         
@@ -1546,7 +1580,7 @@ document.addEventListener('DOMContentLoaded', function() {
             onEnd: function (evt) {
                 // 순서 변경 시 서버에 반영
                 const ids = Array.from(document.querySelectorAll('#entryTbody tr[data-id]')).map(tr => tr.getAttribute('data-id'));
-                fetch('/reorder/', {
+                fetch('/diary/reorder/', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({order: ids})
@@ -1896,6 +1930,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     td.setAttribute('data-value', span.getAttribute('data-option-id'));
                     td.style.background = span.style.background;
                     closeDropdown();
+                    // 드롭다운 선택 시 서버에 업데이트
+                    saveNewRowField(tr, type, span.getAttribute('data-option-id'));
                 };
             });
         }
@@ -2246,7 +2282,10 @@ function updateRowField(rowId, field, value) {
         }
         // 성공 시 테이블과 칸반보드 새로고침
         refreshTable();
-        refreshKanban();
+        // 칸반보드가 활성화되어 있고 업데이트된 필드가 현재 칸반보드 속성과 일치하는 경우에만 새로고침
+        if (window.kanbanAttribute && field === window.kanbanAttribute) {
+            refreshKanban();
+        }
         // F/U 일정 필드인 경우 캘린더도 새로고침
         if(field === 'F/U 일정' && window.calendar) {
             window.calendar.refetchEvents();
@@ -2464,7 +2503,10 @@ function selectModalRegionOption(rowId, regionText, element) {
                             
                         // 테이블과 칸반보드 새로고침
                         refreshTable();
-                        refreshKanban();
+                        // 칸반보드가 활성화되어 있고 업데이트된 필드가 현재 칸반보드 속성과 일치하는 경우에만 새로고침
+                        if (window.kanbanAttribute && type === window.kanbanAttribute) {
+                            refreshKanban();
+                        }
                     }
                 });
             } else {
@@ -2479,7 +2521,10 @@ function selectModalRegionOption(rowId, regionText, element) {
                     
                 // 테이블과 칸반보드 새로고침
                 refreshTable();
-                refreshKanban();
+                // 칸반보드가 활성화되어 있고 업데이트된 필드가 현재 칸반보드 속성과 일치하는 경우에만 새로고침
+                if (window.kanbanAttribute && type === window.kanbanAttribute) {
+                    refreshKanban();
+                }
             }
         } else {
             alert('수정 실패: ' + (data.error || ''));
@@ -2512,7 +2557,10 @@ function selectModalSubregionOption(rowId, subregionText, element) {
                 
             // 테이블과 칸반보드 새로고침
             refreshTable();
-            refreshKanban();
+            // 칸반보드가 활성화되어 있고 업데이트된 필드가 현재 칸반보드 속성과 일치하는 경우에만 새로고침
+            if (window.kanbanAttribute && '상세지역' === window.kanbanAttribute) {
+                refreshKanban();
+            }
         } else {
             alert('수정 실패: ' + (data.error || ''));
         }
@@ -2539,7 +2587,10 @@ function updateEntryField(id, field, value) {
         if(data && data.success && data.entry) {
             showDetailModal(data.entry);
             updateTableRow(data.entry);
-            refreshKanban();
+            // 칸반보드가 활성화되어 있고 업데이트된 필드가 현재 칸반보드 속성과 일치하는 경우에만 새로고침
+            if (window.kanbanAttribute && field === window.kanbanAttribute) {
+                refreshKanban();
+            }
             if(field === 'fu_date' && window.calendar) window.calendar.refetchEvents();
         }
     })
@@ -2555,6 +2606,13 @@ function closeDetailModal() {
     window.currentDetailRowId = null;
     window.currentTextAttributeName = null;
     window.currentAudioFileInfo = null;
+    
+    // 모달 닫을 때 테이블, 칸반보드, 캘린더 새로고침
+    refreshTable();
+    refreshKanban();
+    if (window.calendar) {
+        window.calendar.refetchEvents();
+    }
 }
 
     // 새 행용 Attribute 시스템 이벤트 바인딩
@@ -2722,17 +2780,20 @@ function closeDetailModal() {
                     tr.removeAttribute('data-is-new');
                     console.log(`새 행 ID 업데이트: ${currentId} -> ${data.id}`);
                     
-                    // 영업진행 필드인 경우 칸반보드 새로고침
-                    if (field === '영업진행') {
+                    // 현재 칸반보드에서 사용 중인 속성이 변경된 경우 칸반보드 새로고침
+                    const currentKanbanAttr = document.getElementById('kanbanAttributeSelect') ? 
+                        document.getElementById('kanbanAttributeSelect').value : 
+                        window.SELECTED_KANBAN_ATTR;
+                    
+                    if (field === currentKanbanAttr) {
+                        console.log('새 행 생성 시 칸반보드 속성이 변경되어 새로고침합니다:', field);
                         refreshKanban();
                     }
+                    
                     // F/U 일정 필드인 경우 캘린더 새로고침
                     if (field === 'F/U 일정' && window.calendar) {
                         window.calendar.refetchEvents();
                     }
-                } else {
-                    console.error(`새 행 생성 실패:`, data.error);
-                    alert('새 행 생성 실패: ' + (data.error || ''));
                 }
             }).catch(function(error) {
                 console.error(`새 행 생성 중 오류:`, error);
@@ -2752,8 +2813,8 @@ function closeDetailModal() {
             }).then(function(data) {
                 console.log(`${field} 필드 업데이트 응답:`, data);
                 if (data.success) {
-                    // 영업진행 필드인 경우 칸반보드 새로고침
-                    if (field === '영업진행') {
+                    // 칸반보드가 활성화되어 있고 업데이트된 필드가 현재 칸반보드 속성과 일치하는 경우 새로고침
+                    if (window.kanbanAttribute && field === window.kanbanAttribute) {
                         refreshKanban();
                     }
                     // F/U 일정 필드인 경우 캘린더 새로고침
@@ -2936,7 +2997,7 @@ function closeDetailModal() {
         }
         
         // 외부 클릭 시 드롭다운 닫기
-        document.addEventListener('mousedown', function handler(e) {
+        document.addEventListener('mousedown', function(e) {
             if(dropdown && !dropdown.contains(e.target)) { 
                 closeDropdown(); 
                 document.removeEventListener('mousedown', handler); 
@@ -3426,11 +3487,9 @@ function closeDetailModal() {
                     
                 // 테이블과 칸반보드 새로고침
                 refreshTable();
-                refreshKanban();
-                
-                // F/U 일정 필드인 경우 캘린더도 새로고침
-                if (fieldName === 'F/U 일정' && window.calendar) {
-                    window.calendar.refetchEvents();
+                // 칸반보드가 활성화되어 있고 업데이트된 필드가 현재 칸반보드 속성과 일치하는 경우에만 새로고침
+                if (window.kanbanAttribute && fieldName === window.kanbanAttribute) {
+                    refreshKanban();
                 }
             } else {
                 alert('수정 실패: ' + (data.error || ''));
@@ -3501,7 +3560,10 @@ function closeDetailModal() {
                 
                 // 테이블과 칸반보드도 새로고침
                 refreshTable();
-                refreshKanban();
+                // 칸반보드가 활성화되어 있고 업데이트된 필드가 현재 칸반보드 속성과 일치하는 경우에만 새로고침
+                if (window.kanbanAttribute && '지역' === window.kanbanAttribute) {
+                    refreshKanban();
+                }
             } else {
                 alert('파일 업로드 실패: ' + (data.error || '알 수 없는 오류'));
             }
@@ -3557,7 +3619,10 @@ function closeDetailModal() {
                 
                 // 테이블과 칸반보드도 새로고침
                 refreshTable();
-                refreshKanban();
+                // 칸반보드가 활성화되어 있고 업데이트된 필드가 현재 칸반보드 속성과 일치하는 경우에만 새로고침
+                if (window.kanbanAttribute && '지역' === window.kanbanAttribute) {
+                    refreshKanban();
+                }
             } else {
                 alert('파일 삭제 실패: ' + (data.error || '알 수 없는 오류'));
             }
@@ -3628,9 +3693,10 @@ function closeDetailModal() {
                 
                 // 테이블과 칸반보드 새로고침
                 refreshTable();
-                refreshKanban();
-                
-                alert('음성파일 업로드 및 텍스트 변환이 완료되었습니다.');
+                // 칸반보드가 활성화되어 있고 업데이트된 필드가 현재 칸반보드 속성과 일치하는 경우에만 새로고침
+                if (window.kanbanAttribute && '음성파일' === window.kanbanAttribute) {
+                    refreshKanban();
+                }
             } else {
                 audioUploadStatus.textContent = '업로드 실패: ' + (data.error || '알 수 없는 오류');
                 audioUploadStatus.style.color = 'red';
@@ -3791,7 +3857,10 @@ function closeDetailModal() {
                 
                 // 테이블과 칸반보드 새로고침
                 refreshTable();
-                refreshKanban();
+                // 칸반보드가 활성화되어 있고 업데이트된 필드가 현재 칸반보드 속성과 일치하는 경우에만 새로고침
+                if (window.kanbanAttribute && '음성파일' === window.kanbanAttribute) {
+                    refreshKanban();
+                }
             } else {
                 alert('음성파일 삭제 실패: ' + (data.error || '알 수 없는 오류'));
             }
