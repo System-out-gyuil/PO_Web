@@ -73,7 +73,9 @@ class Attribute(models.Model):
     name = models.CharField(max_length=50, unique=True)
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='attributes')
     attributeType = models.ForeignKey(AttributeType, on_delete=models.SET_NULL, null=True, blank=True, related_name='attributes')
-    
+    assential = models.BooleanField(default=False)
+    detail = models.BooleanField(default=False)
+
     def __str__(self):
         return self.name
     

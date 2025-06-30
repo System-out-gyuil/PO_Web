@@ -20,8 +20,8 @@ from django.db import models
 
 def diary_list(request):
     user = User.objects.get(id=1)
-    attributes = Attribute.objects.all().order_by('id')
-    user_attributes = Attribute.objects.filter(user=user)
+    attributes = Attribute.objects.all().order_by('-assential', 'id')  # 필수 속성 먼저, 그 다음 id 순
+    user_attributes = Attribute.objects.filter(user=user).order_by('-assential', 'id')  # 필수 속성 먼저
     attr_map = {attr.name: attr for attr in user_attributes}
     
     # 기존 단일 행 값들 제거하고, 실제 Row 데이터 가져오기
@@ -69,19 +69,27 @@ def diary_list(request):
             'values': row_values
         })
     
-    # 칸반보드 데이터 생성
-    board = []
-    sales_progress_attr = Attribute.objects.filter(user=user, name='영업진행').first()
+    # 칸반보드용 dropdown 속성들 가져오기 (필수/비필수 순서 유지)
+    dropdown_attributes = user_attributes.filter(attributeType__name='dropdown').order_by('-assential', 'name')
     
-    if sales_progress_attr:
-        # 영업진행 속성의 드롭다운 옵션들 가져오기
-        dropdown_options = DropdownAttribute.objects.filter(attribute=sales_progress_attr).order_by('id')
+    # 칸반보드 데이터 생성 - 기본적으로 '영업진행' 속성 사용, 없으면 첫 번째 dropdown 속성 사용
+    board = []
+    selected_kanban_attr = request.GET.get('kanban_attr', '영업진행')
+    kanban_attr = user_attributes.filter(name=selected_kanban_attr, attributeType__name='dropdown').first()
+    
+    if not kanban_attr and dropdown_attributes.exists():
+        kanban_attr = dropdown_attributes.first()
+        selected_kanban_attr = kanban_attr.name
+    
+    if kanban_attr:
+        # 선택된 속성의 드롭다운 옵션들 가져오기
+        dropdown_options = DropdownAttribute.objects.filter(attribute=kanban_attr).order_by('id')
         
         for option in dropdown_options:
-            # 해당 영업진행 상태를 가진 행들 찾기
+            # 해당 상태를 가진 행들 찾기
             rows = Row.objects.filter(
                 user=user,
-                values__attribute=sales_progress_attr,
+                values__attribute=kanban_attr,
                 values__value=str(option.id)
             ).order_by('order', 'id')
             
@@ -115,22 +123,32 @@ def diary_list(request):
             })
 
     # attributes를 list of dict로 json.dumps
-    attributes_list = list(attributes.values('name', 'attributeType__name'))
+    attributes_list = list(attributes.values('name', 'attributeType__name', 'assential'))
     # dict -> SimpleNamespace, attributeType__name -> attributeType_name
     attributes_obj_list = [SimpleNamespace(**{k.replace('attributeType__name', 'attributeType_name'): v for k, v in d.items()}) for d in attributes_list]
     attributes_json = json.dumps(attributes_list, ensure_ascii=False)
+    
     # dropdown 속성별 옵션 딕셔너리 생성 (Attribute 기반)
     dropdown_attrs = user_attributes.filter(attributeType__name='dropdown')
-    dropdown_options = {}
+    dropdown_options_dict = {}
     for attr in dropdown_attrs:
         options = DropdownAttribute.objects.filter(attribute=attr).values('id', 'option', 'color')
-        dropdown_options[attr.name] = list(options)
+        dropdown_options_dict[attr.name] = list(options)
+
+    # dropdown 속성들을 JSON으로 전달
+    dropdown_attributes_json = json.dumps([
+        {'name': attr.name, 'id': attr.id} 
+        for attr in dropdown_attributes
+    ], ensure_ascii=False)
 
     print(f"rows: {rows}")
     return render(request, 'diary/diary_list.html', {
         'attributes': attributes_obj_list,  # 템플릿 반복문용
         'attributes_json': attributes_json,  # JS용
-        'dropdown_options': json.dumps(dropdown_options, ensure_ascii=False),
+        'dropdown_options': json.dumps(dropdown_options_dict, ensure_ascii=False),
+        'dropdown_attributes': dropdown_attributes,  # 칸반 필터용
+        'dropdown_attributes_json': dropdown_attributes_json,  # JS용
+        'selected_kanban_attr': selected_kanban_attr,  # 현재 선택된 칸반 속성
         'rows': rows_data,  # 실제 데이터 행들
         'board': board,  # 칸반보드 데이터
     })
@@ -804,21 +822,102 @@ def debug_fu_data(request):
 
 @require_GET
 def get_user_attributes(request):
-    """사용자의 속성 목록을 반환하는 뷰"""
+    """사용자의 속성 목록을 반환하는 API"""
     try:
         user = User.objects.get(id=1)
-        attributes = Attribute.objects.filter(user=user).order_by('id')
+        attributes = Attribute.objects.filter(user=user).order_by('-assential', 'id')  # 필수 속성 먼저, 그 다음 id 순
         
         attributes_data = []
         for attr in attributes:
-            attributes_data.append({
+            attr_data = {
+                'id': attr.id,
                 'name': attr.name,
-                'attributeType': attr.attributeType.name if attr.attributeType else 'text'
-            })
+                'type': attr.attributeType.name if attr.attributeType else 'text',
+                'essential': attr.assential  # essential 정보 추가
+            }
+            attributes_data.append(attr_data)
         
         return JsonResponse({
             'success': True,
             'attributes': attributes_data
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })
+
+@require_GET
+def get_kanban_data(request):
+    """특정 dropdown 속성에 대한 칸반보드 데이터를 반환하는 API"""
+    try:
+        user = User.objects.get(id=1)
+        attr_name = request.GET.get('attr_name')
+        
+        if not attr_name:
+            return JsonResponse({
+                'success': False,
+                'error': 'attr_name parameter is required'
+            })
+        
+        # 해당 속성 찾기
+        kanban_attr = Attribute.objects.filter(
+            user=user, 
+            name=attr_name, 
+            attributeType__name='dropdown'
+        ).first()
+        
+        if not kanban_attr:
+            return JsonResponse({
+                'success': False,
+                'error': f'Dropdown attribute "{attr_name}" not found'
+            })
+        
+        # 칸반보드 데이터 생성
+        board_data = []
+        dropdown_options = DropdownAttribute.objects.filter(attribute=kanban_attr).order_by('id')
+        
+        for option in dropdown_options:
+            # 해당 상태를 가진 행들 찾기
+            rows = Row.objects.filter(
+                user=user,
+                values__attribute=kanban_attr,
+                values__value=str(option.id)
+            ).order_by('order', 'id')
+            
+            # 각 행의 데이터를 entry 형태로 변환
+            entries = []
+            for row in rows:
+                # 행의 속성값들 가져오기
+                row_values = {}
+                for attr_value in row.values.all():
+                    if attr_value.attribute:
+                        row_values[attr_value.attribute.name] = attr_value.value
+                
+                # entry 데이터 생성
+                entry_data = {
+                    'id': row.id,
+                    'name': row_values.get('이름', ''),
+                    'amount': row_values.get('매출', ''),
+                }
+                entries.append(entry_data)
+            
+            # 상태 정보
+            status_data = {
+                'id': option.id,
+                'name': option.option,
+                'color': option.color
+            }
+            
+            board_data.append({
+                'status': status_data,
+                'entries': entries
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'board': board_data,
+            'selected_attr': attr_name
         })
         
     except Exception as e:
@@ -826,3 +925,40 @@ def get_user_attributes(request):
             'success': False,
             'error': str(e)
         })
+
+@csrf_exempt
+def delete_attribute(request):
+    """속성과 관련된 모든 데이터 삭제"""
+    if request.method == 'POST':
+        attr_name = request.POST.get('name', '').strip()
+        
+        if not attr_name:
+            return JsonResponse({'success': False, 'error': '속성명이 필요합니다.'})
+        
+        try:
+            # 속성 찾기
+            attribute = Attribute.objects.filter(name=attr_name).first()
+            
+            if not attribute:
+                return JsonResponse({'success': False, 'error': '존재하지 않는 속성입니다.'})
+            
+            # essential 속성인지 확인
+            if attribute.assential:
+                return JsonResponse({'success': False, 'error': '필수 속성은 삭제할 수 없습니다.'})
+            
+            # 1. AttributeValue 먼저 삭제 (FK 제약 조건 때문에)
+            AttributeValue.objects.filter(attribute=attribute).delete()
+            
+            # 2. DropdownAttribute 삭제 (dropdown 타입인 경우)
+            if attribute.attributeType and attribute.attributeType.name == 'dropdown':
+                DropdownAttribute.objects.filter(attribute=attribute).delete()
+            
+            # 3. 마지막으로 Attribute 삭제
+            attribute.delete()
+            
+            return JsonResponse({'success': True, 'message': f'속성 "{attr_name}"이 성공적으로 삭제되었습니다.'})
+            
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'error': 'Invalid method'}, status=405)

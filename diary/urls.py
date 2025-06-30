@@ -16,7 +16,9 @@ urlpatterns = [
     path('update_row_field/', views.update_row_field, name='update_row_field'),
     path('dropdown_options/', views.dropdown_options, name='dropdown_options'),
     path('add_attribute/', views.add_attribute, name='add_attribute'),
+    path('delete_attribute/', views.delete_attribute, name='delete_attribute'),
     path('get_row_details/<int:row_id>/', views.get_row_details, name='get_row_details'),
     path('debug_fu_data/', views.debug_fu_data, name='debug_fu_data'),
     path('get_user_attributes/', views.get_user_attributes, name='get_user_attributes'),
+    path('get_kanban_data/', views.get_kanban_data, name='get_kanban_data'),
 ] 
