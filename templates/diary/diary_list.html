@@ -2349,39 +2349,53 @@ function showModalRegionDropdown(rowId, fieldName, btn) {
     
     const regionNames = ['서울','경기','인천','대구','부산','광주','대전','울산','세종','강원','충북','충남','전북','전남'];
     
-    // 드롭다운 메뉴 생성
+    // 기존 드롭다운이 있으면 닫기
+    closeDropdown();
+    
+    // 드롭다운 메뉴 생성 - 테이블과 동일한 스타일 적용
     const dropdown = document.createElement('div');
-    dropdown.style.position = 'fixed';
+    dropdown.className = 'dropdown-edit';
+    dropdown.style.position = 'absolute';
     dropdown.style.left = (btn.getBoundingClientRect().left + window.scrollX) + 'px';
     dropdown.style.top = (btn.getBoundingClientRect().top + window.scrollY + btn.offsetHeight) + 'px';
-    dropdown.style.backgroundColor = 'white';
-    dropdown.style.border = '1px solid #ccc';
-    dropdown.style.borderRadius = '4px';
-    dropdown.style.boxShadow = '0 2px 10px rgba(0,0,0,0.1)';
-    dropdown.style.zIndex = '10000';
-    dropdown.style.minWidth = '150px';
-    dropdown.style.maxHeight = '200px';
-    dropdown.style.overflowY = 'auto';
+    dropdown.style.zIndex = '4000';
     
-    let html = '<div style="padding: 8px 12px; font-weight: bold; border-bottom: 1px solid #eee;">지역 선택</div>';
+    let html = '<div><b>지역 선택</b><ul style="margin:8px 0 12px 0;max-height:120px;overflow-y:auto;">';
     regionNames.forEach(function(region) {
-        html += `<div class="dropdown-option" style="padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #eee;" 
-                    onclick="selectModalRegionOption('${rowId}', '${region}', this)">${region}</div>`;
+        html += `<li style="margin-bottom:2px;"><span data-region="${region}" style="cursor:pointer;padding:2px 4px;border-radius:3px;">${region}</span></li>`;
     });
+    html += '</ul></div>';
     
     dropdown.innerHTML = html;
     document.body.appendChild(dropdown);
     
+    // 전역 dropdown 변수에 저장 (closeDropdown 함수에서 사용)
+    window.dropdown = dropdown;
+    
     console.log('지역 드롭다운 생성 완료:', dropdown);
     
+    // 지역 클릭 이벤트
+    dropdown.querySelectorAll('span[data-region]').forEach(function(span) {
+        span.onmouseover = function() {
+            this.style.background = '#f1f3f6';
+        };
+        span.onmouseout = function() {
+            this.style.background = '';
+        };
+        span.onclick = function() {
+            const selectedRegion = this.getAttribute('data-region');
+            selectModalRegionOption(rowId, selectedRegion, this);
+        };
+    });
+    
     // 드롭다운 외부 클릭 시 닫기
-    function closeDropdown(e) {
+    function closeDropdownHandler(e) {
         if (!dropdown.contains(e.target)) {
-            dropdown.remove();
-            document.removeEventListener('click', closeDropdown);
+            closeDropdown();
+            document.removeEventListener('click', closeDropdownHandler);
         }
     }
-    setTimeout(() => document.addEventListener('click', closeDropdown), 100);
+    setTimeout(() => document.addEventListener('click', closeDropdownHandler), 100);
 }
 
 // 모달용 상세지역 드롭다운 표시 함수
@@ -2415,37 +2429,51 @@ function showModalSubregionDropdown(rowId, fieldName, btn) {
             
             const subregions = regionMap[currentRegion] || [];
             
-            // 드롭다운 메뉴 생성
+            // 기존 드롭다운이 있으면 닫기
+            closeDropdown();
+            
+            // 드롭다운 메뉴 생성 - 테이블과 동일한 스타일 적용
             const dropdown = document.createElement('div');
-            dropdown.style.position = 'fixed';
+            dropdown.className = 'dropdown-edit';
+            dropdown.style.position = 'absolute';
             dropdown.style.left = (btn.getBoundingClientRect().left + window.scrollX) + 'px';
             dropdown.style.top = (btn.getBoundingClientRect().top + window.scrollY + btn.offsetHeight) + 'px';
-            dropdown.style.backgroundColor = 'white';
-            dropdown.style.border = '1px solid #ccc';
-            dropdown.style.borderRadius = '4px';
-            dropdown.style.boxShadow = '0 2px 10px rgba(0,0,0,0.1)';
-            dropdown.style.zIndex = '10000';
-            dropdown.style.minWidth = '150px';
-            dropdown.style.maxHeight = '200px';
-            dropdown.style.overflowY = 'auto';
+            dropdown.style.zIndex = '4000';
             
-            let html = `<div style="padding: 8px 12px; font-weight: bold; border-bottom: 1px solid #eee;">${currentRegion} 상세지역 선택</div>`;
+            let html = `<div><b>${currentRegion} 상세지역 선택</b><ul style="margin:8px 0 12px 0;max-height:120px;overflow-y:auto;">`;
             subregions.forEach(function(subregion) {
-                html += `<div class="dropdown-option" style="padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #eee;" 
-                            onclick="selectModalSubregionOption('${rowId}', '${subregion}', this)">${subregion}</div>`;
+                html += `<li style="margin-bottom:2px;"><span data-subregion="${subregion}" style="cursor:pointer;padding:2px 4px;border-radius:3px;">${subregion}</span></li>`;
             });
+            html += '</ul></div>';
             
             dropdown.innerHTML = html;
             document.body.appendChild(dropdown);
             
+            // 전역 dropdown 변수에 저장
+            window.dropdown = dropdown;
+            
+            // 상세지역 클릭 이벤트
+            dropdown.querySelectorAll('span[data-subregion]').forEach(function(span) {
+                span.onmouseover = function() {
+                    this.style.background = '#f1f3f6';
+                };
+                span.onmouseout = function() {
+                    this.style.background = '';
+                };
+                span.onclick = function() {
+                    const selectedSubregion = this.getAttribute('data-subregion');
+                    selectModalSubregionOption(rowId, selectedSubregion, this);
+                };
+            });
+            
             // 드롭다운 외부 클릭 시 닫기
-            function closeDropdown(e) {
+            function closeDropdownHandler(e) {
                 if (!dropdown.contains(e.target)) {
-                    dropdown.remove();
-                    document.removeEventListener('click', closeDropdown);
+                    closeDropdown();
+                    document.removeEventListener('click', closeDropdownHandler);
                 }
             }
-            setTimeout(() => document.addEventListener('click', closeDropdown), 100);
+            setTimeout(() => document.addEventListener('click', closeDropdownHandler), 100);
         });
 }
 
@@ -2461,7 +2489,7 @@ function selectModalRegionOption(rowId, regionText, element) {
     .then(function(data) {
         if (data.success) {
             // 드롭다운 닫기
-            element.closest('div').remove();
+            closeDropdown();
             
             // 지역이 변경되면 상세지역도 해당 지역의 첫 번째 값으로 초기화
             const regionMap = {
@@ -2504,27 +2532,11 @@ function selectModalRegionOption(rowId, regionText, element) {
                         // 테이블과 칸반보드 새로고침
                         refreshTable();
                         // 칸반보드가 활성화되어 있고 업데이트된 필드가 현재 칸반보드 속성과 일치하는 경우에만 새로고침
-                        if (window.kanbanAttribute && type === window.kanbanAttribute) {
+                        if (window.kanbanAttribute && '지역' === window.kanbanAttribute) {
                             refreshKanban();
                         }
                     }
                 });
-            } else {
-                // 상세지역이 없는 경우 모달 새로고침
-                fetch('/diary/get_row_details/' + rowId + '/')
-                    .then(r => r.json())
-                    .then(function(data) {
-                        if (data.success) {
-                            showDetailModal(data.row_data, data.row_id);
-                        }
-                    });
-                    
-                // 테이블과 칸반보드 새로고침
-                refreshTable();
-                // 칸반보드가 활성화되어 있고 업데이트된 필드가 현재 칸반보드 속성과 일치하는 경우에만 새로고침
-                if (window.kanbanAttribute && type === window.kanbanAttribute) {
-                    refreshKanban();
-                }
             }
         } else {
             alert('수정 실패: ' + (data.error || ''));
@@ -2544,7 +2556,7 @@ function selectModalSubregionOption(rowId, subregionText, element) {
     .then(function(data) {
         if (data.success) {
             // 드롭다운 닫기
-            element.closest('div').remove();
+            closeDropdown();
             
             // 모달 새로고침
             fetch('/diary/get_row_details/' + rowId + '/')
@@ -3423,42 +3435,100 @@ function closeDetailModal() {
                     return;
                 }
                 
-                // 드롭다운 메뉴 생성
+                // 기존 드롭다운이 있으면 닫기
+                closeDropdown();
+                
+                // 드롭다운 메뉴 생성 - 테이블과 동일한 스타일 적용
                 const dropdown = document.createElement('div');
-                dropdown.style.position = 'fixed';
+                dropdown.className = 'dropdown-edit';
+                dropdown.style.position = 'absolute';
                 dropdown.style.left = (btn.getBoundingClientRect().left + window.scrollX) + 'px';
                 dropdown.style.top = (btn.getBoundingClientRect().top + window.scrollY + btn.offsetHeight) + 'px';
-                dropdown.style.backgroundColor = 'white';
-                dropdown.style.border = '1px solid #ccc';
-                dropdown.style.borderRadius = '4px';
-                dropdown.style.boxShadow = '0 2px 10px rgba(0,0,0,0.1)';
-                dropdown.style.zIndex = '10000';
-                dropdown.style.minWidth = '150px';
-                dropdown.style.maxHeight = '200px';
-                dropdown.style.overflowY = 'auto';
+                dropdown.style.zIndex = '4000';
                 
-                let html = '';
+                let html = `<div><b>${fieldName} 선택</b><ul style="margin:8px 0 12px 0;max-height:120px;overflow-y:auto;">`;
                 data.options.forEach(function(option) {
-                    const bgColor = option.color ? `background-color: ${option.color}; color: white;` : '';
-                    html += `<div class="dropdown-option" style="padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #eee; ${bgColor}" 
-                                onclick="selectModalDropdownOption('${rowId}', '${fieldName}', '${option.id}', '${option.option}', this)">${option.option}</div>`;
+                    const bgColor = option.color ? `background-color: ${hexToRgba(option.color, 0.18)};` : '';
+                    html += `<li style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
+                        <span data-option-id="${option.id}" style="cursor:pointer;padding:2px 8px;border-radius:4px;min-width:60px;display:inline-block;${bgColor}">${option.option}</span>
+                        <input type="color" value="${option.color||'#eeeeee'}" data-color-edit="${option.id}" style="width:24px;height:24px;border:none;vertical-align:middle;cursor:pointer;">
+                        <button data-edit="${option.id}" style="font-size:0.9em;">✏️</button>
+                        <button data-del="${option.id}" style="font-size:0.9em;">🗑️</button>
+                    </li>`;
                 });
-                
-                // 새 옵션 추가 버튼
-                html += `<div style="padding: 8px 12px; cursor: pointer; border-top: 2px solid #eee; background: #f8f9fa; font-weight: bold;" 
-                            onclick="addNewModalDropdownOption('${rowId}', '${fieldName}', this)">+ 새 옵션 추가</div>`;
+                html += '</ul>';
+                html += '<input type="text" placeholder="새 옵션 추가" style="width:70%;margin-bottom:5px;"> <button class="add-btn">추가</button></div>';
                 
                 dropdown.innerHTML = html;
                 document.body.appendChild(dropdown);
                 
+                // 전역 dropdown 변수에 저장
+                window.dropdown = dropdown;
+                
+                // 옵션 선택 이벤트
+                dropdown.querySelectorAll('span[data-option-id]').forEach(function(span) {
+                    span.onmouseover = function() {
+                        this.style.background = hexToRgba(this.style.backgroundColor || '#eee', 0.3);
+                    };
+                    span.onmouseout = function() {
+                        const originalColor = span.getAttribute('data-original-bg') || '';
+                        this.style.background = originalColor;
+                    };
+                    span.onclick = function() {
+                        const selectedOptionId = this.getAttribute('data-option-id');
+                        const selectedOptionText = this.innerText;
+                        selectModalDropdownOption(rowId, fieldName, selectedOptionId, selectedOptionText, this);
+                    };
+                    
+                    // 원본 배경색 저장
+                    span.setAttribute('data-original-bg', span.style.background);
+                });
+                
+                // 새 옵션 추가 버튼
+                const addBtn = dropdown.querySelector('.add-btn');
+                if (addBtn) {
+                    addBtn.onclick = function() {
+                        const input = dropdown.querySelector('input[type="text"]');
+                        const newOption = input.value.trim();
+                        if (newOption) {
+                            addNewModalDropdownOption(rowId, fieldName, newOption, this);
+                            input.value = '';
+                        }
+                    };
+                }
+                
+                // 색상 변경 이벤트
+                dropdown.querySelectorAll('input[data-color-edit]').forEach(function(colorInput) {
+                    colorInput.onchange = function() {
+                        const optionId = this.getAttribute('data-color-edit');
+                        const newColor = this.value;
+                        updateDropdownOptionColor(fieldName, optionId, newColor);
+                    };
+                });
+                
+                // 편집/삭제 버튼 이벤트
+                dropdown.querySelectorAll('button[data-edit]').forEach(function(editBtn) {
+                    editBtn.onclick = function() {
+                        const optionId = this.getAttribute('data-edit');
+                        editDropdownOption(fieldName, optionId);
+                    };
+                });
+                
+                dropdown.querySelectorAll('button[data-del]').forEach(function(delBtn) {
+                    delBtn.onclick = function() {
+                        const optionId = this.getAttribute('data-del');
+                        deleteDropdownOption(fieldName, optionId);
+                    };
+                });
+                
                 // 드롭다운 외부 클릭 시 닫기
-                function closeDropdown(e) {
+                function closeDropdownHandler(e) {
                     if (!dropdown.contains(e.target)) {
-                        dropdown.remove();
-                        document.removeEventListener('click', closeDropdown);
+                        closeDropdown();
+                        document.removeEventListener('click', closeDropdownHandler);
                     }
                 }
-                setTimeout(() => document.addEventListener('click', closeDropdown), 100);
+                setTimeout(() => document.addEventListener('click', closeDropdownHandler), 100);
             });
     }
 
@@ -3474,7 +3544,7 @@ function closeDetailModal() {
         .then(function(data) {
             if (data.success) {
                 // 드롭다운 닫기
-                element.closest('div').remove();
+                closeDropdown();
                 
                 // 모달 새로고침
                 fetch('/diary/get_row_details/' + rowId + '/')
@@ -3491,6 +3561,11 @@ function closeDetailModal() {
                 if (window.kanbanAttribute && fieldName === window.kanbanAttribute) {
                     refreshKanban();
                 }
+                
+                // F/U 일정 필드인 경우 캘린더도 새로고침
+                if (fieldName === 'F/U 일정' && window.calendar) {
+                    window.calendar.refetchEvents();
+                }
             } else {
                 alert('수정 실패: ' + (data.error || ''));
             }
@@ -3498,23 +3573,28 @@ function closeDetailModal() {
     }
 
     // 모달용 새 드롭다운 옵션 추가 함수 (일반 드롭다운 속성용)
-    function addNewModalDropdownOption(rowId, fieldName, element) {
-        const newOption = prompt('새 옵션을 입력하세요:');
-        if (newOption && newOption.trim()) {
-            fetch('/diary/dropdown_options/?field=' + encodeURIComponent(fieldName), {
-                method: 'POST',
-                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                body: 'name=' + encodeURIComponent(newOption.trim())
-            })
-            .then(r => r.json())
-            .then(function(data) {
-                if (data.id) {
-                    // 새 옵션 추가 성공, 해당 옵션으로 선택
-                    selectModalDropdownOption(rowId, fieldName, data.id, data.option, element);
-                } else {
-                    alert('옵션 추가 실패: ' + (data.error || ''));
-                }
-            });
+    function addNewModalDropdownOption(rowId, fieldName, newOption, element) {
+        fetch('/diary/dropdown_options/?field=' + encodeURIComponent(fieldName), {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: 'name=' + encodeURIComponent(newOption)
+        })
+        .then(r => r.json())
+        .then(function(data) {
+            if (data.id) {
+                // 새 옵션 추가 성공, 해당 옵션으로 선택
+                selectModalDropdownOption(rowId, fieldName, data.id, data.option, element);
+            } else {
+                alert('옵션 추가 실패: ' + (data.error || ''));
+            }
+        });
+    }
+
+    // closeDropdown 함수가 전역적으로 사용될 수 있도록 수정
+    function closeDropdown() {
+        if (window.dropdown) {
+            window.dropdown.remove();
+            window.dropdown = null;
         }
     }
 
@@ -3891,6 +3971,76 @@ function closeDetailModal() {
                 textArea.value.substring(0, 50) + '...' : 
                 textArea.value;
             leftInput.value = displayText;
+        }
+    }
+
+    // 드롭다운 옵션 색상 변경 함수
+    function updateDropdownOptionColor(fieldName, optionId, newColor) {
+        fetch('/diary/dropdown_options/?field=' + encodeURIComponent(fieldName), {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: 'id=' + encodeURIComponent(optionId) + '&color=' + encodeURIComponent(newColor)
+        })
+        .then(r => r.json())
+        .then(function(data) {
+            if (data.success) {
+                // 성공 시 테이블과 칸반보드 새로고침
+                refreshTable();
+                if (window.kanbanAttribute && fieldName === window.kanbanAttribute) {
+                    refreshKanban();
+                }
+            } else {
+                alert('색상 변경 실패: ' + (data.error || ''));
+            }
+        });
+    }
+
+    // 드롭다운 옵션 편집 함수
+    function editDropdownOption(fieldName, optionId) {
+        const newName = prompt('새 옵션명을 입력하세요:');
+        if (newName && newName.trim()) {
+            fetch('/diary/dropdown_options/?field=' + encodeURIComponent(fieldName), {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: 'id=' + encodeURIComponent(optionId) + '&name=' + encodeURIComponent(newName.trim())
+            })
+            .then(r => r.json())
+            .then(function(data) {
+                if (data.success) {
+                    // 성공 시 테이블과 칸반보드 새로고침
+                    refreshTable();
+                    if (window.kanbanAttribute && fieldName === window.kanbanAttribute) {
+                        refreshKanban();
+                    }
+                    closeDropdown();
+                } else {
+                    alert('옵션 편집 실패: ' + (data.error || ''));
+                }
+            });
+        }
+    }
+
+    // 드롭다운 옵션 삭제 함수
+    function deleteDropdownOption(fieldName, optionId) {
+        if (confirm('이 옵션을 삭제하시겠습니까?')) {
+            fetch('/diary/dropdown_options/?field=' + encodeURIComponent(fieldName), {
+                method: 'DELETE',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: 'id=' + encodeURIComponent(optionId)
+            })
+            .then(r => r.json())
+            .then(function(data) {
+                if (data.success) {
+                    // 성공 시 테이블과 칸반보드 새로고침
+                    refreshTable();
+                    if (window.kanbanAttribute && fieldName === window.kanbanAttribute) {
+                        refreshKanban();
+                    }
+                    closeDropdown();
+                } else {
+                    alert('옵션 삭제 실패: ' + (data.error || ''));
+                }
+            });
         }
     }
 </script>

@@ -21,6 +21,14 @@ from django.conf import settings
 import uuid
 import os
 from botocore.exceptions import ClientError
+from google.cloud import speech
+from langchain_openai import ChatOpenAI
+import io
+from django.http import JsonResponse
+from config import GOOGLE_APPLICATION_CREDENTIALS, GOOGLE_APPLICATION_CREDENTIALS2, NAVER_CLOVA_SPEECH_SECRET_KEY, NAVER_CLOVA_SPEECH_INVOKE_URL, OPEN_AI_API_KEY
+import requests
+
+
 # 다이어리 목록 및 작성 폼
 
 def diary_list(request):
@@ -57,18 +65,18 @@ def diary_list(request):
                 else:
                     row_values[attr.name] = {'label': value, 'color': ''}
             elif attr.attributeType and attr.attributeType.name == 'file' and value:
-                # 파일 타입의 경우 JSON 파싱하여 파일명 표시
-                try:
-                    file_info = json.loads(value)
-                    row_values[attr.name] = {
-                        'label': file_info.get('original_filename', '파일'),
-                        'color': '',
-                        'download_url': file_info.get('download_url', ''),
-                        'file_size': file_info.get('file_size', 0),
-                        'content_type': file_info.get('content_type', '')
-                    }
-                except (json.JSONDecodeError, TypeError):
-                    row_values[attr.name] = {'label': '파일 정보 오류', 'color': ''}
+                # 파일 타입인 경우
+                file_info = json.loads(value)
+                original_filename = file_info.get('original_filename', '파일')
+                
+                row_values[attr.name] = {
+                    'type': 'file',
+                    'label': original_filename,
+                    'download_url': file_info.get('download_url', ''),
+                    'file_size': file_info.get('file_size', 0),
+                    'content_type': file_info.get('content_type', ''),
+                    'original_filename': original_filename
+                }
             elif attr.attributeType and attr.attributeType.name == 'datetime' and value:
                 # datetime 타입의 경우 날짜 포맷 적용
                 try:
@@ -1063,61 +1071,60 @@ def upload_file(request):
                 )
                 
                 # 다운로드 URL 생성
-                download_url = f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/{s3_key}"
+                download_url = f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{s3_key}"
                 
-                # 파일 정보 JSON 생성
+                # 서명된 다운로드 URL 생성 (24시간 유효)
+                try:
+                    signed_download_url = s3_client.generate_presigned_url(
+                        'get_object',
+                        Params={
+                            'Bucket': settings.AWS_STORAGE_BUCKET_NAME,
+                            'Key': s3_key
+                        },
+                        ExpiresIn=86400  # 24시간
+                    )
+                    print(f"서명된 다운로드 URL 생성 성공 (24시간 유효)")
+                except Exception as e:
+                    print(f"서명된 URL 생성 실패: {e}")
+                    signed_download_url = download_url
+                
+                print(f"S3 업로드 성공:")
+                print(f"  원본 파일명: {uploaded_file.name}")
+                print(f"  S3 파일명: {unique_filename}")
+                print(f"  다운로드 URL: {download_url}")
+                print(f"  서명된 URL: {signed_download_url}")
+                
+                # 파일 정보를 JSON 형태로 저장
                 file_data = {
                     'original_filename': uploaded_file.name,
                     'stored_filename': unique_filename,
                     's3_key': s3_key,
-                    'download_url': download_url,
+                    'download_url': signed_download_url,
+                    'public_url': download_url,
                     'file_size': uploaded_file.size,
-                    'content_type': uploaded_file.content_type,
-                    'uploaded_at': timezone.now().isoformat()
+                    'content_type': uploaded_file.content_type
                 }
                 
                 # AttributeValue에 파일 정보 저장
                 attr_value, created = AttributeValue.objects.get_or_create(
                     row=row,
                     attribute=attribute,
-                    defaults={'value': ''}
+                    defaults={'value': json.dumps(file_data, ensure_ascii=False)}
                 )
-                attr_value.set_file_info(file_data)
-                attr_value.save()
+                if not created:
+                    attr_value.value = json.dumps(file_data, ensure_ascii=False)
+                    attr_value.save()
                 
-                print(f"=== S3 업로드 및 DB 저장 성공 ===")
-                print(f"업로드된 파일 경로: {s3_key}")
-                print(f"다운로드 URL: {download_url}")
-                print(f"원본 파일명: {uploaded_file.name}")
-                print(f"저장된 파일명: {unique_filename}")
-                print(f"DB 저장 완료: {'새로 생성' if created else '업데이트'}")
-                
-                # 서명된 URL 생성 (1시간 유효)
-                try:
-                    signed_url = s3_client.generate_presigned_url(
-                        'get_object',
-                        Params={
-                            'Bucket': settings.AWS_STORAGE_BUCKET_NAME,
-                            'Key': s3_key
-                        },
-                        ExpiresIn=3600  # 1시간
-                    )
-                    print(f"서명된 다운로드 URL (1시간 유효): {signed_url}")
-                except Exception as e:
-                    print(f"서명된 URL 생성 실패: {e}")
-                    signed_url = download_url
+                print(f"데이터베이스에 파일 정보 저장 완료")
                 
                 return JsonResponse({
                     'success': True,
-                    'message': 'S3 파일 업로드 및 DB 저장 성공',
+                    'message': f'파일 "{uploaded_file.name}"이 성공적으로 업로드되었습니다.',
                     'file_info': {
-                        'original_name': uploaded_file.name,
-                        'stored_name': unique_filename,
-                        'size': uploaded_file.size,
-                        'content_type': uploaded_file.content_type,
-                        'download_url': download_url,
-                        'signed_url': signed_url,
-                        's3_key': s3_key
+                        'original_filename': uploaded_file.name,
+                        'download_url': signed_download_url,
+                        'file_size': uploaded_file.size,
+                        'content_type': uploaded_file.content_type
                     }
                 })
                 
@@ -1201,6 +1208,7 @@ def delete_file(request):
                         file_info = json.loads(attribute_value.value)
                         s3_key = file_info.get('s3_key')
                         original_filename = file_info.get('original_filename', 'unknown')
+                        existing_download_url = file_info.get('download_url')
                         
                         if s3_key:
                             # S3에서 파일 삭제 시도
@@ -1270,95 +1278,92 @@ def delete_file(request):
         'error': 'POST 요청만 허용됩니다.'
     })
 
-@csrf_exempt
-def convert_audio_to_text(request):
-    """음성파일을 텍스트로 변환하는 뷰 (현재는 임시 텍스트 반환)"""
-    
-    if request.method == 'POST':
-        audio_file = request.FILES.get('audio_file')
-        row_id = request.POST.get('row_id')
-        
-        print(f"Received audio file: {audio_file}")
-        print(f"Received row ID: {row_id}")
-        
-        # 필수 파라미터 검증
-        if not audio_file:
-            return JsonResponse({
-                'success': False,
-                'error': '음성파일이 필요합니다.'
-            })
-        
-        if not row_id:
-            return JsonResponse({
-                'success': False,
-                'error': 'row_id가 필요합니다.'
-            })
-        
-        try:
-            # 사용자 ID를 1로 고정 (이미 import된 User 모델 사용)
-            user = User.objects.get(id=1)
-            
-            # Row 존재 여부 확인
-            row = Row.objects.get(id=row_id, user=user)
-            
-            # 오디오 파일 검증
-            if not audio_file.content_type.startswith('audio/'):
-                return JsonResponse({
-                    'success': False,
-                    'error': '오디오 파일만 업로드 가능합니다.'
-                })
-            
-            # 파일 크기 제한 (예: 50MB)
-            max_size = 50 * 1024 * 1024  # 50MB
-            if audio_file.size > max_size:
-                return JsonResponse({
-                    'success': False,
-                    'error': '파일 크기가 50MB를 초과합니다.'
-                })
-            
-            print(f"음성파일 정보:")
-            print(f"  파일명: {audio_file.name}")
-            print(f"  크기: {audio_file.size} bytes")
-            print(f"  타입: {audio_file.content_type}")
-            
-            # TODO: 실제 음성 인식 API 호출
-            # 현재는 임시 텍스트 반환
-            sample_texts = [
-                "안녕하세요. 이것은 음성에서 변환된 텍스트입니다. 실제 음성 인식 기능이 구현되면 이 부분이 실제 변환된 텍스트로 대체됩니다.",
-                "고객과의 상담 내용을 요약하면 다음과 같습니다. 주요 요구사항은 제품의 기능 개선과 가격 조정에 관한 내용이었습니다.",
-                "회의에서 논의된 주요 안건은 프로젝트 일정 조정과 리소스 배분에 관한 것이었습니다. 다음 주까지 세부 계획을 수립하기로 하였습니다.",
-                "오늘 진행한 업무는 데이터 분석과 보고서 작성이었습니다. 주요 발견사항과 개선 방안을 포함하여 최종 보고서를 완성하였습니다."
-            ]
-            
-            import random
-            converted_text = random.choice(sample_texts)
-            
-            return JsonResponse({
-                'success': True,
-                'converted_text': converted_text,
-                'file_info': {
-                    'filename': audio_file.name,
-                    'size': audio_file.size,
-                    'type': audio_file.content_type
-                }
-            })
-            
-        except Row.DoesNotExist:
-            return JsonResponse({
-                'success': False,
-                'error': '해당 행을 찾을 수 없습니다.'
-            })
-        except Exception as e:
-            print(f"음성 변환 중 오류: {e}")
-            return JsonResponse({
-                'success': False,
-                'error': f'음성 변환 중 오류가 발생했습니다: {str(e)}'
-            })
-    
-    return JsonResponse({
-        'success': False,
-        'error': 'POST 요청만 허용됩니다.'
-    })
+class ClovaSpeechClient:
+    # Clova Speech invoke URL
+    invoke_url = NAVER_CLOVA_SPEECH_INVOKE_URL
+    # Clova Speech secret key
+    secret = NAVER_CLOVA_SPEECH_SECRET_KEY
+
+    def req_url(self, url, completion, callback=None, userdata=None, \
+    	forbiddens=None, boostings=None, wordAlignment=True, \
+        	fullText=True, diarization=None, sed=None):
+        request_body = {
+            'url': url,
+            'language': 'ko-KR',
+            'completion': completion,
+            'callback': callback,
+            'userdata': userdata,
+            'wordAlignment': wordAlignment,
+            'fullText': fullText,
+            'forbiddens': forbiddens,
+            'boostings': boostings,
+            'diarization': diarization,
+            'sed': sed,
+        }
+        headers = {
+            'Accept': 'application/json;UTF-8',
+            'Content-Type': 'application/json;UTF-8',
+            'X-CLOVASPEECH-API-KEY': self.secret
+        }
+        return requests.post(headers=headers,
+                             url=self.invoke_url + '/recognizer/url',
+                             data=json.dumps(request_body).encode('UTF-8'))
+
+    def req_object_storage(self, data_key, completion, callback=None,
+    	userdata=None, forbiddens=None, boostings=None,wordAlignment=True,
+        	fullText=True, diarization=None, sed=None):
+        request_body = {
+            'dataKey': data_key,
+            'language': 'ko-KR',
+            'completion': completion,
+            'callback': callback,
+            'userdata': userdata,
+            'wordAlignment': wordAlignment,
+            'fullText': fullText,
+            'forbiddens': forbiddens,
+            'boostings': boostings,
+            'diarization': diarization,
+            'sed': sed,
+        }
+        headers = {
+            'Accept': 'application/json;UTF-8',
+            'Content-Type': 'application/json;UTF-8',
+            'X-CLOVASPEECH-API-KEY': self.secret
+        }
+        return requests.post(headers=headers,
+                             url=self.invoke_url + '/recognizer/object-storage',
+                             data=json.dumps(request_body).encode('UTF-8'))
+
+    def req_upload(self, file, completion, callback=None, userdata=None,
+    	forbiddens=None, boostings=None, wordAlignment=True,
+        	fullText=True, diarization=None, sed=None):
+        request_body = {
+            'language': 'ko-KR',
+            'completion': completion,
+            'callback': callback,
+            'userdata': userdata,
+            'wordAlignment': wordAlignment,
+            'fullText': fullText,
+            'forbiddens': forbiddens,
+            'boostings': boostings,
+            'diarization': diarization,
+            'sed': sed,
+        }
+        headers = {
+            'Accept': 'application/json;UTF-8',
+            'X-CLOVASPEECH-API-KEY': self.secret
+        }
+        print(json.dumps(request_body, ensure_ascii=False).encode('UTF-8'))
+        files = {
+            'media': open(file, 'rb'),
+            'params': (None, json.dumps(request_body, \
+            			ensure_ascii=False).encode('UTF-8'), \
+                        		'application/json')
+        }
+        response = requests.post(headers=headers, url=self.invoke_url \
+        			+ '/recognizer/upload', files=files)
+        return response
+
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -1369,7 +1374,7 @@ def upload_audio_file(request):
         audio_file = request.FILES.get('file')
         row_id = request.POST.get('row_id')
         field_name = request.POST.get('field_name', '음성파일')
-        
+
         print(f"Received audio file: {audio_file}")
         print(f"Received row ID: {row_id}")
         print(f"Received field name: {field_name}")
@@ -1395,6 +1400,13 @@ def upload_audio_file(request):
                 'error': '파일 크기가 100MB를 초과합니다.'
             })
         
+        # 오디오 파일 검증
+        if not audio_file.content_type.startswith('audio/'):
+            return JsonResponse({
+                'success': False,
+                'error': '오디오 파일만 업로드 가능합니다.'
+            })
+        
         try:
             # 사용자 ID를 1로 고정 (이미 import된 User 모델 사용)
             user = User.objects.get(id=1)
@@ -1406,19 +1418,95 @@ def upload_audio_file(request):
             audio_attribute = Attribute.objects.get(name='음성파일', user=user)
             converted_text_attribute = Attribute.objects.get(name='변환된 텍스트', user=user)
             
-            # 오디오 파일 검증
-            if not audio_file.content_type.startswith('audio/'):
-                return JsonResponse({
-                    'success': False,
-                    'error': '오디오 파일만 업로드 가능합니다.'
-                })
-            
-            # 임시 텍스트 변환 (실제로는 STT API 호출)
-            # 여기서는 파일명을 기반으로 임시 텍스트 생성
-            converted_text = f"[음성파일 '{audio_file.name}' 변환 결과] 안녕하세요. 이것은 음성 인식으로 변환된 텍스트 샘플입니다. 실제 구현 시에는 STT API를 호출하여 실제 음성을 텍스트로 변환합니다."
-            
+            # Clova Speech-to-Text API 호출
+            converted_text = ""
+            try:
+                # 임시 파일로 저장 (Clova Speech는 파일 업로드 방식)
+                import tempfile
+                with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(audio_file.name)[1]) as temp_file:
+                    for chunk in audio_file.chunks():
+                        temp_file.write(chunk)
+                    temp_file_path = temp_file.name
+                
+                # Clova Speech API 호출
+                clova_client = ClovaSpeechClient()
+                response = clova_client.req_upload(file=temp_file_path, completion='sync')
+                result = response.json()
+                
+                
+                # 화자별 인식 결과 segment 추출
+                segments = result.get('segments', [])
+                speaker_segments = []
+                converted_text = ''
+
+                for segment in segments:
+                    speaker_label = segment['speaker']['label']
+                    text = segment['text']
+                    speaker_segments.append({'start': segment['start'], 'end': segment['end'], 'speaker': speaker_label, 'text': text})
+
+                for speaker_segment in speaker_segments:
+                    start_mil = speaker_segment['start']
+                    end_mil = speaker_segment['end']
+                    
+                    # Convert milliseconds to minutes and seconds
+                    def ms_to_min_sec(milliseconds):
+                        if milliseconds == 0:
+                            return 0, 0
+                        
+                        total_seconds = milliseconds / 1000
+                        minutes = int(total_seconds // 60)
+                        seconds = int(total_seconds % 60)
+                        return minutes, seconds
+                    
+                    def format_time(minutes, seconds):
+                        if minutes == 0:
+                            return f"{seconds}초"
+                        else:
+                            return f"{minutes}분 {seconds}초"
+                    
+                    start_min, start_sec = ms_to_min_sec(start_mil)
+                    end_min, end_sec = ms_to_min_sec(end_mil)
+                    
+                    start_time_str = format_time(start_min, start_sec)
+                    end_time_str = format_time(end_min, end_sec)
+                
+                    speaker_label = speaker_segment['speaker']
+                    text = speaker_segment['text']
+
+                    converted_text += f'Speaker {speaker_label}({start_time_str}~): {text} \n'
+                
+                # GPT 변환
+                llm = ChatOpenAI(
+                    temperature=0,
+                    model_name='gpt-4.1-mini',
+                    openai_api_key=OPEN_AI_API_KEY
+                )
+
+                user_input = "담당자와 고객사가 대한 통화한 내용이야. 각자 언급한 내용을 정리하고, 전체적인 소통내용을 정리해줘. 그리고 고객사의 심리상태를 간단하게 설명해줘. "
+
+                texts = converted_text + user_input
+
+                response = llm.invoke(texts)
+                content = response.content.replace("**", "").replace("#", "").strip()
+                print("[GPT 응답 원본]:", content)
+                
+                # 임시 파일 삭제
+                os.unlink(temp_file_path)
+                    
+            except Exception as stt_error:
+                print(f"Clova STT API 오류: {stt_error}")
+                # 임시 파일이 있다면 삭제
+                try:
+                    if 'temp_file_path' in locals():
+                        os.unlink(temp_file_path)
+                except:
+                    pass
+
             # S3에 파일 업로드
             try:
+                # 파일 포인터를 다시 처음으로 이동 (S3 업로드용)
+                audio_file.seek(0)
+                
                 # 고유한 파일명 생성
                 file_extension = os.path.splitext(audio_file.name)[1]
                 unique_filename = f"{uuid.uuid4()}{file_extension}"
@@ -1446,10 +1534,26 @@ def upload_audio_file(request):
                 # 다운로드 URL 생성
                 download_url = f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{s3_key}"
                 
+                # 서명된 다운로드 URL 생성 (24시간 유효)
+                try:
+                    signed_download_url = s3_client.generate_presigned_url(
+                        'get_object',
+                        Params={
+                            'Bucket': settings.AWS_STORAGE_BUCKET_NAME,
+                            'Key': s3_key
+                        },
+                        ExpiresIn=86400  # 24시간
+                    )
+                    print(f"서명된 다운로드 URL 생성 성공 (24시간 유효)")
+                except Exception as e:
+                    print(f"서명된 URL 생성 실패: {e}")
+                    signed_download_url = download_url
+                
                 print(f"S3 업로드 성공:")
                 print(f"  원본 파일명: {audio_file.name}")
                 print(f"  S3 파일명: {unique_filename}")
                 print(f"  다운로드 URL: {download_url}")
+                print(f"  서명된 URL: {signed_download_url}")
                 
             except Exception as e:
                 print(f"S3 업로드 실패: {e}")
@@ -1458,26 +1562,16 @@ def upload_audio_file(request):
                     'error': f'파일 업로드 실패: {str(e)}'
                 })
             
-            # 음성 변환 처리 (현재는 임시 텍스트)
-            sample_texts = [
-                "안녕하세요. 이것은 음성에서 변환된 텍스트입니다. 실제 음성 인식 기능이 구현되면 이 부분이 실제 변환된 텍스트로 대체됩니다.",
-                "고객과의 상담 내용을 요약하면 다음과 같습니다. 주요 요구사항은 제품의 기능 개선과 가격 조정에 관한 내용이었습니다.",
-                "회의에서 논의된 주요 안건은 프로젝트 일정 조정과 리소스 배분에 관한 것이었습니다. 다음 주까지 세부 계획을 수립하기로 하였습니다.",
-                "오늘 진행한 업무는 데이터 분석과 보고서 작성이었습니다. 주요 발견사항과 개선 방안을 포함하여 최종 보고서를 완성하였습니다."
-            ]
-            
-            import random
-            converted_text = random.choice(sample_texts)
-            
             # 파일 정보와 변환된 텍스트를 포함한 JSON 데이터 생성
             file_data = {
                 'original_filename': audio_file.name,
                 'stored_filename': unique_filename,
-                'download_url': download_url,
+                's3_key': s3_key,
+                'download_url': signed_download_url,
+                'public_url': download_url,
                 'file_size': audio_file.size,
                 'content_type': audio_file.content_type,
-                'converted_text': converted_text,
-                'upload_date': timezone.now().isoformat()
+                'converted_text': converted_text
             }
             
             # 음성파일 속성에 파일 정보 저장 (AttributeValue 모델 사용)
@@ -1507,7 +1601,7 @@ def upload_audio_file(request):
                 'converted_text': converted_text,
                 'file_info': {
                     'original_filename': audio_file.name,
-                    'download_url': download_url,
+                    'download_url': signed_download_url,
                     'file_size': audio_file.size,
                     'content_type': audio_file.content_type
                 },
@@ -1551,9 +1645,10 @@ def download_file(request, row_id, field_name):
                     file_info = json.loads(attribute_value.value)
                     s3_key = file_info.get('s3_key')
                     original_filename = file_info.get('original_filename', 'download')
+                    existing_download_url = file_info.get('download_url')
                     
                     if s3_key:
-                        # S3에서 서명된 다운로드 URL 생성
+                        # 항상 새로운 서명된 다운로드 URL 생성 (1시간 유효)
                         s3_client = boto3.client(
                             's3',
                             aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
@@ -1561,18 +1656,33 @@ def download_file(request, row_id, field_name):
                             region_name=settings.AWS_S3_REGION_NAME
                         )
                         
-                        signed_url = s3_client.generate_presigned_url(
-                            'get_object',
-                            Params={
-                                'Bucket': settings.AWS_STORAGE_BUCKET_NAME,
-                                'Key': s3_key
-                            },
-                            ExpiresIn=3600  # 1시간
-                        )
-                        
-                        # 리다이렉트로 다운로드
-                        from django.http import HttpResponseRedirect
-                        return HttpResponseRedirect(signed_url)
+                        try:
+                            signed_url = s3_client.generate_presigned_url(
+                                'get_object',
+                                Params={
+                                    'Bucket': settings.AWS_STORAGE_BUCKET_NAME,
+                                    'Key': s3_key
+                                },
+                                ExpiresIn=3600  # 1시간
+                            )
+                            
+                            print(f"새로운 서명된 다운로드 URL 생성: {signed_url}")
+                            
+                            # 리다이렉트로 다운로드
+                            from django.http import HttpResponseRedirect
+                            return HttpResponseRedirect(signed_url)
+                            
+                        except Exception as e:
+                            print(f"서명된 URL 생성 실패: {e}")
+                            # 서명된 URL 생성 실패 시 기존 URL 사용
+                            if existing_download_url:
+                                from django.http import HttpResponseRedirect
+                                return HttpResponseRedirect(existing_download_url)
+                            else:
+                                return JsonResponse({
+                                    'success': False,
+                                    'error': '다운로드 URL 생성에 실패했습니다.'
+                                })
                         
                     else:
                         return JsonResponse({
@@ -1585,31 +1695,31 @@ def download_file(request, row_id, field_name):
                         'success': False,
                         'error': '파일 정보를 파싱할 수 없습니다.'
                     })
-            else:
-                return JsonResponse({
-                    'success': False,
-                    'error': '파일 정보가 없습니다.'
-                })
+                else:
+                    return JsonResponse({
+                        'success': False,
+                        'error': '파일 정보가 없습니다.'
+                    })
                     
-        except AttributeValue.DoesNotExist:
+                
+        except Row.DoesNotExist:
             return JsonResponse({
                 'success': False,
-                'error': '파일이 없습니다.'
+                'error': '해당 행을 찾을 수 없습니다.'
             })
-                
-    except Row.DoesNotExist:
-        return JsonResponse({
-            'success': False,
-            'error': '해당 행을 찾을 수 없습니다.'
-        })
-    except Attribute.DoesNotExist:
-        return JsonResponse({
-            'success': False,
-            'error': '해당 속성을 찾을 수 없습니다.'
-        })
+        except Attribute.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'error': '해당 속성을 찾을 수 없습니다.'
+            })
     except Exception as e:
         print(f"파일 다운로드 중 오류: {e}")
         return JsonResponse({
             'success': False,
             'error': f'파일 다운로드 중 오류가 발생했습니다: {str(e)}'
         })
+    
+    return JsonResponse({
+        'success': False,
+        'error': 'POST 요청만 허용됩니다.'
+    })
