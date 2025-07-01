@@ -25,4 +25,9 @@ urlpatterns = [
     path('download_file/<int:row_id>/<str:field_name>/', views.download_file, name='download_file'),
     path('delete_file/', views.delete_file, name='delete_file'),
     path('upload_audio_file/', views.upload_audio_file, name='upload_audio_file'),
+    path('get_audio_files_by_date/', views.get_audio_files_by_date, name='get_audio_files_by_date'),
+    path('delete_audio_file/', views.delete_audio_file, name='delete_audio_file'),
+    path('update_audio_text/', views.update_audio_text, name='update_audio_text'),
+    path('update_audio_memo/', views.update_audio_memo, name='update_audio_memo'),
+    path('update_audio_file_order/', views.update_audio_file_order, name='update_audio_file_order'),
 ] 

@@ -27,7 +27,9 @@ import io
 from django.http import JsonResponse
 from config import GOOGLE_APPLICATION_CREDENTIALS, GOOGLE_APPLICATION_CREDENTIALS2, NAVER_CLOVA_SPEECH_SECRET_KEY, NAVER_CLOVA_SPEECH_INVOKE_URL, OPEN_AI_API_KEY
 import requests
+import logging
 
+logger = logging.getLogger(__name__)
 
 # 다이어리 목록 및 작성 폼
 
@@ -144,7 +146,7 @@ def diary_list(request):
                     'name': row_values.get('이름', ''),
                     'amount': row_values.get('매출', ''),
                 }
-                entries.append(SimpleNamespace(**entry_data))
+                entries.append(entry_data)
             
             # 상태 정보를 SimpleNamespace로 변환
             status_data = {
@@ -230,8 +232,6 @@ def fu_events(request):
         if not fu_date_value:
             continue
             
-        print(f"처리 중인 행 ID: {row.id}, F/U 일정 값: '{fu_date_value}'")
-        
         # 날짜 파싱 및 유효성 검사
         try:
             if isinstance(fu_date_value, str):
@@ -251,7 +251,6 @@ def fu_events(request):
                 formatted_date = dt.strftime('%Y-%m-%d')
             else:
                 formatted_date = fu_date_value.strftime('%Y-%m-%d')
-            print(f"  파싱된 날짜: {formatted_date}")
         except Exception as e:
             print(f"  날짜 파싱 실패 ({fu_date_value}): {e}")
             continue  # 날짜 파싱 실패 시 건너뛰기
@@ -304,9 +303,7 @@ def fu_events(request):
         }
         events.append(event_data)
         processed_rows.add(row.id)
-        print(f"  이벤트 추가됨: {event_data}")
     
-    print(f"최종 이벤트 개수: {len(events)}")
     return JsonResponse(events, safe=False, encoder=DjangoJSONEncoder)
 
 @csrf_exempt
@@ -1266,17 +1263,121 @@ def delete_file(request):
                 'success': False,
                 'error': '해당 속성을 찾을 수 없습니다.'
             })
-        except Exception as e:
-            print(f"파일 삭제 중 오류: {e}")
-            return JsonResponse({
-                'success': False,
-                'error': f'파일 삭제 중 오류가 발생했습니다: {str(e)}'
-            })
+    # except Exception as e:
+    #     print(f"파일 삭제 중 오류: {e}")
+    #     return JsonResponse({
+    #         'success': False,
+    #         'error': f'파일 삭제 중 오류가 발생했습니다: {str(e)}'
+    #     })
     
     return JsonResponse({
         'success': False,
         'error': 'POST 요청만 허용됩니다.'
     })
+
+@require_GET
+def download_file(request, row_id, field_name):
+    """S3에 저장된 파일을 다운로드하는 뷰"""
+    try:
+        # 사용자 ID를 1로 고정 (이미 import된 User 모델 사용)
+        user = User.objects.get(id=1)
+        
+        # Row와 Attribute 조회
+        row = Row.objects.get(id=row_id, user=user)
+        attribute = Attribute.objects.get(name=field_name, user=user)
+        
+        # AttributeValue 조회
+        try:
+            attribute_value = AttributeValue.objects.get(row=row, attribute=attribute)
+            
+            if attribute_value.value:
+                try:
+                    file_info = json.loads(attribute_value.value)
+                    s3_key = file_info.get('s3_key')
+                    original_filename = file_info.get('original_filename', 'download')
+                    existing_download_url = file_info.get('download_url')
+                    
+                    if s3_key:
+                        # 항상 새로운 서명된 다운로드 URL 생성 (1시간 유효)
+                        s3_client = boto3.client(
+                            's3',
+                            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+                            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+                            region_name=settings.AWS_S3_REGION_NAME
+                        )
+                        
+                        try:
+                            signed_url = s3_client.generate_presigned_url(
+                                'get_object',
+                                Params={
+                                    'Bucket': settings.AWS_STORAGE_BUCKET_NAME,
+                                    'Key': s3_key
+                                },
+                                ExpiresIn=3600  # 1시간
+                            )
+                            
+                            print(f"새로운 서명된 다운로드 URL 생성: {signed_url}")
+                            
+                            # 리다이렉트로 다운로드
+                            from django.http import HttpResponseRedirect
+                            return HttpResponseRedirect(signed_url)
+                            
+                        except Exception as e:
+                            print(f"서명된 URL 생성 실패: {e}")
+                            # 서명된 URL 생성 실패 시 기존 URL 사용
+                            if existing_download_url:
+                                from django.http import HttpResponseRedirect
+                                return HttpResponseRedirect(existing_download_url)
+                            else:
+                                return JsonResponse({
+                                    'success': False,
+                                    'error': '다운로드 URL 생성에 실패했습니다.'
+                                })
+                        
+                    else:
+                        return JsonResponse({
+                            'success': False,
+                            'error': 'S3 키가 없습니다.'
+                        })
+                        
+                except json.JSONDecodeError:
+                    return JsonResponse({
+                        'success': False,
+                        'error': '파일 정보를 파싱할 수 없습니다.'
+                    })
+            else:
+                return JsonResponse({
+                    'success': False,
+                    'error': '파일 정보가 없습니다.'
+                })
+                
+        except AttributeValue.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'error': '파일이 존재하지 않습니다.'
+            })
+                
+    except User.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': '사용자를 찾을 수 없습니다.'
+        })
+    except Row.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': '해당 행을 찾을 수 없습니다.'
+        })
+    except Attribute.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': '해당 속성을 찾을 수 없습니다.'
+        })
+    except Exception as e:
+        print(f"파일 다운로드 중 오류: {e}")
+        return JsonResponse({
+            'success': False,
+            'error': f'파일 다운로드 중 오류가 발생했습니다: {str(e)}'
+        })
 
 class ClovaSpeechClient:
     # Clova Speech invoke URL
@@ -1414,12 +1515,16 @@ def upload_audio_file(request):
             # Row 존재 여부 확인
             row = Row.objects.get(id=row_id, user=user)
             
-            # 음성파일 속성과 변환된 텍스트 속성 조회
+            # 음성파일 속성 조회 (변환된 텍스트 속성은 더 이상 사용하지 않음)
             audio_attribute = Attribute.objects.get(name='음성파일', user=user)
-            converted_text_attribute = Attribute.objects.get(name='변환된 텍스트', user=user)
+            
+            # 오늘 날짜 생성
+            from datetime import date
+            today = date.today().strftime('%y.%m.%d')
             
             # Clova Speech-to-Text API 호출
             converted_text = ""
+            gpt_summary = ""
             try:
                 # 임시 파일로 저장 (Clova Speech는 파일 업로드 방식)
                 import tempfile
@@ -1432,7 +1537,6 @@ def upload_audio_file(request):
                 clova_client = ClovaSpeechClient()
                 response = clova_client.req_upload(file=temp_file_path, completion='sync')
                 result = response.json()
-                
                 
                 # 화자별 인식 결과 segment 추출
                 segments = result.get('segments', [])
@@ -1475,10 +1579,10 @@ def upload_audio_file(request):
 
                     converted_text += f'Speaker {speaker_label}({start_time_str}~): {text} \n'
                 
-                # GPT 변환
+                # GPT 요약 생성
                 llm = ChatOpenAI(
                     temperature=0,
-                    model_name='gpt-4.1-mini',
+                    model_name='gpt-4o-mini',
                     openai_api_key=OPEN_AI_API_KEY
                 )
 
@@ -1487,8 +1591,8 @@ def upload_audio_file(request):
                 texts = converted_text + user_input
 
                 response = llm.invoke(texts)
-                content = response.content.replace("**", "").replace("#", "").strip()
-                print("[GPT 응답 원본]:", content)
+                gpt_summary = response.content.replace("**", "").replace("#", "").strip()
+                print("[GPT 응답 원본]:", gpt_summary)
                 
                 # 임시 파일 삭제
                 os.unlink(temp_file_path)
@@ -1562,8 +1666,33 @@ def upload_audio_file(request):
                     'error': f'파일 업로드 실패: {str(e)}'
                 })
             
-            # 파일 정보와 변환된 텍스트를 포함한 JSON 데이터 생성
-            file_data = {
+            # 기존 음성파일 데이터 가져오기 또는 빈 dict 생성
+            existing_attr_value = AttributeValue.objects.filter(
+                row=row,
+                attribute=audio_attribute
+            ).first()
+            
+            if existing_attr_value and existing_attr_value.value:
+                try:
+                    existing_data = json.loads(existing_attr_value.value)
+                except (json.JSONDecodeError, TypeError):
+                    existing_data = {}
+            else:
+                existing_data = {}
+            
+            # 기존 파일들의 order 값을 1씩 증가시키기 (새 파일이 맨 위에 오도록)
+            for date_key in existing_data:
+                for file_id_key in existing_data[date_key]:
+                    file_info = existing_data[date_key][file_id_key]
+                    current_order = file_info.get('order', 0)
+                    file_info['order'] = current_order + 1
+            
+            # 고유한 파일 ID 생성 (시간 포함)
+            from datetime import datetime
+            file_id = datetime.now().strftime('%H%M%S')  # HHMMSS 형식
+            
+            # 새로운 파일 데이터 생성 (order를 0으로 설정하여 맨 위에 표시)
+            new_file_data = {
                 'original_filename': audio_file.name,
                 'stored_filename': unique_filename,
                 's3_key': s3_key,
@@ -1571,39 +1700,44 @@ def upload_audio_file(request):
                 'public_url': download_url,
                 'file_size': audio_file.size,
                 'content_type': audio_file.content_type,
-                'converted_text': converted_text
+                'converted_text': converted_text,
+                'gpt_summary': gpt_summary,
+                'upload_time': datetime.now().strftime('%H:%M:%S'),
+                'order': 0  # 새로 업로드된 파일은 항상 맨 위에
             }
             
-            # 음성파일 속성에 파일 정보 저장 (AttributeValue 모델 사용)
-            audio_attr_value, created = AttributeValue.objects.get_or_create(
-                row=row,
-                attribute=audio_attribute,
-                defaults={'value': json.dumps(file_data, ensure_ascii=False)}
-            )
-            if not created:
-                audio_attr_value.value = json.dumps(file_data, ensure_ascii=False)
-                audio_attr_value.save()
+            # 날짜별로 데이터 구조화
+            if today not in existing_data:
+                existing_data[today] = {}
             
-            # 변환된 텍스트 속성에 텍스트 저장
-            text_attr_value, created = AttributeValue.objects.get_or_create(
-                row=row,
-                attribute=converted_text_attribute,
-                defaults={'value': converted_text}
-            )
-            if not created:
-                text_attr_value.value = converted_text
-                text_attr_value.save()
+            # 해당 날짜에 파일 추가 (파일ID를 키로 사용)
+            existing_data[today][file_id] = new_file_data
             
-            print(f"Row ID {row_id}의 음성파일과 변환된 텍스트 저장 완료")
+            # 음성파일 속성에 전체 데이터 저장
+            if existing_attr_value:
+                existing_attr_value.value = json.dumps(existing_data, ensure_ascii=False)
+                existing_attr_value.save()
+            else:
+                AttributeValue.objects.create(
+                    row=row,
+                    attribute=audio_attribute,
+                    value=json.dumps(existing_data, ensure_ascii=False)
+                )
+            
+            print(f"Row ID {row_id}의 음성파일 데이터 저장 완료 (날짜: {today})")
             
             return JsonResponse({
                 'success': True,
+                'date': today,
+                'file_id': file_id,
                 'converted_text': converted_text,
+                'gpt_summary': gpt_summary,
                 'file_info': {
                     'original_filename': audio_file.name,
                     'download_url': signed_download_url,
                     'file_size': audio_file.size,
-                    'content_type': audio_file.content_type
+                    'content_type': audio_file.content_type,
+                    'upload_time': new_file_data['upload_time']
                 },
                 'message': '음성파일 업로드 및 변환이 완료되었습니다.'
             })
@@ -1626,100 +1760,381 @@ def upload_audio_file(request):
     })
 
 @require_GET
-def download_file(request, row_id, field_name):
-    """S3에 저장된 파일을 다운로드하는 뷰"""
+def get_audio_files_by_date(request):
+    """특정 행의 날짜별 음성파일 데이터를 조회하는 API"""
     try:
-        # 사용자 ID를 1로 고정 (이미 import된 User 모델 사용)
+        row_id = request.GET.get('row_id')
+        
+        if not row_id:
+            return JsonResponse({
+                'success': False,
+                'error': 'row_id가 필요합니다.'
+            })
+        
+        # 사용자 ID를 1로 고정
         user = User.objects.get(id=1)
         
-        # Row와 Attribute 조회
+        # Row와 음성파일 속성 조회
         row = Row.objects.get(id=row_id, user=user)
-        attribute = Attribute.objects.get(name=field_name, user=user)
+        audio_attribute = Attribute.objects.get(name='음성파일', user=user)
         
-        # AttributeValue 조회
-        try:
-            attribute_value = AttributeValue.objects.get(row=row, attribute=attribute)
-            
-            if attribute_value.value:
-                try:
-                    file_info = json.loads(attribute_value.value)
-                    s3_key = file_info.get('s3_key')
-                    original_filename = file_info.get('original_filename', 'download')
-                    existing_download_url = file_info.get('download_url')
-                    
-                    if s3_key:
-                        # 항상 새로운 서명된 다운로드 URL 생성 (1시간 유효)
-                        s3_client = boto3.client(
-                            's3',
-                            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-                            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-                            region_name=settings.AWS_S3_REGION_NAME
-                        )
-                        
-                        try:
-                            signed_url = s3_client.generate_presigned_url(
-                                'get_object',
-                                Params={
-                                    'Bucket': settings.AWS_STORAGE_BUCKET_NAME,
-                                    'Key': s3_key
-                                },
-                                ExpiresIn=3600  # 1시간
-                            )
-                            
-                            print(f"새로운 서명된 다운로드 URL 생성: {signed_url}")
-                            
-                            # 리다이렉트로 다운로드
-                            from django.http import HttpResponseRedirect
-                            return HttpResponseRedirect(signed_url)
-                            
-                        except Exception as e:
-                            print(f"서명된 URL 생성 실패: {e}")
-                            # 서명된 URL 생성 실패 시 기존 URL 사용
-                            if existing_download_url:
-                                from django.http import HttpResponseRedirect
-                                return HttpResponseRedirect(existing_download_url)
-                            else:
-                                return JsonResponse({
-                                    'success': False,
-                                    'error': '다운로드 URL 생성에 실패했습니다.'
-                                })
-                        
-                    else:
-                        return JsonResponse({
-                            'success': False,
-                            'error': 'S3 키가 없습니다.'
-                        })
-                        
-                except json.JSONDecodeError:
-                    return JsonResponse({
-                        'success': False,
-                        'error': '파일 정보를 파싱할 수 없습니다.'
-                    })
-                else:
-                    return JsonResponse({
-                        'success': False,
-                        'error': '파일 정보가 없습니다.'
-                    })
-                    
+        # 음성파일 데이터 조회
+        attr_value = AttributeValue.objects.filter(
+            row=row,
+            attribute=audio_attribute
+        ).first()
+        
+        if attr_value and attr_value.value:
+            try:
+                audio_data = json.loads(attr_value.value)
                 
-        except Row.DoesNotExist:
+                # 날짜별로 정리된 데이터 반환
+                formatted_data = {}
+                for date_key, files in audio_data.items():
+                    formatted_data[date_key] = []
+                    for file_id, file_info in files.items():
+                        formatted_data[date_key].append({
+                            'file_id': file_id,
+                            'original_filename': file_info.get('original_filename', ''),
+                            'converted_text': file_info.get('converted_text', ''),
+                            'gpt_summary': file_info.get('gpt_summary', ''),
+                            'download_url': file_info.get('download_url', ''),
+                            'file_size': file_info.get('file_size', 0),
+                            'upload_time': file_info.get('upload_time', ''),
+                            'content_type': file_info.get('content_type', '')
+                        })
+                
+                return JsonResponse({
+                    'success': True,
+                    'audio_data': formatted_data
+                })
+                
+            except (json.JSONDecodeError, TypeError):
+                return JsonResponse({
+                    'success': True,
+                    'audio_data': {}
+                })
+        else:
             return JsonResponse({
-                'success': False,
-                'error': '해당 행을 찾을 수 없습니다.'
+                'success': True,
+                'audio_data': {}
             })
-        except Attribute.DoesNotExist:
-            return JsonResponse({
-                'success': False,
-                'error': '해당 속성을 찾을 수 없습니다.'
-            })
-    except Exception as e:
-        print(f"파일 다운로드 중 오류: {e}")
+            
+    except Row.DoesNotExist:
         return JsonResponse({
             'success': False,
-            'error': f'파일 다운로드 중 오류가 발생했습니다: {str(e)}'
+            'error': '해당 행을 찾을 수 없습니다.'
         })
+    except Attribute.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': '음성파일 속성을 찾을 수 없습니다.'
+        })
+    except Exception as e:
+        logger.error(f"오디오 파일 조회 오류: {str(e)}")
+        return JsonResponse({
+            'success': False, 
+            'error': f'오디오 파일 조회 중 오류가 발생했습니다: {str(e)}'
+        })
+
+@csrf_exempt
+def delete_audio_file(request):
+    """특정 날짜의 특정 음성파일 삭제"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST 메서드만 허용됩니다.'})
     
-    return JsonResponse({
-        'success': False,
-        'error': 'POST 요청만 허용됩니다.'
-    })
+    try:
+        row_id = request.POST.get('row_id')
+        date = request.POST.get('date')
+        file_id = request.POST.get('file_id')
+        
+        if not all([row_id, date, file_id]):
+            return JsonResponse({
+                'success': False,
+                'error': 'row_id, date, file_id가 모두 필요합니다.'
+            })
+        
+        # 사용자 및 Row 조회
+        user = User.objects.get(id=1)
+        row = Row.objects.get(id=row_id, user=user)
+        
+        # 음성파일 속성 조회
+        audio_attribute = Attribute.objects.get(name='음성파일', user=user)
+        
+        # 기존 AttributeValue 조회
+        try:
+            attr_value = AttributeValue.objects.get(row=row, attribute=audio_attribute)
+            current_data = json.loads(attr_value.value) if attr_value.value else {}
+        except AttributeValue.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '음성파일 데이터를 찾을 수 없습니다.'})
+        except json.JSONDecodeError:
+            return JsonResponse({'success': False, 'error': '음성파일 데이터 형식이 올바르지 않습니다.'})
+        
+        # 해당 날짜와 파일 ID 확인
+        if date not in current_data:
+            return JsonResponse({'success': False, 'error': f'{date} 날짜 데이터를 찾을 수 없습니다.'})
+        
+        if file_id not in current_data[date]:
+            return JsonResponse({'success': False, 'error': f'파일 ID {file_id}를 찾을 수 없습니다.'})
+        
+        # S3에서 파일 삭제 시도
+        file_info = current_data[date][file_id]
+        try:
+            if 'stored_filename' in file_info:
+                s3_client = boto3.client(
+                    's3',
+                    aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+                    aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+                    region_name=settings.AWS_S3_REGION_NAME
+                )
+                delete_response = s3_client.delete_object(
+                    Bucket=settings.AWS_STORAGE_BUCKET_NAME,
+                    Key=f"audio_files/{file_info['stored_filename']}"
+                )
+                logger.info(f"S3 파일 삭제 완료: {file_info['stored_filename']}")
+        except Exception as e:
+            logger.warning(f"S3 파일 삭제 실패 (계속 진행): {str(e)}")
+        
+        # 데이터에서 해당 파일 제거
+        del current_data[date][file_id]
+        
+        # 해당 날짜에 다른 파일이 없으면 날짜 자체도 제거
+        if not current_data[date]:
+            del current_data[date]
+        
+        # 업데이트된 데이터 저장
+        if current_data:
+            attr_value.value = json.dumps(current_data, ensure_ascii=False)
+            attr_value.save()
+        else:
+            # 모든 음성파일이 삭제된 경우
+            attr_value.value = ''
+            attr_value.save()
+        
+        logger.info(f"음성파일 삭제 완료 - Row: {row_id}, Date: {date}, File: {file_id}")
+        
+        return JsonResponse({
+            'success': True,
+            'message': '음성파일이 성공적으로 삭제되었습니다.',
+            'remaining_files': len(current_data)
+        })
+        
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'error': '사용자를 찾을 수 없습니다.'})
+    except Row.DoesNotExist:
+        return JsonResponse({'success': False, 'error': '해당 행을 찾을 수 없습니다.'})
+    except Attribute.DoesNotExist:
+        return JsonResponse({'success': False, 'error': '음성파일 속성을 찾을 수 없습니다.'})
+    except Exception as e:
+        logger.error(f"음성파일 삭제 오류: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': f'음성파일 삭제 중 오류가 발생했습니다: {str(e)}'
+        })
+
+@csrf_exempt
+def update_audio_text(request):
+    """
+    음성파일의 변환된 텍스트를 업데이트하는 함수
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': '잘못된 요청 방법입니다.'})
+    
+    try:
+        # 파라미터 검증
+        row_id = request.POST.get('row_id')
+        date = request.POST.get('date')
+        file_id = request.POST.get('file_id')
+        converted_text = request.POST.get('converted_text', '')
+        
+        if not all([row_id, date, file_id]):
+            return JsonResponse({'success': False, 'error': '필수 파라미터가 누락되었습니다.'})
+        
+        # 사용자 정보 가져오기 (고정 ID: 1)
+        try:
+            user = User.objects.get(id=1)
+        except User.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '사용자를 찾을 수 없습니다.'})
+        
+        # Row 객체 가져오기
+        try:
+            row = Row.objects.get(id=row_id, user=user)
+        except Row.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '행을 찾을 수 없습니다.'})
+        
+        # 음성파일 속성 가져오기
+        try:
+            audio_attribute = Attribute.objects.get(user=user, name='음성파일')
+        except Attribute.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '음성파일 속성을 찾을 수 없습니다.'})
+        
+        # AttributeValue 가져오기 또는 생성
+        attr_value, created = AttributeValue.objects.get_or_create(
+            row=row,
+            attribute=audio_attribute,
+            defaults={'value': '{}'}
+        )
+        
+        # 기존 데이터 파싱
+        try:
+            audio_data = json.loads(attr_value.value) if attr_value.value else {}
+        except json.JSONDecodeError:
+            audio_data = {}
+        
+        # 해당 날짜의 파일 데이터 찾기 및 업데이트
+        if date in audio_data and file_id in audio_data[date]:
+            audio_data[date][file_id]['converted_text'] = converted_text
+            
+            # 데이터베이스에 저장
+            attr_value.value = json.dumps(audio_data, ensure_ascii=False)
+            attr_value.save()
+            
+            logger.info(f"음성파일 텍스트 업데이트 성공 - Row ID: {row_id}, Date: {date}, File ID: {file_id}")
+            
+            return JsonResponse({
+                'success': True,
+                'message': '변환된 텍스트가 성공적으로 업데이트되었습니다.'
+            })
+        else:
+            return JsonResponse({'success': False, 'error': '해당 음성파일을 찾을 수 없습니다.'})
+            
+    except Exception as e:
+        logger.error(f"음성파일 텍스트 업데이트 오류: {str(e)}")
+        return JsonResponse({'success': False, 'error': f'서버 오류: {str(e)}'})
+
+@csrf_exempt
+def update_audio_memo(request):
+    """음성파일 메모 업데이트"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': '허용되지 않은 메소드입니다.'})
+    
+    try:
+        # 파라미터 가져오기
+        row_id = request.POST.get('row_id')
+        date = request.POST.get('date')
+        file_id = request.POST.get('file_id')
+        memo = request.POST.get('memo', '')
+        
+        if not all([row_id, date, file_id]):
+            return JsonResponse({'success': False, 'error': '필수 파라미터가 누락되었습니다.'})
+        
+        # 사용자 정보 가져오기 (고정 ID: 1)
+        try:
+            user = User.objects.get(id=1)
+        except User.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '사용자를 찾을 수 없습니다.'})
+        
+        # Row 정보 가져오기
+        try:
+            row = Row.objects.get(id=row_id, user=user)
+        except Row.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '해당 행을 찾을 수 없습니다.'})
+        
+        # 음성파일 속성 가져오기
+        try:
+            audio_attr = Attribute.objects.get(name='음성파일')
+            audio_attr_value, created = AttributeValue.objects.get_or_create(
+                row=row,
+                attribute=audio_attr,
+                defaults={'value': '{}'}
+            )
+        except Attribute.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '음성파일 속성을 찾을 수 없습니다.'})
+        
+        # 기존 음성파일 데이터 파싱
+        try:
+            audio_data = json.loads(audio_attr_value.value) if audio_attr_value.value else {}
+        except (json.JSONDecodeError, TypeError):
+            audio_data = {}
+        
+        # 해당 날짜와 파일 ID의 메모 업데이트
+        if date in audio_data and file_id in audio_data[date]:
+            audio_data[date][file_id]['memo'] = memo
+            
+            # 업데이트된 데이터 저장
+            audio_attr_value.value = json.dumps(audio_data, ensure_ascii=False)
+            audio_attr_value.save()
+            
+            logger.info(f"음성파일 메모 업데이트 성공: Row {row_id}, Date {date}, File {file_id}")
+            return JsonResponse({'success': True, 'message': '메모가 성공적으로 저장되었습니다.'})
+        else:
+            return JsonResponse({'success': False, 'error': '해당 음성파일을 찾을 수 없습니다.'})
+            
+    except Exception as e:
+        logger.error(f"음성파일 메모 업데이트 오류: {str(e)}")
+        return JsonResponse({'success': False, 'error': f'메모 저장 중 오류가 발생했습니다: {str(e)}'})
+
+@csrf_exempt
+def update_audio_file_order(request):
+    """
+    음성파일들의 순서를 업데이트하는 함수
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': '잘못된 요청 방법입니다.'})
+    
+    try:
+        # 파라미터 검증
+        row_id = request.POST.get('row_id')
+        ordered_files = request.POST.get('ordered_files')
+        
+        if not all([row_id, ordered_files]):
+            return JsonResponse({'success': False, 'error': '필수 파라미터가 누락되었습니다.'})
+        
+        # 순서 데이터 파싱
+        try:
+            ordered_files_data = json.loads(ordered_files)
+        except json.JSONDecodeError:
+            return JsonResponse({'success': False, 'error': '순서 데이터 형식이 올바르지 않습니다.'})
+        
+        # 사용자 정보 가져오기 (고정 ID: 1)
+        try:
+            user = User.objects.get(id=1)
+        except User.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '사용자를 찾을 수 없습니다.'})
+        
+        # Row 객체 가져오기
+        try:
+            row = Row.objects.get(id=row_id, user=user)
+        except Row.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '해당 행을 찾을 수 없습니다.'})
+        
+        # 음성파일 속성 가져오기
+        try:
+            audio_attribute = Attribute.objects.get(name='음성파일', user=user)
+        except Attribute.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '음성파일 속성을 찾을 수 없습니다.'})
+        
+        # 기존 AttributeValue 가져오기
+        try:
+            attr_value = AttributeValue.objects.get(row=row, attribute=audio_attribute)
+            current_data = json.loads(attr_value.value) if attr_value.value else {}
+        except AttributeValue.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '음성파일 데이터를 찾을 수 없습니다.'})
+        except json.JSONDecodeError:
+            return JsonResponse({'success': False, 'error': '음성파일 데이터 형식이 올바르지 않습니다.'})
+        
+        # 각 파일에 순서 번호 추가
+        for index, file_data in enumerate(ordered_files_data):
+            date = file_data.get('date')
+            file_id = file_data.get('file_id')
+            
+            if date and file_id and date in current_data and file_id in current_data[date]:
+                current_data[date][file_id]['order'] = index
+        
+        # 업데이트된 데이터 저장
+        attr_value.value = json.dumps(current_data, ensure_ascii=False)
+        attr_value.save()
+        
+        logger.info(f"음성파일 순서 업데이트 완료 - Row: {row_id}")
+        
+        return JsonResponse({
+            'success': True,
+            'message': '파일 순서가 성공적으로 업데이트되었습니다.'
+        })
+        
+    except Exception as e:
+        logger.error(f"음성파일 순서 업데이트 오류: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': f'순서 업데이트 중 오류가 발생했습니다: {str(e)}'
+        })
