@@ -1,0 +1,35 @@
+              } else if (attr.name === '기대출') {
+                  // 기대출 필드는 8개 기관별 입력 필드로 처리
+                  let loanData = {};
+                  if (value && typeof value === 'object') {
+                      loanData = value;
+                  } else if (value && typeof value === 'string' && value.startsWith('{')) {
+                      try {
+                          loanData = JSON.parse(value);
+                      } catch (e) {
+                          console.error('기대출 데이터 파싱 오류:', e);
+                          loanData = {};
+                      }
+                  }
+                  
+                  const loanInstitutions = ['기술보증기금', '신용보증기금', '신용보증재단', '중진공', '소진공', '기타1', '기타2', '기타3'];
+                  
+                  let loanInputsHtml = '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px;">';
+                  loanInstitutions.forEach(function(institution) {
+                      const amount = loanData[institution] || '';
+                      loanInputsHtml += `
+                          <div style="display: flex; align-items: center; gap: 8px;">
+                              <label style="min-width: 90px; font-size: 12px; color: #666; white-space: nowrap;">${institution}:</label>
+                              <input type="number" 
+                                     id="loan-${rowId}-${institution}"
+                                     value="${amount}" 
+                                     placeholder="금액(만원)"
+                                     style="flex: 1; padding: 6px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px;"
+                                     onchange="updateLoanAmount('${rowId}', '${institution}', this.value)">
+                          </div>
+                      `;
+                  });
+                  loanInputsHtml += '</div>';
+                  
+                  inputHtml = loanInputsHtml;
+              } 

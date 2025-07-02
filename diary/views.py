@@ -28,6 +28,8 @@ from django.http import JsonResponse
 from config import GOOGLE_APPLICATION_CREDENTIALS, GOOGLE_APPLICATION_CREDENTIALS2, NAVER_CLOVA_SPEECH_SECRET_KEY, NAVER_CLOVA_SPEECH_INVOKE_URL, OPEN_AI_API_KEY
 import requests
 import logging
+from django.contrib.auth.decorators import login_required
+from .funding_calculator import FundingCalculator
 
 logger = logging.getLogger(__name__)
 
@@ -2138,3 +2140,519 @@ def update_audio_file_order(request):
             'success': False,
             'error': f'순서 업데이트 중 오류가 발생했습니다: {str(e)}'
         })
+
+@csrf_exempt
+def update_expected_loans(request):
+    """
+    기대출 속성의 다중 선택 값을 업데이트하는 함수
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': '잘못된 요청 방법입니다.'})
+    
+    try:
+        # 파라미터 검증
+        row_id = request.POST.get('row_id')
+        attribute = request.POST.get('attribute')
+        value = request.POST.get('value', '')
+        
+        if not row_id or not attribute:
+            return JsonResponse({'success': False, 'error': '필수 파라미터가 누락되었습니다.'})
+        
+        # 기대출 속성인지 확인
+        if attribute != '기대출':
+            return JsonResponse({'success': False, 'error': '기대출 속성만 처리 가능합니다.'})
+        
+        # 사용자 정보 가져오기 (고정 ID: 1)
+        try:
+            user = User.objects.get(id=1)
+        except User.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '사용자를 찾을 수 없습니다.'})
+        
+        # Row 객체 가져오기
+        try:
+            row = Row.objects.get(id=row_id, user=user)
+        except Row.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '해당 행을 찾을 수 없습니다.'})
+        
+        # 기대출 속성 가져오기 또는 생성
+        try:
+            expected_loans_attr = Attribute.objects.get(name='기대출', user=user)
+        except Attribute.DoesNotExist:
+            # 기대출 속성이 없으면 생성
+            text_type, _ = AttributeType.objects.get_or_create(name='text')
+            expected_loans_attr = Attribute.objects.create(
+                name='기대출',
+                user=user,
+                attributeType=text_type
+            )
+        
+        # AttributeValue 가져오기 또는 생성
+        attr_value, created = AttributeValue.objects.get_or_create(
+            row=row,
+            attribute=expected_loans_attr,
+            defaults={'value': value}
+        )
+        
+        if not created:
+            attr_value.value = value
+            attr_value.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': '기대출 정보가 성공적으로 업데이트되었습니다.'
+        })
+        
+    except Exception as e:
+        logger.error(f"기대출 업데이트 오류: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': f'기대출 업데이트 중 오류가 발생했습니다: {str(e)}'
+        })
+
+@csrf_exempt
+def update_loan_amount(request):
+    """
+    기대출 금액을 업데이트하는 함수
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': '잘못된 요청 방식입니다.'})
+    
+    try:
+        # 임시로 user id 1 사용 (나중에 request.user로 변경 가능)
+        user = User.objects.get(id=1)
+        
+        # JSON 데이터 파싱
+        data = json.loads(request.body)
+        row_id = data.get('row_id')
+        loan_data_str = data.get('loan_data')
+        
+        if not row_id or not loan_data_str:
+            return JsonResponse({'success': False, 'error': '필수 파라미터가 누락되었습니다.'})
+        
+        # Row 찾기
+        row = Row.objects.get(id=row_id, user=user)
+        
+        # 기대출 속성 가져오기 또는 생성
+        try:
+            expected_loans_attr = Attribute.objects.get(name='기대출', user=user)
+        except Attribute.DoesNotExist:
+            # 기대출 속성이 없으면 생성
+            text_type = AttributeType.objects.get_or_create(name='text')[0]
+            expected_loans_attr = Attribute.objects.create(
+                user=user,
+                name='기대출',
+                attributeType=text_type,
+                assential=False
+            )
+        
+        # 기대출 데이터를 JSON 문자열로 저장
+        attr_value, created = AttributeValue.objects.get_or_create(
+            row=row,
+            attribute=expected_loans_attr,
+            defaults={'value': loan_data_str}
+        )
+        
+        if not created:
+            attr_value.value = loan_data_str
+            attr_value.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': '기대출 금액이 성공적으로 업데이트되었습니다.'
+        })
+        
+    except Exception as e:
+        logger.error(f"기대출 금액 업데이트 오류: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': f'기대출 금액 업데이트 중 오류가 발생했습니다: {str(e)}'
+        })
+
+@csrf_exempt
+def update_debt_field(request):
+    """
+    기대출 필드를 업데이트하는 함수 (diary_detail.js에서 사용)
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': '잘못된 요청 방법입니다.'})
+    
+    try:
+        # JSON 데이터 파싱
+        data = json.loads(request.body)
+        row_id = data.get('row_id')
+        debt_data = data.get('debt_data')
+        
+        if not row_id or not debt_data:
+            return JsonResponse({'success': False, 'error': '필수 파라미터가 누락되었습니다.'})
+        
+        # 사용자 정보 가져오기 (고정 ID: 1)
+        try:
+            user = User.objects.get(id=1)
+        except User.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '사용자를 찾을 수 없습니다.'})
+        
+        # Row 객체 가져오기
+        try:
+            row = Row.objects.get(id=row_id, user=user)
+        except Row.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '행을 찾을 수 없습니다.'})
+        
+        # 기대출 속성 가져오기 또는 생성
+        try:
+            debt_attribute = Attribute.objects.get(user=user, name='기대출')
+        except Attribute.DoesNotExist:
+            # 기대출 속성이 없으면 생성
+            text_type, _ = AttributeType.objects.get_or_create(name='text')
+            debt_attribute = Attribute.objects.create(
+                name='기대출',
+                user=user,
+                attributeType=text_type,
+                assential=False
+            )
+        
+        # AttributeValue 가져오기 또는 생성
+        attr_value, created = AttributeValue.objects.get_or_create(
+            row=row,
+            attribute=debt_attribute,
+            defaults={'value': json.dumps(debt_data)}
+        )
+        
+        if not created:
+            attr_value.value = json.dumps(debt_data)
+            attr_value.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': '기대출 정보가 성공적으로 업데이트되었습니다.'
+        })
+        
+    except Exception as e:
+        logger.error(f"기대출 업데이트 오류: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': f'기대출 업데이트 중 오류가 발생했습니다: {str(e)}'
+        })
+
+@csrf_exempt
+def get_debt_details(request, row_id):
+    """
+    기대출 상세 정보를 가져오는 함수
+    """
+    try:
+        # 사용자 정보 가져오기 (고정 ID: 1)
+        user = User.objects.get(id=1)
+        
+        # Row 객체 가져오기
+        try:
+            row = Row.objects.get(id=row_id, user=user)
+        except Row.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '행을 찾을 수 없습니다.'})
+        
+        # 기대출 속성 가져오기
+        try:
+            debt_attribute = Attribute.objects.get(user=user, name='기대출')
+            attr_value = AttributeValue.objects.get(row=row, attribute=debt_attribute)
+            
+            # JSON 데이터 파싱
+            try:
+                debt_data = json.loads(attr_value.value) if attr_value.value else {}
+            except json.JSONDecodeError:
+                debt_data = {}
+                
+        except (Attribute.DoesNotExist, AttributeValue.DoesNotExist):
+            debt_data = {}
+        
+        return JsonResponse({
+            'success': True,
+            'debt_data': debt_data
+        })
+        
+    except Exception as e:
+        logger.error(f"기대출 정보 조회 오류: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': f'기대출 정보 조회 중 오류가 발생했습니다: {str(e)}'
+        })
+
+@csrf_exempt
+def save_debt_details(request):
+    """
+    기대출 상세 정보를 저장하는 함수
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': '잘못된 요청 방법입니다.'})
+    
+    try:
+        # JSON 데이터 파싱
+        data = json.loads(request.body)
+        row_id = data.get('row_id')
+        debt_data = data.get('debt_data')
+        
+        if not row_id or not debt_data:
+            return JsonResponse({'success': False, 'error': '필수 파라미터가 누락되었습니다.'})
+        
+        # 사용자 정보 가져오기 (고정 ID: 1)
+        try:
+            user = User.objects.get(id=1)
+        except User.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '사용자를 찾을 수 없습니다.'})
+        
+        # Row 객체 가져오기
+        try:
+            row = Row.objects.get(id=row_id, user=user)
+        except Row.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '행을 찾을 수 없습니다.'})
+        
+        # 기대출 속성 가져오기 또는 생성
+        try:
+            debt_attribute = Attribute.objects.get(user=user, name='기대출')
+        except Attribute.DoesNotExist:
+            # 기대출 속성이 없으면 생성
+            text_type, _ = AttributeType.objects.get_or_create(name='text')
+            debt_attribute = Attribute.objects.create(
+                name='기대출',
+                user=user,
+                attributeType=text_type,
+                assential=False
+            )
+        
+        # AttributeValue 가져오기 또는 생성
+        attr_value, created = AttributeValue.objects.get_or_create(
+            row=row,
+            attribute=debt_attribute,
+            defaults={'value': json.dumps(debt_data)}
+        )
+        
+        if not created:
+            attr_value.value = json.dumps(debt_data)
+            attr_value.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': '기대출 정보가 성공적으로 저장되었습니다.'
+        })
+        
+    except Exception as e:
+        logger.error(f"기대출 저장 오류: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': f'기대출 저장 중 오류가 발생했습니다: {str(e)}'
+        })
+
+@csrf_exempt
+def get_funding_recommendation(request):
+    """
+    추천자금 요청을 처리하는 함수
+    새로운 FundingCalculator를 사용하여 상세한 분석 수행
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': '잘못된 요청 방법입니다.'})
+    
+    try:
+        # JSON 데이터 파싱
+        data = json.loads(request.body)
+        row_id = data.get('row_id')
+        
+        if not row_id:
+            return JsonResponse({'success': False, 'error': '행 ID가 필요합니다.'})
+        
+        # 사용자 정보 가져오기 (고정 ID: 1)
+        try:
+            user = User.objects.get(id=1)
+        except User.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '사용자를 찾을 수 없습니다.'})
+        
+        # Row 객체 가져오기
+        try:
+            row = Row.objects.get(id=row_id, user=user)
+        except Row.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '행을 찾을 수 없습니다.'})
+        
+        # 계산에 필요한 모든 데이터 수집
+        company_data = {}
+        
+        # 매출 정보
+        sales_value = _get_attribute_value(user, row, '매출')
+        company_data['annual_revenue'] = _parse_number(sales_value, 0)
+        
+        # 신용점수
+        credit_value = _get_attribute_value(user, row, '신용점수')
+        company_data['credit_score'] = _parse_number(credit_value, 0)
+        
+        # 업종
+        company_data['industry'] = _get_attribute_value(user, row, '업종') or 'IT'
+        
+        # 경력 (년수)
+        experience_value = _get_attribute_value(user, row, '경력')
+        company_data['experience_years'] = _parse_number(experience_value, 0)
+        
+        # 직원수
+        employees_value = _get_attribute_value(user, row, '직원수')
+        company_data['employees'] = _parse_number(employees_value, 0)
+        
+        # 개업년월로부터 업력 계산
+        opening_date_value = _get_attribute_value(user, row, '개업년월')
+        company_data['business_months'] = _calculate_business_months(opening_date_value)
+        
+        # 기대출 정보에서 기존 부채 계산
+        debt_data = _get_debt_data(user, row)
+        company_data['existing_debt'] = sum(float(v) for v in debt_data.values() if v) * 10000  # 만원 -> 원
+        company_data['existing_sinbo_debt'] = (
+            float(debt_data.get('credit_guarantee', 0)) * 10000 if debt_data.get('credit_guarantee') else 0
+        )
+        
+        # 추가 필드들 (기본값 설정)
+        company_data['ceo_age'] = 35  # 기본값 (실제로는 별도 필드에서 가져와야 함)
+        company_data['is_startup'] = company_data['business_months'] <= 36
+        
+        print("=== 수집된 회사 데이터 ===")
+        for key, value in company_data.items():
+            print(f"{key}: {value}")
+        print("========================")
+        
+        # FundingCalculator 인스턴스 생성 및 계산 실행
+        calculator = FundingCalculator()
+        recommendation_result = calculator.calculate_recommendation(company_data)
+        
+        # 상세 자금 내역을 dict 형태로 구성
+        detailed_funds_dict = {}
+        for fund in recommendation_result['individual_funds']:
+            detailed_funds_dict[fund['fund_name']] = fund['limit']
+        
+        # 총 추천 금액
+        total_amount = sum(fund['limit'] for fund in recommendation_result['individual_funds'])
+        
+        # 추천자금 필드에 저장할 상세 데이터 구성
+        recommendation_data = {
+            '자금들': detailed_funds_dict,
+            '총자금': total_amount,
+            '상세정보': recommendation_result['individual_funds']  # 전체 상세 정보 포함
+        }
+        
+        # 추천자금 필드에 상세 데이터 저장
+        try:
+            recommend_attribute = Attribute.objects.get(user=user, name='추천자금')
+            recommend_attr_value, created = AttributeValue.objects.get_or_create(
+                row=row, 
+                attribute=recommend_attribute,
+                defaults={'value': json.dumps(recommendation_data, ensure_ascii=False)}
+            )
+            if not created:
+                recommend_attr_value.value = json.dumps(recommendation_data, ensure_ascii=False)
+                recommend_attr_value.save()
+        except Attribute.DoesNotExist:
+            print("추천자금 속성이 존재하지 않습니다.")
+        
+        # 추천 결과를 포맷하여 응답
+        formatted_result = {
+            'total_amount': total_amount,
+            'confidence': recommendation_result['analysis_summary']['confidence'],
+            'detailed_funds': detailed_funds_dict,
+            'analysis': {
+                'sales_score': recommendation_result['analysis_summary']['sales_score'],
+                'credit_score': recommendation_result['analysis_summary']['credit_score'],
+                'business_stability': recommendation_result['analysis_summary']['business_stability'],
+                'debt_ratio': recommendation_result['analysis_summary']['debt_ratio']
+            },
+            'suitable_products': [fund['fund_name'] for fund in recommendation_result['individual_funds']],
+            'recommendations': recommendation_result['individual_funds']
+        }
+        
+        print(f"응답 데이터: {formatted_result}")
+        
+        return JsonResponse({
+            'success': True,
+            'message': '추천자금 분석이 완료되었습니다.',
+            'data': company_data,
+            'recommendation': formatted_result
+        })
+        
+    except Exception as e:
+        logger.error(f"추천자금 요청 처리 오류: {str(e)}")
+        print(f"오류 발생: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': f'추천자금 요청 처리 중 오류가 발생했습니다: {str(e)}'
+        })
+
+
+def _get_attribute_value(user, row, attribute_name):
+    """속성 값을 가져오는 헬퍼 함수"""
+    try:
+        attribute = Attribute.objects.get(user=user, name=attribute_name)
+        attr_value = AttributeValue.objects.get(row=row, attribute=attribute)
+        return attr_value.value
+    except (Attribute.DoesNotExist, AttributeValue.DoesNotExist):
+        return None
+
+
+def _get_debt_data(user, row):
+    """기대출 데이터를 가져오는 헬퍼 함수"""
+    try:
+        attribute = Attribute.objects.get(user=user, name='기대출')
+        attr_value = AttributeValue.objects.get(row=row, attribute=attribute)
+        
+        if attr_value.value:
+            if isinstance(attr_value.value, dict):
+                return attr_value.value
+            elif isinstance(attr_value.value, str) and attr_value.value.startswith('{'):
+                return json.loads(attr_value.value)
+        
+        return {}
+    except (Attribute.DoesNotExist, AttributeValue.DoesNotExist, json.JSONDecodeError):
+        return {}
+
+
+def _parse_number(value, default=0):
+    """문자열이나 숫자를 정수로 변환하는 헬퍼 함수"""
+    if value is None:
+        return default
+    
+    if isinstance(value, (int, float)):
+        return int(value)
+    
+    if isinstance(value, str):
+        # 숫자가 아닌 문자 제거 후 변환
+        import re
+        numbers_only = re.sub(r'[^\d.]', '', value)
+        try:
+            return int(float(numbers_only)) if numbers_only else default
+        except ValueError:
+            return default
+    
+    return default
+
+
+def _calculate_business_months(opening_date_str):
+    """개업년월로부터 업력(개월수) 계산하는 헬퍼 함수"""
+    if not opening_date_str:
+        return 12  # 기본값
+    
+    try:
+        # 다양한 날짜 형식 처리
+        if isinstance(opening_date_str, str):
+            # YYYY-MM-DD 형식
+            if '-' in opening_date_str and len(opening_date_str) >= 7:
+                opening_date = datetime.strptime(opening_date_str[:7], '%Y-%m')
+            # YYYY년 MM월 형식
+            elif '년' in opening_date_str and '월' in opening_date_str:
+                # 예: "2023년 5월"
+                import re
+                match = re.search(r'(\d{4})년\s*(\d{1,2})월', opening_date_str)
+                if match:
+                    year, month = int(match.group(1)), int(match.group(2))
+                    opening_date = datetime(year, month, 1)
+                else:
+                    return 12
+            else:
+                return 12
+        else:
+            return 12
+        
+        # 현재 날짜와의 차이 계산
+        now = datetime.now()
+        months_diff = (now.year - opening_date.year) * 12 + (now.month - opening_date.month)
+        return max(1, months_diff)  # 최소 1개월
+        
+    except (ValueError, AttributeError):
+        return 12  # 파싱 실패 시 기본값

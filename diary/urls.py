@@ -30,4 +30,10 @@ urlpatterns = [
     path('update_audio_text/', views.update_audio_text, name='update_audio_text'),
     path('update_audio_memo/', views.update_audio_memo, name='update_audio_memo'),
     path('update_audio_file_order/', views.update_audio_file_order, name='update_audio_file_order'),
+    path('update_expected_loans/', views.update_expected_loans, name='update_expected_loans'),
+    path('update_loan_amount/', views.update_loan_amount, name='update_loan_amount'),
+    path('update_debt_field/', views.update_debt_field, name='update_debt_field'),
+    path('get_debt_details/<int:row_id>/', views.get_debt_details, name='get_debt_details'),
+    path('save_debt_details/', views.save_debt_details, name='save_debt_details'),
+    path('get_funding_recommendation/', views.get_funding_recommendation, name='get_funding_recommendation'),
 ] 

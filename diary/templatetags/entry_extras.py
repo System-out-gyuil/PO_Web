@@ -51,4 +51,11 @@ def get_option_by_id(options, id):
                 return opt
         return None
     except Exception:
-        return None 
+        return None
+
+@register.filter
+def split(value, delimiter=','):
+    """문자열을 구분자로 나누어 리스트로 반환"""
+    if not value:
+        return []
+    return str(value).split(delimiter) 
