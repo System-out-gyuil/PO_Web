@@ -645,9 +645,20 @@ def create_new_row(request):
 def update_row_field(request):
     """기존 행의 필드 업데이트"""
     if request.method == 'POST':
-        row_id = request.POST.get('id')
-        field = request.POST.get('field')
-        value = request.POST.get('value', '')
+        # JSON 요청과 form-data 요청 모두 처리
+        if request.content_type == 'application/json':
+            try:
+                data = json.loads(request.body)
+                row_id = data.get('row_id')
+                field = data.get('field_name')
+                value = data.get('value', '')
+            except json.JSONDecodeError:
+                return JsonResponse({'success': False, 'error': 'Invalid JSON'})
+        else:
+            # 기존 form-data 요청 처리
+            row_id = request.POST.get('id')
+            field = request.POST.get('field')
+            value = request.POST.get('value', '')
         
         if not row_id or not field:
             return JsonResponse({'success': False, 'error': 'Missing id or field'})
@@ -2502,6 +2513,8 @@ def get_funding_recommendation(request):
         
         # V2.0 엔진을 위한 정확한 existing_funds 구조 생성 (만원 -> 원 변환)
         # 실제 기대출 데이터 키에 맞춰 정확한 매핑
+
+
         existing_funds = {
             'kibo_general': 0,  # 일반보증은 별도 없음
             'kibo_ip': float(debt_data.get('tech_guarantee', 0)) * 10000,  # 기술보증기금 = 기보 IP보증
@@ -2509,7 +2522,7 @@ def get_funding_recommendation(request):
             'jungjin': float(debt_data.get('smba', 0)) * 10000,  # 중진공
             'sojin_innovation': float(debt_data.get('semas_innovation', 0)) * 10000,  # 소진공 혁신성장
             'sojin_lowcredit': float(debt_data.get('semas_lowcredit', 0)) * 10000,  # 소진공 저신용
-            'credit_foundation': float(debt_data.get('credit', 0)) * 10000  # 신용 = 신용보증재단
+            'credit_foundation': float(debt_data.get('credit_foundation', 0)) * 10000  # 신용 = 신용보증재단
         }
         company_data['existing_funds'] = existing_funds
         
@@ -2523,9 +2536,12 @@ def get_funding_recommendation(request):
         company_data['existing_sinbo_debt'] = existing_funds['sinbo']
         
         # 추가 필드들
-        company_data['ceo_age'] = 35  # 기본값 (향후 CEO 나이 필드 추가 시 수정)
+        # 나이 속성에서 CEO 나이 계산
+        age_attribute_value = _get_attribute_value(user, row, '나이')
+        company_data['ceo_age'] = _calculate_age_from_data(age_attribute_value)
+        
         company_data['is_startup'] = company_data['business_months'] <= 36
-        company_data['experience_years'] = max(0, company_data['business_months'] // 12)  # 업력을 경력으로 사용
+        company_data['experience_years'] = int(_get_attribute_value(user, row, '경력'))  # 업력을 경력으로 사용
         
         print("=== 수집된 회사 데이터 ===")
         for key, value in company_data.items():
@@ -2716,8 +2732,6 @@ def _calculate_business_months(opening_date_str):
                     return 12
             else:
                 return 12
-        else:
-            return 12
         
         # 현재 날짜와의 차이 계산
         now = datetime.now()
@@ -2726,3 +2740,65 @@ def _calculate_business_months(opening_date_str):
         
     except (ValueError, AttributeError):
         return 12  # 파싱 실패 시 기본값
+
+
+def _calculate_age_from_data(age_data_str):
+    """나이 데이터에서 실제 나이를 계산하는 헬퍼 함수"""
+    import json
+    from datetime import datetime
+    
+    if not age_data_str:
+        return 35  # 기본값
+    
+    try:
+        # JSON 문자열인 경우 파싱
+        if isinstance(age_data_str, str) and age_data_str.startswith('{'):
+            age_data = json.loads(age_data_str)
+        elif isinstance(age_data_str, dict):
+            age_data = age_data_str
+        else:
+            return 35  # 기본값
+        
+        # 생년월일이 있는 경우 실제 나이 계산
+        if age_data.get('birth_date'):
+            birth_date_str = age_data['birth_date']
+            try:
+                # YY.MM.DD 형식 파싱
+                if '.' in birth_date_str and len(birth_date_str) == 8:
+                    year_part, month_part, day_part = birth_date_str.split('.')
+                    year = int(year_part)
+                    month = int(month_part)
+                    day = int(day_part)
+                    
+                    # 2자리 연도를 4자리로 변환 (50 이상이면 19xx, 미만이면 20xx)
+                    if year >= 50:
+                        year += 1900
+                    else:
+                        year += 2000
+                    
+                    birth_date = datetime(year, month, day)
+                    current_date = datetime.now()
+                    
+                    # 나이 계산
+                    age = current_date.year - birth_date.year
+                    if current_date.month < birth_date.month or (current_date.month == birth_date.month and current_date.day < birth_date.day):
+                        age -= 1
+                    
+                    return max(age, 1)  # 최소 1세
+                    
+            except (ValueError, IndexError) as e:
+                print(f"생년월일 파싱 오류: {e}")
+                
+        # 연령대 선택이 있는 경우
+        elif age_data.get('age_range'):
+            age_range = age_data['age_range']
+            if age_range == 'under40':
+                return 35
+            elif age_range == 'over40':
+                return 40
+        
+        return 35  # 기본값
+        
+    except Exception as e:
+        print(f"나이 계산 오류: {e}")
+        return 35  # 기본값

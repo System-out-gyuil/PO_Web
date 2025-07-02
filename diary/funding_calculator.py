@@ -155,16 +155,7 @@ class PolicyFundRecommendationEngineV2:
         
         # IP vs 일반보증 중 더 유리한 것 선택
         if ip_total_possible > general_total_possible and (ip_total_possible - general_total_possible) > self.THRESHOLD_20M:
-            # IP보증의 경우 더 유연한 상향 조정 적용
-            if company_data['annual_revenue'] >= 1_500_000_000 and company_data['credit_score'] >= 850:
-                # 고매출 + 고신용 기업: 기존 계산의 150% 적용
-                max_possible = self._round_up_to_50m_unit_always(ip_total_possible * 1.5)
-                print(f"고매출+고신용 IP보증 우대 적용 (150%)")
-            elif ip_total_possible >= 300_000_000:  # 3억 이상인 경우
-                max_possible = self._round_up_to_50m_unit_always(ip_total_possible * 1.4)  # 40% 추가 여유
-                print(f"대규모 IP보증 우대 적용 (140%)")
-            else:
-                max_possible = self._round_up_to_50m_unit_always(ip_total_possible)
+            max_possible = self._round_up_to_50m_unit_always(ip_total_possible)
             optimal_type = 'IP보증'
             print(f"IP보증 선택 (차이: {(ip_total_possible - general_total_possible):,}원)")
         else:
@@ -395,33 +386,113 @@ class PolicyFundRecommendationEngineV2:
     
     def _analyze_credit_foundation(self, company_data: Dict, existing_funds: Dict) -> Optional[Dict]:
         """
-        신용보증재단 추가 한도 분석
+        신용보증재단 추가 한도 분석 (업력 + 신용점수 매트릭스 기준)
         """
         print("--- 신용보증재단 분석 시작 ---")
         
         current_foundation = existing_funds.get('credit_foundation', 0)
         print(f"현재 신용보증재단 사용액: {current_foundation:,}원")
         
-        # 총 가능 한도 계산 - 더 유연한 기준 적용
-        if company_data['annual_revenue'] >= 1_500_000_000:
-            max_possible = 100_000_000
-            criteria = '고매출 우대 (15억 이상)'
-        elif company_data['annual_revenue'] >= 1_000_000_000 and company_data['credit_score'] >= 850:
-            max_possible = 80_000_000
-            criteria = '고매출 + 고신용 우대'
+        
+        
+        # 업력 계산 (개월 수를 연도로 변환)
+        business_years = company_data['business_months'] / 12
+        print(f"사업 업력: {business_years:.1f}년 ({company_data['business_months']}개월)")
+        
+        # 업력과 신용점수에 따른 한도 매트릭스
+        def get_limit_by_matrix(years, credit_score):
+            # 업력 구간 결정 (개월 기준으로 더 정확하게)
+            months = company_data['business_months']
+            print(f"업력: {months}개월")
+            
+            if months <= 6:
+                year_tier = 0  # 6개월 이하
+            elif months <= 12:
+                year_tier = 1  # 1년 이하
+            elif months <= 24:
+                year_tier = 2  # 2년 이하
+            elif months <= 36:
+                year_tier = 3  # 3년 이하
+            elif months <= 48:
+                year_tier = 4  # 4년 이하
+            elif months <= 60:
+                year_tier = 5  # 5년 이하
+            else:
+                year_tier = 6  # 5년 초과
+            
+            # 신용점수 구간 결정 (이미지 기준)
+            if credit_score >= 920:
+                credit_tier = 0  # 920-1000점
+            elif credit_score >= 880:
+                credit_tier = 1  # 880-919점
+            elif credit_score >= 840:
+                credit_tier = 2  # 840-879점
+            elif credit_score >= 780:
+                credit_tier = 3  # 780-839점
+            elif credit_score >= 745:
+                credit_tier = 4  # 745-779점
+            elif credit_score >= 710:
+                credit_tier = 5  # 710-744점 (지원불가)
+            else:
+                credit_tier = 6  # 595-709점 (지원불가)
+            
+            # 지원불가 구간 체크
+            if credit_tier >= 5:  # 710점 미만은 지원불가
+                return 0
+            
+            # 한도 매트릭스 (만원 단위) - 이미지 기준 정확한 매트릭스
+            limit_matrix = [
+                # 업력:      6개월이하  1년이하  2년이하  3년이하  4년이하  5년이하  5년초과
+                [30, 35, 45, 50, 55, 60, 70],  # 920-1000점
+                [25, 30, 35, 40, 45, 50, 60],  # 880-919점
+                [20, 25, 30, 35, 40, 40, 50],  # 840-879점
+                [15, 20, 25, 30, 30, 35, 40],  # 780-839점
+                [10, 15, 20, 20, 25, 25, 30]   # 745-779점
+            ]
+            
+            return limit_matrix[credit_tier][year_tier] * 1000000  # 백만원을 원 단위로 변환
+        
+        max_possible = get_limit_by_matrix(business_years, company_data['credit_score'])
+        
+        # 지원불가 체크
+        if max_possible == 0:
+            if company_data['credit_score'] < 745:
+                print(f"신용점수 {company_data['credit_score']}점으로 신용보증재단 이용 불가 (745점 미만)")
+            else:
+                print(f"신용점수 {company_data['credit_score']}점으로 신용보증재단 이용 불가 (710-744점 지원불가)")
+            return None
+        
+        # 업력과 신용점수 기준 설명
+        months = company_data['business_months']
+        if months <= 6:
+            year_desc = "6개월 이하"
+        elif months <= 12:
+            year_desc = "1년 이하"
+        elif months <= 24:
+            year_desc = "2년 이하"
+        elif months <= 36:
+            year_desc = "3년 이하"
+        elif months <= 48:
+            year_desc = "4년 이하"
+        elif months <= 60:
+            year_desc = "5년 이하"
         else:
-            # 신용점수 기반 한도 - 더 관대한 기준
-            credit_limits = {900: 80_000_000, 860: 50_000_000, 850: 40_000_000, 800: 30_000_000, 750: 25_000_000, 700: 20_000_000}
-            max_possible = 15_000_000
-            criteria = f'신용점수 {company_data["credit_score"]}점 기준'
-            for threshold in sorted(credit_limits.keys(), reverse=True):
-                if company_data['credit_score'] >= threshold:
-                    max_possible = credit_limits[threshold]
-                    break
+            year_desc = "5년 초과"
+        
+        if company_data['credit_score'] >= 920:
+            credit_desc = "920-1000점"
+        elif company_data['credit_score'] >= 880:
+            credit_desc = "880-919점"
+        elif company_data['credit_score'] >= 840:
+            credit_desc = "840-879점"
+        elif company_data['credit_score'] >= 780:
+            credit_desc = "780-839점"
+        else:
+            credit_desc = "745-779점"
         
         additional_amount = max_possible - current_foundation
         
-        print(f"신용보증재단 기준: {criteria}")
+        print(f"신용보증재단 기준: 업력 {year_desc} + 신용점수 {credit_desc}")
         print(f"신용보증재단 가능 총액: {max_possible:,}원")
         print(f"신용보증재단 추가 가능: {additional_amount:,}원")
         
@@ -441,7 +512,7 @@ class PolicyFundRecommendationEngineV2:
             'total_limit_after': int(max_possible),
             'priority': 5,
             'institution': '신용보증재단',
-            'calculation_note': note,
+            'calculation_note': f'{note} (업력 {year_desc} + 신용점수 {credit_desc})',
             'processing_time': '1-2주',
             'interest_rate': '4.5~7.0%'
         }

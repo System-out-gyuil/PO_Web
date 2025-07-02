@@ -284,6 +284,62 @@ function showDetailModal(rowData, rowId) {
                         </div>
                     `;
                 }
+            } else if (attr.type === 'number') {
+                // 숫자 타입 필드 - 콤마 포맷팅 적용
+                const formattedValue = formatNumberWithComma(value);
+                inputHtml = `<input type="text" value="${formattedValue}" data-field="${attr.name}" 
+                           onchange="updateRowFieldWithNumber('${rowId}', '${attr.name}', this.value)" 
+                           oninput="this.value = formatNumberWithComma(this.value)"
+                           style="padding: 8px; border: 1px solid #ced4da; border-radius: 4px;">`;
+            } else if (attr.type === 'age') {
+                // 나이 타입 필드 - 날짜 입력 또는 연령대 선택
+                let ageData = {};
+                try {
+                    if (value && typeof value === 'string' && value.startsWith('{')) {
+                        ageData = JSON.parse(value);
+                    } else if (value && typeof value === 'object') {
+                        ageData = value;
+                    }
+                } catch (e) {
+                    console.error('나이 데이터 파싱 오류:', e);
+                }
+                
+                const birthDate = ageData.birth_date || '';
+                const ageRange = ageData.age_range || '';
+                
+                inputHtml = `
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; align-items: center;">
+                        <!-- 생년월일 입력 -->
+                        <div style="display: flex; flex-direction: column;">
+                            <label style="font-size: 12px; color: #666; margin-bottom: 4px;">생년월일</label>
+                            <input type="text" 
+                                   placeholder="YY.MM.DD" 
+                                   value="${birthDate}" 
+                                   style="padding: 6px; border: 1px solid #ced4da; border-radius: 4px; font-size: 14px;"
+                                   onchange="updateAgeField('${rowId}', '${attr.name}', 'birth_date', this.value)"
+                                   maxlength="8"
+                                   oninput="formatDateInput(this)">
+                        </div>
+                        
+                        <!-- 40세 미만 체크박스 -->
+                        <div style="display: flex; flex-direction: column; align-items: center;">
+                            <label style="font-size: 12px; color: #666; margin-bottom: 4px;">40세 미만</label>
+                            <input type="checkbox" 
+                                   ${ageRange === 'under40' ? 'checked' : ''}
+                                   style="transform: scale(1.2);"
+                                   onchange="updateAgeField('${rowId}', '${attr.name}', 'age_range', this.checked ? 'under40' : '')">
+                        </div>
+                        
+                        <!-- 40세 이상 체크박스 -->
+                        <div style="display: flex; flex-direction: column; align-items: center;">
+                            <label style="font-size: 12px; color: #666; margin-bottom: 4px;">40세 이상</label>
+                            <input type="checkbox" 
+                                   ${ageRange === 'over40' ? 'checked' : ''}
+                                   style="transform: scale(1.2);"
+                                   onchange="updateAgeField('${rowId}', '${attr.name}', 'age_range', this.checked ? 'over40' : '')">
+                        </div>
+                    </div>
+                `;
             } else if (attr.type === 'text') {
                 // "변환된 텍스트"는 우측에만 표시하므로 좌측에서 제외
                 if (attr.name === '변환된 텍스트') {
@@ -296,6 +352,30 @@ function showDetailModal(rowData, rowId) {
                 
                 // 좌측에서 바로 편집 가능한 일반 텍스트 입력창
                 inputHtml = `<input type="text" value="${value}" data-field="${attr.name}" onchange="updateRowField('${rowId}', '${attr.name}', this.value)">`;
+            } else if (attr.type === 'select') {
+                // 드롭다운 옵션을 가져와서 select 생성
+                var selectHtml = '<select class="form-control" onchange="updateRowField(rowId, \'' + attr.name + '\', this.value)" style="margin-bottom: 10px;">';
+                selectHtml += '<option value="">선택</option>';
+                
+                // 해당 필드의 드롭다운 옵션을 가져옴
+                if (window.DROPDOWN_OPTIONS && window.DROPDOWN_OPTIONS[attr.name]) {
+                    window.DROPDOWN_OPTIONS[attr.name].forEach(function(option) {
+                        var selected = (currentValue == option.id) ? 'selected' : '';
+                        selectHtml += '<option value="' + option.id + '" ' + selected + '>' + option.option + '</option>';
+                    });
+                }
+                selectHtml += '</select>';
+                
+                // 새 옵션 추가 버튼
+                selectHtml += '<button type="button" onclick="showAddOptionModal(\'' + attr.name + '\', rowId)" class="btn btn-sm btn-outline-primary" style="margin-left: 5px;">+ 옵션 추가</button>';
+                
+                formHtml += '<div class="form-group">';
+                formHtml += '<label>' + attr.label + '</label>';
+                formHtml += selectHtml;
+                formHtml += '</div>';
+                
+                // 드롭다운 닫기 이벤트 리스너 추가
+                setupDropdownCloseHandler();
             } else {
                 inputHtml = `<input type="text" value="${value}" data-field="${attr.name}" onchange="updateRowField('${rowId}', '${attr.name}', this.value)">`;
             }
@@ -1157,6 +1237,8 @@ function showFundingDetailModal(rowId, fieldName) {
             try {
                 if (fundingDataStr && typeof fundingDataStr === 'string' && fundingDataStr.startsWith('{')) {
                     fundingData = JSON.parse(fundingDataStr);
+                } else if (fundingDataStr && typeof fundingDataStr === 'object') {
+                    fundingData = fundingDataStr;
                 }
             } catch (e) {
                 console.error('자금 데이터 파싱 오류:', e);
@@ -1175,6 +1257,67 @@ function showFundingDetailModal(rowId, fieldName) {
             const existingModal = document.getElementById('fundingDetailModal');
             if (existingModal) {
                 existingModal.remove();
+            }
+            
+            // 데이터 구조 정규화 - 추천받기와 동일한 형태로 변환
+            let normalizedData = {
+                total_amount: 0,
+                individual_funds: [],
+                detailed_funds: {},
+                analysis_summary: null,
+                engine_info: { version: '정책자금 추천 엔진 V2.0' },
+                exclusion_notes: []
+            };
+            
+            // 저장된 데이터에서 값 추출
+            if (fundingData.total_amount) {
+                normalizedData.total_amount = fundingData.total_amount;
+            } else if (fundingData['총자금']) {
+                normalizedData.total_amount = fundingData['총자금'];
+            }
+            
+            // individual_funds가 있으면 사용
+            if (fundingData.individual_funds && Array.isArray(fundingData.individual_funds)) {
+                normalizedData.individual_funds = fundingData.individual_funds;
+            } else if (fundingData['자금들']) {
+                // 레거시 데이터를 individual_funds 형태로 변환
+                normalizedData.individual_funds = Object.entries(fundingData['자금들']).map(([name, amount], index) => ({
+                    fund_name: name,
+                    limit: amount,
+                    priority: index + 1,
+                    institution: '정부기관',
+                    interest_rate: '3.0~6.0%',
+                    processing_time: '2-4주'
+                }));
+            }
+            
+            // detailed_funds 설정
+            if (fundingData.detailed_funds) {
+                normalizedData.detailed_funds = fundingData.detailed_funds;
+            } else if (fundingData['자금들']) {
+                normalizedData.detailed_funds = fundingData['자금들'];
+            }
+            
+            // analysis_summary 설정
+            if (fundingData.analysis_summary) {
+                normalizedData.analysis_summary = fundingData.analysis_summary;
+            } else {
+                normalizedData.analysis_summary = {
+                    total_products: normalizedData.individual_funds.length,
+                    confidence: '95%',
+                    version: 'V2.0',
+                    calculation_time: '1초 미만'
+                };
+            }
+            
+            // engine_info 설정
+            if (fundingData.engine_info) {
+                normalizedData.engine_info = fundingData.engine_info;
+            }
+            
+            // exclusion_notes 설정
+            if (fundingData.exclusion_notes) {
+                normalizedData.exclusion_notes = fundingData.exclusion_notes;
             }
             
             // V2.0 응답 구조에 맞춰 모달 HTML 구성 (추천받기 모달과 동일)
@@ -1213,9 +1356,9 @@ function showFundingDetailModal(rowId, fieldName) {
                             text-align: center;
                             font-size: 14px;
                         ">
-                            <strong>엔진:</strong> ${fundingData.engine_info?.version || '정책자금 추천 엔진 V2.0'} | 
+                            <strong>엔진:</strong> ${normalizedData.engine_info?.version || '정책자금 추천 엔진 V2.0'} | 
                             <strong>정확도:</strong> 99.99% | 
-                            <strong>분석시간:</strong> ${fundingData.analysis_summary?.calculation_time || '0.5초'}
+                            <strong>분석시간:</strong> ${normalizedData.analysis_summary?.calculation_time || '0.5초'}
                         </div>
                         
                         <!-- 총 추천 금액 -->
@@ -1229,7 +1372,7 @@ function showFundingDetailModal(rowId, fieldName) {
                         ">
                             <h3 style="margin: 0 0 10px 0;">총 추천 금액</h3>
                             <div style="font-size: 32px; font-weight: bold;">
-                                ${(fundingData.total_amount || fundingData['총자금'] || 0).toLocaleString()}원
+                                ${(normalizedData.total_amount || 0).toLocaleString()}원
                             </div>
                             <div style="font-size: 14px; opacity: 0.9; margin-top: 10px;">
                                 다양한 정책자금을 통해 기업 성장을 지원합니다
@@ -1237,13 +1380,13 @@ function showFundingDetailModal(rowId, fieldName) {
                         </div>
                         
                         <!-- 개별 자금 추천 내역 -->
-                        ${fundingData.individual_funds && fundingData.individual_funds.length > 0 ? `
+                        ${normalizedData.individual_funds && normalizedData.individual_funds.length > 0 ? `
                         <div style="margin-bottom: 25px;">
                             <h4 style="margin: 0 0 15px 0; color: #333; border-bottom: 2px solid #007bff; padding-bottom: 8px;">
-                                💰 개별 자금 추천 내역 (${fundingData.individual_funds.length}개)
+                                💰 개별 자금 추천 내역 (${normalizedData.individual_funds.length}개)
                             </h4>
                             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 15px;">
-                                ${fundingData.individual_funds.map((fund, index) => `
+                                ${normalizedData.individual_funds.map((fund, index) => `
                                     <div style="
                                         background: #f8f9fa;
                                         border: 1px solid #e9ecef;
@@ -1297,22 +1440,6 @@ function showFundingDetailModal(rowId, fieldName) {
                                 `).join('')}
                             </div>
                         </div>
-                        ` : fundingData['자금들'] && Object.keys(fundingData['자금들']).length > 0 ? `
-                        <div style="margin-bottom: 25px;">
-                            <h4 style="margin: 0 0 15px 0; color: #333; border-bottom: 2px solid #007bff; padding-bottom: 8px;">
-                                💰 개별 자금 추천 내역
-                            </h4>
-                            <div style="
-                                background: #f8f9fa;
-                                border: 1px solid #e9ecef;
-                                border-radius: 8px;
-                                padding: 20px;
-                                text-align: center;
-                                color: #6c757d;
-                            ">
-                                현재 기업 상황으로는 추가 추천 가능한 자금이 없습니다.
-                            </div>
-                        </div>
                         ` : `
                         <div style="margin-bottom: 25px;">
                             <h4 style="margin: 0 0 15px 0; color: #333; border-bottom: 2px solid #007bff; padding-bottom: 8px;">
@@ -1332,37 +1459,13 @@ function showFundingDetailModal(rowId, fieldName) {
                         `}
                         
                         <!-- 상세 자금 내역 (카테고리별) -->
-                        ${fundingData.detailed_funds && Object.keys(fundingData.detailed_funds).length > 0 ? `
+                        ${normalizedData.detailed_funds && Object.keys(normalizedData.detailed_funds).length > 0 ? `
                         <div style="margin-bottom: 25px;">
                             <h4 style="margin: 0 0 15px 0; color: #333; border-bottom: 2px solid #28a745; padding-bottom: 8px;">
                                 📊 카테고리별 자금 내역
                             </h4>
                             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
-                                ${Object.entries(fundingData.detailed_funds).map(([fundName, amount]) => `
-                                    <div style="
-                                        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-                                        border: 1px solid #dee2e6;
-                                        border-radius: 6px;
-                                        padding: 15px;
-                                        text-align: center;
-                                    ">
-                                        <div style="font-weight: bold; color: #495057; margin-bottom: 8px; font-size: 14px;">
-                                            ${fundName}
-                                        </div>
-                                        <div style="font-size: 16px; font-weight: bold; color: #28a745;">
-                                            ${amount.toLocaleString()}원
-                                        </div>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                        ` : fundingData['자금들'] && Object.keys(fundingData['자금들']).length > 0 ? `
-                        <div style="margin-bottom: 25px;">
-                            <h4 style="margin: 0 0 15px 0; color: #333; border-bottom: 2px solid #28a745; padding-bottom: 8px;">
-                                📊 카테고리별 자금 내역
-                            </h4>
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
-                                ${Object.entries(fundingData['자금들']).map(([fundName, amount]) => `
+                                ${Object.entries(normalizedData.detailed_funds).map(([fundName, amount]) => `
                                     <div style="
                                         background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
                                         border: 1px solid #dee2e6;
@@ -1383,7 +1486,7 @@ function showFundingDetailModal(rowId, fieldName) {
                         ` : ''}
                         
                         <!-- 분석 요약 -->
-                        ${fundingData.analysis_summary ? `
+                        ${normalizedData.analysis_summary ? `
                         <div style="margin-bottom: 25px;">
                             <h4 style="margin: 0 0 15px 0; color: #333; border-bottom: 2px solid #ffc107; padding-bottom: 8px;">
                                 📈 기업 분석 요약
@@ -1395,29 +1498,29 @@ function showFundingDetailModal(rowId, fieldName) {
                                 padding: 20px;
                             ">
                                 <div style="margin-bottom: 10px;">
-                                    <strong>추천 자금 수:</strong> ${fundingData.analysis_summary.total_products || 0}개
+                                    <strong>추천 자금 수:</strong> ${normalizedData.analysis_summary.total_products || 0}개
                                 </div>
                                 <div style="margin-bottom: 10px;">
-                                    <strong>신뢰도:</strong> ${fundingData.analysis_summary.confidence || '95%'}
+                                    <strong>신뢰도:</strong> ${normalizedData.analysis_summary.confidence || '95%'}
                                 </div>
                                 <div style="margin-bottom: 10px;">
-                                    <strong>엔진 버전:</strong> ${fundingData.analysis_summary.version || 'V2.0'}
+                                    <strong>엔진 버전:</strong> ${normalizedData.analysis_summary.version || 'V2.0'}
                                 </div>
                                 <div>
-                                    <strong>계산 시간:</strong> ${fundingData.analysis_summary.calculation_time || '1초 미만'}
+                                    <strong>계산 시간:</strong> ${normalizedData.analysis_summary.calculation_time || '1초 미만'}
                                 </div>
                             </div>
                         </div>
                         ` : ''}
                         
                         <!-- 제외된 자금 정보 -->
-                        ${fundingData.exclusion_notes && fundingData.exclusion_notes.length > 0 ? `
+                        ${normalizedData.exclusion_notes && normalizedData.exclusion_notes.length > 0 ? `
                         <div style="margin-bottom: 25px;">
                             <h4 style="margin: 0 0 15px 0; color: #333; border-bottom: 2px solid #dc3545; padding-bottom: 8px;">
-                                ⚠️ 신청 불가 자금 (${fundingData.exclusion_notes.length}개)
+                                ⚠️ 신청 불가 자금 (${normalizedData.exclusion_notes.length}개)
                             </h4>
                             <div style="space-y: 8px;">
-                                ${fundingData.exclusion_notes.map(note => `
+                                ${normalizedData.exclusion_notes.map(note => `
                                     <div style="
                                         background: #f8d7da;
                                         border: 1px solid #f5c6cb;
@@ -1495,59 +1598,111 @@ function closeFundingDetailModal() {
     }
 }
 
+// 숫자 필드 업데이트 함수 (콤마 제거 후 저장)
+function updateRowFieldWithNumber(rowId, fieldName, value) {
+    const numericValue = removeCommaFromNumber(value);
+    updateRowField(rowId, fieldName, numericValue);
+}
+
 function updateRowField(rowId, fieldName, value) {
-    // 행의 필드 값을 업데이트하는 함수
     fetch('/diary/update_row_field/', {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
+            'Content-Type': 'application/json',
             'X-CSRFToken': getCsrfToken()
         },
-        body: `id=${rowId}&field=${fieldName}&value=${encodeURIComponent(value)}`
+        body: JSON.stringify({
+            row_id: rowId,
+            field_name: fieldName,
+            value: value
+        })
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            console.log(`${fieldName} 필드 업데이트 성공`);
-            
-            // 테이블을 비동기적으로 새로고침
-            if (typeof refreshTable === 'function') {
-                refreshTable();
-            }
-            
-            // 칸반보드가 활성화되어 있고 업데이트된 필드가 현재 칸반보드 속성과 일치하는 경우 새로고침
-            const currentKanbanAttr = document.getElementById('kanbanAttributeSelect') ? 
-                document.getElementById('kanbanAttributeSelect').value : 
-                window.SELECTED_KANBAN_ATTR || window.kanbanAttribute;
-            
-            if (currentKanbanAttr && fieldName === currentKanbanAttr) {
-                console.log('칸반보드 속성이 변경되어 새로고침합니다:', fieldName);
-                if (typeof refreshKanban === 'function') {
-                    refreshKanban();
-                }
-            }
-            
-            // F/U 일정 필드인 경우 캘린더도 새로고침
-            if (fieldName === 'F/U 일정' && window.calendar) {
-                window.calendar.refetchEvents();
-            }
-            
-            // 모달이 현재 열려있는지 확인
-            const detailModal = document.getElementById('detailModal');
-            if (detailModal && detailModal.style.display !== 'none') {
-                // 모달이 열려있으면 백그라운드에서 조용히 데이터만 업데이트
-                // 사용자 경험을 해치지 않도록 모달은 새로고침하지 않음
-                console.log('모달이 열려있어 백그라운드에서 데이터 동기화');
-            }
-            
+            console.log('필드 업데이트 성공:', fieldName, value);
         } else {
             console.error('필드 업데이트 실패:', data.error);
-            showNotification('필드 업데이트에 실패했습니다: ' + (data.error || ''), 'error');
+            showNotification('업데이트 실패: ' + data.error, 'error');
         }
     })
     .catch(error => {
-        console.error('네트워크 오류:', error);
-        showNotification('네트워크 오류가 발생했습니다: ' + error.message, 'error');
+        console.error('업데이트 요청 오류:', error);
+        showNotification('업데이트 중 오류가 발생했습니다.', 'error');
     });
+}
+
+// 나이 필드 업데이트 함수
+function updateAgeField(rowId, fieldName, dataType, value) {
+    // 현재 저장된 나이 데이터 가져오기
+    let currentAgeData = {};
+    const ageElement = document.querySelector(`[data-field="${fieldName}"]`);
+    
+    try {
+        // 기존 데이터 파싱 시도
+        if (ageElement && ageElement.dataset.currentValue) {
+            currentAgeData = JSON.parse(ageElement.dataset.currentValue);
+        }
+    } catch (e) {
+        console.log('기존 나이 데이터 없음, 새로 생성');
+    }
+    
+    if (dataType === 'birth_date') {
+        // 생년월일 입력 시 연령대 체크박스 해제
+        currentAgeData.birth_date = value;
+        currentAgeData.age_range = '';
+        
+        // 연령대 체크박스들 해제
+        const under40Checkbox = document.querySelector(`input[onchange*="'${fieldName}'"][onchange*="'under40'"]`);
+        const over40Checkbox = document.querySelector(`input[onchange*="'${fieldName}'"][onchange*="'over40'"]`);
+        if (under40Checkbox) under40Checkbox.checked = false;
+        if (over40Checkbox) over40Checkbox.checked = false;
+        
+    } else if (dataType === 'age_range') {
+        // 연령대 선택 시 생년월일 입력 해제
+        currentAgeData.age_range = value;
+        currentAgeData.birth_date = '';
+        
+        // 생년월일 입력 해제
+        const birthDateInput = document.querySelector(`input[onchange*="'${fieldName}'"][onchange*="birth_date"]`);
+        if (birthDateInput) birthDateInput.value = '';
+        
+        // 다른 연령대 체크박스 해제 (배타적 선택)
+        if (value === 'under40') {
+            const over40Checkbox = document.querySelector(`input[onchange*="'${fieldName}'"][onchange*="'over40'"]`);
+            if (over40Checkbox) over40Checkbox.checked = false;
+        } else if (value === 'over40') {
+            const under40Checkbox = document.querySelector(`input[onchange*="'${fieldName}'"][onchange*="'under40'"]`);
+            if (under40Checkbox) under40Checkbox.checked = false;
+        }
+    }
+    
+    // 현재 데이터를 element에 저장
+    if (ageElement) {
+        ageElement.dataset.currentValue = JSON.stringify(currentAgeData);
+    }
+    
+    // 서버에 업데이트 요청
+    const ageDataToSend = JSON.stringify(currentAgeData);
+    updateRowField(rowId, fieldName, ageDataToSend);
+}
+
+// 날짜 입력 포맷 함수 (YY.MM.DD)
+function formatDateInput(input) {
+    let value = input.value.replace(/[^\d]/g, ''); // 숫자만 남기기
+    
+    if (value.length >= 3) {
+        value = value.substring(0, 2) + '.' + value.substring(2, 4) + (value.length > 4 ? '.' + value.substring(4, 6) : '');
+    } else if (value.length >= 2) {
+        value = value.substring(0, 2) + (value.length > 2 ? '.' + value.substring(2) : '');
+    }
+    
+    // 최대 8자리 (YYMMDD)로 제한
+    if (value.replace(/\./g, '').length > 6) {
+        const cleanValue = value.replace(/\./g, '').substring(0, 6);
+        value = cleanValue.substring(0, 2) + '.' + cleanValue.substring(2, 4) + '.' + cleanValue.substring(4, 6);
+    }
+    
+    input.value = value;
 }
 

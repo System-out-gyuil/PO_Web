@@ -1,9 +1,53 @@
 let dropdown = null;
+let dropdownCloseHandler = null;
+
 function closeDropdown() {
+    console.log('closeDropdown 호출됨, dropdown:', dropdown);
     if (dropdown && dropdown.parentNode) {
         dropdown.parentNode.removeChild(dropdown);
         dropdown = null;
     }
+    if (window.dropdown && window.dropdown.parentNode) {
+        window.dropdown.parentNode.removeChild(window.dropdown);
+        window.dropdown = null;
+    }
+    // 이벤트 리스너 정리
+    if (dropdownCloseHandler) {
+        document.removeEventListener('click', dropdownCloseHandler);
+        document.removeEventListener('mousedown', dropdownCloseHandler);
+        dropdownCloseHandler = null;
+    }
+}
+
+// 숫자에 콤마 추가하는 함수
+function formatNumberWithComma(value) {
+    if (!value || value === '') return '';
+    const numericValue = value.toString().replace(/[^0-9.-]/g, '');
+    if (numericValue === '' || isNaN(numericValue)) return value;
+    return parseInt(numericValue).toLocaleString();
+}
+
+// 콤마 제거하고 숫자 값 반환하는 함수
+function removeCommaFromNumber(value) {
+    if (!value || value === '') return '';
+    return value.toString().replace(/[,]/g, '');
+}
+
+// 드롭다운 외부 클릭 이벤트 설정 함수
+function setupDropdownCloseHandler(dropdownElement) {
+    closeDropdown(); // 기존 드롭다운 먼저 닫기
+    
+    dropdownCloseHandler = function(e) {
+        if (dropdownElement && !dropdownElement.contains(e.target)) {
+            closeDropdown();
+        }
+    };
+    
+    // click과 mousedown 모두 처리
+    setTimeout(() => {
+        document.addEventListener('click', dropdownCloseHandler);
+        document.addEventListener('mousedown', dropdownCloseHandler);
+    }, 100);
 }
 
 function refreshKanban() {
