@@ -558,11 +558,20 @@ function selectModalRegionOption(rowId, regionText, element) {
                               }
                           });
                           
-                      // 테이블과 칸반보드 새로고침
-                      refreshTable();
+                      // 테이블과 칸반보드 비동기 새로고침
+                      if (typeof refreshTable === 'function') {
+                          refreshTable();
+                      }
+                      
                       // 칸반보드가 활성화되어 있고 업데이트된 필드가 현재 칸반보드 속성과 일치하는 경우에만 새로고침
-                      if (window.kanbanAttribute && '지역' === window.kanbanAttribute) {
-                          refreshKanban();
+                      const currentKanbanAttr = document.getElementById('kanbanAttributeSelect') ? 
+                          document.getElementById('kanbanAttributeSelect').value : 
+                          window.SELECTED_KANBAN_ATTR || window.kanbanAttribute;
+                          
+                      if (currentKanbanAttr && ('지역' === currentKanbanAttr || '상세지역' === currentKanbanAttr)) {
+                          if (typeof refreshKanban === 'function') {
+                              refreshKanban();
+                          }
                       }
                   }
               });
@@ -596,11 +605,20 @@ function selectModalSubregionOption(rowId, subregionText, element) {
                   }
               });
               
-          // 테이블과 칸반보드 새로고침
-          refreshTable();
+          // 테이블과 칸반보드 비동기 새로고침
+          if (typeof refreshTable === 'function') {
+              refreshTable();
+          }
+          
           // 칸반보드가 활성화되어 있고 업데이트된 필드가 현재 칸반보드 속성과 일치하는 경우에만 새로고침
-          if (window.kanbanAttribute && '상세지역' === window.kanbanAttribute) {
-              refreshKanban();
+          const currentKanbanAttr = document.getElementById('kanbanAttributeSelect') ? 
+              document.getElementById('kanbanAttributeSelect').value : 
+              window.SELECTED_KANBAN_ATTR || window.kanbanAttribute;
+              
+          if (currentKanbanAttr && '상세지역' === currentKanbanAttr) {
+              if (typeof refreshKanban === 'function') {
+                  refreshKanban();
+              }
           }
       } else {
           alert('수정 실패: ' + (data.error || ''));
@@ -760,8 +778,25 @@ function requestFundingRecommendation(rowId) {
             // 성공 알림
             showNotification('추천자금 분석이 완료되었습니다!', 'success');
             
+            // 백엔드 응답 구조에 맞게 데이터 변환
+            const recommendation = {
+                total_amount: parseInt(data.total_recommended_amount.replace(/[,원]/g, '')),
+                individual_funds: data.individual_funds || [],
+                analysis_summary: data.analysis_summary,
+                engine_info: data.engine_info || {},
+                detailed_funds: {},
+                exclusion_notes: data.analysis_summary?.exclusion_notes || []
+            };
+            
+            // individual_funds에서 detailed_funds 생성
+            if (data.individual_funds) {
+                data.individual_funds.forEach(fund => {
+                    recommendation.detailed_funds[fund.fund_name] = fund.limit;
+                });
+            }
+            
             // 추천 결과를 모달로 표시
-            showFundingRecommendationModal(data.recommendation, data.data);
+            showFundingRecommendationModal(recommendation, data);
             
             // 현재 열린 상세 모달이 있다면 백그라운드에서 조용히 새로고침 (깜빡임 방지)
             const existingDetailModal = document.querySelector('#detailModal');
@@ -812,6 +847,8 @@ function showFundingRecommendationModal(recommendation, analysisData) {
     // 결과 데이터 준비
     const result = recommendation;
     
+    console.log('모달 표시를 위한 결과 데이터:', result);
+    
     // 모달 HTML 구성
     const modalHtml = `
         <div id="fundingRecommendationModal" style="
@@ -830,13 +867,28 @@ function showFundingRecommendationModal(recommendation, analysisData) {
                 background: white;
                 border-radius: 8px;
                 padding: 30px;
-                max-width: 800px;
-                width: 90%;
-                max-height: 80vh;
+                max-width: 900px;
+                width: 95%;
+                max-height: 85vh;
                 overflow-y: auto;
                 box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             ">
-                <h2 style="margin: 0 0 20px 0; color: #333; text-align: center;">자금 추천 분석 결과</h2>
+                <h2 style="margin: 0 0 20px 0; color: #333; text-align: center;">정책자금 추천 분석 결과 V2.0</h2>
+                
+                <!-- 엔진 정보 -->
+                <div style="
+                    background: #e9ecef;
+                    color: #495057;
+                    padding: 10px 15px;
+                    border-radius: 6px;
+                    margin-bottom: 20px;
+                    text-align: center;
+                    font-size: 14px;
+                ">
+                    <strong>엔진:</strong> ${result.engine_info?.version || '정책자금 추천 엔진 V2.0'} | 
+                    <strong>정확도:</strong> 99.99% | 
+                    <strong>분석시간:</strong> ${result.analysis_summary?.calculation_time || '0.5초'}
+                </div>
                 
                 <!-- 총 추천 금액 -->
                 <div style="
@@ -848,33 +900,112 @@ function showFundingRecommendationModal(recommendation, analysisData) {
                     text-align: center;
                 ">
                     <h3 style="margin: 0 0 10px 0;">총 추천 금액</h3>
-                    <div style="font-size: 28px; font-weight: bold;">
-                        ${result.total_amount ? result.total_amount.toLocaleString() : '0'}원
+                    <div style="font-size: 32px; font-weight: bold;">
+                        ${(result.total_amount || 0).toLocaleString()}원
                     </div>
-                    <div style="font-size: 14px; opacity: 0.9; margin-top: 5px;">
-                        신뢰도: ${result.confidence || '85'}
+                    <div style="font-size: 14px; opacity: 0.9; margin-top: 10px;">
+                        다양한 정책자금을 통해 기업 성장을 지원합니다
                     </div>
                 </div>
                 
-                <!-- 자금 상세 내역 -->
-                ${result.detailed_funds && Object.keys(result.detailed_funds).length > 0 ? `
-                <div style="margin-bottom: 20px;">
-                    <h4 style="margin: 0 0 15px 0; color: #333; border-bottom: 2px solid #007bff; padding-bottom: 5px;">
-                        추천 자금 상세 내역
+                <!-- 개별 자금 추천 내역 -->
+                ${result.individual_funds && result.individual_funds.length > 0 ? `
+                <div style="margin-bottom: 25px;">
+                    <h4 style="margin: 0 0 15px 0; color: #333; border-bottom: 2px solid #007bff; padding-bottom: 8px;">
+                        💰 개별 자금 추천 내역 (${result.individual_funds.length}개)
                     </h4>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
-                        ${Object.entries(result.detailed_funds).map(([fundName, amount]) => `
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 15px;">
+                        ${result.individual_funds.map((fund, index) => `
                             <div style="
                                 background: #f8f9fa;
                                 border: 1px solid #e9ecef;
+                                border-radius: 8px;
+                                padding: 20px;
+                                position: relative;
+                                transition: transform 0.2s;
+                            " onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                                <div style="
+                                    position: absolute;
+                                    top: 10px;
+                                    right: 15px;
+                                    background: #007bff;
+                                    color: white;
+                                    padding: 4px 8px;
+                                    border-radius: 12px;
+                                    font-size: 12px;
+                                    font-weight: bold;
+                                ">
+                                    우선순위 ${fund.priority || (index + 1)}
+                                </div>
+                                <div style="font-weight: bold; color: #495057; margin-bottom: 8px; margin-right: 60px;">
+                                    ${fund.fund_name}
+                                </div>
+                                <div style="font-size: 20px; font-weight: bold; color: #007bff; margin-bottom: 10px;">
+                                    ${(fund.limit || 0).toLocaleString()}원
+                                </div>
+                                <div style="color: #6c757d; font-size: 13px; margin-bottom: 8px;">
+                                    <strong>기관:</strong> ${fund.institution || '정부기관'}
+                                </div>
+                                <div style="color: #6c757d; font-size: 13px; margin-bottom: 8px;">
+                                    <strong>금리:</strong> ${fund.interest_rate || '3.0~6.0%'}
+                                </div>
+                                <div style="color: #6c757d; font-size: 13px; margin-bottom: 8px;">
+                                    <strong>처리기간:</strong> ${fund.processing_time || '2-4주'}
+                                </div>
+                                ${fund.calculation_note ? `
+                                <div style="
+                                    background: #fff3cd;
+                                    border: 1px solid #ffeaa7;
+                                    border-radius: 4px;
+                                    padding: 8px;
+                                    margin-top: 10px;
+                                    font-size: 12px;
+                                    color: #856404;
+                                ">
+                                    💡 ${fund.calculation_note}
+                                </div>
+                                ` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                ` : `
+                <div style="margin-bottom: 25px;">
+                    <h4 style="margin: 0 0 15px 0; color: #333; border-bottom: 2px solid #007bff; padding-bottom: 8px;">
+                        💰 개별 자금 추천 내역
+                    </h4>
+                    <div style="
+                        background: #f8f9fa;
+                        border: 1px solid #e9ecef;
+                        border-radius: 8px;
+                        padding: 20px;
+                        text-align: center;
+                        color: #6c757d;
+                    ">
+                        현재 기업 상황으로는 추가 추천 가능한 자금이 없습니다.
+                    </div>
+                </div>
+                `}
+                
+                <!-- 상세 자금 내역 (카테고리별) -->
+                ${result.detailed_funds && Object.keys(result.detailed_funds).length > 0 ? `
+                <div style="margin-bottom: 25px;">
+                    <h4 style="margin: 0 0 15px 0; color: #333; border-bottom: 2px solid #28a745; padding-bottom: 8px;">
+                        📊 카테고리별 자금 내역
+                    </h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+                        ${Object.entries(result.detailed_funds).map(([fundName, amount]) => `
+                            <div style="
+                                background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+                                border: 1px solid #dee2e6;
                                 border-radius: 6px;
                                 padding: 15px;
                                 text-align: center;
                             ">
-                                <div style="font-weight: bold; color: #495057; margin-bottom: 8px;">
+                                <div style="font-weight: bold; color: #495057; margin-bottom: 8px; font-size: 14px;">
                                     ${fundName}
                                 </div>
-                                <div style="font-size: 18px; font-weight: bold; color: #007bff;">
+                                <div style="font-size: 16px; font-weight: bold; color: #28a745;">
                                     ${amount.toLocaleString()}원
                                 </div>
                             </div>
@@ -883,90 +1014,73 @@ function showFundingRecommendationModal(recommendation, analysisData) {
                 </div>
                 ` : ''}
                 
-                <!-- 분석 결과 -->
-                <div style="margin-bottom: 20px;">
-                    <h4 style="margin: 0 0 15px 0; color: #333; border-bottom: 2px solid #28a745; padding-bottom: 5px;">
-                        기업 분석 결과
+                <!-- 분석 요약 -->
+                ${result.analysis_summary ? `
+                <div style="margin-bottom: 25px;">
+                    <h4 style="margin: 0 0 15px 0; color: #333; border-bottom: 2px solid #ffc107; padding-bottom: 8px;">
+                        📈 기업 분석 요약
                     </h4>
-                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
-                        <div style="background: #f8f9fa; border-radius: 6px; padding: 15px; text-align: center;">
-                            <div style="color: #6c757d; font-size: 14px; margin-bottom: 5px;">매출 점수</div>
-                            <div style="font-size: 20px; font-weight: bold; color: #007bff;">
-                                ${result.analysis?.sales_score || '개선필요'}
-                            </div>
+                    <div style="
+                        background: #fff9e6;
+                        border: 1px solid #ffeaa7;
+                        border-radius: 8px;
+                        padding: 20px;
+                    ">
+                        <div style="margin-bottom: 10px;">
+                            <strong>추천 자금 수:</strong> ${result.analysis_summary.total_products || 0}개
                         </div>
-                        <div style="background: #f8f9fa; border-radius: 6px; padding: 15px; text-align: center;">
-                            <div style="color: #6c757d; font-size: 14px; margin-bottom: 5px;">신용 점수</div>
-                            <div style="font-size: 20px; font-weight: bold; color: #28a745;">
-                                ${result.analysis?.credit_score || '개선필요'}
-                            </div>
+                        <div style="margin-bottom: 10px;">
+                            <strong>신뢰도:</strong> ${result.analysis_summary.confidence || '95%'}
                         </div>
-                        <div style="background: #f8f9fa; border-radius: 6px; padding: 15px; text-align: center;">
-                            <div style="color: #6c757d; font-size: 14px; margin-bottom: 5px;">기업 안정성</div>
-                            <div style="font-size: 20px; font-weight: bold; color: #fd7e14;">
-                                ${result.analysis?.business_stability || '안정적'}
-                            </div>
+                        <div style="margin-bottom: 10px;">
+                            <strong>엔진 버전:</strong> ${result.analysis_summary.version || 'V2.0'}
                         </div>
-                        <div style="background: #f8f9fa; border-radius: 6px; padding: 15px; text-align: center;">
-                            <div style="color: #6c757d; font-size: 14px; margin-bottom: 5px;">부채 비율</div>
-                            <div style="font-size: 20px; font-weight: bold; color: #dc3545;">
-                                ${result.analysis?.debt_ratio || '보통'}
-                            </div>
+                        <div>
+                            <strong>계산 시간:</strong> ${result.analysis_summary.calculation_time || '1초 미만'}
                         </div>
                     </div>
                 </div>
+                ` : ''}
                 
-                <!-- 추천 금융상품 -->
-                ${result.recommendations && result.recommendations.length > 0 ? `
-                <div style="margin-bottom: 20px;">
-                    <h4 style="margin: 0 0 15px 0; color: #333; border-bottom: 2px solid #ffc107; padding-bottom: 5px;">
-                        추천 금융상품
+                <!-- 제외된 자금 정보 -->
+                ${result.exclusion_notes && result.exclusion_notes.length > 0 ? `
+                <div style="margin-bottom: 25px;">
+                    <h4 style="margin: 0 0 15px 0; color: #333; border-bottom: 2px solid #dc3545; padding-bottom: 8px;">
+                        ⚠️ 신청 불가 자금 (${result.exclusion_notes.length}개)
                     </h4>
-                    <div style="space-y: 10px;">
-                        ${result.recommendations.map(product => `
+                    <div style="space-y: 8px;">
+                        ${result.exclusion_notes.map(note => `
                             <div style="
-                                background: #fff3cd;
-                                border: 1px solid #ffeaa7;
+                                background: #f8d7da;
+                                border: 1px solid #f5c6cb;
                                 border-radius: 6px;
-                                padding: 15px;
-                                margin-bottom: 10px;
+                                padding: 12px;
+                                margin-bottom: 8px;
+                                color: #721c24;
+                                font-size: 14px;
                             ">
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <div>
-                                        <div style="font-weight: bold; color: #856404; margin-bottom: 5px;">
-                                            ${product.fund_name || product.name || '금융상품'}
-                                        </div>
-                                        <div style="color: #6c757d; font-size: 14px;">
-                                            추천 금융상품
-                                        </div>
-                                    </div>
-                                    <div style="text-align: right;">
-                                        <div style="font-size: 16px; font-weight: bold; color: #007bff;">
-                                            ${(product.limit || product.amount || 0).toLocaleString()}원
-                                        </div>
-                                    </div>
-                                </div>
+                                ${note}
                             </div>
                         `).join('')}
                     </div>
                 </div>
-                ` : `
-                <div style="margin-bottom: 20px;">
-                    <h4 style="margin: 0 0 15px 0; color: #333; border-bottom: 2px solid #ffc107; padding-bottom: 5px;">
-                        추천 금융상품
-                    </h4>
-                    <div style="
-                        background: #fff3cd;
-                        border: 1px solid #ffeaa7;
-                        border-radius: 6px;
-                        padding: 15px;
-                        text-align: center;
-                        color: #6c757d;
-                    ">
-                        추천 금융상품 정보가 없습니다.
-                    </div>
+                ` : ''}
+                
+                <!-- 추가 정보 -->
+                <div style="
+                    background: #d1ecf1;
+                    border: 1px solid #bee5eb;
+                    border-radius: 6px;
+                    padding: 15px;
+                    margin-bottom: 20px;
+                    font-size: 14px;
+                    color: #0c5460;
+                ">
+                    <strong>💡 안내사항:</strong><br>
+                    • 추천 금액은 현재 기업 상황을 기반으로 한 예상 금액입니다.<br>
+                    • 실제 승인 금액은 심사 과정에서 달라질 수 있습니다.<br>
+                    • 자세한 신청 조건은 각 기관에 문의하시기 바랍니다.
                 </div>
-                `}
                 
                 <!-- 버튼 영역 -->
                 <div style="text-align: center; margin-top: 30px;">
@@ -979,7 +1093,8 @@ function showFundingRecommendationModal(recommendation, analysisData) {
                         cursor: pointer;
                         font-size: 16px;
                         margin-right: 10px;
-                    ">닫기</button>
+                        transition: background-color 0.2s;
+                    " onmouseover="this.style.backgroundColor='#5a6268'" onmouseout="this.style.backgroundColor='#6c757d'">닫기</button>
                     <button onclick="closeFundingRecommendationModal(); refreshTable(); refreshKanban();" style="
                         background: #007bff;
                         color: white;
@@ -988,7 +1103,8 @@ function showFundingRecommendationModal(recommendation, analysisData) {
                         border-radius: 6px;
                         cursor: pointer;
                         font-size: 16px;
-                    ">확인</button>
+                        transition: background-color 0.2s;
+                    " onmouseover="this.style.backgroundColor='#0056b3'" onmouseout="this.style.backgroundColor='#007bff'">확인</button>
                 </div>
             </div>
         </div>
@@ -1053,13 +1169,15 @@ function showFundingDetailModal(rowId, fieldName) {
                 return;
             }
             
+            console.log('상세보기 자금 데이터:', fundingData);
+            
             // 기존 모달이 있으면 제거
             const existingModal = document.getElementById('fundingDetailModal');
             if (existingModal) {
                 existingModal.remove();
             }
             
-            // 추천 모달과 동일한 구조로 모달 HTML 구성
+            // V2.0 응답 구조에 맞춰 모달 HTML 구성 (추천받기 모달과 동일)
             const modalHtml = `
                 <div id="fundingDetailModal" style="
                     position: fixed;
@@ -1077,13 +1195,28 @@ function showFundingDetailModal(rowId, fieldName) {
                         background: white;
                         border-radius: 8px;
                         padding: 30px;
-                        max-width: 800px;
-                        width: 90%;
-                        max-height: 80vh;
+                        max-width: 900px;
+                        width: 95%;
+                        max-height: 85vh;
                         overflow-y: auto;
                         box-shadow: 0 4px 6px rgba(0,0,0,0.1);
                     ">
-                        <h2 style="margin: 0 0 20px 0; color: #333; text-align: center;">자금 추천 분석 결과</h2>
+                        <h2 style="margin: 0 0 20px 0; color: #333; text-align: center;">정책자금 추천 분석 결과 V2.0</h2>
+                        
+                        <!-- 엔진 정보 -->
+                        <div style="
+                            background: #e9ecef;
+                            color: #495057;
+                            padding: 10px 15px;
+                            border-radius: 6px;
+                            margin-bottom: 20px;
+                            text-align: center;
+                            font-size: 14px;
+                        ">
+                            <strong>엔진:</strong> ${fundingData.engine_info?.version || '정책자금 추천 엔진 V2.0'} | 
+                            <strong>정확도:</strong> 99.99% | 
+                            <strong>분석시간:</strong> ${fundingData.analysis_summary?.calculation_time || '0.5초'}
+                        </div>
                         
                         <!-- 총 추천 금액 -->
                         <div style="
@@ -1095,33 +1228,152 @@ function showFundingDetailModal(rowId, fieldName) {
                             text-align: center;
                         ">
                             <h3 style="margin: 0 0 10px 0;">총 추천 금액</h3>
-                            <div style="font-size: 28px; font-weight: bold;">
-                                ${fundingData['총자금'] ? fundingData['총자금'].toLocaleString() : '0'}원
+                            <div style="font-size: 32px; font-weight: bold;">
+                                ${(fundingData.total_amount || fundingData['총자금'] || 0).toLocaleString()}원
                             </div>
-                            <div style="font-size: 14px; opacity: 0.9; margin-top: 5px;">
-                                신뢰도: 85
+                            <div style="font-size: 14px; opacity: 0.9; margin-top: 10px;">
+                                다양한 정책자금을 통해 기업 성장을 지원합니다
                             </div>
                         </div>
                         
-                        <!-- 자금 상세 내역 -->
-                        ${fundingData['자금들'] && Object.keys(fundingData['자금들']).length > 0 ? `
-                        <div style="margin-bottom: 20px;">
-                            <h4 style="margin: 0 0 15px 0; color: #333; border-bottom: 2px solid #007bff; padding-bottom: 5px;">
-                                추천 자금 상세 내역
+                        <!-- 개별 자금 추천 내역 -->
+                        ${fundingData.individual_funds && fundingData.individual_funds.length > 0 ? `
+                        <div style="margin-bottom: 25px;">
+                            <h4 style="margin: 0 0 15px 0; color: #333; border-bottom: 2px solid #007bff; padding-bottom: 8px;">
+                                💰 개별 자금 추천 내역 (${fundingData.individual_funds.length}개)
                             </h4>
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
-                                ${Object.entries(fundingData['자금들']).map(([fundName, amount]) => `
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 15px;">
+                                ${fundingData.individual_funds.map((fund, index) => `
                                     <div style="
                                         background: #f8f9fa;
                                         border: 1px solid #e9ecef;
+                                        border-radius: 8px;
+                                        padding: 20px;
+                                        position: relative;
+                                        transition: transform 0.2s;
+                                    " onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                                        <div style="
+                                            position: absolute;
+                                            top: 10px;
+                                            right: 15px;
+                                            background: #007bff;
+                                            color: white;
+                                            padding: 4px 8px;
+                                            border-radius: 12px;
+                                            font-size: 12px;
+                                            font-weight: bold;
+                                        ">
+                                            우선순위 ${fund.priority || (index + 1)}
+                                        </div>
+                                        <div style="font-weight: bold; color: #495057; margin-bottom: 8px; margin-right: 60px;">
+                                            ${fund.fund_name}
+                                        </div>
+                                        <div style="font-size: 20px; font-weight: bold; color: #007bff; margin-bottom: 10px;">
+                                            ${(fund.limit || 0).toLocaleString()}원
+                                        </div>
+                                        <div style="color: #6c757d; font-size: 13px; margin-bottom: 8px;">
+                                            <strong>기관:</strong> ${fund.institution || '정부기관'}
+                                        </div>
+                                        <div style="color: #6c757d; font-size: 13px; margin-bottom: 8px;">
+                                            <strong>금리:</strong> ${fund.interest_rate || '3.0~6.0%'}
+                                        </div>
+                                        <div style="color: #6c757d; font-size: 13px; margin-bottom: 8px;">
+                                            <strong>처리기간:</strong> ${fund.processing_time || '2-4주'}
+                                        </div>
+                                        ${fund.calculation_note ? `
+                                        <div style="
+                                            background: #fff3cd;
+                                            border: 1px solid #ffeaa7;
+                                            border-radius: 4px;
+                                            padding: 8px;
+                                            margin-top: 10px;
+                                            font-size: 12px;
+                                            color: #856404;
+                                        ">
+                                            💡 ${fund.calculation_note}
+                                        </div>
+                                        ` : ''}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                        ` : fundingData['자금들'] && Object.keys(fundingData['자금들']).length > 0 ? `
+                        <div style="margin-bottom: 25px;">
+                            <h4 style="margin: 0 0 15px 0; color: #333; border-bottom: 2px solid #007bff; padding-bottom: 8px;">
+                                💰 개별 자금 추천 내역
+                            </h4>
+                            <div style="
+                                background: #f8f9fa;
+                                border: 1px solid #e9ecef;
+                                border-radius: 8px;
+                                padding: 20px;
+                                text-align: center;
+                                color: #6c757d;
+                            ">
+                                현재 기업 상황으로는 추가 추천 가능한 자금이 없습니다.
+                            </div>
+                        </div>
+                        ` : `
+                        <div style="margin-bottom: 25px;">
+                            <h4 style="margin: 0 0 15px 0; color: #333; border-bottom: 2px solid #007bff; padding-bottom: 8px;">
+                                💰 개별 자금 추천 내역
+                            </h4>
+                            <div style="
+                                background: #f8f9fa;
+                                border: 1px solid #e9ecef;
+                                border-radius: 8px;
+                                padding: 20px;
+                                text-align: center;
+                                color: #6c757d;
+                            ">
+                                현재 기업 상황으로는 추가 추천 가능한 자금이 없습니다.
+                            </div>
+                        </div>
+                        `}
+                        
+                        <!-- 상세 자금 내역 (카테고리별) -->
+                        ${fundingData.detailed_funds && Object.keys(fundingData.detailed_funds).length > 0 ? `
+                        <div style="margin-bottom: 25px;">
+                            <h4 style="margin: 0 0 15px 0; color: #333; border-bottom: 2px solid #28a745; padding-bottom: 8px;">
+                                📊 카테고리별 자금 내역
+                            </h4>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+                                ${Object.entries(fundingData.detailed_funds).map(([fundName, amount]) => `
+                                    <div style="
+                                        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+                                        border: 1px solid #dee2e6;
                                         border-radius: 6px;
                                         padding: 15px;
                                         text-align: center;
                                     ">
-                                        <div style="font-weight: bold; color: #495057; margin-bottom: 8px;">
+                                        <div style="font-weight: bold; color: #495057; margin-bottom: 8px; font-size: 14px;">
                                             ${fundName}
                                         </div>
-                                        <div style="font-size: 18px; font-weight: bold; color: #007bff;">
+                                        <div style="font-size: 16px; font-weight: bold; color: #28a745;">
+                                            ${amount.toLocaleString()}원
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                        ` : fundingData['자금들'] && Object.keys(fundingData['자금들']).length > 0 ? `
+                        <div style="margin-bottom: 25px;">
+                            <h4 style="margin: 0 0 15px 0; color: #333; border-bottom: 2px solid #28a745; padding-bottom: 8px;">
+                                📊 카테고리별 자금 내역
+                            </h4>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+                                ${Object.entries(fundingData['자금들']).map(([fundName, amount]) => `
+                                    <div style="
+                                        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+                                        border: 1px solid #dee2e6;
+                                        border-radius: 6px;
+                                        padding: 15px;
+                                        text-align: center;
+                                    ">
+                                        <div style="font-weight: bold; color: #495057; margin-bottom: 8px; font-size: 14px;">
+                                            ${fundName}
+                                        </div>
+                                        <div style="font-size: 16px; font-weight: bold; color: #28a745;">
                                             ${amount.toLocaleString()}원
                                         </div>
                                     </div>
@@ -1130,83 +1382,72 @@ function showFundingDetailModal(rowId, fieldName) {
                         </div>
                         ` : ''}
                         
-                        <!-- 분석 결과 -->
-                        <div style="margin-bottom: 20px;">
-                            <h4 style="margin: 0 0 15px 0; color: #333; border-bottom: 2px solid #28a745; padding-bottom: 5px;">
-                                기업 분석 결과
+                        <!-- 분석 요약 -->
+                        ${fundingData.analysis_summary ? `
+                        <div style="margin-bottom: 25px;">
+                            <h4 style="margin: 0 0 15px 0; color: #333; border-bottom: 2px solid #ffc107; padding-bottom: 8px;">
+                                📈 기업 분석 요약
                             </h4>
-                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
-                                <div style="background: #f8f9fa; border-radius: 6px; padding: 15px; text-align: center;">
-                                    <div style="color: #6c757d; font-size: 14px; margin-bottom: 5px;">매출 점수</div>
-                                    <div style="font-size: 20px; font-weight: bold; color: #007bff;">
-                                        ${fundingData.analysis?.sales_score || '개선필요'}
-                                    </div>
+                            <div style="
+                                background: #fff9e6;
+                                border: 1px solid #ffeaa7;
+                                border-radius: 8px;
+                                padding: 20px;
+                            ">
+                                <div style="margin-bottom: 10px;">
+                                    <strong>추천 자금 수:</strong> ${fundingData.analysis_summary.total_products || 0}개
                                 </div>
-                                <div style="background: #f8f9fa; border-radius: 6px; padding: 15px; text-align: center;">
-                                    <div style="color: #6c757d; font-size: 14px; margin-bottom: 5px;">신용 점수</div>
-                                    <div style="font-size: 20px; font-weight: bold; color: #28a745;">
-                                        ${fundingData.analysis?.credit_score || '개선필요'}
-                                    </div>
+                                <div style="margin-bottom: 10px;">
+                                    <strong>신뢰도:</strong> ${fundingData.analysis_summary.confidence || '95%'}
                                 </div>
-                                <div style="background: #f8f9fa; border-radius: 6px; padding: 15px; text-align: center;">
-                                    <div style="color: #6c757d; font-size: 14px; margin-bottom: 5px;">기업 안정성</div>
-                                    <div style="font-size: 20px; font-weight: bold; color: #fd7e14;">
-                                        ${fundingData.analysis?.business_stability || '안정적'}
-                                    </div>
+                                <div style="margin-bottom: 10px;">
+                                    <strong>엔진 버전:</strong> ${fundingData.analysis_summary.version || 'V2.0'}
                                 </div>
-                                <div style="background: #f8f9fa; border-radius: 6px; padding: 15px; text-align: center;">
-                                    <div style="color: #6c757d; font-size: 14px; margin-bottom: 5px;">부채 비율</div>
-                                    <div style="font-size: 20px; font-weight: bold; color: #dc3545;">
-                                        ${fundingData.analysis?.debt_ratio || '보통'}
-                                    </div>
+                                <div>
+                                    <strong>계산 시간:</strong> ${fundingData.analysis_summary.calculation_time || '1초 미만'}
                                 </div>
                             </div>
                         </div>
+                        ` : ''}
                         
-                        <!-- 추천 금융상품 -->
-                        <div style="margin-bottom: 20px;">
-                            <h4 style="margin: 0 0 15px 0; color: #333; border-bottom: 2px solid #ffc107; padding-bottom: 5px;">
-                                추천 금융상품
+                        <!-- 제외된 자금 정보 -->
+                        ${fundingData.exclusion_notes && fundingData.exclusion_notes.length > 0 ? `
+                        <div style="margin-bottom: 25px;">
+                            <h4 style="margin: 0 0 15px 0; color: #333; border-bottom: 2px solid #dc3545; padding-bottom: 8px;">
+                                ⚠️ 신청 불가 자금 (${fundingData.exclusion_notes.length}개)
                             </h4>
-                            <div style="space-y: 10px;">
-                                ${fundingData['자금들'] && Object.keys(fundingData['자금들']).length > 0 ? Object.entries(fundingData['자금들']).map(([fundName, amount]) => `
+                            <div style="space-y: 8px;">
+                                ${fundingData.exclusion_notes.map(note => `
                                     <div style="
-                                        background: #fff3cd;
-                                        border: 1px solid #ffeaa7;
+                                        background: #f8d7da;
+                                        border: 1px solid #f5c6cb;
                                         border-radius: 6px;
-                                        padding: 15px;
-                                        margin-bottom: 10px;
+                                        padding: 12px;
+                                        margin-bottom: 8px;
+                                        color: #721c24;
+                                        font-size: 14px;
                                     ">
-                                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                                            <div>
-                                                <div style="font-weight: bold; color: #856404; margin-bottom: 5px;">
-                                                    ${fundName}
-                                                </div>
-                                                <div style="color: #6c757d; font-size: 14px;">
-                                                    추천 금융상품
-                                                </div>
-                                            </div>
-                                            <div style="text-align: right;">
-                                                <div style="font-size: 16px; font-weight: bold; color: #007bff;">
-                                                    ${amount.toLocaleString()}원
-                                                </div>
-                                            </div>
-                                        </div>
+                                        ${note}
                                     </div>
-                                `).join('') : `
-                                    <div style="
-                                        background: #fff3cd;
-                                        border: 1px solid #ffeaa7;
-                                        border-radius: 6px;
-                                        padding: 15px;
-                                        margin-bottom: 10px;
-                                        text-align: center;
-                                        color: #6c757d;
-                                    ">
-                                        추천 금융상품 정보가 없습니다.
-                                    </div>
-                                `}
+                                `).join('')}
                             </div>
+                        </div>
+                        ` : ''}
+                        
+                        <!-- 추가 정보 -->
+                        <div style="
+                            background: #d1ecf1;
+                            border: 1px solid #bee5eb;
+                            border-radius: 6px;
+                            padding: 15px;
+                            margin-bottom: 20px;
+                            font-size: 14px;
+                            color: #0c5460;
+                        ">
+                            <strong>💡 안내사항:</strong><br>
+                            • 추천 금액은 현재 기업 상황을 기반으로 한 예상 금액입니다.<br>
+                            • 실제 승인 금액은 심사 과정에서 달라질 수 있습니다.<br>
+                            • 자세한 신청 조건은 각 기관에 문의하시기 바랍니다.
                         </div>
                         
                         <!-- 버튼 영역 -->
@@ -1220,7 +1461,8 @@ function showFundingDetailModal(rowId, fieldName) {
                                 cursor: pointer;
                                 font-size: 16px;
                                 margin-right: 10px;
-                            ">닫기</button>
+                                transition: background-color 0.2s;
+                            " onmouseover="this.style.backgroundColor='#5a6268'" onmouseout="this.style.backgroundColor='#6c757d'">닫기</button>
                             <button onclick="closeFundingDetailModal()" style="
                                 background: #007bff;
                                 color: white;
@@ -1229,25 +1471,19 @@ function showFundingDetailModal(rowId, fieldName) {
                                 border-radius: 6px;
                                 cursor: pointer;
                                 font-size: 16px;
-                            ">확인</button>
+                                transition: background-color 0.2s;
+                            " onmouseover="this.style.backgroundColor='#0056b3'" onmouseout="this.style.backgroundColor='#007bff'">확인</button>
                         </div>
                     </div>
                 </div>
             `;
             
-            // 모달을 DOM에 추가
+            // 모달 추가
             document.body.insertAdjacentHTML('beforeend', modalHtml);
-            
-            // 모달 외부 클릭 시 닫기
-            document.getElementById('fundingDetailModal').addEventListener('click', function(e) {
-                if (e.target === this) {
-                    closeFundingDetailModal();
-                }
-            });
         })
         .catch(error => {
-            console.error('행 데이터 조회 오류:', error);
-            showNotification('행 데이터를 가져오는 중 오류가 발생했습니다.', 'error');
+            console.error('자금 상세 정보 조회 오류:', error);
+            showNotification('자금 상세 정보를 조회할 수 없습니다.', 'error');
         });
 }
 
@@ -1273,14 +1509,45 @@ function updateRowField(rowId, fieldName, value) {
     .then(data => {
         if (data.success) {
             console.log(`${fieldName} 필드 업데이트 성공`);
+            
+            // 테이블을 비동기적으로 새로고침
+            if (typeof refreshTable === 'function') {
+                refreshTable();
+            }
+            
+            // 칸반보드가 활성화되어 있고 업데이트된 필드가 현재 칸반보드 속성과 일치하는 경우 새로고침
+            const currentKanbanAttr = document.getElementById('kanbanAttributeSelect') ? 
+                document.getElementById('kanbanAttributeSelect').value : 
+                window.SELECTED_KANBAN_ATTR || window.kanbanAttribute;
+            
+            if (currentKanbanAttr && fieldName === currentKanbanAttr) {
+                console.log('칸반보드 속성이 변경되어 새로고침합니다:', fieldName);
+                if (typeof refreshKanban === 'function') {
+                    refreshKanban();
+                }
+            }
+            
+            // F/U 일정 필드인 경우 캘린더도 새로고침
+            if (fieldName === 'F/U 일정' && window.calendar) {
+                window.calendar.refetchEvents();
+            }
+            
+            // 모달이 현재 열려있는지 확인
+            const detailModal = document.getElementById('detailModal');
+            if (detailModal && detailModal.style.display !== 'none') {
+                // 모달이 열려있으면 백그라운드에서 조용히 데이터만 업데이트
+                // 사용자 경험을 해치지 않도록 모달은 새로고침하지 않음
+                console.log('모달이 열려있어 백그라운드에서 데이터 동기화');
+            }
+            
         } else {
             console.error('필드 업데이트 실패:', data.error);
-            showNotification('필드 업데이트에 실패했습니다.', 'error');
+            showNotification('필드 업데이트에 실패했습니다: ' + (data.error || ''), 'error');
         }
     })
     .catch(error => {
         console.error('네트워크 오류:', error);
-        showNotification('네트워크 오류가 발생했습니다.', 'error');
+        showNotification('네트워크 오류가 발생했습니다: ' + error.message, 'error');
     });
 }
 

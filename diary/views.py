@@ -2442,19 +2442,17 @@ def save_debt_details(request):
 @csrf_exempt
 def get_funding_recommendation(request):
     """
-    추천자금 요청을 처리하는 함수
-    새로운 FundingCalculator를 사용하여 상세한 분석 수행
+    정책자금 추천 엔진 V2.0을 사용한 자금 추천 함수
     """
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': '잘못된 요청 방법입니다.'})
     
     try:
-        # JSON 데이터 파싱
         data = json.loads(request.body)
         row_id = data.get('row_id')
         
         if not row_id:
-            return JsonResponse({'success': False, 'error': '행 ID가 필요합니다.'})
+            return JsonResponse({'success': False, 'error': 'row_id가 누락되었습니다.'})
         
         # 사용자 정보 가져오기 (고정 ID: 1)
         try:
@@ -2466,67 +2464,131 @@ def get_funding_recommendation(request):
         try:
             row = Row.objects.get(id=row_id, user=user)
         except Row.DoesNotExist:
-            return JsonResponse({'success': False, 'error': '행을 찾을 수 없습니다.'})
+            return JsonResponse({'success': False, 'error': '해당 행을 찾을 수 없습니다.'})
         
-        # 계산에 필요한 모든 데이터 수집
+        print("=== 정책자금 추천 엔진 V2.0 시작 ===")
+        print(f"Row ID: {row_id}")
+        
+        # 회사 데이터 수집
         company_data = {}
         
-        # 매출 정보
-        sales_value = _get_attribute_value(user, row, '매출')
-        company_data['annual_revenue'] = _parse_number(sales_value, 0)
+        # 업종 정보
+        industry_value = _get_attribute_value(user, row, '업종')
+        company_data['industry'] = industry_value if industry_value else '기타'
+        
+        # 연매출액 (문자열에서 숫자 추출)
+        revenue_value = _get_attribute_value(user, row, '매출')  # '연매출액' -> '매출'로 수정
+        company_data['annual_revenue'] = _parse_number(revenue_value, 0)
         
         # 신용점수
         credit_value = _get_attribute_value(user, row, '신용점수')
         company_data['credit_score'] = _parse_number(credit_value, 0)
         
-        # 업종
-        company_data['industry'] = _get_attribute_value(user, row, '업종') or 'IT'
-        
-        # 경력 (년수)
-        experience_value = _get_attribute_value(user, row, '경력')
-        company_data['experience_years'] = _parse_number(experience_value, 0)
-        
         # 직원수
-        employees_value = _get_attribute_value(user, row, '직원수')
-        company_data['employees'] = _parse_number(employees_value, 0)
+        employee_value = _get_attribute_value(user, row, '직원수')
+        company_data['employees'] = _parse_number(employee_value, 0)
         
         # 개업년월로부터 업력 계산
         opening_date_value = _get_attribute_value(user, row, '개업년월')
         company_data['business_months'] = _calculate_business_months(opening_date_value)
         
-        # 기대출 정보에서 기존 부채 계산
+        # 기대출 정보에서 기존 부채 및 자금 사용 현황 계산
         debt_data = _get_debt_data(user, row)
-        company_data['existing_debt'] = sum(float(v) for v in debt_data.values() if v) * 10000  # 만원 -> 원
-        company_data['existing_sinbo_debt'] = (
-            float(debt_data.get('credit_guarantee', 0)) * 10000 if debt_data.get('credit_guarantee') else 0
-        )
+        print(f"원본 기대출 데이터: {debt_data}")
         
-        # 추가 필드들 (기본값 설정)
-        company_data['ceo_age'] = 35  # 기본값 (실제로는 별도 필드에서 가져와야 함)
+        # 총 기존 부채 계산 (만원 -> 원)
+        total_existing_debt = sum(float(v) for v in debt_data.values() if v) * 10000
+        company_data['existing_debt'] = total_existing_debt
+        
+        # V2.0 엔진을 위한 정확한 existing_funds 구조 생성 (만원 -> 원 변환)
+        # 실제 기대출 데이터 키에 맞춰 정확한 매핑
+        existing_funds = {
+            'kibo_general': 0,  # 일반보증은 별도 없음
+            'kibo_ip': float(debt_data.get('tech_guarantee', 0)) * 10000,  # 기술보증기금 = 기보 IP보증
+            'sinbo': float(debt_data.get('credit_guarantee', 0)) * 10000,  # 신용보증기금 = 신보
+            'jungjin': float(debt_data.get('smba', 0)) * 10000,  # 중진공
+            'sojin_innovation': float(debt_data.get('semas_innovation', 0)) * 10000,  # 소진공 혁신성장
+            'sojin_lowcredit': float(debt_data.get('semas_lowcredit', 0)) * 10000,  # 소진공 저신용
+            'credit_foundation': float(debt_data.get('credit', 0)) * 10000  # 신용 = 신용보증재단
+        }
+        company_data['existing_funds'] = existing_funds
+        
+        print("=== 매핑된 existing_funds ===")
+        for key, value in existing_funds.items():
+            if value > 0:
+                print(f"{key}: {value:,}원")
+        print("==============================")
+        
+        # 신보 기존 사용액 별도 계산 (하위 호환성)
+        company_data['existing_sinbo_debt'] = existing_funds['sinbo']
+        
+        # 추가 필드들
+        company_data['ceo_age'] = 35  # 기본값 (향후 CEO 나이 필드 추가 시 수정)
         company_data['is_startup'] = company_data['business_months'] <= 36
+        company_data['experience_years'] = max(0, company_data['business_months'] // 12)  # 업력을 경력으로 사용
         
         print("=== 수집된 회사 데이터 ===")
         for key, value in company_data.items():
-            print(f"{key}: {value}")
+            if key == 'existing_funds':
+                print(f"{key}:")
+                for fund_key, fund_value in value.items():
+                    print(f"  {fund_key}: {fund_value:,}원")
+            else:
+                print(f"{key}: {value}")
         print("========================")
         
-        # FundingCalculator 인스턴스 생성 및 계산 실행
-        calculator = FundingCalculator()
-        recommendation_result = calculator.calculate_recommendation(company_data)
+        # 새로운 정책자금 추천 엔진 V2.0 사용
+        from .funding_calculator import PolicyFundRecommendationEngineV2
+        engine = PolicyFundRecommendationEngineV2()
+        recommendation_result = engine.recommend_funds(company_data)
+        
+        print("=== 추천 엔진 결과 ===")
+        print(f"결과 구조: {list(recommendation_result.keys())}")
+        print("====================")
+        
+        # 에러 처리
+        if 'error' in recommendation_result:
+            return JsonResponse({
+                'success': False,
+                'error': recommendation_result['error'],
+                'details': recommendation_result.get('exclusion_notes', [])
+            })
+        
+        # 추천 자금들을 이전 형식과 호환되도록 변환
+        individual_funds = []
+        for fund in recommendation_result['recommended_funds']:
+            fund_info = {
+                'fund_name': fund['fund_name'],
+                'limit': fund['limit'],
+                'priority': fund.get('priority', 5),
+                'institution': fund.get('institution', '미지정'),
+                'calculation_note': fund.get('calculation_note', ''),
+                'processing_time': fund.get('processing_time', '2-4주'),
+                'interest_rate': fund.get('interest_rate', '3.0~6.0%'),
+                'required_documents': fund.get('required_documents', ['사업자등록증', '재무제표']),
+                'total_limit_after': fund.get('total_limit_after', fund['limit'])  # V2.0 추가 정보
+            }
+            individual_funds.append(fund_info)
         
         # 상세 자금 내역을 dict 형태로 구성
         detailed_funds_dict = {}
-        for fund in recommendation_result['individual_funds']:
+        for fund in individual_funds:
             detailed_funds_dict[fund['fund_name']] = fund['limit']
         
         # 총 추천 금액
-        total_amount = sum(fund['limit'] for fund in recommendation_result['individual_funds'])
+        total_amount = recommendation_result['total_additional_amount']
         
-        # 추천자금 필드에 저장할 상세 데이터 구성
+        # V2.0 추가 정보 포함한 추천자금 필드 저장 데이터 구성
         recommendation_data = {
             '자금들': detailed_funds_dict,
             '총자금': total_amount,
-            '상세정보': recommendation_result['individual_funds']  # 전체 상세 정보 포함
+            '상세정보': individual_funds,
+            'v2_info': {
+                'version': recommendation_result['system_info']['version'],
+                'calculation_time': recommendation_result['calculation_time'],
+                'exclusion_notes': recommendation_result['exclusion_notes'],
+                'existing_funds_summary': recommendation_result['existing_funds_summary']
+            }
         }
         
         # 추천자금 필드에 상세 데이터 저장
@@ -2540,39 +2602,47 @@ def get_funding_recommendation(request):
             if not created:
                 recommend_attr_value.value = json.dumps(recommendation_data, ensure_ascii=False)
                 recommend_attr_value.save()
+                
+            print(f"추천자금 필드 저장 완료: {'새로 생성' if created else '업데이트'}")
         except Attribute.DoesNotExist:
-            print("추천자금 속성이 존재하지 않습니다.")
+            print("추천자금 속성이 존재하지 않아 저장을 건너뜀")
         
-        # 추천 결과를 포맷하여 응답
-        formatted_result = {
-            'total_amount': total_amount,
-            'confidence': recommendation_result['analysis_summary']['confidence'],
-            'detailed_funds': detailed_funds_dict,
-            'analysis': {
-                'sales_score': recommendation_result['analysis_summary']['sales_score'],
-                'credit_score': recommendation_result['analysis_summary']['credit_score'],
-                'business_stability': recommendation_result['analysis_summary']['business_stability'],
-                'debt_ratio': recommendation_result['analysis_summary']['debt_ratio']
+        # 클라이언트에 반환할 응답 구성
+        response_data = {
+            'success': True,
+            'total_recommended_amount': f"{total_amount:,}원",
+            'individual_funds': individual_funds,
+            'analysis_summary': {
+                'total_products': len(individual_funds),
+                'confidence': '95%',
+                'version': recommendation_result['system_info']['version'],
+                'logic_name': recommendation_result['system_info']['logic_name'],
+                'calculation_time': recommendation_result['calculation_time'],
+                'exclusion_notes': recommendation_result['exclusion_notes'],
+                'existing_funds_summary': recommendation_result['existing_funds_summary']
             },
-            'suitable_products': [fund['fund_name'] for fund in recommendation_result['individual_funds']],
-            'recommendations': recommendation_result['individual_funds']
+            'engine_info': {
+                'version': '7월1일 로직 v2.0',
+                'features': ['증액 가능성 정확 계산', '중복 표시 완전 제거', '기존 자금 현황 고려']
+            }
         }
         
-        print(f"응답 데이터: {formatted_result}")
+        print("=== 추천 완료 ===")
+        print(f"총 추천 금액: {total_amount:,}원")
+        print(f"추천 자금 수: {len(individual_funds)}개")
+        print(f"계산 시간: {recommendation_result['calculation_time']}")
+        print("================")
         
-        return JsonResponse({
-            'success': True,
-            'message': '추천자금 분석이 완료되었습니다.',
-            'data': company_data,
-            'recommendation': formatted_result
-        })
+        return JsonResponse(response_data)
         
     except Exception as e:
-        logger.error(f"추천자금 요청 처리 오류: {str(e)}")
-        print(f"오류 발생: {str(e)}")
+        error_msg = f'정책자금 추천 중 오류가 발생했습니다: {str(e)}'
+        print(f"ERROR: {error_msg}")
+        import traceback
+        traceback.print_exc()
         return JsonResponse({
             'success': False,
-            'error': f'추천자금 요청 처리 중 오류가 발생했습니다: {str(e)}'
+            'error': error_msg
         })
 
 

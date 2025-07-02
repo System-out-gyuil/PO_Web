@@ -3,26 +3,104 @@ function bindKanbanSortable() {
       new Sortable(col, {
           group: 'kanban',
           animation: 150,
+          onStart: function(evt) {
+              // 드래그 시작 시 시각적 피드백
+              evt.item.style.opacity = '0.6';
+          },
+          onEnd: function(evt) {
+              // 드래그 종료 시 원래 상태로 복원
+              evt.item.style.opacity = '1';
+          },
           onAdd: function(evt){
               const entryId = evt.item.getAttribute('data-entry-id');
               const newStatusId = col.parentElement.getAttribute('data-status-id');
               const currentKanbanAttr = col.parentElement.getAttribute('data-attr-name') || window.SELECTED_KANBAN_ATTR;
               
+              console.log(`칸반보드 드래그앤드롭: 항목 ${entryId}을 ${currentKanbanAttr} = ${newStatusId}로 변경`);
+              
+              // 로딩 상태 표시
+              evt.item.style.border = '2px solid #007bff';
+              evt.item.style.background = '#f8f9fa';
+              
               fetch('/diary/update_row_field/', {
                   method: 'POST',
-                  headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                  headers: {
+                      'Content-Type': 'application/x-www-form-urlencoded',
+                      'X-CSRFToken': getCsrfToken()
+                  },
                   body: 'id='+entryId+'&field='+encodeURIComponent(currentKanbanAttr)+'&value='+encodeURIComponent(newStatusId)
-              }).then(()=>{ 
-                  refreshKanban(); 
-                  refreshTable(); 
-                  // 캘린더도 새로고침 (영업진행 변경 시에도 F/U 일정이 관련될 수 있음)
-                  if (window.calendar) {
-                      window.calendar.refetchEvents();
+              })
+              .then(response => {
+                  if (!response.ok) {
+                      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                   }
+                  return response.json();
+              })
+              .then(data => {
+                  if (data.success) {
+                      console.log('칸반보드 드래그앤드롭 업데이트 성공');
+                      
+                      // 성공 상태 표시
+                      evt.item.style.border = '2px solid #28a745';
+                      evt.item.style.background = '#d4edda';
+                      
+                      // 실시간으로 테이블 새로고침
+                      if (typeof refreshTable === 'function') {
+                          refreshTable();
+                      }
+                      
+                      // 열린 상세보기 모달이 있다면 해당 행의 드롭다운 값도 업데이트
+                      const detailModal = document.getElementById('detailModal');
+                      if (detailModal && detailModal.style.display !== 'none' && window.currentDetailRowId == entryId) {
+                          console.log('열린 모달의 드롭다운 값을 업데이트합니다');
+                          // 모달의 해당 필드 버튼 텍스트 업데이트
+                          updateModalDropdownValue(currentKanbanAttr, newStatusId);
+                      }
+                      
+                      // F/U 일정 관련 칸반보드인 경우 캘린더도 새로고침
+                      if (currentKanbanAttr === 'F/U 일정' && window.calendar) {
+                          window.calendar.refetchEvents();
+                      }
+                      
+                      // 1초 후 원래 스타일로 복원
+                      setTimeout(() => {
+                          evt.item.style.border = '';
+                          evt.item.style.background = '';
+                      }, 1000);
+                      
+                  } else {
+                      throw new Error(data.error || '업데이트 실패');
+                  }
+              })
+              .catch(error => {
+                  console.error('칸반보드 드래그앤드롭 오류:', error);
+                  
+                  // 오류 상태 표시
+                  evt.item.style.border = '2px solid #dc3545';
+                  evt.item.style.background = '#f8d7da';
+                  
+                  // 오류 알림
+                  if (typeof showNotification === 'function') {
+                      showNotification('드래그앤드롭 업데이트에 실패했습니다: ' + error.message, 'error');
+                  } else {
+                      alert('드래그앤드롭 업데이트에 실패했습니다: ' + error.message);
+                  }
+                  
+                  // 2초 후 원래 스타일로 복원
+                  setTimeout(() => {
+                      evt.item.style.border = '';
+                      evt.item.style.background = '';
+                  }, 2000);
+                  
+                  // 실패 시 칸반보드 새로고침으로 원래 상태로 복원
+                  setTimeout(() => {
+                      refreshKanban();
+                  }, 1000);
               });
           }
       });
   });
+  
   // 칸반 카드 클릭 시 상세 모달
   document.querySelectorAll('.board-card').forEach(function(card){
       card.onclick = function(e) {
@@ -38,6 +116,7 @@ function bindKanbanSortable() {
           }
       };
   });
+  
   // 새 카드 추가 버튼 이벤트
   document.querySelectorAll('.add-card-btn').forEach(function(btn){
       btn.onclick = function() {
@@ -148,4 +227,46 @@ function updateKanbanBoard(attrName) {
 function refreshKanban() {
   const currentAttr = document.getElementById('kanbanAttributeSelect').value || window.SELECTED_KANBAN_ATTR;
   updateKanbanBoard(currentAttr);
+}
+
+// 모달의 드롭다운 값을 업데이트하는 헬퍼 함수
+function updateModalDropdownValue(fieldName, newValue) {
+    // 드롭다운 옵션 목록을 가져와서 새 값에 해당하는 텍스트 찾기
+    fetch('/diary/dropdown_options/', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'field=' + encodeURIComponent(fieldName)
+    })
+    .then(r => r.json())
+    .then(function(data) {
+        if (data.success && data.options) {
+            const option = data.options.find(opt => opt.id == newValue);
+            if (option) {
+                // 모달 내의 해당 필드 버튼 찾기
+                const modal = document.getElementById('detailModal');
+                if (modal) {
+                    const buttons = modal.querySelectorAll('button.add-btn');
+                    buttons.forEach(button => {
+                        const onclickAttr = button.getAttribute('onclick');
+                        if (onclickAttr && onclickAttr.includes(`'${fieldName}'`)) {
+                            button.textContent = option.name;
+                            console.log(`모달 드롭다운 업데이트: ${fieldName} = ${option.name}`);
+                        }
+                    });
+                }
+            }
+        }
+    })
+    .catch(error => {
+        console.error('드롭다운 옵션 조회 오류:', error);
+    });
+}
+
+// CSRF 토큰 가져오기 함수
+function getCsrfToken() {
+    const cookieValue = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('csrftoken='))
+        ?.split('=')[1];
+    return cookieValue || '';
 }
