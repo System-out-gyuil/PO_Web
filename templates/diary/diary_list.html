@@ -607,10 +607,11 @@ document.addEventListener('DOMContentLoaded', function() {
         // 맨 앞에 drag-cell td 추가
         const dragTd = document.createElement('td');
         dragTd.className = 'drag-cell';
+
         const dragHandle = document.createElement('span');
         dragHandle.className = 'drag-handle';
         dragHandle.textContent = '⋮⋮⋮';
-        dragTd.appendChild(dragHandle);
+        {% comment %} dragTd.appendChild(dragHandle); {% endcomment %}
         tr.appendChild(dragTd);
         
         const fields = window.ATTR_FIELDS.map(attr => attr['name']);
@@ -621,23 +622,27 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // 타입 정보도 활용 가능
             const attrObj = window.ATTR_FIELDS.find(a => a['name'] === field);
+            console.log("attrObj", attrObj);
             
             let type = 'text'; // 기본값
-            if (attrObj && attrObj.type) {
-                type = attrObj.type;
+            if (attrObj && attrObj.attributeType__name) {
+                type = attrObj.attributeType__name;
+                console.log(1123, type);
             }
             
             td.setAttribute('data-type', type);
             
             if(field === '이름') {
                 // 이름 필드는 특별한 구조
-                td.innerHTML = '<div class="name-text">새 항목</div><div class="more-btn-wrapper"><div class="more-btn" style="cursor:pointer;">⋯</div></div>';
-                td.style.display = 'flex';
-                td.style.flexDirection = 'row';
-                td.style.alignItems = 'center';
-                td.style.justifyContent = 'flex-start';
+                td.innerHTML = '<div class="new-wrap" style="display:flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:4px;position:relative;"><div class="name-text">새 항목</div><div class="more-btn-wrapper"><div class="more-btn" style="cursor:pointer;">⋯</div></div></div>';
                 td.style.gap = '4px';
                 td.style.position = 'relative';
+            } else if(field === '기대출') {
+                // 기대출 필드는 특별한 구조
+                td.innerHTML = '<div class="debt-summary" onclick="openDebtDetailsModal(\'temp_' + Date.now() + '\')"><span class="empty-debt">기대출 없음</span></div>';
+            } else if(type === 'file') {
+                // 파일 타입 필드
+                td.innerHTML = '<span style="color: #6c757d; font-size: 12px;">파일 없음</span>';
             } else if(['ta_date','meeting_date','fu_date'].includes(field) || type === 'datetime') {
                 td.innerText = '';
             } else if(type === 'dropdown') {
@@ -660,8 +665,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         entryTbody.appendChild(tr);
         
-        // 새로 추가된 행에 특별한 이벤트 바인딩 (Attribute 시스템 사용)
-        bindNewRowAttributeEvents(tr);
+        // 새로 추가된 행에 기존 행과 동일한 이벤트 바인딩 적용
+        bindTableCellEventsForRow(tr);
         
         // 이름 필드에 포커스하여 편집 모드로 진입
         const nameCell = tr.querySelector('td[data-field="이름"]');
@@ -674,378 +679,379 @@ document.addEventListener('DOMContentLoaded', function() {
         isAdding = false;
     };
 
-    // 새로 추가된 행에 이벤트 바인딩하는 함수
-    function bindNewRowEvents(tr) {
+    // 특정 행에만 테이블 셀 이벤트를 바인딩하는 함수
+    function bindTableCellEventsForRow(tr) {
         tr.querySelectorAll('td[data-field]').forEach(function(td) {
-            const field = td.getAttribute('data-field');
-            const type = td.getAttribute('data-type');
+            const type = td.getAttribute('data-field');
+            const dataType = td.getAttribute('data-type');
             
-            // datetime 타입 필드들 - 기존 행과 동일한 로직
-            if (type === 'datetime') {
+            console.log('새 행 테이블 셀 이벤트 바인딩:', {field: type, dataType: dataType});
+            
+            if (dataType === 'datetime') {
                 const input = td.querySelector('input[type="date"]');
                 if (input) {
                     input.onchange = function() {
+                        const id = td.parentElement.getAttribute('data-id');
                         const newValue = input.value;
-                        // 새 행이므로 저장은 나중에 일괄 처리
+                        // 새 행인 경우 saveNewRowField 사용
+                        if (id && id.startsWith('temp_')) {
+                            saveNewRowField(td.parentElement, type, newValue);
+                        } else {
+                            updateRowField(id, type, newValue);
+                        }
+                    };
+                } else {
+                    // input이 없는 경우 클릭 시 생성
+                    td.onclick = function() {
+                        if (td.querySelector('input')) return;
+                        td.style.width = td.offsetWidth + 'px';
+                        
+                        const oldValue = td.innerText.trim();
+                        const id = td.parentElement.getAttribute('data-id');
+                        
+                        const input = document.createElement('input');
+                        input.type = 'date';
+                        input.value = oldValue ? oldValue.slice(0,10) : '';
+                        input.className = 'table-edit-input';
+                        input.style.position = 'absolute';
+                        input.style.left = '0';
+                        input.style.top = '0';
+                        input.style.width = 'max-content';
+                        input.style.minWidth = '100%';
+                        input.style.background = '#fffbe6';
+                        input.style.zIndex = '10';
+                        input.style.border = 'none';
+                        input.style.fontSize = 'inherit';
+                        input.style.fontFamily = 'inherit';
+                        input.style.lineHeight = 'inherit';
+                        input.style.padding = '0';
+                        input.style.margin = '0';
+                        
+                        td.appendChild(input);
+                        input.focus();
+                        
+                        input.onblur = function() {
+                            const newValue = input.value;
+                            td.innerText = newValue;
+                            td.style.width = '';
+                            
+                            // 새 행인 경우 saveNewRowField 사용
+                            if (id && id.startsWith('temp_')) {
+                                saveNewRowField(td.parentElement, type, newValue);
+                            } else {
+                                updateRowField(id, type, newValue);
+                            }
+                        };
+                        
+                        input.onkeydown = function(e) {
+                            if (e.key === 'Enter') input.blur();
+                            if (e.key === 'Escape') {
+                                td.innerText = oldValue;
+                                td.style.width = '';
+                            }
+                        };
                     };
                 }
-            }
-            // dropdown 타입이나 특수 지역 필드들
-            else if(type === 'dropdown' || field === '지역' || field === '상세지역') {
-                console.log(`필드 "${field}"에 드롭다운 이벤트 바인딩, type: ${type}`);
+            } 
+            // 드롭다운 타입이거나 지역/상세지역 필드인 경우
+            else if(dataType === 'dropdown' || dataType === 'region' || dataType === 'region_detail' || type === '지역' || type === '상세지역') {
+                console.log('새 행 드롭다운 필드 감지:', {field: type, dataType: dataType});
                 td.style.cursor = 'pointer';
                 td.onclick = function(e) {
-                    console.log(`드롭다운 클릭됨 - 필드: ${field}, type: ${type}`);
+                    console.log('새 행 드롭다운 클릭됨:', {field: type, dataType: dataType});
                     e.stopPropagation();
-                    let dropdownType = '';
-                    if(type === 'dropdown') {
-                        // 필드명을 그대로 사용 (영어 매핑 제거)
-                        dropdownType = field;
-                        console.log(`dropdown 타입: ${field}`);
-                    } else if(field === '지역') {
-                        dropdownType = 'region';
-                        console.log('지역 드롭다운으로 설정');
-                    } else if(field === '상세지역') {
-                        dropdownType = 'region_detail';
-                        console.log('상세지역 드롭다운으로 설정');
-                    }
                     
-                    if(dropdownType) {
-                        // 이름 필드인 경우 .name-text에서 값 추출, 다른 필드는 td.innerText 사용
-                        const currentValue = (field === '이름') ? 
-                            (td.querySelector('.name-text')?.innerText || '') : 
-                            (td.innerText || '');
-                        const currentSubregion = dropdownType === 'region_detail' ? 
-                            tr.querySelector('td[data-field="상세지역"]').innerText : '';
-                        console.log(`드롭다운 열기 시도 - dropdownType: ${dropdownType}, currentValue: ${currentValue}`);
-                        // 새 행에서는 특별한 드롭다운 처리
-                        openNewRowDropdown(td, dropdownType, currentValue, currentSubregion, tr);
-                    } else {
-                        console.log('dropdownType이 설정되지 않았음');
+                    const id = td.parentElement.getAttribute('data-id');
+                    
+                    if(dataType === 'region' || type === '지역') {
+                        console.log('새 행 지역 드롭다운 처리');
+                        const currentValue = (type === '이름') ? 
+                            (td.querySelector('.name-text')?.innerText.trim() || '') : 
+                            td.innerText.trim();
+                        const regionValue = td.parentElement.querySelector('td[data-field="지역"]');
+                        const regionText = regionValue ? 
+                            (regionValue.getAttribute('data-field') === '이름' ? 
+                                (regionValue.querySelector('.name-text')?.innerText.trim() || '') : 
+                                regionValue.innerText.trim()) : '';
+                        openDropdown(td, 'region', id, currentValue, regionText);
+                    } else if(dataType === 'region_detail' || type === '상세지역') {
+                        console.log('새 행 상세지역 드롭다운 처리');
+                        const regionTd = td.parentElement.querySelector('td[data-field="지역"]');
+                        const regionValue = regionTd ? 
+                            (regionTd.getAttribute('data-field') === '이름' ? 
+                                (regionTd.querySelector('.name-text')?.innerText.trim() || '') : 
+                                regionTd.innerText.trim()) : '';
+                        const currentValue = (type === '이름') ? 
+                            (td.querySelector('.name-text')?.innerText.trim() || '') : 
+                            td.innerText.trim();
+                        console.log('새 행 상세지역 드롭다운 파라미터:', {regionValue, currentValue, id});
+                        openDropdown(td, 'region_detail', id, regionValue, currentValue);
+                    } else if(dataType === 'dropdown') {
+                        console.log('새 행 일반 드롭다운 처리');
+                        openDropdown(td, type, id, td.getAttribute('data-value'));
                     }
                 };
-            }
-            // 이름 필드 특별 처리
-            else if(field === '이름') {
+            } 
+            // 파일 타입 필드 처리
+            else if(dataType === 'file') {
+                console.log('새 행 파일 필드 감지:', {field: type, dataType: dataType});
+                td.style.cursor = 'pointer';
                 td.onclick = function(e) {
                     e.stopPropagation();
-                    if(e.target.classList.contains('more-btn')) return; // more 버튼 클릭은 별도 처리
+                    const id = td.parentElement.getAttribute('data-id');
                     
-                    const nameTextDiv = td.querySelector('.name-text');
-                    const oldValue = nameTextDiv.innerText;
+                    // 파일 업로드 다이얼로그 열기
+                    const fileInput = document.createElement('input');
+                    fileInput.type = 'file';
+                    fileInput.accept = '*/*';
+                    fileInput.style.display = 'none';
                     
-                    const input = document.createElement('input');
-                    input.type = 'text';
-                    input.value = oldValue;
-                    input.className = 'table-edit-input';
-                    input.style.position = 'absolute';
-                    input.style.left = '0';
-                    input.style.top = '0';
-                    input.style.width = 'max-content';
-                    input.style.minWidth = '100%';
-                    input.style.background = '#fffbe6';
-                    input.style.zIndex = '10';
-                    input.style.border = 'none';
-                    input.style.fontSize = 'inherit';
-                    input.style.fontFamily = 'inherit';
-                    input.style.lineHeight = 'inherit';
-                    input.style.padding = '0';
-                    input.style.margin = '0';
-                    
-                    td.appendChild(input);
-                    input.focus();
-                    input.select();
-                    
-                    function restoreCell(newValue) {
-                        nameTextDiv.innerText = newValue;
-                        if(input.parentNode) input.parentNode.removeChild(input);
-                    }
-                    
-                    input.onblur = function() {
-                        const newValue = input.value;
-                        restoreCell(newValue);
-                    };
-                    
-                    input.onkeydown = function(e) {
-                        if (e.key === 'Enter') input.blur();
-                        if (e.key === 'Escape') restoreCell(oldValue);
-                    };
-                };
-                
-                // 새로 추가된 행의 more 버튼 이벤트 (저장 후 사용 가능)
-                const moreBtn = td.querySelector('.more-btn');
-                if(moreBtn) {
-                    moreBtn.onclick = function(e) {
-                        e.stopPropagation();
-                        const tr = td.closest('tr');
-                        const id = tr.getAttribute('data-id');
-                        if(!id) { 
-                            alert('저장 후 사용 가능합니다.'); 
-                            return; 
+                    fileInput.onchange = function() {
+                        if (this.files && this.files[0]) {
+                            // 새 행인 경우 임시 저장 후 파일 업로드
+                            if (id && id.startsWith('temp_')) {
+                                // 먼저 행을 저장하고 파일 업로드
+                                saveNewRowField(td.parentElement, type, '파일 업로드 중...');
+                                // 파일 업로드 처리는 저장 완료 후 진행
+                                setTimeout(() => {
+                                    handleFileUpload(id, type, this);
+                                }, 1000);
+                            } else {
+                                handleFileUpload(id, type, this);
+                            }
                         }
-                        fetch('/diary/update/?id='+id)
-                          .then(r => r.text())
-                          .then(function(text){
-                              try {
-                                  const data = JSON.parse(text);
-                                  if(data.success) showDetailModal(data.entry);
-                                  else alert('상세정보 불러오기 실패: '+(data.error||''));
-                              } catch(e) {
-                                  alert('상세정보 불러오기 실패: JSON 파싱 오류');
-                                  console.error(e);
-                              }
-                          })
-                          .catch(function(err){
-                              alert('상세정보 불러오기 실패: 네트워크 오류\n' + err);
-                              console.error(err);
-                          });
-                    };
-                }
-            }
-            // 일반 텍스트 필드들
-            else {
-                td.onclick = function(e) {
-                    e.stopPropagation();
-                    const oldValue = td.innerText;
-                    
-                    let inputType = 'text';
-                    // 날짜 필드들은 date input 사용
-                    if (['TA','미팅','F/U 일정'].includes(field) || type === 'datetime') {
-                        inputType = 'date';
-                    }
-                    
-                    const input = document.createElement('input');
-                    input.type = inputType;
-                    input.value = (inputType==='date' && oldValue) ? oldValue.trim().slice(0,10) : oldValue.trim();
-                    input.className = 'table-edit-input';
-                    
-                    td.innerHTML = '';
-                    td.appendChild(input);
-                    input.focus();
-                    if(inputType === 'text') input.select();
-                    
-                    input.onblur = function() {
-                        const newValue = input.value;
-                        td.innerText = newValue;
                     };
                     
-                    input.onkeydown = function(e) {
-                        if (e.key === 'Enter') input.blur();
-                        if (e.key === 'Escape') { td.innerText = oldValue; }
-                    };
+                    document.body.appendChild(fileInput);
+                    fileInput.click();
+                    document.body.removeChild(fileInput);
                 };
             }
-        });
-    }
-
-    // 새 행용 드롭다운 함수 (ID 없이 처리)
-    function openNewRowDropdown(td, type, currentValue, currentSubregion, tr) {
-        console.log('openNewRowDropdown 호출됨');
-        console.log('파라미터:', {type, currentValue, currentSubregion});
-        console.log('DROPDOWN_OPTIONS 확인:', window.DROPDOWN_OPTIONS);
-        
-        closeDropdown();
-        dropdown = document.createElement('div');
-        dropdown.className = 'dropdown-edit';
-        dropdown.style.top = (td.getBoundingClientRect().top + window.scrollY + td.offsetHeight) + 'px';
-        dropdown.style.left = (td.getBoundingClientRect().left + window.scrollX) + 'px';
-        
-        if(type === 'region') {
-            // 지역 드롭다운
-            var regionNames = ['서울','경기','인천','대구','부산','광주','대전','울산','세종','강원','충북','충남','전북','전남'];
-            let selectedRegion = currentValue || '서울';
-            let html = '<div><b>지역 선택</b><ul style="margin:8px 0 12px 0;max-height:120px;overflow-y:auto;">';
-            regionNames.forEach(function(region) {
-                html += '<li style="margin-bottom:2px;"><span data-region="'+region+'" style="cursor:pointer;'+(region==selectedRegion?'font-weight:bold;color:#007bff;':'')+'">'+region+'</span></li>';
-            });
-            html += '</ul></div>';
-            dropdown.innerHTML = html;
-            document.body.appendChild(dropdown);
-            
-            dropdown.querySelectorAll('span[data-region]').forEach(function(span) {
-                span.onclick = function() {
-                    selectedRegion = this.getAttribute('data-region');
-                    td.innerText = selectedRegion;
-                    td.setAttribute('data-value', selectedRegion);
-                    // 상세지역도 업데이트
-                    var subTd = tr.querySelector('td[data-field="상세지역"]');
-                    if(subTd) {
-                        var regionMap = {
-                            '서울': ['관악구','금천구','강남구','강서구','강동구','강북구','광진구','구로구','노원구','도봉구','동대문구','동작구','마포구','서대문구','서초구','성동구','성북구','송파구','양천구','영등포구','용산구','은평구','종로구','중구','중랑구'],
-                            '경기': ['수원시','고양시','성남시','용인시','부천시','안산시','안양시','남양주시','화성시','평택시','의정부시','시흥시','파주시','광명시','김포시','군포시','광주시','오산시','이천시','안성시','의왕시','하남시','여주시','양평군','동두천시','과천시','가평군','연천군']
+            // 기대출 타입 필드 처리
+            else if(type === '기대출') {
+                console.log('새 행 기대출 필드 감지:', {field: type, dataType: dataType});
+                // 기대출 필드는 이미 HTML에 onclick 이벤트가 포함되어 있음
+                // 추가 이벤트 처리가 필요하면 여기에 추가
+            } else {
+                td.onclick = function() {
+                    if (td.querySelector('input')) return;
+                    td.style.width = td.offsetWidth + 'px';
+                    if(type === '이름') {
+                        const nameDiv = td.querySelector('.name-text');
+                        if(!nameDiv) return;
+                        const oldValue = nameDiv.innerText;
+                        const id = td.parentElement.getAttribute('data-id');
+                        const input = document.createElement('input');
+                        input.type = 'text';
+                        input.value = oldValue;
+                        input.className = 'table-edit-input';
+                        nameDiv.innerHTML = '';
+                        nameDiv.appendChild(input);
+                        // ...버튼 숨김
+                        const moreBtnWrapper = td.querySelector('.more-btn-wrapper');
+                        if(moreBtnWrapper) moreBtnWrapper.style.visibility = 'hidden';
+                        input.focus();
+                        function restoreCell(value) {
+                            td.innerHTML = `<div class="name-text">${value}</div><div class="more-btn-wrapper"><div class="more-btn" style="cursor:pointer;">⋯</div></div>`;
+                            // ...버튼 이벤트 재바인딩
+                            const newMoreBtn = td.querySelector('.more-btn');
+                            if(newMoreBtn) {
+                                newMoreBtn.onclick = function(e){
+                                    e.stopPropagation();
+                                    const tr = td.closest('tr');
+                                    const id = tr.getAttribute('data-id');
+                                    if(!id || id.startsWith('temp_')) { 
+                                        alert('저장 후 사용 가능합니다.'); 
+                                        return; 
+                                    }
+                                    // 새로운 Row 시스템의 get_row_details 엔드포인트 사용
+                                    fetch('/diary/get_row_details/'+id+'/')
+                                      .then(r => r.json())
+                                      .then(function(data){
+                                          if(data.success) showDetailModal(data.row_data, data.row_id);
+                                          else alert('상세정보 불러오기 실패: '+(data.error||''));
+                                      })
+                                      .catch(function(err){
+                                          alert('상세정보 불러오기 실패: 네트워크 오류\n' + err);
+                                          console.error(err);
+                                      });
+                                };
+                            }
+                            // 편집 종료 시 td width 해제
+                            td.style.width = '';
+                        }
+                        input.onblur = function() {
+                            const newValue = input.value;
+                            restoreCell(newValue);
+                            // 새 행인 경우 saveNewRowField 사용
+                            if (id && id.startsWith('temp_')) {
+                                saveNewRowField(td.parentElement, '이름', newValue);
+                            } else {
+                                updateRowField(id, '이름', newValue);
+                            }
                         };
-                        var firstSubregion = (regionMap[selectedRegion] || [])[0] || '';
-                        subTd.innerText = firstSubregion;
+                        input.onkeydown = function(e) {
+                            if (e.key === 'Enter') input.blur();
+                            if (e.key === 'Escape') restoreCell(oldValue);
+                        };
+                    } else {
+                        // 일반 텍스트 필드들 처리
+                        const oldValue = (type === '이름') ? 
+                            (td.querySelector('.name-text')?.innerText || '') : 
+                            td.innerText;
+                        const id = td.parentElement.getAttribute('data-id');
+                        
+                        let inputType = 'text';
+                        // 날짜 필드들은 date input 사용
+                        if (['TA','미팅','F/U 일정'].includes(type) || dataType === 'datetime') {
+                            inputType = 'date';
+                        }
+                        
+                        const input = document.createElement('input');
+                        input.type = inputType;
+                        input.value = (inputType==='date' && oldValue) ? oldValue.trim().slice(0,10) : oldValue.trim();
+                        input.className = 'table-edit-input';
+                        input.style.position = 'absolute';
+                        input.style.left = '0';
+                        input.style.top = '0';
+                        input.style.width = 'max-content';
+                        input.style.minWidth = '100%';
+                        input.style.background = '#fffbe6';
+                        input.style.zIndex = '10';
+                        input.style.border = 'none';
+                        input.style.fontSize = 'inherit';
+                        input.style.fontFamily = 'inherit';
+                        input.style.lineHeight = 'inherit';
+                        input.style.padding = '0';
+                        input.style.margin = '0';
+                        
+                        td.appendChild(input);
+                        input.focus();
+                        if(inputType === 'text') input.select();
+                        
+                        input.onblur = function() {
+                            const newValue = input.value;
+                            // 이름 필드인 경우 .name-text 업데이트, 다른 필드는 td.innerText 업데이트
+                            if(type === '이름') {
+                                const nameTextDiv = td.querySelector('.name-text');
+                                if(nameTextDiv) nameTextDiv.innerText = newValue;
+                                if(input.parentNode) input.parentNode.removeChild(input);
+                            } else {
+                                td.innerText = newValue;
+                            }
+                            // 편집 종료 시 td width 해제
+                            td.style.width = '';
+                            
+                            // 새 행인 경우 saveNewRowField 사용
+                            if (id && id.startsWith('temp_')) {
+                                saveNewRowField(td.parentElement, type, newValue);
+                            } else {
+                                updateRowField(id, type, newValue);
+                            }
+                        };
+                        
+                        input.onkeydown = function(e) {
+                            if (e.key === 'Enter') input.blur();
+                            if (e.key === 'Escape') { 
+                                // 이름 필드인 경우 .name-text 복원, 다른 필드는 td.innerText 복원
+                                if(type === '이름') {
+                                    const nameTextDiv = td.querySelector('.name-text');
+                                    if(nameTextDiv) nameTextDiv.innerText = oldValue;
+                                    if(input.parentNode) input.parentNode.removeChild(input);
+                                } else {
+                                    td.innerText = oldValue;
+                                }
+                                td.style.width = '';
+                            }
+                        };
                     }
-                    closeDropdown();
-                    // 지역 값 저장
-                    saveNewRowField(tr, '지역', selectedRegion);
                 };
-            });
-        } else if(type === 'region_detail') {
-            // 상세지역 드롭다운
-            var regionMap = {
-                '서울': ['관악구','금천구','강남구','강서구','강동구','강북구','광진구','구로구','노원구','도봉구','동대문구','동작구','마포구','서대문구','서초구','성동구','성북구','송파구','양천구','영등포구','용산구','은평구','종로구','중구','중랑구'],
-                '경기': ['수원시','고양시','성남시','용인시','부천시','안산시','안양시','남양주시','화성시','평택시','의정부시','시흥시','파주시','광명시','김포시','군포시','광주시','오산시','이천시','안성시','의왕시','하남시','여주시','양평군','동두천시','과천시','가평군','연천군']
-            };
-            var currentRegion = tr.querySelector('td[data-field="지역"]').innerText.trim();
-            var subregions = regionMap[currentRegion] || [];
-            let selectedSubregion = currentSubregion || '';
-            let html = '<div><b>상세지역 선택</b><ul style="margin:8px 0 12px 0;max-height:120px;overflow-y:auto;">';
-            subregions.forEach(function(sub) {
-                html += '<li style="margin-bottom:2px;"><span data-subregion="'+sub+'" style="cursor:pointer;'+(sub==selectedSubregion?'font-weight:bold;color:#007bff;':'')+'">'+sub+'</span></li>';
-            });
-            html += '</ul></div>';
-            dropdown.innerHTML = html;
-            document.body.appendChild(dropdown);
-            
-            dropdown.querySelectorAll('span[data-subregion]').forEach(function(span) {
-                span.onclick = function() {
-                    selectedSubregion = this.getAttribute('data-subregion');
-                    td.innerText = selectedSubregion;
-                    closeDropdown();
-                    // 상세지역 값 저장
-                    saveNewRowField(tr, '상세지역', selectedSubregion);
-                };
-            });
-        } else if(window.DROPDOWN_OPTIONS && window.DROPDOWN_OPTIONS[type]) {
-            // 일반 드롭다운 (구분, 영업진행, 가능성 등)
-            const options = window.DROPDOWN_OPTIONS[type];
-            let html = '<div><b>' + type + ' 선택</b><ul style="margin:8px 0 12px 0;max-height:120px;overflow-y:auto;">';
-            options.forEach(function(opt) {
-                html += `<li style="display:flex;align-items:center;gap:6px;">
-                    <span data-option-id="${opt.id}" style="cursor:pointer;background:${opt.color ? hexToRgba(opt.color, 0.18) : '#eee'};border-radius:4px;padding:2px 8px;min-width:60px;display:inline-block;">${opt.option}</span>
-                </li>`;
-            });
-            html += '</ul></div>';
-            dropdown.innerHTML = html;
-            document.body.appendChild(dropdown);
-            
-            // 옵션 선택
-            dropdown.querySelectorAll('span[data-option-id]').forEach(function(span){
-                span.onclick = function(){
-                    td.innerText = span.innerText;
-                    td.setAttribute('data-value', span.getAttribute('data-option-id'));
-                    td.style.background = span.style.background;
-                    closeDropdown();
-                    // 드롭다운 선택 시 서버에 업데이트
-                    saveNewRowField(tr, type, span.getAttribute('data-option-id'));
-                };
-            });
-        }
-        
-        // 외부 클릭 시 드롭다운 닫기
-        document.addEventListener('mousedown', function handler(e) {
-            if(dropdown && !dropdown.contains(e.target)) { 
-                closeDropdown(); 
-                document.removeEventListener('mousedown', handler); 
             }
         });
     }
 
-    // 메모 모달 관련 함수 리팩토링
-    function openMemoModal(entryId, title, date) {
-        const modal = document.getElementById('memoModal');
-        const modalTitle = document.getElementById('modalTitle');
-        const memoInput = document.getElementById('memoInput');
-        const memoPreview = document.getElementById('memoPreview');
-        const saveBtn = document.getElementById('saveMemoBtn');
-        const closeBtn = document.getElementById('closeMemoBtn');
-        let isEdit = false;
-        let currentMemo = '';
-        // 보기 모드로 전환
-        function setViewMode(mdText) {
-            isEdit = false;
-            memoInput.style.display = 'none';
-            saveBtn.style.display = 'none';
-            memoPreview.style.display = 'block';
-            memoPreview.innerHTML = marked.parse(mdText || '');
-            // 수정 버튼 추가
-            let editBtn = document.getElementById('editMemoBtn');
-            if (!editBtn) {
-                editBtn = document.createElement('button');
-                editBtn.id = 'editMemoBtn';
-                editBtn.textContent = '수정';
-                editBtn.style.marginLeft = '8px';
-                saveBtn.parentNode.insertBefore(editBtn, closeBtn);
-            }
-            editBtn.style.display = 'inline-block';
-            editBtn.onclick = function() {
-                setEditMode(currentMemo);
-            };
-        }
-        // 수정 모드로 전환
-        function setEditMode(mdText) {
-            isEdit = true;
-            memoInput.style.display = 'block';
-            saveBtn.style.display = 'inline-block';
-            memoPreview.style.display = 'block';
-            memoInput.value = mdText || '';
-            memoPreview.innerHTML = marked.parse(mdText || '');
-            let editBtn = document.getElementById('editMemoBtn');
-            if (editBtn) editBtn.style.display = 'none';
-            memoInput.oninput = function() {
-                memoPreview.innerHTML = marked.parse(memoInput.value || '');
-            };
-        }
-        // 저장
-        saveBtn.onclick = function() {
-            const newMemo = memoInput.value;
-            fetch('/fu_memo/' + entryId + '/', {
+    // 새로 추가된 행에 이벤트 바인딩하는 함수 (더 이상 사용하지 않음)
+    // function bindNewRowEvents(tr) { ... } - 제거됨
+
+    // 새 행용 드롭다운 함수 (더 이상 사용하지 않음)
+    // function openNewRowDropdown(td, type, currentValue, currentSubregion, tr) { ... } - 제거됨
+
+    // 새 행 필드 값 저장 함수
+    function saveNewRowField(tr, field, value) {
+        const currentId = tr.getAttribute('data-id');
+        console.log(`새 행 필드 저장: ${field} = ${value}, 현재 ID: ${currentId}`);
+        
+        // 임시 ID인 경우 (새 행 생성)
+        if (currentId && currentId.startsWith('temp_')) {
+            console.log('새 행 생성 중...');
+            fetch('/diary/create_new_row/', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                body: 'memo=' + encodeURIComponent(newMemo)
-            }).then(r => r.json()).then(function(resp) {
-                if (resp.success) {
-                    currentMemo = newMemo;
-                    setViewMode(currentMemo);
-                } else {
-                    alert('저장 실패: ' + (resp.error || ''));
+                body: 'field=' + encodeURIComponent(field) + '&value=' + encodeURIComponent(value)
+            }).then(function(response) {
+                console.log(`새 행 생성 응답 상태:`, response.status);
+                return response.json();
+            }).then(function(data) {
+                console.log(`새 행 생성 응답:`, data);
+                if (data.success && data.id) {
+                    // 임시 ID를 실제 ID로 변경
+                    tr.setAttribute('data-id', data.id);
+                    tr.removeAttribute('data-is-new');
+                    console.log(`새 행 ID 업데이트: ${currentId} -> ${data.id}`);
+                    
+                    // 현재 칸반보드에서 사용 중인 속성이 변경된 경우 칸반보드 새로고침
+                    const currentKanbanAttr = document.getElementById('kanbanAttributeSelect') ? 
+                        document.getElementById('kanbanAttributeSelect').value : 
+                        window.SELECTED_KANBAN_ATTR;
+                    
+                    if (field === currentKanbanAttr) {
+                        console.log('새 행 생성 시 칸반보드 속성이 변경되어 새로고침합니다:', field);
+                        refreshKanban();
+                    }
+                    
+                    // F/U 일정 필드인 경우 캘린더 새로고침
+                    if (field === 'F/U 일정' && window.calendar) {
+                        window.calendar.refetchEvents();
+                    }
                 }
+            }).catch(function(error) {
+                console.error(`새 행 생성 중 오류:`, error);
+                alert('새 행 생성 중 오류 발생: ' + error.message);
             });
-        };
-        closeBtn.onclick = function() {
-            modal.style.display = 'none';
-        };
-        // 최초 데이터 불러오기
-        fetch('/fu_memo/' + entryId + '/').then(r => r.json()).then(function(resp) {
-            if (resp.success) {
-                currentMemo = resp.memo || '';
-                modalTitle.textContent = (title || 'F/U 메모') + (date ? ' (' + date + ')' : '');
-                setViewMode(currentMemo);
-                modal.style.display = 'flex';
-            } else {
-                alert('메모 불러오기 실패: ' + (resp.error || ''));
-            }
-        });
-    }
-    // 상세 모달 외부 클릭 시 닫기
-    document.getElementById('detailModal').addEventListener('mousedown', function(e) {
-        if (e.target === this) {
-            closeDetailModal();
         }
-    });
-
-    // 기존 행들의 more 버튼 이벤트 바인딩
-    document.querySelectorAll('td[data-field="이름"] .more-btn').forEach(function(btn){
-        btn.onclick = function(e){
-            e.stopPropagation();
-            const tr = btn.closest('tr');
-            const id = tr.getAttribute('data-id');
-            if(!id) { alert('ID 정보가 없습니다.'); return; }
-            // 새로운 Row 시스템의 get_row_details 엔드포인트 사용
-            fetch('/diary/get_row_details/'+id+'/')
-              .then(r => r.json())
-              .then(function(data){
-                  if(data.success) showDetailModal(data.row_data, data.row_id);
-                  else alert('상세정보 불러오기 실패: '+(data.error||''));
-              })
-              .catch(function(err){
-                  alert('상세정보 불러오기 실패: 네트워크 오류\n' + err);
-                  console.error(err);
-              });
-        };
-    });
+        // 실제 ID가 있는 경우 (기존 행 업데이트)
+        else if (currentId && !currentId.startsWith('temp_')) {
+            console.log('기존 행 업데이트 중...');
+            fetch('/diary/update_row_field/', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: 'id=' + encodeURIComponent(currentId) + '&field=' + encodeURIComponent(field) + '&value=' + encodeURIComponent(value)
+            }).then(function(response) {
+                console.log(`${field} 필드 업데이트 응답 상태:`, response.status);
+                return response.json();
+            }).then(function(data) {
+                console.log(`${field} 필드 업데이트 응답:`, data);
+                if (data.success) {
+                    // 칸반보드가 활성화되어 있고 업데이트된 필드가 현재 칸반보드 속성과 일치하는 경우 새로고침
+                    if (window.kanbanAttribute && field === window.kanbanAttribute) {
+                        refreshKanban();
+                    }
+                    // F/U 일정 필드인 경우 캘린더 새로고침
+                    if (field === 'F/U 일정' && window.calendar) {
+                        window.calendar.refetchEvents();
+                    }
+                } else {
+                    console.error(`${field} 필드 업데이트 실패:`, data.error);
+                    alert('업데이트 실패: ' + (data.error || ''));
+                }
+            }).catch(function(error) {
+                console.error(`${field} 필드 업데이트 중 오류:`, error);
+                alert('업데이트 중 오류 발생: ' + error.message);
+            });
+        } else {
+            console.error('유효하지 않은 행 ID:', currentId);
+        }
+    }
 });
 
 
