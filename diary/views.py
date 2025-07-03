@@ -1204,7 +1204,7 @@ def delete_file(request):
             attribute = Attribute.objects.get(name=field_name, user=user)
             
             # 파일 타입 속성인지 확인
-            if attribute.type != 'file':
+            if attribute.attributeType.name != 'file':
                 return JsonResponse({
                     'success': False,
                     'error': '파일 타입이 아닙니다.'

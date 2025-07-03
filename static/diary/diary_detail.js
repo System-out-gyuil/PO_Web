@@ -176,10 +176,7 @@ function showDetailModal(rowData, rowId) {
                             ${totalHtml}
                         </div>
                     `;
-                } else if (attr.type === 'outstanding_debts') {
-                    // 기존 코드 제거 (위의 attr.name === '기대출'로 대체됨)
-                    // 이 부분은 더 이상 사용되지 않음
-                } else if (attr.type === 'recommend') {
+                }else if (attr.type === 'recommend') {
                     // 추천자금 필드 처리
                     let displayValue = '';
                     let detailData = null;
@@ -335,10 +332,12 @@ function showDetailModal(rowData, rowId) {
                     }
                     
                     if (hasFile) {
+                        console.log('파일이 있는 경우:', displayFileName);
                         // 파일이 있는 경우: 파일명 + 수정 버튼 + 삭제 버튼
+                        const downloadUrl = fileInfo.download_url || `/diary/download_file/${rowId}/${fieldName}/`;
                         inputHtml = `
                             <div style="display: flex; align-items: center; gap: 8px;">
-                                <span onclick="downloadFile('${rowId}', '${attr.name}')" 
+                                <span onclick="window.open('${downloadUrl}', '_blank')"  
                                       style="
                                           flex: 1; 
                                           color: #333; 
@@ -347,6 +346,21 @@ function showDetailModal(rowData, rowId) {
                                           cursor: pointer;
                                           text-decoration: underline;
                                       ">📎 ${displayFileName}</span>
+                                      <button type="button" 
+                        onclick="window.open('${downloadUrl}', '_blank')" 
+                        style="
+                            padding: 6px 12px; 
+                            background: #17a2b8; 
+                            color: white; 
+                            border: none; 
+                            border-radius: 4px; 
+                            cursor: pointer; 
+                            font-size: 12px;
+                            font-weight: 500;
+                            margin-right: 5px;
+                        ">
+                    다운로드
+                </button>
                                 <button type="button" 
                                         onclick="document.getElementById('file_${attr.name}_${rowId}').click()" 
                                         style="
@@ -2603,6 +2617,8 @@ function downloadFile(rowId, fieldName) {
 
 // 파일 삭제 함수
 function deleteFile(rowId, fieldName) {
+    console.log('deleteFile 호출됨:', rowId, fieldName);
+    
     if (!confirm('파일을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
         return;
     }
@@ -2611,7 +2627,7 @@ function deleteFile(rowId, fieldName) {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'X-CSRFToken': getCookie('csrftoken')
+            'X-CSRFToken': getCsrfToken()
         },
         body: JSON.stringify({
             row_id: rowId,
@@ -2620,16 +2636,21 @@ function deleteFile(rowId, fieldName) {
     })
     .then(response => response.json())
     .then(data => {
+        console.log('파일 삭제 응답:', data);
+        
         if (data.success) {
             showNotification('파일이 성공적으로 삭제되었습니다.', 'success');
             
             // 테이블 새로고침
             refreshTable();
             
-            // 모달 닫기
-            if (document.getElementById('detailModal')) {
-                document.getElementById('detailModal').style.display = 'none';
-            }
+            // 상세보기 모달이 열려있으면 해당 파일 필드를 "파일 없음" 상태로 업데이트
+            updateFileFieldInModalAfterDelete(rowId, fieldName);
+            
+            // 모달 닫기 (주석 처리)
+            // if (document.getElementById('detailModal')) {
+            //     document.getElementById('detailModal').style.display = 'none';
+            // }
         } else {
             alert('파일 삭제 실패: ' + (data.error || '알 수 없는 오류'));
         }
@@ -2642,6 +2663,8 @@ function deleteFile(rowId, fieldName) {
 
 // 파일 업로드 함수
 function uploadFile(rowId, fieldName, fileInput) {
+    console.log('uploadFile 호출됨:', rowId, fieldName, fileInput);
+    
     const file = fileInput.files[0];
     if (!file) {
         alert('파일을 선택해주세요.');
@@ -2654,6 +2677,8 @@ function uploadFile(rowId, fieldName, fileInput) {
         return;
     }
     
+    console.log('업로드할 파일:', file.name, file.size);
+    
     const formData = new FormData();
     formData.append('file', file);
     formData.append('row_id', rowId);
@@ -2663,11 +2688,13 @@ function uploadFile(rowId, fieldName, fileInput) {
         method: 'POST',
         body: formData,
         headers: {
-            'X-CSRFToken': getCookie('csrftoken')
+            'X-CSRFToken': getCsrfToken()
         }
     })
     .then(response => response.json())
     .then(data => {
+        console.log('파일 업로드 응답:', data);
+        
         if (data.success) {
             // 성공 알림
             showNotification('파일이 성공적으로 업로드되었습니다.', 'success');
@@ -2675,7 +2702,10 @@ function uploadFile(rowId, fieldName, fileInput) {
             // 테이블 새로고침
             refreshTable();
             
-            // 모달 닫기
+            // 상세보기 모달이 열려있으면 해당 파일 필드 실시간 업데이트
+            updateFileFieldInModal(rowId, fieldName, data.file_info);
+            
+            // 모달 닫기 (주석 처리됨)
             // if (document.getElementById('detailModal')) {
             //     document.getElementById('detailModal').style.display = 'none';
             // }
@@ -2691,5 +2721,164 @@ function uploadFile(rowId, fieldName, fileInput) {
         // 파일 입력 초기화
         fileInput.value = '';
     });
+}
+
+// 상세보기 모달의 파일 필드 실시간 업데이트 함수
+function updateFileFieldInModal(rowId, fieldName, fileInfo) {
+    console.log('updateFileFieldInModal 호출됨:', rowId, fieldName, fileInfo);
+    
+    const detailModal = document.getElementById('detailModal');
+    if (!detailModal) {
+        console.log('상세보기 모달이 열려있지 않음');
+        return; // 모달이 열려있지 않으면 종료
+    }
+    
+    console.log('상세보기 모달 찾음:', detailModal);
+    
+    // 실제 모달 구조에 맞게 필드를 찾기
+    // 라벨 텍스트로 해당 필드의 부모 div를 찾기
+    const labels = detailModal.querySelectorAll('label');
+    let targetFieldDiv = null;
+    
+    for (let label of labels) {
+        if (label.textContent.includes(fieldName + ':')) {
+            targetFieldDiv = label.closest('div[style*="display:flex"]');
+            break;
+        }
+    }
+    
+    if (!targetFieldDiv) {
+        console.log(`필드를 찾을 수 없음: ${fieldName}`);
+        return;
+    }
+    
+    console.log('필드 div 찾음:', targetFieldDiv);
+    
+    // 파일 정보 영역 업데이트
+    const fileContainer = targetFieldDiv.querySelector('div[style*="flex:1"]');
+    if (fileContainer) {
+        const fileName = fileInfo.original_filename || fileInfo.filename || '업로드된 파일';
+        const downloadUrl = fileInfo.download_url || `/diary/download_file/${rowId}/${fieldName}/`;
+        
+        fileContainer.innerHTML = `
+            <div style="display: flex; align-items: center;">
+                <span style="flex: 1; color: #28a745; font-size: 14px; padding: 8px 0;">📎 ${fileName} (업로드 완료)</span>
+                <button type="button" 
+                        onclick="window.open('${downloadUrl}', '_blank')" 
+                        style="
+                            padding: 6px 12px; 
+                            background: #17a2b8; 
+                            color: white; 
+                            border: none; 
+                            border-radius: 4px; 
+                            cursor: pointer; 
+                            font-size: 12px;
+                            font-weight: 500;
+                            margin-right: 5px;
+                        ">
+                    다운로드
+                </button>
+                <button type="button" 
+                        onclick="document.getElementById('file_${fieldName}_${rowId}').click()" 
+                        style="
+                            padding: 6px 12px; 
+                            background: #28a745; 
+                            color: white; 
+                            border: none; 
+                            border-radius: 4px; 
+                            cursor: pointer; 
+                            font-size: 12px;
+                            font-weight: 500;
+                            margin-right: 5px;
+                        ">
+                    수정
+                </button>
+                <button type="button" 
+                        onclick="deleteFile('${rowId}', '${fieldName}')" 
+                        style="
+                            padding: 6px 12px; 
+                            background: #dc3545; 
+                            color: white; 
+                            border: none; 
+                            border-radius: 4px; 
+                            cursor: pointer; 
+                            font-size: 12px;
+                            font-weight: 500;
+                        ">
+                    삭제
+                </button>
+                <input type="file" 
+                       id="file_${fieldName}_${rowId}" 
+                       style="display: none;"
+                       onchange="uploadFile('${rowId}', '${fieldName}', this)">
+            </div>
+        `;
+        
+        console.log('파일 표시 영역 업데이트 완료');
+    } else {
+        console.log('파일 컨테이너를 찾을 수 없음');
+    }
+}
+
+// 파일 삭제 후 상세보기 모달의 파일 필드를 "파일 없음" 상태로 업데이트하는 함수
+function updateFileFieldInModalAfterDelete(rowId, fieldName) {
+    console.log('updateFileFieldInModalAfterDelete 호출됨:', rowId, fieldName);
+    
+    const detailModal = document.getElementById('detailModal');
+    if (!detailModal) {
+        console.log('상세보기 모달이 열려있지 않음');
+        return; // 모달이 열려있지 않으면 종료
+    }
+    
+    // 실제 모달 구조에 맞게 필드를 찾기
+    // 라벨 텍스트로 해당 필드의 부모 div를 찾기
+    const labels = detailModal.querySelectorAll('label');
+    let targetFieldDiv = null;
+    
+    for (let label of labels) {
+        if (label.textContent.includes(fieldName + ':')) {
+            targetFieldDiv = label.closest('div[style*="display:flex"]');
+            break;
+        }
+    }
+    
+    if (!targetFieldDiv) {
+        console.log(`필드를 찾을 수 없음: ${fieldName}`);
+        return;
+    }
+    
+    console.log('필드 div 찾음:', targetFieldDiv);
+    
+    // 파일 정보 영역을 "파일 없음" 상태로 업데이트
+    const fileContainer = targetFieldDiv.querySelector('div[style*="flex:1"]');
+    if (fileContainer) {
+        fileContainer.innerHTML = `
+            <div style="display: flex; align-items: center;">
+                <span style="flex: 1; color: #6c757d; font-size: 14px; padding: 8px 0;">파일이 선택되지 않았습니다</span>
+                <button type="button" 
+                        onclick="document.getElementById('file_${fieldName}_${rowId}').click()" 
+                        style="
+                            padding: 6px 12px; 
+                            background: #007bff; 
+                            color: white; 
+                            border: none; 
+                            border-radius: 4px; 
+                            cursor: pointer; 
+                            font-size: 12px;
+                            font-weight: 500;
+                        ">
+                    파일 선택
+                </button>
+                <input type="file" 
+                       id="file_${fieldName}_${rowId}" 
+                       style="display: none;"
+                       onchange="uploadFile('${rowId}', '${fieldName}', this)">
+            </div>
+        `;
+        
+        console.log('파일 표시 영역을 "파일 없음"으로 업데이트 완료');
+    } else {
+        console.log('파일 컨테이너를 찾을 수 없음');
+    }
 }
 
