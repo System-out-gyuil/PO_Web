@@ -1204,7 +1204,7 @@ def delete_file(request):
             attribute = Attribute.objects.get(name=field_name, user=user)
             
             # 파일 타입 속성인지 확인
-            if attribute.attributeType.name != 'file':
+            if attribute.type != 'file':
                 return JsonResponse({
                     'success': False,
                     'error': '파일 타입이 아닙니다.'
@@ -1703,10 +1703,22 @@ def upload_audio_file(request):
             
             # 기존 파일들의 order 값을 1씩 증가시키기 (새 파일이 맨 위에 오도록)
             for date_key in existing_data:
-                for file_id_key in existing_data[date_key]:
-                    file_info = existing_data[date_key][file_id_key]
-                    current_order = file_info.get('order', 0)
-                    file_info['order'] = current_order + 1
+                date_data = existing_data[date_key]
+                
+                # date_data가 딕셔너리인 경우 (기존 구조)
+                if isinstance(date_data, dict):
+                    for file_id_key in date_data:
+                        file_info = date_data[file_id_key]
+                        if isinstance(file_info, dict):
+                            current_order = file_info.get('order', 0)
+                            file_info['order'] = current_order + 1
+                
+                # date_data가 리스트인 경우 (새로운 구조)
+                elif isinstance(date_data, list):
+                    for file_info in date_data:
+                        if isinstance(file_info, dict):
+                            current_order = file_info.get('order', 0)
+                            file_info['order'] = current_order + 1
             
             # 고유한 파일 ID 생성 (시간 포함)
             from datetime import datetime
@@ -2590,27 +2602,11 @@ def get_funding_recommendation(request):
         for biz in biz_data:
             print(f'biz_data : {biz.pblanc_id}')
             pblanc_ids.append(biz.pblanc_id)
-            # 접수 기간 처리
-            if biz.reception_start and biz.reception_end:
-                start_str = str(biz.reception_start)
-                end_str = str(biz.reception_end)
-                
-                if start_str == "1900-01-01" and end_str == "9999-12-31":
-                    apply_period = "상시접수"
-                elif start_str == "1900-01-01":
-                    apply_period = f"~ {end_str}"
-                elif end_str == "9999-12-31":
-                    apply_period = "상시접수 (지원금 소모 시 까지)"
-                else:
-                    apply_period = f"{start_str} ~ {end_str}"
-            else:
-                apply_period = "상시접수"
-            
             recommended_notices.append({
                 'pblanc_id': biz.pblanc_id,
                 'title': biz.title,
                 'institution': biz.institution_name,
-                'apply_period': apply_period,
+                'apply_period': f"{biz.reception_start} ~ {biz.reception_end}" if biz.reception_start and biz.reception_end else "상시접수",
                 'support_amount': biz.support_field if biz.support_field else "지원규모 미정"
             })
 
@@ -2971,7 +2967,6 @@ def delete_row(request):
         return JsonResponse({'success': False, 'error': 'Invalid JSON'})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
-
 @csrf_exempt
 def get_recommended_notices(request):
     """저장된 pblanc_ids를 이용해 공고 정보를 반환하는 API"""
@@ -3025,3 +3020,33 @@ def get_recommended_notices(request):
             'success': False,
             'error': '공고 정보를 조회할 수 없습니다.'
         })
+
+@csrf_exempt
+def update_audio_text_notes(request):
+    """
+    음성파일 노트(텍스트) 추가/수정/순서변경
+    POST: row_id, notes(JSON string: [{id, text, order}, ...])
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST만 허용'})
+    try:
+        row_id = request.POST.get('row_id')
+        notes_json = request.POST.get('notes')
+        if not row_id or not notes_json:
+            return JsonResponse({'success': False, 'error': '필수 파라미터 누락'})
+        notes = json.loads(notes_json)
+        user = User.objects.get(id=1)
+        row = Row.objects.get(id=row_id, user=user)
+        audio_attr = Attribute.objects.get(name='음성파일', user=user)
+        attr_value, _ = AttributeValue.objects.get_or_create(row=row, attribute=audio_attr, defaults={'value': '{}'})
+        # 기존 데이터 파싱
+        try:
+            data = json.loads(attr_value.value) if attr_value.value else {}
+        except:
+            data = {}
+        data['texts'] = notes
+        attr_value.value = json.dumps(data, ensure_ascii=False)
+        attr_value.save()
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})

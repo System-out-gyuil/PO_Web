@@ -64,10 +64,14 @@ function updateAudioFileManagement(audioFileValue) {
   // 기존 내용 초기화
   audioFilesList.innerHTML = '';
   
+  
+  
+  // 2. 음성파일 렌더링 (기존대로)
   if (audioFileData && Object.keys(audioFileData).length > 0) {
       // 모든 파일을 하나의 배열로 수집
       let allFiles = [];
       Object.keys(audioFileData).forEach(date => {
+          if(date === 'texts') return;
           const dateFiles = audioFileData[date] || {};
           Object.keys(dateFiles).forEach(fileId => {
               const fileInfo = dateFiles[fileId];
@@ -140,7 +144,22 @@ function updateAudioFileManagement(audioFileValue) {
           noAudioFilesMessage.style.display = 'block';
           audioFilesList.appendChild(noAudioFilesMessage);
       }
-  }
+    }
+    
+    // 1. 텍스트노트 먼저 렌더링
+  if (audioFileData && Array.isArray(audioFileData.texts)) {
+    const texts = audioFileData.texts.sort((a,b)=>a.order-b.order);
+    texts.forEach(note => {
+        const textDiv = document.createElement('div');
+        textDiv.className = 'draggable-text-area';
+        textDiv.dataset.noteId = note.id;
+        textDiv.style.cssText = 'margin-top: 10px; padding: 10px; border: 1px solid #ccc; border-radius: 4px; cursor: move;';
+        textDiv.innerHTML = `<textarea style="width:100%;height:50px;">${note.text||''}</textarea>`;
+        // textarea 입력시 저장
+        textDiv.querySelector('textarea').onchange = saveTextNotesToServer;
+        audioFilesList.appendChild(textDiv);
+        });
+    }
 }
 
 // 음성파일 순서 저장 함수
@@ -223,7 +242,7 @@ function createAudioFileElement(fileData, index) {
           </div>
           <div style="display: flex; gap: 5px; margin-left: 15px;">
               <button onclick="showEditModal('${date}', '${fileId}', ${JSON.stringify(fileInfo).replace(/"/g, '&quot;')})" 
-                      style="display: none; padding: 6px 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                      style="padding: 6px 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
                   편집
               </button>
               <a href="${fileInfo.download_url}" download="${fileInfo.original_filename}" 
@@ -249,8 +268,10 @@ function createAudioFileElement(fileData, index) {
                   <span id="toggle-icon-summary-${date}-${fileId}" style="margin-right: 5px;">▶</span>
                   AI 요약
               </button>
-              <div id="summary-${date}-${fileId}" style=" border: 1px solid #bee5eb; border-radius: 4px; padding: 12px; margin-top: 5px; display: none;">
-                  <div style="font-size: 13px; line-height: 1.4;  white-space: pre-wrap;">${fileInfo.gpt_summary}</div>
+              <div id="summary-${date}-${fileId}" style="background: #e7f3ff; border: 1px solid #bee5eb; border-radius: 4px; padding: 12px; margin-top: 5px; display: none;">
+                  <div style="font-size: 13px; line-height: 1.4; color: #0c5460; white-space: pre-wrap;">
+                      ${fileInfo.gpt_summary}
+                  </div>
               </div>
           </div>
       ` : `
@@ -471,7 +492,9 @@ function showTranscript(date, fileId, fileInfo) {
       <div style="font-size: 12px; color: #666; margin-bottom: 15px;">
           업로드 시간: ${fileInfo.upload_time} | 파일 크기: ${(fileInfo.file_size / 1024 / 1024).toFixed(2)}MB
       </div>
-      <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; padding: 15px; white-space: pre-wrap; line-height: 1.6; font-family: monospace;">${fileInfo.converted_text || '변환된 텍스트가 없습니다.'}</div>
+      <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; padding: 15px; white-space: pre-wrap; line-height: 1.6; font-family: monospace;">
+          ${fileInfo.converted_text || '변환된 텍스트가 없습니다.'}
+      </div>
       <div style="text-align: right; margin-top: 15px;">
           <button onclick="this.closest('.transcript-modal').remove()" 
                   style="padding: 8px 16px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">
@@ -677,4 +700,86 @@ function showNewAudioUpload(targetDate = null) {
 // 음성파일 변경 함수 (기존 호환성을 위해 유지)
 function changeAudioFile() {
   showNewAudioUpload();
+}
+function saveTextNotesToServer() {
+    if (!window.currentDetailRowId) return;
+    const notes = [];
+    document.querySelectorAll('#audioFilesList .draggable-text-area').forEach((el, idx) => {
+        const textarea = el.querySelector('textarea');
+        let id = el.dataset.noteId;
+        if (!id) {
+            id = 't' + Date.now() + '_' + Math.floor(Math.random()*10000);
+            el.dataset.noteId = id;
+        }
+        notes.push({ id, text: textarea.value, order: idx });
+    });
+    fetch('/diary/update_audio_text_notes/', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: `row_id=${encodeURIComponent(window.currentDetailRowId)}&notes=${encodeURIComponent(JSON.stringify(notes))}`
+    }).then(r=>r.json()).then(data=>{
+        if(!data.success) alert('텍스트 저장 실패: '+(data.error||''));
+    });
+}
+
+function addTextArea() {
+    const audioFilesList = document.getElementById('audioFilesList');
+    const textDiv = document.createElement('div');
+    textDiv.className = 'draggable-text-area';
+    textDiv.style.cssText = 'margin-top: 10px; padding: 10px; border: 1px solid #ccc; border-radius: 4px; cursor: move;';
+    textDiv.innerHTML = `<textarea style="width:100%;height:50px;"></textarea>`;
+    audioFilesList.appendChild(textDiv);
+    // textarea 입력시 저장
+    textDiv.querySelector('textarea').onchange = saveTextNotesToServer;
+    saveTextNotesToServer();
+}
+
+function saveAllOrderToServer() {
+    if (!window.currentDetailRowId) return;
+    const notes = [];
+    const audioOrders = [];
+    document.querySelectorAll('#audioFilesList > .draggable-text-area, #audioFilesList > .audio-file-item').forEach((el, idx) => {
+        if (el.classList.contains('draggable-text-area')) {
+            // 텍스트노트
+            const textarea = el.querySelector('textarea');
+            let id = el.dataset.noteId;
+            if (!id) {
+                id = 't' + Date.now() + '_' + Math.floor(Math.random()*10000);
+                el.dataset.noteId = id;
+            }
+            notes.push({ id, text: textarea.value, order: idx });
+        } else if (el.classList.contains('audio-file-item')) {
+            // 음성파일
+            const date = el.getAttribute('data-date');
+            const fileId = el.getAttribute('data-file-id');
+            if (date && fileId) {
+                audioOrders.push({ date, file_id: fileId, order: idx });
+            }
+        }
+    });
+    // 텍스트노트 순서 저장
+    fetch('/diary/update_audio_text_notes/', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: `row_id=${encodeURIComponent(window.currentDetailRowId)}&notes=${encodeURIComponent(JSON.stringify(notes))}`
+    }).then(r=>r.json()).then(data=>{
+        if(!data.success) alert('텍스트 저장 실패: '+(data.error||''));
+    });
+    // 음성파일 순서 저장
+    fetch('/diary/update_audio_file_order/', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: `row_id=${encodeURIComponent(window.currentDetailRowId)}&ordered_files=${encodeURIComponent(JSON.stringify(audioOrders))}`
+    }).then(r=>r.json()).then(data=>{
+        if(!data.success) alert('음성파일 순서 저장 실패: '+(data.error||''));
+    });
+}
+
+if (typeof Sortable !== 'undefined') {
+    new Sortable(audioFilesList, {
+        animation: 150,
+        onEnd: function(evt) {
+            saveAllOrderToServer();
+        }
+    });
 }
