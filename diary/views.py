@@ -43,11 +43,11 @@ def diary_list(request):
     
     # 속성 필터링: detail 값에 따라 필터링
     if show_detail:
-        attributes = Attribute.objects.all().order_by('-assential', 'id')  # 모든 속성
-        user_attributes = Attribute.objects.filter(user=user).order_by('-assential', 'id')  # 모든 사용자 속성
+        attributes = Attribute.objects.all().order_by('sort_order', 'id')  # sort_order 필드로 정렬
+        user_attributes = Attribute.objects.filter(user=user).order_by('sort_order', 'id')  # sort_order 필드로 정렬
     else:
-        attributes = Attribute.objects.filter(detail=False).order_by('-assential', 'id')  # detail=False 속성만
-        user_attributes = Attribute.objects.filter(user=user, detail=False).order_by('-assential', 'id')  # detail=False 사용자 속성만
+        attributes = Attribute.objects.filter(detail=False).order_by('sort_order', 'id')  # sort_order 필드로 정렬
+        user_attributes = Attribute.objects.filter(user=user, detail=False).order_by('sort_order', 'id')  # sort_order 필드로 정렬
     
     attr_map = {attr.name: attr for attr in user_attributes}
     
@@ -2802,3 +2802,71 @@ def _calculate_age_from_data(age_data_str):
     except Exception as e:
         print(f"나이 계산 오류: {e}")
         return 35  # 기본값
+
+@csrf_exempt
+def save_column_order(request):
+    """컬럼 순서 저장"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST method required'})
+    
+    try:
+        data = json.loads(request.body)
+        column_order = data.get('column_order', [])
+        
+        if not column_order:
+            return JsonResponse({'success': False, 'error': 'column_order is required'})
+        
+        # 현재 사용자 (임시로 id=1 사용)
+        user = User.objects.get(id=1)
+        
+        # 각 속성의 순서 업데이트
+        for index, column_name in enumerate(column_order):
+            try:
+                attribute = Attribute.objects.get(name=column_name, user=user)
+                attribute.sort_order = index
+                attribute.save()
+            except Attribute.DoesNotExist:
+                # 속성이 없는 경우 무시
+                continue
+        
+        return JsonResponse({'success': True, 'message': '컬럼 순서가 저장되었습니다.'})
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+@csrf_exempt
+def delete_row(request):
+    """행 삭제 - 해당 행의 모든 데이터 제거"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST method required'})
+    
+    try:
+        data = json.loads(request.body)
+        row_id = data.get('row_id')
+        
+        if not row_id:
+            return JsonResponse({'success': False, 'error': 'row_id is required'})
+        
+        # 현재 사용자 (임시로 id=1 사용)
+        user = User.objects.get(id=1)
+        
+        # 해당 행 찾기
+        try:
+            row = Row.objects.get(id=row_id, user=user)
+        except Row.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '해당 행을 찾을 수 없습니다.'})
+        
+        # 해당 행의 모든 속성 값들 삭제
+        AttributeValue.objects.filter(row=row).delete()
+        
+        # 행 자체 삭제
+        row.delete()
+        
+        return JsonResponse({'success': True, 'message': '행이 성공적으로 삭제되었습니다.'})
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})

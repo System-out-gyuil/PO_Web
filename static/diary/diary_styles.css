@@ -1,13 +1,24 @@
 body { font-family: Arial, sans-serif; margin: 40px; background: #f8f9fa; }
-        .container { max-width: 1500px; margin: auto; background: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 2px 8px #ddd; }
+        .container { max-width: 97%; margin: auto; background: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 2px 8px #ddd; }
         h1 { text-align: center; color: #333; }
         table { 
-            /* width: 100%; */
             border-collapse: collapse; 
             margin-top: 20px; 
+            width: auto;
+            table-layout: auto;
         }
 
-        th, td { border: 1px solid #eee; padding: 0.5em 12px; text-align: center; min-width: 140px; height: 36px; box-sizing: border-box; }
+        th, td { 
+            border: 1px solid #eee; 
+            padding: 0.5em 12px; 
+            text-align: center; 
+            min-width: 120px; 
+            height: 36px; 
+            box-sizing: border-box; 
+            white-space: nowrap;
+            overflow: visible;
+            width: auto;
+        }
         th { background: #f1f3f6; }
         tr:nth-child(even) { background: #fafbfc; }
         input, select { width: 100%; height: 100%; box-sizing: border-box; padding: 8px; border: none; background: transparent; font-size: inherit; font-family: inherit; line-height: inherit; display: block; }
@@ -24,14 +35,33 @@ body { font-family: Arial, sans-serif; margin: 40px; background: #f8f9fa; }
             border: none !important;
             background: transparent !important;
             box-shadow: none !important;
-            width: 32px;
-            min-width: 32px;
-            max-width: 32px;
+            width: 50px;
+            min-width: 55px;
+            max-width: 55px;
             padding: 0 !important;
+            vertical-align: middle;
         }
-        .drag-handle { display:none; cursor:grab; font-size:18px; color:#bbb; user-select:none; }
-        tr:hover .drag-handle { display:inline-block; }
-        tr.dragging { background: #f1f3f6 !important; }
+        .drag-handle { 
+            display: none; 
+            cursor: grab; 
+            font-size: 16px; 
+            color: #bbb; 
+            user-select: none;
+            transition: color 0.2s;
+        }
+        
+        .drag-handle:hover {
+            color: #666;
+        }
+        
+        tr:hover .drag-handle { 
+            display: inline-block; 
+        }
+        
+        tr.dragging { 
+            background: #f1f3f6 !important; 
+        }
+        
         .board-container {
             display: flex;
             gap: 16px;
@@ -95,26 +125,29 @@ body { font-family: Arial, sans-serif; margin: 40px; background: #f8f9fa; }
             background: #e3eafc;
         }
         td {
-            white-space: nowrap;
             overflow: visible;
             text-overflow: unset;
         }
-        td[data-field="name"] {
+        td[data-field="이름"] {
             position: relative;
+        }
+        
+        td[data-field="이름"] .name-container {
             display: flex;
             flex-direction: row;
             align-items: center;
-            justify-content: flex-start;
+            justify-content: space-between;
             gap: 4px;
+            width: 100%;
         }
-        td[data-field="name"] .name-text {
+        td[data-field="이름"] .name-text {
             flex: 1 1 auto;
             min-width: 0;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
         }
-        td[data-field="name"] .more-btn-wrapper {
+        td[data-field="이름"] .more-btn-wrapper {
             flex: 0 0 auto;
             width: 32px;
             height: 28px;
@@ -122,8 +155,8 @@ body { font-family: Arial, sans-serif; margin: 40px; background: #f8f9fa; }
             align-items: center;
             justify-content: center;
         }
-        td[data-field="name"] .more-btn {
-            display: none;
+        td[data-field="이름"] .more-btn {
+            display: inline-block;
             width: 28px;
             height: 28px;
             line-height: 28px;
@@ -131,11 +164,16 @@ body { font-family: Arial, sans-serif; margin: 40px; background: #f8f9fa; }
             border-radius: 50%;
             background: #f1f3f6;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: all 0.2s;
+            opacity: 0;
+            visibility: hidden;
         }
-        tr:hover td[data-field="name"] .more-btn {
-            display: inline-block;
+        
+        td[data-field="이름"]:hover .more-btn {
+            opacity: 1;
+            visibility: visible;
         }
+        
         .edit-col-btn, .del-col-btn { display: none; margin-left: 4px; }
         th.col-active .edit-col-btn, th.col-active .del-col-btn { display: inline-block; }
         td[data-field] { position: relative; }
@@ -170,9 +208,26 @@ body { font-family: Arial, sans-serif; margin: 40px; background: #f8f9fa; }
         .header-content {
             display: flex;
             align-items: center;
-            justify-content: center;
-            width: 100%;
-            gap: 4px;
+            justify-content: space-between;
+            flex-wrap: nowrap;
+            gap: 2px;
+            min-height: 20px;
+        }
+        
+        .header-content > span {
+            flex: 1;
+            min-width: 0;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .header-buttons {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            flex-shrink: 0;
         }
         
         .sort-btn {
@@ -249,6 +304,13 @@ body { font-family: Arial, sans-serif; margin: 40px; background: #f8f9fa; }
             border-radius: 3px;
             transition: all 0.2s;
             margin-left: 4px;
+            width: 16px;
+            height: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            visibility: hidden;
         }
         
         .delete-attribute-btn:hover {
@@ -258,8 +320,13 @@ body { font-family: Arial, sans-serif; margin: 40px; background: #f8f9fa; }
         }
         
         /* 속성 헤더 호버 효과 */
+        .attribute-header {
+            position: relative;
+        }
+        
         .attribute-header:hover .delete-attribute-btn {
-            display: inline-block !important;
+            opacity: 1;
+            visibility: visible;
         }
         
         /* 필수 속성과 일반 속성 사이 구분선 */
@@ -286,7 +353,7 @@ body { font-family: Arial, sans-serif; margin: 40px; background: #f8f9fa; }
             position: relative;
         }
         
-        .attribute-header[data-essential="true"]::after {
+        /* .attribute-header[data-essential="true"]::after {
             content: "필수";
             position: absolute;
             top: 2px;
@@ -297,7 +364,7 @@ body { font-family: Arial, sans-serif; margin: 40px; background: #f8f9fa; }
             padding: 1px 3px;
             border-radius: 2px;
             font-weight: bold;
-        }
+        } */
         
         .attribute-header[data-essential="false"]::after {
             content: "";
@@ -370,4 +437,146 @@ body { font-family: Arial, sans-serif; margin: 40px; background: #f8f9fa; }
             border-radius: 12px;
             font-size: 12px;
             cursor: pointer;
+        }
+        
+        /* 컬럼 드래그앤드롭 스타일 */
+        .attribute-header[draggable="true"] {
+            cursor: move;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+        
+        .attribute-header[draggable="true"]:hover {
+            background: #f8f9fa !important;
+        }
+        
+        .attribute-header.dragging {
+            opacity: 0.5;
+            background: #e3f2fd !important;
+            transform: rotate(2deg);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            z-index: 1000;
+            position: relative;
+        }
+        
+        .attribute-header.drag-over {
+            background: #fff3cd !important;
+            border-left: 3px solid #ffc107 !important;
+            transform: scale(1.02);
+        }
+        
+        .attribute-header.drag-over-right {
+            background: #fff3cd !important;
+            border-right: 3px solid #ffc107 !important;
+            transform: scale(1.02);
+        }
+        
+        /* 드래그 중 테이블 전체 스타일 */
+        .table-dragging {
+            user-select: none;
+        }
+        
+        .table-dragging .attribute-header:not(.dragging) {
+            transition: all 0.2s ease;
+        }
+        
+        /* 드래그 중 다른 요소들 비활성화 */
+        .table-dragging .sort-btn,
+        .table-dragging .delete-attribute-btn,
+        .table-dragging .filter-input {
+            pointer-events: none;
+            opacity: 0.5;
+        }
+        
+        /* 드래그 중 헤더 텍스트 선택 방지 */
+        .attribute-header.dragging * {
+            user-select: none;
+            pointer-events: none;
+        }
+        
+        /* 드롭 인디케이터 */
+        .drop-indicator {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: #007bff;
+            z-index: 1001;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        
+        .drop-indicator.show {
+            opacity: 1;
+        }
+        
+        .drop-indicator.left {
+            left: -2px;
+        }
+        
+        .drop-indicator.right {
+            right: -2px;
+        }
+        
+        /* 헤더 내용 정렬 개선 */
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: nowrap;
+            gap: 2px;
+            min-height: 20px;
+        }
+        
+        .header-content > span {
+            flex: 1;
+            min-width: 0;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .header-buttons {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            flex-shrink: 0;
+        }
+        
+        /* 행 삭제 버튼 스타일 */
+        .delete-row-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            font-size: 12px;
+            line-height: 1;
+            cursor: pointer;
+            margin-right: 6px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            opacity: 0.8;
+        }
+        
+        .delete-row-btn:hover {
+            background: #c82333;
+            opacity: 1;
+            transform: scale(1.1);
+        }
+        
+        tr:hover .delete-row-btn {
+            display: inline-flex;
+        }
+        
+        .drag-cell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            height: 55px;
         }

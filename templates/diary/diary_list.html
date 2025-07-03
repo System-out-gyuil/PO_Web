@@ -135,13 +135,15 @@
                         <div class="sort-filter-container">
                             <div class="header-content">
                                 <span>{{ attr.name }}</span>
-                                {% if not attr.assential %}
-                                    <button class="delete-attribute-btn" onclick="deleteAttribute('{{ attr.name }}')" title="속성 삭제" style="display: none;">
-                                        ❌
-                                    </button>
-                                {% endif %}
-                                <button class="sort-btn" onclick="sortTable('{{ attr.name }}', 'asc')" title="오름차순 정렬">▲</button>
-                                <button class="sort-btn" onclick="sortTable('{{ attr.name }}', 'desc')" title="내림차순 정렬">▼</button>
+                                <div class="header-buttons">
+                                    {% if not attr.assential %}
+                                        <button class="delete-attribute-btn" onclick="deleteAttribute('{{ attr.name }}')" title="속성 삭제">
+                                            ❌
+                                        </button>
+                                    {% endif %}
+                                    <button class="sort-btn" onclick="sortTable('{{ attr.name }}', 'asc')" title="오름차순 정렬">▲</button>
+                                    <button class="sort-btn" onclick="sortTable('{{ attr.name }}', 'desc')" title="내림차순 정렬">▼</button>
+                                </div>
                             </div>
                             <input type="text" class="filter-input" placeholder="필터..." 
                                    onkeyup="filterTable('{{ attr.name }}', this.value)" 
@@ -157,12 +159,17 @@
             <tbody id="entryTbody">
                 {% for row in rows %}
                 <tr data-id="{{ row.id }}">
-                    <td class="drag-cell"><span class="drag-handle">⋮⋮⋮</span></td>
+                    <td class="drag-cell">
+                        <button class="delete-row-btn" onclick="deleteRow('{{ row.id }}')" title="행 삭제">×</button>
+                        <span class="drag-handle">⋮⋮⋮</span>
+                    </td>
                     {% for attr in attributes %}
                         {% if attr.name == '이름' %}
                             <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" class="{% if attr.assential %}essential-column{% endif %}">
-                                <div class="name-text">{{ row.values|get_item:attr.name|get_item:'label' }}</div>
-                                <div class="more-btn-wrapper"><div class="more-btn" style="cursor:pointer;">⋯</div></div>
+                                <div class="name-container">
+                                    <div class="name-text">{{ row.values|get_item:attr.name|get_item:'label' }}</div>
+                                    <div class="more-btn-wrapper"><div class="more-btn" style="cursor:pointer;">⋯</div></div>
+                                </div>
                             </td>
                         {% elif attr.attributeType_name == 'dropdown' %}
                             <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" class="{% if attr.assential %}essential-column{% endif %}" style="background:{{ row.values|get_item:attr.name|get_item:'color'|default:''|to_rgba:'0.18' }};">
@@ -211,8 +218,10 @@
                     {% for attr in attributes %}
                         {% if attr.name == '이름' %}
                             <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" class="{% if attr.assential %}essential-column{% endif %}">
-                                <div class="name-text">작성된 데이터가 없습니다.</div>
-                                <div class="more-btn-wrapper"><div class="more-btn" style="cursor:pointer;">⋯</div></div>
+                                <div class="name-container">
+                                    <div class="name-text">작성된 데이터가 없습니다.</div>
+                                    <div class="more-btn-wrapper"><div class="more-btn" style="cursor:pointer;">⋯</div></div>
+                                </div>
                             </td>
                         {% elif attr.attributeType_name == 'dropdown' %}
                             <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" class="{% if attr.assential %}essential-column{% endif %}">
@@ -458,11 +467,15 @@
 <script src="{% static 'diary/diary_detail.js' %}"></script>
 <script src="{% static 'diary/diary_calendar.js' %}"></script>
 <script src="{% static 'diary/diary_audio.js' %}"></script>
+<script src="{% static 'diary/column_drag_drop.js' %}"></script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     bindTableCellEvents();
     bindKanbanSortable();
+    
+    // 컬럼 드래그앤드롭 초기화
+    initializeColumnDragDrop();
     
     // 칸반보드 필터 이벤트 바인딩
     const kanbanSelect = document.getElementById('kanbanAttributeSelect');

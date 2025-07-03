@@ -82,6 +82,10 @@ class Attribute(models.Model):
     attributeType = models.ForeignKey(AttributeType, on_delete=models.SET_NULL, null=True, blank=True, related_name='attributes')
     assential = models.BooleanField(default=False)
     detail = models.BooleanField(default=False)
+    sort_order = models.IntegerField(default=0, db_index=True)
+
+    class Meta:
+        ordering = ['sort_order', 'id']  # sort_order 필드로 기본 정렬
 
     def __str__(self):
         return self.name
