@@ -1,414 +1,657 @@
 // 상세보기 모달 함수 - 새로운 Row 시스템에 맞게 수정
 function showDetailModal(rowData, rowId) {
-  console.log('===== showDetailModal 시작 =====');
-  console.log('rowData:', rowData);
-  console.log('rowId:', rowId);
-  console.log('rowData["음성파일"]:', rowData['음성파일']);
-  console.log('rowData 전체 속성:');
-  Object.keys(rowData).forEach(key => {
-      console.log(`- ${key}:`, rowData[key]);
-  });
-  console.log('================================');
-  
-  // 현재 상세 조회 중인 행 ID 저장
-  window.currentDetailRowId = rowId;
-  
-  // 사용자의 속성들을 기준으로 표시
-  const user = { id: 1 }; // 임시로 user id 1 사용
-  
-  // 백엔드에서 사용자의 속성 목록을 가져와야 함
-  fetch('/diary/get_user_attributes/')
-    .then(r => r.json())
-    .then(function(attributesData) {
-        if (!attributesData.success) {
-            alert('속성 정보를 불러올 수 없습니다.');
-            return;
-        }
-        
-        // 속성들을 필수/일반 순서로 정렬
-        const sortedAttributes = attributesData.attributes.sort((a, b) => {
-            // essential 속성이 먼저 오도록 정렬 (true가 false보다 먼저)
-            if (a.essential !== b.essential) {
-                return b.essential - a.essential; // true(1)가 false(0)보다 먼저
-            }
-            // 같은 그룹 내에서는 id 순서로 정렬
-            return a.id - b.id;
-        });
-        
-        let html = '<h3>상세 정보</h3><table style="width:100%">';
-        const readonlyFields = ['생성일', '수정일'];
-        let textAttributeValue = ''; // text 타입 속성의 값을 저장
-        let audioFileValue = ''; // 음성파일 속성의 값을 저장
-        
-        sortedAttributes.forEach(function(attr) {
-            const value = rowData[attr.name] || '';
-            let inputHtml = '';
-            
-            // 음성파일 컬럼은 좌측에 표시하지 않음
-            if (attr.name === '음성파일') {
-                audioFileValue = value;
-                return; // 이 속성은 좌측 테이블에 추가하지 않음
+    console.log('===== showDetailModal 시작 =====');
+    console.log('rowData:', rowData);
+    console.log('rowId:', rowId);
+    console.log('rowData["음성파일"]:', rowData['음성파일']);
+    console.log('rowData 전체 속성:');
+    Object.keys(rowData).forEach(key => {
+        console.log(`- ${key}:`, rowData[key]);
+    });
+    console.log('================================');
+    
+    // 현재 상세 조회 중인 행 ID 저장
+    window.currentDetailRowId = rowId;
+    
+    // 사용자의 속성들을 기준으로 표시
+    const user = { id: 1 }; // 임시로 user id 1 사용
+    
+    // 백엔드에서 사용자의 속성 목록을 가져와야 함
+    fetch('/diary/get_user_attributes/')
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                console.error('속성 목록 가져오기 실패:', data.error);
+                return;
             }
             
-            if (readonlyFields.includes(attr.name)) {
-                inputHtml = `<input type="text" value="${value}" readonly style="background:#f8f9fa;">`;
-            } else if (attr.name === '지역') {
-                // 지역 필드는 특별 처리
-                inputHtml = `<button type="button" class="add-btn" style="width:100%;background:#f8f9fa;color:#333;border:1px solid #eee;" onclick="openDetailDropdown('${rowId}','${attr.name}',this)">${value||'선택'}</button>`;
-            } else if (attr.name === '상세지역') {
-                // 상세지역 필드는 특별 처리
-                inputHtml = `<button type="button" class="add-btn" style="width:100%;background:#f8f9fa;color:#333;border:1px solid #eee;" onclick="openDetailDropdown('${rowId}','${attr.name}',this)">${value||'선택'}</button>`;
-            } else if (attr.name === '기대출') {
-                // 기대출 필드는 8개 카테고리를 4칸씩 2줄로 표시
-                let debtData = {};
-                try {
-                    if (value && typeof value === 'object') {
-                        debtData = value;
-                    } else if (value && typeof value === 'string' && value.startsWith('{')) {
-                        debtData = JSON.parse(value);
+            const attributes = data.attributes;
+            
+            // 속성을 순서대로 정렬 (sort_order 기준)
+            const sortedAttributes = attributes.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+            
+            // 읽기 전용 필드 목록
+            const readonlyFields = ['이름', '생성일', '수정일'];
+            
+            // 숨김 필드 목록 (표시하지 않을 속성들)
+            const hiddenFields = ['음성파일', '변환된 텍스트'];
+            
+            let html = '<h3>상세 정보</h3>';
+            let textAttributeValue = ''; // text 타입 속성의 값을 저장
+            let audioFileValue = ''; // 음성파일 속성의 값을 저장
+            
+            // 지역 정보를 저장할 변수들
+            let regionValue = '';
+            let subregionValue = '';
+            let regionProcessed = false;
+            
+            sortedAttributes.forEach(function(attr) {
+                const value = rowData[attr.name] || '';
+                let inputHtml = '';
+                
+                // 숨김 필드들은 좌측에 표시하지 않음
+                if (hiddenFields.includes(attr.name)) {
+                    if (attr.name === '음성파일') {
+                        audioFileValue = value;
                     }
-                } catch (e) {
-                    console.error('기대출 데이터 파싱 오류:', e);
+                    return; // 이 속성은 좌측 테이블에 추가하지 않음
                 }
                 
-                // 8개 카테고리 정의
-                const debtCategories = [
-                    { key: 'tech_guarantee', label: '기술보증기금' },
-                    { key: 'credit_guarantee', label: '신용보증기금' },
-                    { key: 'credit_foundation', label: '신용보증재단' },
-                    { key: 'smba', label: '중진공' },
-                    { key: 'semas_innovation', label: '소진공-혁신성장' },
-                    { key: 'semas_lowcredit', label: '소진공-저신용' },
-                    { key: 'collateral', label: '담보' },
-                    { key: 'credit', label: '신용' }
-                ];
-                
-                // 첫 번째 줄 (4개) - 4x2 그리드 형태로 변경
-                let firstRowHtml = '<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 15px;">';
-                for (let i = 0; i < 4; i++) {
-                    const category = debtCategories[i];
-                    const currentValue = debtData[category.key] || '';
-                    firstRowHtml += `
-                        <div style="text-align: center;">
-                            <label style="display: block; font-size: 12px; font-weight: bold; color: #495057; margin-bottom: 5px;">${category.label}</label>
-                            <div style="display: flex; align-items: center; justify-content: center; gap: 5px;">
-                                <input type="text" 
-                                       id="debt_${category.key}_${rowId}" 
-                                       value="${currentValue}" 
-                                       placeholder="0"
-                                       style="width: 70px; height: 28px; padding: 4px 6px; border: 1px solid #ced4da; border-radius: 3px; font-size: 12px; text-align: center;"
-                                       onchange="updateDebtField('${rowId}', '${category.key}', this.value)">
-                                <span style="font-size: 11px; color: #6c757d;">만원</span>
+                // 지역과 상세지역을 한 줄로 표시하기 위한 처리
+                if (attr.name === '지역') {
+                    regionValue = value;
+                    return; // 지역은 일단 저장만 하고 건너뛰기
+                } else if (attr.name === '상세지역') {
+                    subregionValue = value;
+                    // 지역과 상세지역을 한 줄로 표시
+                    if (!regionProcessed) {
+                        html += `
+                            <div style="display:flex;align-items:center;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #eee;">
+                                <label style="width:120px;font-weight:bold;color:#333;">지역:</label>
+                                <div style="flex:1;display:flex;align-items:center;gap:10px;">
+                                    <button type="button" class="add-btn" style="width: 50%; background:#f8f9fa;color:#333;border:1px solid #eee;padding:8px 12px;border-radius:4px;" onclick="openDetailDropdown('${rowId}','지역',this)">${regionValue||'선택'}</button>
+                                    <button type="button" class="add-btn" style="width: 50%; background:#f8f9fa;color:#333;border:1px solid #eee;padding:8px 12px;border-radius:4px;" onclick="openDetailDropdown('${rowId}','상세지역',this)">${subregionValue||'선택'}</button>
+                                </div>
                             </div>
-                        </div>
-                    `;
-                }
-                firstRowHtml += '</div>';
-                
-                // 두 번째 줄 (4개)
-                let secondRowHtml = '<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px;">';
-                for (let i = 4; i < 8; i++) {
-                    const category = debtCategories[i];
-                    const currentValue = debtData[category.key] || '';
-                    secondRowHtml += `
-                        <div style="text-align: center;">
-                            <label style="display: block; font-size: 12px; font-weight: bold; color: #495057; margin-bottom: 5px;">${category.label}</label>
-                            <div style="display: flex; align-items: center; justify-content: center; gap: 5px;">
-                                <input type="text" 
-                                       id="debt_${category.key}_${rowId}" 
-                                       value="${currentValue}" 
-                                       placeholder="0"
-                                       style="width: 70px; height: 28px; padding: 4px 6px; border: 1px solid #ced4da; border-radius: 3px; font-size: 12px; text-align: center;"
-                                       onchange="updateDebtField('${rowId}', '${category.key}', this.value)">
-                                <span style="font-size: 11px; color: #6c757d;">만원</span>
-                            </div>
-                        </div>
-                    `;
-                }
-                secondRowHtml += '</div>';
-                
-                // 총액 표시
-                const totalAmount = Object.values(debtData).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
-                const totalHtml = `
-                    <div style="margin-top: 10px; padding: 8px; background: #f8f9fa; border-radius: 4px; text-align: center;">
-                        <span style="font-weight: bold; color: #495057;">총 기대출: </span>
-                        <span id="debt_total_${rowId}" style="font-weight: bold; color: #007bff;">${totalAmount.toLocaleString()}</span>
-                        <span style="color: #6c757d;">만원</span>
-                    </div>
-                `;
-                
-                inputHtml = `
-                    <div style="border: 1px solid #e9ecef; border-radius: 6px; padding: 12px; background: #fff;">
-                        ${firstRowHtml}
-                        ${secondRowHtml}
-                        ${totalHtml}
-                    </div>
-                `;
-            } else if (attr.type === 'outstanding_debts') {
-                // 기존 코드 제거 (위의 attr.name === '기대출'로 대체됨)
-                // 이 부분은 더 이상 사용되지 않음
-            } else if (attr.type === 'recommend') {
-                // 추천자금 필드 처리
-                let displayValue = '';
-                let detailData = null;
-                
-                // 저장된 값이 JSON 형태인지 확인
-                try {
-                    if (value && typeof value === 'string' && value.startsWith('{')) {
-                        detailData = JSON.parse(value);
-                        displayValue = `${detailData['총자금']?.toLocaleString() || '0'}원`;
-                    } else {
-                        displayValue = value || '';
+                        `;
+                        regionProcessed = true;
                     }
-                } catch (e) {
-                    displayValue = value || '';
+                    return; // 상세지역 처리 완료
                 }
                 
-                inputHtml = `
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <input type="text" 
-                               value="${displayValue}" 
-                               data-field="${attr.name}" 
-                               onchange="updateRowField('${rowId}', '${attr.name}', this.value)"
-                               style="flex: 1; padding: 8px; border: 1px solid #ced4da; border-radius: 4px;">
-                        ${detailData ? `
-                        <button type="button" 
-                                onclick="showFundingDetailModal('${rowId}', '${attr.name}')" 
-                                style="padding: 8px 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; white-space: nowrap; font-size: 14px;">
-                            상세보기
-                        </button>
-                        ` : ''}
-                        <button type="button" 
-                                onclick="requestFundingRecommendation('${rowId}')" 
-                                style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; white-space: nowrap; font-size: 14px;">
-                            추천받기
-                        </button>
-                    </div>
-                `;
-            } else if (attr.name === '추천자금') {
-                // 속성명으로도 추천자금 필드 처리 (fallback)
-                let displayValue = '';
-                let detailData = null;
-                
-                // 저장된 값이 JSON 형태인지 확인
-                try {
-                    if (value && typeof value === 'string' && value.startsWith('{')) {
-                        detailData = JSON.parse(value);
-                        displayValue = `${detailData['총자금']?.toLocaleString() || '0'}원`;
-                    } else {
-                        displayValue = value || '';
-                    }
-                } catch (e) {
-                    displayValue = value || '';
-                }
-                
-                inputHtml = `
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <input type="text" 
-                               value="${displayValue}" 
-                               data-field="${attr.name}" 
-                               onchange="updateRowField('${rowId}', '${attr.name}', this.value)"
-                               style="flex: 1; padding: 8px; border: 1px solid #ced4da; border-radius: 4px;">
-                        ${detailData ? `
-                        <button type="button" 
-                                onclick="showFundingDetailModal('${rowId}', '${attr.name}')" 
-                                style="padding: 8px 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; white-space: nowrap; font-size: 14px;">
-                            상세보기
-                        </button>
-                        ` : ''}
-                        <button type="button" 
-                                onclick="requestFundingRecommendation('${rowId}')" 
-                                style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; white-space: nowrap; font-size: 14px;">
-                            추천받기
-                        </button>
-                    </div>
-                `;
-            } else if (attr.type === 'dropdown') {
-                inputHtml = `<button type="button" class="add-btn" style="width:100%;background:#f8f9fa;color:#333;border:1px solid #eee;" onclick="openDetailDropdown('${rowId}','${attr.name}',this)">${value||'선택'}</button>`;
-            } else if (attr.type === 'datetime') {
-                // 날짜 형식 변환
-                let dateValue = '';
-                if (value) {
+                if (readonlyFields.includes(attr.name)) {
+                    inputHtml = `<input type="text" value="${value}" style="background:#f8f9fa;">`;
+                } else if (attr.name === '기대출') {
+                    // 기대출 필드는 8개 카테고리를 4칸씩 2줄로 표시
+                    let debtData = {};
                     try {
-                        const dt = new Date(value);
-                        dateValue = dt.toISOString().split('T')[0];
-                    } catch(e) {
-                        dateValue = value;
+                        if (value && typeof value === 'object') {
+                            debtData = value;
+                        } else if (value && typeof value === 'string' && value.startsWith('{')) {
+                            debtData = JSON.parse(value);
+                        }
+                    } catch (e) {
+                        console.error('기대출 데이터 파싱 오류:', e);
                     }
-                }
-                inputHtml = `<input type="date" value="${dateValue}" data-field="${attr.name}" onchange="updateRowField('${rowId}', '${attr.name}', this.value)">`;
-            } else if (attr.type === 'file') {
-                // 파일 업로드 처리
-                let fileInfo = null;
-                try {
-                    // value에 파일 정보가 JSON으로 저장되어 있는지 확인
-                    if (value && typeof value === 'object' && value.original_filename) {
-                        fileInfo = value;
-                    } else if (value && typeof value === 'string' && value.startsWith('{')) {
-                        fileInfo = JSON.parse(value);
+                    
+                    // 8개 카테고리 정의
+                    const debtCategories = [
+                        { key: 'tech_guarantee', label: '기술보증기금' },
+                        { key: 'credit_guarantee', label: '신용보증기금' },
+                        { key: 'credit_foundation', label: '신용보증재단' },
+                        { key: 'smba', label: '중진공' },
+                        { key: 'semas_innovation', label: '소진공-혁신성장' },
+                        { key: 'semas_lowcredit', label: '소진공-저신용' },
+                        { key: 'collateral', label: '담보' },
+                        { key: 'credit', label: '신용' }
+                    ];
+                    
+                    // 전역 debtData 초기화
+                    window.debtData = debtData;
+                    
+                    // 첫 번째 줄 (4개) - 4x2 그리드 형태로 변경
+                    let firstRowHtml = '<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 15px;">';
+                    for (let i = 0; i < 4; i++) {
+                        const category = debtCategories[i];
+                        const currentValue = debtData[category.key] || '';
+                        // 만원 단위 값 표시
+                        const displayValue = currentValue ? currentValue.toString() : '';
+                        firstRowHtml += `
+                            <div style="text-align: center;">
+                                <label style="display: block; font-size: 12px; font-weight: bold; color: #495057; margin-bottom: 5px;">${category.label}</label>
+                                <div style="display: flex; align-items: center; justify-content: center; gap: 5px;">
+                                    <input type="text" 
+                                           id="debt_${category.key}_${rowId}" 
+                                           value="${displayValue}" 
+                                           placeholder="0"
+                                           style="width: 90px; height: 28px; padding: 4px 6px; border: 1px solid #ced4da; border-radius: 3px; font-size: 12px; text-align: center;"
+                                           oninput="formatDebtInputRealtime(this, '${rowId}', '${category.key}')"
+                                           onblur="updateDebtField('${rowId}', '${category.key}', this.value)">
+                                    <span style="font-size: 11px; color: #6c757d;">만원</span>
+                                </div>
+                            </div>
+                        `;
                     }
-                } catch (e) {
-                    // JSON 파싱 실패 시 null로 유지
-                }
-                
-                if (fileInfo && fileInfo.original_filename) {
-                    // 파일이 이미 업로드된 경우
-                    inputHtml = `
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <button type="button" onclick="document.getElementById('file_${attr.name}_${rowId}').click()" 
-                                    style="padding: 6px 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                                수정
-                            </button>
-                            <a href="${fileInfo.download_url}" download="${fileInfo.original_filename}" 
-                               style="color: #007bff; text-decoration: none; cursor: pointer;"
-                               onclick="downloadFile('${fileInfo.download_url}', '${fileInfo.original_filename}')">
-                                📎 ${fileInfo.original_filename}
-                            </a>
-                            <button type="button" onclick="deleteFile('${rowId}', '${attr.name}')" 
-                                    style="padding: 4px 8px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
-                                삭제
-                            </button>
-                            <input type="file" id="file_${attr.name}_${rowId}" style="display: none;" onchange="handleFileUpload('${rowId}', '${attr.name}', this)">
+                    firstRowHtml += '</div>';
+                    
+                    // 두 번째 줄 (4개)
+                    let secondRowHtml = '<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px;">';
+                    for (let i = 4; i < 8; i++) {
+                        const category = debtCategories[i];
+                        const currentValue = debtData[category.key] || '';
+                        // 만원 단위 값 표시
+                        const displayValue = currentValue ? currentValue.toString() : '';
+                        secondRowHtml += `
+                            <div style="text-align: center;">
+                                <label style="display: block; font-size: 12px; font-weight: bold; color: #495057; margin-bottom: 5px;">${category.label}</label>
+                                <div style="display: flex; align-items: center; justify-content: center; gap: 5px;">
+                                    <input type="text" 
+                                           id="debt_${category.key}_${rowId}" 
+                                           value="${displayValue}" 
+                                           placeholder="0"
+                                           style="width: 90px; height: 28px; padding: 4px 6px; border: 1px solid #ced4da; border-radius: 3px; font-size: 12px; text-align: center;"
+                                           oninput="formatDebtInputRealtime(this, '${rowId}', '${category.key}')"
+                                           onblur="updateDebtField('${rowId}', '${category.key}', this.value)">
+                                    <span style="font-size: 11px; color: #6c757d;">만원</span>
+                                </div>
+                            </div>
+                        `;
+                    }
+                    secondRowHtml += '</div>';
+                    
+                    // 총액 표시 (만원 단위)
+                    const totalAmount = Object.values(debtData).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
+                    const totalDisplayValue = totalAmount ? `${totalAmount}만원` : '0만원';
+                    const totalHtml = `
+                        <div style="margin-top: 10px; padding: 8px; background: #f8f9fa; border-radius: 4px; text-align: center;">
+                            <span style="font-weight: bold; color: #495057;">총 기대출: </span>
+                            <span id="debt_total_${rowId}" style="font-weight: bold; color: #007bff;">${totalDisplayValue}</span>
                         </div>
                     `;
-                } else {
-                    // 파일이 업로드되지 않은 경우
+                    
                     inputHtml = `
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <input type="file" id="file_${attr.name}_${rowId}" style="display: none;" onchange="handleFileUpload('${rowId}', '${attr.name}', this)">
-                            <button type="button" onclick="document.getElementById('file_${attr.name}_${rowId}').click()" 
-                                    style="padding: 6px 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                                파일 선택
-                            </button>
-                            <span style="color: #666; font-size: 12px;">파일이 선택되지 않음</span>
+                        <div style="border: 1px solid #e9ecef; border-radius: 6px; padding: 12px; background: #fff;">
+                            ${firstRowHtml}
+                            ${secondRowHtml}
+                            ${totalHtml}
                         </div>
                     `;
-                }
-            } else if (attr.type === 'number') {
-                // 숫자 타입 필드 - 콤마 포맷팅 적용
-                const formattedValue = formatNumberWithComma(value);
-                inputHtml = `<input type="text" value="${formattedValue}" data-field="${attr.name}" 
-                           onchange="updateRowFieldWithNumber('${rowId}', '${attr.name}', this.value)" 
-                           oninput="this.value = formatNumberWithComma(this.value)"
-                           style="padding: 8px; border: 1px solid #ced4da; border-radius: 4px;">`;
-            } else if (attr.type === 'age') {
-                // 나이 타입 필드 - 날짜 입력 또는 연령대 선택
-                let ageData = {};
-                try {
-                    if (value && typeof value === 'string' && value.startsWith('{')) {
-                        ageData = JSON.parse(value);
-                    } else if (value && typeof value === 'object') {
-                        ageData = value;
+                } else if (attr.type === 'outstanding_debts') {
+                    // 기존 코드 제거 (위의 attr.name === '기대출'로 대체됨)
+                    // 이 부분은 더 이상 사용되지 않음
+                } else if (attr.type === 'recommend') {
+                    // 추천자금 필드 처리
+                    let displayValue = '';
+                    let detailData = null;
+                    
+                    // 저장된 값이 JSON 형태인지 확인
+                    try {
+                        if (value && typeof value === 'string' && value.startsWith('{')) {
+                            detailData = JSON.parse(value);
+                            const totalAmount = detailData['총자금'] || 0;
+                            displayValue = totalAmount ? formatToKoreanCurrency(totalAmount) : '0';
+                        } else {
+                            displayValue = value || '';
+                        }
+                    } catch (e) {
+                        displayValue = value || '';
                     }
-                } catch (e) {
-                    console.error('나이 데이터 파싱 오류:', e);
-                }
-                
-                const birthDate = ageData.birth_date || '';
-                const ageRange = ageData.age_range || '';
-                
-                inputHtml = `
-                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; align-items: center;">
-                        <!-- 생년월일 입력 -->
-                        <div style="display: flex; flex-direction: column;">
-                            <label style="font-size: 12px; color: #666; margin-bottom: 4px;">생년월일</label>
+                    
+                    inputHtml = `
+                        <div style="display: flex; align-items: center; gap: 8px;">
                             <input type="text" 
-                                   placeholder="YY.MM.DD" 
-                                   value="${birthDate}" 
-                                   style="padding: 6px; border: 1px solid #ced4da; border-radius: 4px; font-size: 14px;"
-                                   onchange="updateAgeField('${rowId}', '${attr.name}', 'birth_date', this.value)"
-                                   maxlength="8"
-                                   oninput="formatDateInput(this)">
+                                   value="${displayValue}" 
+                                   data-field="${attr.name}" 
+                                   onchange="updateRowField('${rowId}', '${attr.name}', this.value)"
+                                   style="flex: 1; padding: 8px; border: 1px solid #ced4da; border-radius: 4px;">
+                            ${detailData ? `
+                            <button type="button" 
+                                    onclick="showFundingDetailModal('${rowId}', '${attr.name}')" 
+                                    style="padding: 8px 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; white-space: nowrap; font-size: 14px;">
+                                상세보기
+                            </button>
+                            ` : ''}
+                            <button type="button" 
+                                    onclick="requestFundingRecommendation('${rowId}')" 
+                                    style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; white-space: nowrap; font-size: 14px;">
+                                추천받기
+                            </button>
                         </div>
-                        
-                        <!-- 40세 미만 체크박스 -->
-                        <div style="display: flex; flex-direction: column; align-items: center;">
-                            <label style="font-size: 12px; color: #666; margin-bottom: 4px;">40세 미만</label>
-                            <input type="checkbox" 
-                                   ${ageRange === 'under40' ? 'checked' : ''}
-                                   style="transform: scale(1.2);"
-                                   onchange="updateAgeField('${rowId}', '${attr.name}', 'age_range', this.checked ? 'under40' : '')">
+                    `;
+                } else if (attr.name === '추천자금') {
+                    // 속성명으로도 추천자금 필드 처리 (fallback)
+                    let displayValue = '';
+                    let detailData = null;
+                    
+                    // 저장된 값이 JSON 형태인지 확인
+                    try {
+                        if (value && typeof value === 'string' && value.startsWith('{')) {
+                            detailData = JSON.parse(value);
+                            const totalAmount = detailData['총자금'] || 0;
+                            displayValue = totalAmount ? formatToKoreanCurrency(totalAmount) : '0';
+                        } else {
+                            displayValue = value || '';
+                        }
+                    } catch (e) {
+                        displayValue = value || '';
+                    }
+                    
+                    inputHtml = `
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <input type="text" 
+                                   value="${displayValue}" 
+                                   data-field="${attr.name}" 
+                                   onchange="updateRowField('${rowId}', '${attr.name}', this.value)"
+                                   style="flex: 1; padding: 8px; border: 1px solid #ced4da; border-radius: 4px;">
+                            ${detailData ? `
+                            <button type="button" 
+                                    onclick="showFundingDetailModal('${rowId}', '${attr.name}')" 
+                                    style="padding: 8px 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; white-space: nowrap; font-size: 14px;">
+                                상세보기
+                            </button>
+                            ` : ''}
+                            <button type="button" 
+                                    onclick="requestFundingRecommendation('${rowId}')" 
+                                    style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; white-space: nowrap; font-size: 14px;">
+                                추천받기
+                            </button>
                         </div>
-                        
-                        <!-- 40세 이상 체크박스 -->
-                        <div style="display: flex; flex-direction: column; align-items: center;">
-                            <label style="font-size: 12px; color: #666; margin-bottom: 4px;">40세 이상</label>
-                            <input type="checkbox" 
-                                   ${ageRange === 'over40' ? 'checked' : ''}
-                                   style="transform: scale(1.2);"
-                                   onchange="updateAgeField('${rowId}', '${attr.name}', 'age_range', this.checked ? 'over40' : '')">
+                    `;
+                } else if (attr.name === '매출' || attr.name.includes('매출')) {
+                    // 매출 필드는 한국어 단위로 표시
+                    const numericValue = parseFloat(value) || 0;
+                    const displayValue = numericValue ? formatToKoreanCurrency(numericValue) : '';
+                    inputHtml = `<input type="text" value="${displayValue}" data-field="${attr.name}" 
+                                       oninput="formatSalesInputRealtime(this, '${rowId}', '${attr.name}')"
+                                       onblur="updateRowFieldWithKoreanCurrency('${rowId}', '${attr.name}', this.value)">`;
+                } else if (attr.name === '업종') {
+                    // 업종 드롭다운 처리
+                    const industryOptions = [
+                        "농업, 임업 및 어업",
+                        "광업",
+                        "제조업",
+                        "전기, 가스, 증기 및 공기 조절 공급업",
+                        "수도, 하수 및 폐기물 처리, 원료 재생업",
+                        "건설업",
+                        "도매 및 소매업",
+                        "운수 및 창고업",
+                        "숙박 및 음식점업",
+                        "정보통신업",
+                        "금융 및 보험업",
+                        "부동산업",
+                        "전문, 과학 및 기술 서비스업",
+                        "사업시설 관리, 사업 지원 및 임대 서비스업",
+                        "교육서비스업",
+                        "보건업 및 사회복지 서비스업",
+                        "예술 스포츠 및 여가관련 서비스업",
+                        "협회 및 단체, 수리 및 기타 개인서비스업"
+                    ];
+                    
+                    const selectOptions = industryOptions.map(option => 
+                        `<option value="${option}" ${value === option ? 'selected' : ''}>${option}</option>`
+                    ).join('');
+                    
+                    inputHtml = `
+                        <select onchange="updateRowField('${rowId}', '${attr.name}', this.value)" 
+                                style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;background:white;">
+                            <option value="">업종 선택</option>
+                            ${selectOptions}
+                        </select>
+                    `;
+                } else if (attr.type === 'file') {
+                    // 파일 타입 속성 처리
+                    let fileInfo = null;
+                    let displayFileName = '';
+                    let hasFile = false;
+                    
+                    // 파일 정보 파싱
+                    try {
+                        if (value && value !== null && value !== undefined) {
+                            if (typeof value === 'object') {
+                                // 이미 객체인 경우
+                                fileInfo = value;
+                                displayFileName = fileInfo.original_filename || fileInfo.stored_filename || fileInfo.filename || 'unknown';
+                                hasFile = true;
+                            } else if (typeof value === 'string' && value.trim() !== '') {
+                                if (value.trim().startsWith('{')) {
+                                    // JSON 형태의 파일 정보
+                                    fileInfo = JSON.parse(value);
+                                    displayFileName = fileInfo.original_filename || fileInfo.stored_filename || fileInfo.filename || 'unknown';
+                                    hasFile = true;
+                                } else {
+                                    // 단순 문자열 파일명
+                                    displayFileName = value.trim();
+                                    hasFile = true;
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        console.error('파일 정보 파싱 오류:', e, 'value:', value);
+                        // 파싱 실패 시 기본값 설정
+                        if (value) {
+                            displayFileName = String(value);
+                            hasFile = true;
+                        }
+                    }
+                    
+                    if (hasFile) {
+                        // 파일이 있는 경우: 파일명 + 수정 버튼 + 삭제 버튼
+                        inputHtml = `
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span onclick="downloadFile('${rowId}', '${attr.name}')" 
+                                      style="
+                                          flex: 1; 
+                                          color: #333; 
+                                          font-size: 14px; 
+                                          padding: 8px 0;
+                                          cursor: pointer;
+                                          text-decoration: underline;
+                                      ">📎 ${displayFileName}</span>
+                                <button type="button" 
+                                        onclick="document.getElementById('file_${attr.name}_${rowId}').click()" 
+                                        style="
+                                            padding: 6px 12px; 
+                                            background: #28a745; 
+                                            color: white; 
+                                            border: none; 
+                                            border-radius: 4px; 
+                                            cursor: pointer; 
+                                            font-size: 12px;
+                                            font-weight: 500;
+                                        ">
+                                    수정
+                                </button>
+                                <button type="button" 
+                                        onclick="deleteFile('${rowId}', '${attr.name}')" 
+                                        style="
+                                            padding: 6px 12px; 
+                                            background: #dc3545; 
+                                            color: white; 
+                                            border: none; 
+                                            border-radius: 4px; 
+                                            cursor: pointer; 
+                                            font-size: 12px;
+                                            font-weight: 500;
+                                        ">
+                                    삭제
+                                </button>
+                                <input type="file" 
+                                       id="file_${attr.name}_${rowId}" 
+                                       style="display: none;"
+                                       onchange="uploadFile('${rowId}', '${attr.name}', this)">
+                            </div>
+                        `;
+                    } else {
+                        // 파일이 없는 경우: 파일 선택 버튼
+                        inputHtml = `
+                            <div style="display: flex; align-items: center;">
+                                <span style="flex: 1; color: #6c757d; font-size: 14px; padding: 8px 0;">파일이 선택되지 않았습니다</span>
+                                <button type="button" 
+                                        onclick="document.getElementById('file_${attr.name}_${rowId}').click()" 
+                                        style="
+                                            padding: 6px 12px; 
+                                            background: #007bff; 
+                                            color: white; 
+                                            border: none; 
+                                            border-radius: 4px; 
+                                            cursor: pointer; 
+                                            font-size: 12px;
+                                            font-weight: 500;
+                                        ">
+                                    파일 선택
+                                </button>
+                                <input type="file" 
+                                       id="file_${attr.name}_${rowId}" 
+                                       style="display: none;"
+                                       onchange="uploadFile('${rowId}', '${attr.name}', this)">
+                            </div>
+                        `;
+                    }
+                } else if (attr.type === 'dropdown') {
+                    inputHtml = `<button type="button" class="add-btn" style="width:100%;background:#f8f9fa;color:#333;border:1px solid #eee;" onclick="openDetailDropdown('${rowId}','${attr.name}',this)">${value||'선택'}</button>`;
+                } else if (attr.type === 'datetime') {
+                    // 날짜 형식 변환
+                    let dateValue = '';
+                    if (value) {
+                        try {
+                            const dt = new Date(value);
+                            dateValue = dt.toISOString().split('T')[0];
+                        } catch(e) {
+                            dateValue = value;
+                        }
+                    }
+                    inputHtml = `<input type="date" value="${dateValue}" data-field="${attr.name}" onchange="updateRowField('${rowId}', '${attr.name}', this.value)">`;
+                } else if (attr.type === 'number') {
+                    inputHtml = `<input type="number" value="${value}" data-field="${attr.name}" onchange="updateRowField('${rowId}', '${attr.name}', this.value)">`;
+                } else if (attr.type === 'age') {
+                    // 나이 필드 처리 - 달력과 체크박스 포함
+                    let ageData = {};
+                    let displayText = '';
+                    
+                    try {
+                        if (value && typeof value === 'string') {
+                            ageData = JSON.parse(value);
+                        }
+                    } catch (e) {
+                        ageData = {};
+                    }
+                    
+                    // 현재 값에 따른 표시
+                    if (ageData.birth_date) {
+                        displayText = `생년월일: ${ageData.birth_date}`;
+                    } else if (ageData.age_range) {
+                        displayText = ageData.age_range === 'under40' ? '40세 미만' : '40세 이상';
+                    } else {
+                        displayText = '나이 정보 없음';
+                    }
+                    
+                    inputHtml = `
+                        <div style="border: 1px solid #e9ecef; border-radius: 6px; padding: 12px; background: #fff;" data-field="${attr.name}" data-current-value='${JSON.stringify(ageData)}'>
+                            <div style="display: flex; flex-direction: column; gap: 12px;">
+                                <!-- 생년월일 입력 -->
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <label style="width: 80px; font-weight: bold; color: #495057;">생년월일:</label>
+                                    <input type="date" 
+                                           id="birth_date_${rowId}" 
+                                           value="${ageData.birth_date || ''}"
+                                           style="flex: 1; padding: 8px; border: 1px solid #ced4da; border-radius: 4px;"
+                                           onchange="updateAgeField('${rowId}', '${attr.name}', 'birth_date', this.value)">
+                                    
+                                    <!-- 연령대 체크박스 -->
+                                    <div style="display: flex; gap: 10px;">
+                                        <label style="display: flex; align-items: center; gap: 3px; cursor: pointer;">
+                                            <input type="checkbox" 
+                                                   ${ageData.age_range === 'under40' ? 'checked' : ''}
+                                                   onchange="updateAgeField('${rowId}', '${attr.name}', 'age_range', this.checked ? 'under40' : '')"
+                                                   style="margin: 0; width: 12px; height: 12px;">
+                                            <span style="font-size: 12px;">40세 미만</span>
+                                        </label>
+                                        <label style="display: flex; align-items: center; gap: 3px; cursor: pointer;">
+                                            <input type="checkbox" 
+                                                   ${ageData.age_range === 'over40' ? 'checked' : ''}
+                                                   onchange="updateAgeField('${rowId}', '${attr.name}', 'age_range', this.checked ? 'over40' : '')"
+                                                   style="margin: 0; width: 12px; height: 12px;">
+                                            <span style="font-size: 12px;">40세 이상</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                `;
-            } else if (attr.type === 'text') {
-                // "변환된 텍스트"는 우측에만 표시하므로 좌측에서 제외
-                if (attr.name === '변환된 텍스트') {
-                    return; // 이 속성은 건너뛰기
+                    `;
+                } else if (attr.type === 'multi_select') {
+                    // 다중 선택 필드 처리
+                    let selectedValues = [];
+                    try {
+                        if (value && typeof value === 'string') {
+                            selectedValues = JSON.parse(value);
+                        } else if (Array.isArray(value)) {
+                            selectedValues = value;
+                        }
+                    } catch (e) {
+                        selectedValues = [];
+                    }
+                    
+                    const displayText = selectedValues.length > 0 ? selectedValues.join(', ') : '선택';
+                    inputHtml = `<button type="button" class="add-btn" style="width:100%;background:#f8f9fa;color:#333;border:1px solid #eee;" onclick="openDetailDropdown('${rowId}','${attr.name}',this)">${displayText}</button>`;
+                } else {
+                    // 기본 텍스트 필드
+                    inputHtml = `<input type="text" value="${value}" data-field="${attr.name}" onchange="updateRowField('${rowId}', '${attr.name}', this.value)">`;
                 }
                 
-                // text 타입은 좌측에서 바로 편집 가능
-                textAttributeValue = value;
-                window.currentTextAttributeName = attr.name; // text 속성명 저장
-                
-                // 좌측에서 바로 편집 가능한 일반 텍스트 입력창
-                inputHtml = `<input type="text" value="${value}" data-field="${attr.name}" onchange="updateRowField('${rowId}', '${attr.name}', this.value)">`;
-            } else if (attr.type === 'select') {
-                // 드롭다운 옵션을 가져와서 select 생성
-                var selectHtml = '<select class="form-control" onchange="updateRowField(rowId, \'' + attr.name + '\', this.value)" style="margin-bottom: 10px;">';
-                selectHtml += '<option value="">선택</option>';
-                
-                // 해당 필드의 드롭다운 옵션을 가져옴
-                if (window.DROPDOWN_OPTIONS && window.DROPDOWN_OPTIONS[attr.name]) {
-                    window.DROPDOWN_OPTIONS[attr.name].forEach(function(option) {
-                        var selected = (currentValue == option.id) ? 'selected' : '';
-                        selectHtml += '<option value="' + option.id + '" ' + selected + '>' + option.option + '</option>';
-                    });
+                // 지역 관련 필드가 아닌 경우에만 HTML에 추가
+                if (attr.name !== '지역' && attr.name !== '상세지역') {
+                    html += `
+                        <div style="display:flex;align-items:center;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #eee;">
+                            <label style="width:120px;font-weight:bold;color:#333;">${attr.name}:</label>
+                            <div style="flex:1;">${inputHtml}</div>
+                        </div>
+                    `;
                 }
-                selectHtml += '</select>';
-                
-                // 새 옵션 추가 버튼
-                selectHtml += '<button type="button" onclick="showAddOptionModal(\'' + attr.name + '\', rowId)" class="btn btn-sm btn-outline-primary" style="margin-left: 5px;">+ 옵션 추가</button>';
-                
-                formHtml += '<div class="form-group">';
-                formHtml += '<label>' + attr.label + '</label>';
-                formHtml += selectHtml;
-                formHtml += '</div>';
-                
-                // 드롭다운 닫기 이벤트 리스너 추가
-                setupDropdownCloseHandler();
-            } else {
-                inputHtml = `<input type="text" value="${value}" data-field="${attr.name}" onchange="updateRowField('${rowId}', '${attr.name}', this.value)">`;
-            }
+            });
             
-            html += `<tr><th style="text-align:right;padding:4px 8px;color:#888;">${attr.name}</th><td style="padding:4px 8px;">${inputHtml}</td></tr>`;
+            // 상세정보 모달 내용 업데이트
+            document.getElementById('detailModalContent').innerHTML = html;
+            
+            // 음성파일 영역 업데이트
+            updateAudioFileSection(rowId, audioFileValue);
+            
+            // 모달 표시
+            document.getElementById('detailModal').style.display = 'flex';
+        })
+        .catch(error => {
+            console.error('속성 목록 가져오기 오류:', error);
         });
-        
-        html += '</table>';
-        document.getElementById('detailModalContent').innerHTML = html;
-        
-        // 우측 텍스트 영역에 변환된 텍스트 컬럼 값 로드
-        const convertedTextArea = document.getElementById('convertedText');
-        if (convertedTextArea) {
-            // "변환된 텍스트" 속성 값 찾기
-            const convertedTextAttribute = rowData['변환된 텍스트'];
-            convertedTextArea.value = convertedTextAttribute || '';
-        }
-        
-        // 음성파일 관리 영역 업데이트 ("음성파일" 속성 사용)
-        // DOM 요소가 준비된 후에 실행하도록 setTimeout 사용
-        setTimeout(() => {
-            try {
-                updateAudioFileManagement(audioFileValue);
-            } catch (error) {
-                console.error('음성파일 관리 영역 업데이트 오류:', error);
+}
+
+// 한국어 통화 단위 변환 함수
+function formatToKoreanCurrency(amount) {
+    if (!amount || amount === 0) return '0원';
+    
+    const numAmount = typeof amount === 'string' ? parseInt(amount.replace(/[^\d]/g, '')) : amount;
+    if (isNaN(numAmount) || numAmount === 0) return '0원';
+    
+    let result = '';
+    let remaining = numAmount;
+    
+    // 억 단위 처리
+    if (remaining >= 100000000) {
+        const eok = Math.floor(remaining / 100000000);
+        result += eok + '억';
+        remaining = remaining % 100000000;
+    }
+    
+    // 천만 단위 처리 (천으로 표시)
+    if (remaining >= 10000000) {
+        const cheon = Math.floor(remaining / 10000000);
+        if (result) result += ' ';
+        result += cheon + '천';
+        remaining = remaining % 10000000;
+    }
+    
+    // 백만 단위 처리
+    if (remaining >= 1000000) {
+        const baek = Math.floor(remaining / 1000000);
+        if (result) result += ' ';
+        result += baek + '백';
+        remaining = remaining % 1000000;
+    }
+    
+    // 만 단위가 남아있으면 추가
+    if (remaining >= 10000) {
+        if (result) result += '만';
+        else result = Math.floor(remaining / 10000) + '만';
+    } else if (result) {
+        result += '만';
+    }
+    
+    return result + '원';
+}
+
+// 한국어 통화를 숫자로 변환하는 함수
+function parseKoreanCurrency(koreanCurrency) {
+    if (!koreanCurrency || koreanCurrency === '0') return 0;
+    
+    let result = 0;
+    const str = koreanCurrency.toString().replace(/[,\s]/g, '');
+    
+    // 억 단위 처리
+    const eokMatch = str.match(/(\d+)억/);
+    if (eokMatch) {
+        result += parseInt(eokMatch[1]) * 100000000;
+    }
+    
+    // 천만 단위 처리
+    const cheonmanMatch = str.match(/(\d+)천만/);
+    if (cheonmanMatch) {
+        result += parseInt(cheonmanMatch[1]) * 10000000;
+    }
+    
+    // 백만 단위 처리
+    const baekmanMatch = str.match(/(\d+)백만/);
+    if (baekmanMatch) {
+        result += parseInt(baekmanMatch[1]) * 1000000;
+    }
+    
+    // 만 단위 처리
+    const manMatch = str.match(/(\d+)만/);
+    if (manMatch) {
+        result += parseInt(manMatch[1]) * 10000;
+    }
+    
+    // 천 단위 처리
+    const cheonMatch = str.match(/(\d+)천/);
+    if (cheonMatch) {
+        result += parseInt(cheonMatch[1]) * 1000;
+    }
+    
+    return result;
+}
+
+// 한국어 통화 단위로 업데이트하는 함수
+function updateRowFieldWithKoreanCurrency(rowId, fieldName, value) {
+    // 입력값에서 숫자만 추출
+    const cleanValue = value.replace(/[^\d]/g, '');
+    const numericValue = parseInt(cleanValue) || 0;
+    
+    // 한국어 단위로 표시
+    const koreanValue = formatToKoreanCurrency(numericValue);
+    
+    // 입력 필드에 한국어 단위로 표시
+    const inputElement = document.querySelector(`input[data-field="${fieldName}"]`);
+    if (inputElement) {
+        inputElement.value = koreanValue;
+    }
+    
+    // 서버에 숫자 값으로 저장
+    fetch('/diary/update_row_field/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify({
+            row_id: rowId,
+            field_name: fieldName,
+            value: numericValue
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            console.log('매출 정보가 업데이트되었습니다.');
+            
+            // 테이블과 칸반보드 새로고침
+            if (typeof refreshTable === 'function') {
+                refreshTable();
             }
-        }, 100);
-        
-        // 전역 변수에 현재 행 ID 저장
-        window.currentDetailRowId = rowId;
-        window.currentRowId = rowId;
-        
-        document.getElementById('detailModal').style.display = 'flex';
+        } else {
+            console.error('매출 업데이트 실패:', data.error);
+            showNotification('매출 정보 업데이트에 실패했습니다.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('매출 업데이트 오류:', error);
+        showNotification('매출 정보 업데이트 중 오류가 발생했습니다.', 'error');
     });
 }
 
@@ -1215,22 +1458,24 @@ function closeDetailModal() {
 
 // 기대출 필드 업데이트 함수
 function updateDebtField(rowId, debtKey, value) {
-    // 텍스트 입력값에서 숫자만 추출 (콤마 제거 후 parseFloat 사용)
-    const numericValue = parseFloat(value.replace(/[^0-9.]/g, '')) || 0;
+    // 입력값에서 숫자만 추출
+    const cleanValue = value.replace(/[^\d]/g, '');
+    const numericValue = parseInt(cleanValue) || 0;
     
-    // 전역 debtData에 업데이트
+    // 전역 debtData에 업데이트 (만원 단위로 저장)
     if (!window.debtData) {
         window.debtData = {};
     }
     window.debtData[debtKey] = numericValue;
     
-    // 합계 계산
-    const totalAmount = Object.values(window.debtData).reduce((sum, val) => sum + val, 0);
+    // 합계 계산 (만원 단위)
+    const totalAmount = Object.values(window.debtData).reduce((sum, val) => sum + (parseInt(val) || 0), 0);
+    const totalDisplayValue = totalAmount ? `${totalAmount}만원` : '0만원';
     
     // 합계 표시 업데이트
     const totalElement = document.getElementById(`debt_total_${rowId}`);
     if (totalElement) {
-        totalElement.textContent = totalAmount.toLocaleString();
+        totalElement.textContent = totalDisplayValue;
     }
     
     // 서버에 저장
@@ -1282,28 +1527,57 @@ function getCsrfToken() {
 
 // 알림 표시 함수 (이미 있다면 중복 제거)
 function showNotification(message, type = 'info') {
+    // 기존 알림 제거
+    const existingNotification = document.querySelector('.notification');
+    if (existingNotification) {
+        existingNotification.remove();
+    }
+    
+    // 새 알림 생성
     const notification = document.createElement('div');
+    notification.className = 'notification';
     notification.style.cssText = `
         position: fixed;
         top: 20px;
         right: 20px;
-        background: ${type === 'success' ? '#28a745' : type === 'error' ? '#dc3545' : '#007bff'};
+        padding: 15px 20px;
+        border-radius: 8px;
         color: white;
-        padding: 12px 20px;
-        border-radius: 5px;
+        font-weight: 500;
         z-index: 10000;
-        font-size: 14px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        transition: all 0.3s ease;
+        transform: translateX(100%);
     `;
-    notification.textContent = message;
     
+    // 타입별 색상 설정
+    switch (type) {
+        case 'success':
+            notification.style.background = 'linear-gradient(135deg, #28a745 0%, #20c997 100%)';
+            break;
+        case 'error':
+            notification.style.background = 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)';
+            break;
+        default:
+            notification.style.background = 'linear-gradient(135deg, #007bff 0%, #0056b3 100%)';
+    }
+    
+    notification.textContent = message;
     document.body.appendChild(notification);
+    
+    // 애니메이션으로 표시
+    setTimeout(() => {
+        notification.style.transform = 'translateX(0)';
+    }, 100);
     
     // 3초 후 자동 제거
     setTimeout(() => {
-        if (notification.parentNode) {
-            notification.parentNode.removeChild(notification);
-        }
+        notification.style.transform = 'translateX(100%)';
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 300);
     }, 3000);
 }
 
@@ -1356,7 +1630,8 @@ function requestFundingRecommendation(rowId) {
                 analysis_summary: data.analysis_summary,
                 engine_info: data.engine_info || {},
                 detailed_funds: {},
-                exclusion_notes: data.analysis_summary?.exclusion_notes || []
+                exclusion_notes: data.analysis_summary?.exclusion_notes || [],
+                recommended_notices: data.recommended_notices || []
             };
             
             // individual_funds에서 detailed_funds 생성
@@ -1442,24 +1717,9 @@ function showFundingRecommendationModal(recommendation, analysisData) {
                 width: 95%;
                 max-height: 85vh;
                 overflow-y: auto;
-                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             ">
-                <h2 style="margin: 0 0 20px 0; color: #333; text-align: center;">정책자금 추천 분석 결과 V2.0</h2>
-                
-                <!-- 엔진 정보 -->
-                <div style="
-                    background: #e9ecef;
-                    color: #495057;
-                    padding: 10px 15px;
-                    border-radius: 6px;
-                    margin-bottom: 20px;
-                    text-align: center;
-                    font-size: 14px;
-                ">
-                    <strong>엔진:</strong> ${result.engine_info?.version || '정책자금 추천 엔진 V2.0'} | 
-                    <strong>정확도:</strong> 99.99% | 
-                    <strong>분석시간:</strong> ${result.analysis_summary?.calculation_time || '0.5초'}
-                </div>
+                <h2 style="margin: 0 0 20px 0; color: #333; text-align: center;">정책자금 추천 분석 결과</h2>
                 
                 <!-- 총 추천 금액 -->
                 <div style="
@@ -1506,7 +1766,7 @@ function showFundingRecommendationModal(recommendation, analysisData) {
                                     font-size: 12px;
                                     font-weight: bold;
                                 ">
-                                    우선순위 ${fund.priority || (index + 1)}
+                                    우선순위 ${index + 1}
                                 </div>
                                 <div style="font-weight: bold; color: #495057; margin-bottom: 8px; margin-right: 60px;">
                                     ${fund.fund_name}
@@ -1585,33 +1845,56 @@ function showFundingRecommendationModal(recommendation, analysisData) {
                 </div>
                 ` : ''}
                 
-                <!-- 분석 요약 -->
-                ${result.analysis_summary ? `
+                <!-- 공고 추천 -->
+                ${result.recommended_notices && result.recommended_notices.length > 0 ? `
                 <div style="margin-bottom: 25px;">
-                    <h4 style="margin: 0 0 15px 0; color: #333; border-bottom: 2px solid #ffc107; padding-bottom: 8px;">
-                        📈 기업 분석 요약
+                    <h4 style="margin: 0 0 15px 0; color: #333; border-bottom: 2px solid #28a745; padding-bottom: 8px;">
+                        📢 맞춤 공고 추천 (${result.recommended_notices.length}개)
                     </h4>
-                    <div style="
-                        background: #fff9e6;
-                        border: 1px solid #ffeaa7;
-                        border-radius: 8px;
-                        padding: 20px;
-                    ">
-                        <div style="margin-bottom: 10px;">
-                            <strong>추천 자금 수:</strong> ${result.analysis_summary.total_products || 0}개
-                        </div>
-                        <div style="margin-bottom: 10px;">
-                            <strong>신뢰도:</strong> ${result.analysis_summary.confidence || '95%'}
-                        </div>
-                        <div style="margin-bottom: 10px;">
-                            <strong>엔진 버전:</strong> ${result.analysis_summary.version || 'V2.0'}
-                        </div>
-                        <div>
-                            <strong>계산 시간:</strong> ${result.analysis_summary.calculation_time || '1초 미만'}
-                        </div>
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        ${result.recommended_notices.map(notice => `
+                            <div onclick="window.open('/board/detail/${notice.pblanc_id}/?page_index=1', '_blank')" style="
+                                background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+                                border: 1px solid #dee2e6;
+                                border-radius: 8px;
+                                padding: 16px;
+                                cursor: pointer;
+                                transition: all 0.2s ease;
+                                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                            " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'">
+                                <div style="font-weight: bold; color: #495057; margin-bottom: 8px; font-size: 15px; line-height: 1.4;">
+                                    ${notice.title}
+                                </div>
+                                <div style="color: #6c757d; font-size: 13px; margin-bottom: 4px;">
+                                    <strong>기관:</strong> ${notice.institution}
+                                </div>
+                                <div style="color: #6c757d; font-size: 13px; margin-bottom: 4px;">
+                                    <strong>접수기간:</strong> ${notice.apply_period}
+                                </div>
+                                <div style="color: #6c757d; font-size: 13px;">
+                                    <strong>지원내용:</strong> ${notice.support_amount}
+                                </div>
+                            </div>
+                        `).join('')}
                     </div>
                 </div>
-                ` : ''}
+                ` : `
+                <div style="margin-bottom: 25px;">
+                    <h4 style="margin: 0 0 15px 0; color: #333; border-bottom: 2px solid #28a745; padding-bottom: 8px;">
+                        📢 맞춤 공고 추천
+                    </h4>
+                    <div style="
+                        background: #f8f9fa;
+                        border: 1px solid #e9ecef;
+                        border-radius: 8px;
+                        padding: 20px;
+                        text-align: center;
+                        color: #6c757d;
+                    ">
+                        현재 조건에 맞는 공고가 없습니다.
+                    </div>
+                </div>
+                `}
                 
                 <!-- 제외된 자금 정보 -->
                 ${result.exclusion_notes && result.exclusion_notes.length > 0 ? `
@@ -1744,341 +2027,387 @@ function showFundingDetailModal(rowId, fieldName) {
             
             console.log('상세보기 자금 데이터:', fundingData);
             
-            // 기존 모달이 있으면 제거
-            const existingModal = document.getElementById('fundingDetailModal');
-            if (existingModal) {
-                existingModal.remove();
+            // pblanc_ids가 있으면 공고 정보를 서버에서 가져오기
+            let recommendedNoticesPromise = Promise.resolve([]);
+            if (fundingData.pblanc_ids && fundingData.pblanc_ids.length > 0) {
+                recommendedNoticesPromise = fetch('/diary/get_recommended_notices/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    body: JSON.stringify({
+                        pblanc_ids: fundingData.pblanc_ids
+                    })
+                })
+                .then(response => response.json())
+                .then(data => data.success ? data.recommended_notices : [])
+                .catch(error => {
+                    console.error('공고 정보 가져오기 실패:', error);
+                    return [];
+                });
             }
             
-            // 데이터 구조 정규화 - 추천받기와 동일한 형태로 변환
-            let normalizedData = {
-                total_amount: 0,
-                individual_funds: [],
-                detailed_funds: {},
-                analysis_summary: null,
-                engine_info: { version: '정책자금 추천 엔진 V2.0' },
-                exclusion_notes: []
-            };
-            
-            // 저장된 데이터에서 값 추출
-            if (fundingData.total_amount) {
-                normalizedData.total_amount = fundingData.total_amount;
-            } else if (fundingData['총자금']) {
-                normalizedData.total_amount = fundingData['총자금'];
-            }
-            
-            // individual_funds가 있으면 사용
-            if (fundingData.individual_funds && Array.isArray(fundingData.individual_funds)) {
-                normalizedData.individual_funds = fundingData.individual_funds;
-            } else if (fundingData['자금들']) {
-                // 레거시 데이터를 individual_funds 형태로 변환
-                normalizedData.individual_funds = Object.entries(fundingData['자금들']).map(([name, amount], index) => ({
-                    fund_name: name,
-                    limit: amount,
-                    priority: index + 1,
-                    institution: '정부기관',
-                    interest_rate: '3.0~6.0%',
-                    processing_time: '2-4주'
-                }));
-            }
-            
-            // detailed_funds 설정
-            if (fundingData.detailed_funds) {
-                normalizedData.detailed_funds = fundingData.detailed_funds;
-            } else if (fundingData['자금들']) {
-                normalizedData.detailed_funds = fundingData['자금들'];
-            }
-            
-            // analysis_summary 설정
-            if (fundingData.analysis_summary) {
-                normalizedData.analysis_summary = fundingData.analysis_summary;
-            } else {
-                normalizedData.analysis_summary = {
-                    total_products: normalizedData.individual_funds.length,
-                    confidence: '95%',
-                    version: 'V2.0',
-                    calculation_time: '1초 미만'
+            // 공고 정보를 가져온 후 모달 표시
+            recommendedNoticesPromise.then(recommendedNotices => {
+                // 기존 모달이 있으면 제거
+                const existingModal = document.getElementById('fundingDetailModal');
+                if (existingModal) {
+                    existingModal.remove();
+                }
+                
+                // 데이터 구조 정규화 - 추천받기와 동일한 형태로 변환
+                let normalizedData = {
+                    total_amount: 0,
+                    individual_funds: [],
+                    detailed_funds: {},
+                    analysis_summary: null,
+                    engine_info: { version: '정책자금 추천 엔진 V2.0' },
+                    exclusion_notes: [],
+                    recommended_notices: recommendedNotices
                 };
-            }
-            
-            // engine_info 설정
-            if (fundingData.engine_info) {
-                normalizedData.engine_info = fundingData.engine_info;
-            }
-            
-            // exclusion_notes 설정
-            if (fundingData.exclusion_notes) {
-                normalizedData.exclusion_notes = fundingData.exclusion_notes;
-            }
-            
-            // V2.0 응답 구조에 맞춰 모달 HTML 구성 (추천받기 모달과 동일)
-            const modalHtml = `
-                <div id="fundingDetailModal" style="
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
-                    background: rgba(0,0,0,0.5);
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    z-index: 10000;
-                ">
-                    <div style="
-                        background: white;
-                        border-radius: 8px;
-                        padding: 30px;
-                        max-width: 900px;
-                        width: 95%;
-                        max-height: 85vh;
-                        overflow-y: auto;
-                        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                
+                // 저장된 데이터에서 값 추출
+                if (fundingData.total_amount) {
+                    normalizedData.total_amount = fundingData.total_amount;
+                } else if (fundingData['총자금']) {
+                    normalizedData.total_amount = fundingData['총자금'];
+                }
+                
+                // individual_funds가 있으면 사용
+                if (fundingData.individual_funds && Array.isArray(fundingData.individual_funds)) {
+                    normalizedData.individual_funds = fundingData.individual_funds;
+                } else if (fundingData['자금들']) {
+                    // 레거시 데이터를 individual_funds 형태로 변환
+                    normalizedData.individual_funds = Object.entries(fundingData['자금들']).map(([name, amount], index) => ({
+                        fund_name: name,
+                        limit: amount,
+                        priority: index + 1,
+                        institution: '정부기관',
+                        interest_rate: '3.0~6.0%',
+                        processing_time: '2-4주'
+                    }));
+                }
+                
+                // detailed_funds 설정
+                if (fundingData.detailed_funds) {
+                    normalizedData.detailed_funds = fundingData.detailed_funds;
+                } else if (fundingData['자금들']) {
+                    normalizedData.detailed_funds = fundingData['자금들'];
+                }
+                
+                // analysis_summary 설정
+                if (fundingData.analysis_summary) {
+                    normalizedData.analysis_summary = fundingData.analysis_summary;
+                } else {
+                    normalizedData.analysis_summary = {
+                        total_products: normalizedData.individual_funds.length,
+                        confidence: '95%',
+                        version: 'V2.0',
+                        calculation_time: '1초 미만'
+                    };
+                }
+                
+                // engine_info 설정
+                if (fundingData.engine_info) {
+                    normalizedData.engine_info = fundingData.engine_info;
+                }
+                
+                // exclusion_notes 설정
+                if (fundingData.exclusion_notes) {
+                    normalizedData.exclusion_notes = fundingData.exclusion_notes;
+                }
+                
+                // V2.0 응답 구조에 맞춰 모달 HTML 구성 (추천받기 모달과 완전히 동일)
+                const modalHtml = `
+                    <div id="fundingDetailModal" style="
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        width: 100%;
+                        height: 100%;
+                        background: rgba(0,0,0,0.5);
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        z-index: 10000;
                     ">
-                        <h2 style="margin: 0 0 20px 0; color: #333; text-align: center;">정책자금 추천 분석 결과 V2.0</h2>
-                        
-                        <!-- 엔진 정보 -->
                         <div style="
-                            background: #e9ecef;
-                            color: #495057;
-                            padding: 10px 15px;
-                            border-radius: 6px;
-                            margin-bottom: 20px;
-                            text-align: center;
-                            font-size: 14px;
-                        ">
-                            <strong>엔진:</strong> ${normalizedData.engine_info?.version || '정책자금 추천 엔진 V2.0'} | 
-                            <strong>정확도:</strong> 99.99% | 
-                            <strong>분석시간:</strong> ${normalizedData.analysis_summary?.calculation_time || '0.5초'}
-                        </div>
-                        
-                        <!-- 총 추천 금액 -->
-                        <div style="
-                            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                            color: white;
-                            padding: 20px;
+                            background: white;
                             border-radius: 8px;
-                            margin-bottom: 20px;
-                            text-align: center;
+                            padding: 30px;
+                            max-width: 900px;
+                            width: 95%;
+                            max-height: 85vh;
+                            overflow-y: auto;
+                            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
                         ">
-                            <h3 style="margin: 0 0 10px 0;">총 추천 금액</h3>
-                            <div style="font-size: 32px; font-weight: bold;">
-                                ${(normalizedData.total_amount || 0).toLocaleString()}원
-                            </div>
-                            <div style="font-size: 14px; opacity: 0.9; margin-top: 10px;">
-                                다양한 정책자금을 통해 기업 성장을 지원합니다
-                            </div>
-                        </div>
-                        
-                        <!-- 개별 자금 추천 내역 -->
-                        ${normalizedData.individual_funds && normalizedData.individual_funds.length > 0 ? `
-                        <div style="margin-bottom: 25px;">
-                            <h4 style="margin: 0 0 15px 0; color: #333; border-bottom: 2px solid #007bff; padding-bottom: 8px;">
-                                💰 개별 자금 추천 내역 (${normalizedData.individual_funds.length}개)
-                            </h4>
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 15px;">
-                                ${normalizedData.individual_funds.map((fund, index) => `
-                                    <div style="
-                                        background: #f8f9fa;
-                                        border: 1px solid #e9ecef;
-                                        border-radius: 8px;
-                                        padding: 20px;
-                                        position: relative;
-                                        transition: transform 0.2s;
-                                    " onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
-                                        <div style="
-                                            position: absolute;
-                                            top: 10px;
-                                            right: 15px;
-                                            background: #007bff;
-                                            color: white;
-                                            padding: 4px 8px;
-                                            border-radius: 12px;
-                                            font-size: 12px;
-                                            font-weight: bold;
-                                        ">
-                                            우선순위 ${fund.priority || (index + 1)}
-                                        </div>
-                                        <div style="font-weight: bold; color: #495057; margin-bottom: 8px; margin-right: 60px;">
-                                            ${fund.fund_name}
-                                        </div>
-                                        <div style="font-size: 20px; font-weight: bold; color: #007bff; margin-bottom: 10px;">
-                                            ${(fund.limit || 0).toLocaleString()}원
-                                        </div>
-                                        <div style="color: #6c757d; font-size: 13px; margin-bottom: 8px;">
-                                            <strong>기관:</strong> ${fund.institution || '정부기관'}
-                                        </div>
-                                        <div style="color: #6c757d; font-size: 13px; margin-bottom: 8px;">
-                                            <strong>금리:</strong> ${fund.interest_rate || '3.0~6.0%'}
-                                        </div>
-                                        <div style="color: #6c757d; font-size: 13px; margin-bottom: 8px;">
-                                            <strong>처리기간:</strong> ${fund.processing_time || '2-4주'}
-                                        </div>
-                                        ${fund.calculation_note ? `
-                                        <div style="
-                                            background: #fff3cd;
-                                            border: 1px solid #ffeaa7;
-                                            border-radius: 4px;
-                                            padding: 8px;
-                                            margin-top: 10px;
-                                            font-size: 12px;
-                                            color: #856404;
-                                        ">
-                                            💡 ${fund.calculation_note}
-                                        </div>
-                                        ` : ''}
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                        ` : `
-                        <div style="margin-bottom: 25px;">
-                            <h4 style="margin: 0 0 15px 0; color: #333; border-bottom: 2px solid #007bff; padding-bottom: 8px;">
-                                💰 개별 자금 추천 내역
-                            </h4>
+                            <h2 style="margin: 0 0 20px 0; color: #333; text-align: center;">정책자금 추천 분석 결과</h2>
+                            
+                            <!-- 총 추천 금액 -->
                             <div style="
-                                background: #f8f9fa;
-                                border: 1px solid #e9ecef;
-                                border-radius: 8px;
+                                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                                color: white;
                                 padding: 20px;
+                                border-radius: 8px;
+                                margin-bottom: 20px;
                                 text-align: center;
-                                color: #6c757d;
                             ">
-                                현재 기업 상황으로는 추가 추천 가능한 자금이 없습니다.
+                                <h3 style="margin: 0 0 10px 0;">총 추천 금액</h3>
+                                <div style="font-size: 32px; font-weight: bold;">
+                                    ${(normalizedData.total_amount || 0).toLocaleString()}원
+                                </div>
+                                <div style="font-size: 14px; opacity: 0.9; margin-top: 10px;">
+                                    다양한 정책자금을 통해 기업 성장을 지원합니다
+                                </div>
                             </div>
-                        </div>
-                        `}
-                        
-                        <!-- 상세 자금 내역 (카테고리별) -->
-                        ${normalizedData.detailed_funds && Object.keys(normalizedData.detailed_funds).length > 0 ? `
-                        <div style="margin-bottom: 25px;">
-                            <h4 style="margin: 0 0 15px 0; color: #333; border-bottom: 2px solid #28a745; padding-bottom: 8px;">
-                                📊 카테고리별 자금 내역
-                            </h4>
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
-                                ${Object.entries(normalizedData.detailed_funds).map(([fundName, amount]) => `
-                                    <div style="
-                                        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-                                        border: 1px solid #dee2e6;
-                                        border-radius: 6px;
-                                        padding: 15px;
-                                        text-align: center;
-                                    ">
-                                        <div style="font-weight: bold; color: #495057; margin-bottom: 8px; font-size: 14px;">
-                                            ${fundName}
+                            
+                            <!-- 개별 자금 추천 내역 -->
+                            ${normalizedData.individual_funds && normalizedData.individual_funds.length > 0 ? `
+                            <div style="margin-bottom: 25px;">
+                                <h4 style="margin: 0 0 15px 0; color: #333; border-bottom: 2px solid #007bff; padding-bottom: 8px;">
+                                    💰 개별 자금 추천 내역 (${normalizedData.individual_funds.length}개)
+                                </h4>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 15px;">
+                                    ${normalizedData.individual_funds.map((fund, index) => `
+                                        <div style="
+                                            background: #f8f9fa;
+                                            border: 1px solid #e9ecef;
+                                            border-radius: 8px;
+                                            padding: 20px;
+                                            position: relative;
+                                            transition: transform 0.2s;
+                                        " onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                                            <div style="
+                                                position: absolute;
+                                                top: 10px;
+                                                right: 15px;
+                                                background: #007bff;
+                                                color: white;
+                                                padding: 4px 8px;
+                                                border-radius: 12px;
+                                                font-size: 12px;
+                                                font-weight: bold;
+                                            ">
+                                                ${normalizedData.individual_funds.length === 2 ? 
+                                                    `우선순위 ${index + 1}` : 
+                                                    `우선순위 ${index + 1}`}
+                                            </div>
+                                            <div style="font-weight: bold; color: #495057; margin-bottom: 8px; margin-right: 60px;">
+                                                ${fund.fund_name}
+                                            </div>
+                                            <div style="font-size: 20px; font-weight: bold; color: #007bff; margin-bottom: 10px;">
+                                                ${(fund.limit || 0).toLocaleString()}원
+                                            </div>
+                                            <div style="color: #6c757d; font-size: 13px; margin-bottom: 8px;">
+                                                <strong>기관:</strong> ${fund.institution || '정부기관'}
+                                            </div>
+                                            <div style="color: #6c757d; font-size: 13px; margin-bottom: 8px;">
+                                                <strong>금리:</strong> ${fund.interest_rate || '3.0~6.0%'}
+                                            </div>
+                                            <div style="color: #6c757d; font-size: 13px; margin-bottom: 8px;">
+                                                <strong>처리기간:</strong> ${fund.processing_time || '2-4주'}
+                                            </div>
+                                            ${fund.calculation_note ? `
+                                            <div style="
+                                                background: #fff3cd;
+                                                border: 1px solid #ffeaa7;
+                                                border-radius: 4px;
+                                                padding: 8px;
+                                                margin-top: 10px;
+                                                font-size: 12px;
+                                                color: #856404;
+                                            ">
+                                                💡 ${fund.calculation_note}
+                                            </div>
+                                            ` : ''}
                                         </div>
-                                        <div style="font-size: 16px; font-weight: bold; color: #28a745;">
-                                            ${amount.toLocaleString()}원
-                                        </div>
-                                    </div>
-                                `).join('')}
+                                    `).join('')}
+                                </div>
                             </div>
-                        </div>
-                        ` : ''}
-                        
-                        <!-- 분석 요약 -->
-                        ${normalizedData.analysis_summary ? `
-                        <div style="margin-bottom: 25px;">
-                            <h4 style="margin: 0 0 15px 0; color: #333; border-bottom: 2px solid #ffc107; padding-bottom: 8px;">
-                                📈 기업 분석 요약
-                            </h4>
+                            ` : `
+                            <div style="margin-bottom: 25px;">
+                                <h4 style="margin: 0 0 15px 0; color: #333; border-bottom: 2px solid #007bff; padding-bottom: 8px;">
+                                    💰 개별 자금 추천 내역
+                                </h4>
+                                <div style="
+                                    background: #f8f9fa;
+                                    border: 1px solid #e9ecef;
+                                    border-radius: 8px;
+                                    padding: 20px;
+                                    text-align: center;
+                                    color: #6c757d;
+                                ">
+                                    현재 기업 상황으로는 추가 추천 가능한 자금이 없습니다.
+                                </div>
+                            </div>
+                            `}
+                            
+                            <!-- 상세 자금 내역 (카테고리별) -->
+                            ${normalizedData.detailed_funds && Object.keys(normalizedData.detailed_funds).length > 0 ? `
+                            <div style="margin-bottom: 25px;">
+                                <h4 style="margin: 0 0 15px 0; color: #333; border-bottom: 2px solid #28a745; padding-bottom: 8px;">
+                                    📊 카테고리별 자금 내역
+                                </h4>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+                                    ${Object.entries(normalizedData.detailed_funds).map(([fundName, amount]) => `
+                                        <div style="
+                                            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+                                            border: 1px solid #dee2e6;
+                                            border-radius: 6px;
+                                            padding: 15px;
+                                            text-align: center;
+                                        ">
+                                            <div style="font-weight: bold; color: #495057; margin-bottom: 8px; font-size: 14px;">
+                                                ${fundName}
+                                            </div>
+                                            <div style="font-size: 16px; font-weight: bold; color: #28a745;">
+                                                ${amount.toLocaleString()}원
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                            ` : ''}
+                            
+                            <!-- 공고 추천 -->
+                            ${normalizedData.recommended_notices && normalizedData.recommended_notices.length > 0 ? `
+                            <div style="margin-bottom: 25px;">
+                                <h4 style="margin: 0 0 15px 0; color: #333; border-bottom: 2px solid #28a745; padding-bottom: 8px;">
+                                    📢 맞춤 공고 추천 (${normalizedData.recommended_notices.length}개)
+                                </h4>
+                                <div style="display: flex; flex-direction: column; gap: 12px;">
+                                    ${normalizedData.recommended_notices.map(notice => `
+                                        <div onclick="window.open('/board/detail/${notice.pblanc_id}/?page_index=1', '_blank')" style="
+                                            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+                                            border: 1px solid #dee2e6;
+                                            border-radius: 8px;
+                                            padding: 16px;
+                                            cursor: pointer;
+                                            transition: all 0.2s ease;
+                                            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                                        " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'">
+                                            <div style="font-weight: bold; color: #495057; margin-bottom: 8px; font-size: 15px; line-height: 1.4;">
+                                                ${notice.title}
+                                            </div>
+                                            <div style="color: #6c757d; font-size: 13px; margin-bottom: 4px;">
+                                                <strong>기관:</strong> ${notice.institution}
+                                            </div>
+                                            <div style="color: #6c757d; font-size: 13px; margin-bottom: 4px;">
+                                                <strong>접수기간:</strong> ${notice.apply_period}
+                                            </div>
+                                            <div style="color: #6c757d; font-size: 13px;">
+                                                <strong>지원내용:</strong> ${notice.support_amount}
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                            ` : `
+                            <div style="margin-bottom: 25px;">
+                                <h4 style="margin: 0 0 15px 0; color: #333; border-bottom: 2px solid #28a745; padding-bottom: 8px;">
+                                    📢 맞춤 공고 추천
+                                </h4>
+                                <div style="
+                                    background: #f8f9fa;
+                                    border: 1px solid #e9ecef;
+                                    border-radius: 8px;
+                                    padding: 20px;
+                                    text-align: center;
+                                    color: #6c757d;
+                                ">
+                                    현재 조건에 맞는 공고가 없습니다.
+                                </div>
+                            </div>
+                            `}
+                            
+                            <!-- 제외된 자금 정보 -->
+                            ${normalizedData.exclusion_notes && normalizedData.exclusion_notes.length > 0 ? `
+                            <div style="margin-bottom: 25px;">
+                                <h4 style="margin: 0 0 15px 0; color: #333; border-bottom: 2px solid #dc3545; padding-bottom: 8px;">
+                                    ⚠️ 신청 불가 자금 (${normalizedData.exclusion_notes.length}개)
+                                </h4>
+                                <div style="space-y: 8px;">
+                                    ${normalizedData.exclusion_notes.map(note => `
+                                        <div style="
+                                            background: #f8d7da;
+                                            border: 1px solid #f5c6cb;
+                                            border-radius: 6px;
+                                            padding: 12px;
+                                            margin-bottom: 8px;
+                                            color: #721c24;
+                                            font-size: 14px;
+                                        ">
+                                            ${note}
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                            ` : ''}
+                            
+                            <!-- 추가 정보 -->
                             <div style="
-                                background: #fff9e6;
-                                border: 1px solid #ffeaa7;
-                                border-radius: 8px;
-                                padding: 20px;
+                                background: #d1ecf1;
+                                border: 1px solid #bee5eb;
+                                border-radius: 6px;
+                                padding: 15px;
+                                margin-bottom: 20px;
+                                font-size: 14px;
+                                color: #0c5460;
                             ">
-                                <div style="margin-bottom: 10px;">
-                                    <strong>추천 자금 수:</strong> ${normalizedData.analysis_summary.total_products || 0}개
-                                </div>
-                                <div style="margin-bottom: 10px;">
-                                    <strong>신뢰도:</strong> ${normalizedData.analysis_summary.confidence || '95%'}
-                                </div>
-                                <div style="margin-bottom: 10px;">
-                                    <strong>엔진 버전:</strong> ${normalizedData.analysis_summary.version || 'V2.0'}
-                                </div>
-                                <div>
-                                    <strong>계산 시간:</strong> ${normalizedData.analysis_summary.calculation_time || '1초 미만'}
-                                </div>
+                                <strong>💡 안내사항:</strong><br>
+                                • 추천 금액은 현재 기업 상황을 기반으로 한 예상 금액입니다.<br>
+                                • 실제 승인 금액은 심사 과정에서 달라질 수 있습니다.<br>
+                                • 자세한 신청 조건은 각 기관에 문의하시기 바랍니다.
                             </div>
-                        </div>
-                        ` : ''}
-                        
-                        <!-- 제외된 자금 정보 -->
-                        ${normalizedData.exclusion_notes && normalizedData.exclusion_notes.length > 0 ? `
-                        <div style="margin-bottom: 25px;">
-                            <h4 style="margin: 0 0 15px 0; color: #333; border-bottom: 2px solid #dc3545; padding-bottom: 8px;">
-                                ⚠️ 신청 불가 자금 (${normalizedData.exclusion_notes.length}개)
-                            </h4>
-                            <div style="space-y: 8px;">
-                                ${normalizedData.exclusion_notes.map(note => `
-                                    <div style="
-                                        background: #f8d7da;
-                                        border: 1px solid #f5c6cb;
-                                        border-radius: 6px;
-                                        padding: 12px;
-                                        margin-bottom: 8px;
-                                        color: #721c24;
-                                        font-size: 14px;
-                                    ">
-                                        ${note}
-                                    </div>
-                                `).join('')}
+                            
+                            <!-- 버튼 영역 -->
+                            <div style="text-align: center; margin-top: 30px;">
+                                <button onclick="closeFundingDetailModal()" style="
+                                    background: #6c757d;
+                                    color: white;
+                                    border: none;
+                                    padding: 12px 24px;
+                                    border-radius: 6px;
+                                    cursor: pointer;
+                                    font-size: 16px;
+                                    margin-right: 10px;
+                                    transition: background-color 0.2s;
+                                " onmouseover="this.style.backgroundColor='#5a6268'" onmouseout="this.style.backgroundColor='#6c757d'">닫기</button>
+                                <button onclick="closeFundingDetailModal()" style="
+                                    background: #007bff;
+                                    color: white;
+                                    border: none;
+                                    padding: 12px 24px;
+                                    border-radius: 6px;
+                                    cursor: pointer;
+                                    font-size: 16px;
+                                    transition: background-color 0.2s;
+                                " onmouseover="this.style.backgroundColor='#0056b3'" onmouseout="this.style.backgroundColor='#007bff'">확인</button>
                             </div>
-                        </div>
-                        ` : ''}
-                        
-                        <!-- 추가 정보 -->
-                        <div style="
-                            background: #d1ecf1;
-                            border: 1px solid #bee5eb;
-                            border-radius: 6px;
-                            padding: 15px;
-                            margin-bottom: 20px;
-                            font-size: 14px;
-                            color: #0c5460;
-                        ">
-                            <strong>💡 안내사항:</strong><br>
-                            • 추천 금액은 현재 기업 상황을 기반으로 한 예상 금액입니다.<br>
-                            • 실제 승인 금액은 심사 과정에서 달라질 수 있습니다.<br>
-                            • 자세한 신청 조건은 각 기관에 문의하시기 바랍니다.
-                        </div>
-                        
-                        <!-- 버튼 영역 -->
-                        <div style="text-align: center; margin-top: 30px;">
-                            <button onclick="closeFundingDetailModal()" style="
-                                background: #6c757d;
-                                color: white;
-                                border: none;
-                                padding: 12px 24px;
-                                border-radius: 6px;
-                                cursor: pointer;
-                                font-size: 16px;
-                                margin-right: 10px;
-                                transition: background-color 0.2s;
-                            " onmouseover="this.style.backgroundColor='#5a6268'" onmouseout="this.style.backgroundColor='#6c757d'">닫기</button>
-                            <button onclick="closeFundingDetailModal()" style="
-                                background: #007bff;
-                                color: white;
-                                border: none;
-                                padding: 12px 24px;
-                                border-radius: 6px;
-                                cursor: pointer;
-                                font-size: 16px;
-                                transition: background-color 0.2s;
-                            " onmouseover="this.style.backgroundColor='#0056b3'" onmouseout="this.style.backgroundColor='#007bff'">확인</button>
                         </div>
                     </div>
-                </div>
-            `;
-            
-            // 모달 추가
-            document.body.insertAdjacentHTML('beforeend', modalHtml);
-        })
-        .catch(error => {
-            console.error('자금 상세 정보 조회 오류:', error);
-            showNotification('자금 상세 정보를 조회할 수 없습니다.', 'error');
-        });
+                `;
+                
+                // 모달 추가
+                document.body.insertAdjacentHTML('beforeend', modalHtml);
+                
+                // 외부 클릭 시 모달 닫기 이벤트 추가
+                const fundingDetailModal = document.getElementById('fundingDetailModal');
+                if (fundingDetailModal) {
+                    fundingDetailModal.addEventListener('click', function(e) {
+                        // 모달 배경을 클릭했을 때만 닫기 (모달 내용 클릭 시에는 닫지 않음)
+                        if (e.target === fundingDetailModal) {
+                            closeFundingDetailModal();
+                        }
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('자금 상세 정보 조회 오류:', error);
+                showNotification('자금 상세 정보를 조회할 수 없습니다.', 'error');
+            });
+    });
 }
 
 // 자금 상세보기 모달 닫기 함수
@@ -2218,5 +2547,149 @@ function formatDateInput(input) {
     }
     
     input.value = value;
+}
+
+// 음성파일 영역 업데이트 함수
+function updateAudioFileSection(rowId, audioFileValue) {
+    console.log('updateAudioFileSection 호출됨:', rowId, audioFileValue);
+    
+    // 영업노트 영역의 음성파일 관리 기능 업데이트
+    // 이 함수는 우측 영업노트 영역에서 음성파일 데이터를 업데이트하는 역할을 합니다.
+    if (typeof updateAudioFileManagement === 'function') {
+        updateAudioFileManagement(audioFileValue);
+    } else {
+        console.log('updateAudioFileManagement 함수를 찾을 수 없습니다.');
+    }
+}
+
+// 음성파일 재생 함수 (필요시 구현)
+function playAudio(rowId) {
+    console.log('음성파일 재생:', rowId);
+    // 실제 음성파일 재생 로직은 필요에 따라 구현
+    showNotification('음성파일 재생 기능은 준비 중입니다.', 'info');
+}
+
+// 매출 필드 실시간 변환 함수
+function formatSalesInputRealtime(input, rowId, fieldName) {
+    const value = input.value.replace(/[^\d]/g, '');
+    const numericValue = parseInt(value) || 0;
+    
+    // 콤마 형태로 표시
+    if (numericValue > 0) {
+        input.value = numericValue.toLocaleString();
+    } else {
+        input.value = '';
+    }
+}
+
+// 기대출 필드 실시간 변환 함수
+function formatDebtInputRealtime(input, rowId, categoryKey) {
+    const value = input.value.replace(/[^\d]/g, '');
+    const numericValue = parseInt(value) || 0;
+    
+    // 콤마 형태로 표시
+    if (numericValue > 0) {
+        input.value = numericValue.toLocaleString();
+    } else {
+        input.value = '';
+    }
+}
+
+// 파일 다운로드 함수
+function downloadFile(rowId, fieldName) {
+    // 직접 다운로드 URL로 이동
+    window.open(`/diary/download_file/${rowId}/${fieldName}/`, '_blank');
+}
+
+// 파일 삭제 함수
+function deleteFile(rowId, fieldName) {
+    if (!confirm('파일을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+        return;
+    }
+    
+    fetch('/diary/delete_file/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            row_id: rowId,
+            field_name: fieldName
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('파일이 성공적으로 삭제되었습니다.', 'success');
+            
+            // 테이블 새로고침
+            refreshTable();
+            
+            // 모달 닫기
+            if (document.getElementById('detailModal')) {
+                document.getElementById('detailModal').style.display = 'none';
+            }
+        } else {
+            alert('파일 삭제 실패: ' + (data.error || '알 수 없는 오류'));
+        }
+    })
+    .catch(error => {
+        console.error('파일 삭제 오류:', error);
+        alert('파일 삭제 중 오류가 발생했습니다.');
+    });
+}
+
+// 파일 업로드 함수
+function uploadFile(rowId, fieldName, fileInput) {
+    const file = fileInput.files[0];
+    if (!file) {
+        alert('파일을 선택해주세요.');
+        return;
+    }
+    
+    // 파일 크기 체크 (10MB 제한)
+    if (file.size > 10 * 1024 * 1024) {
+        alert('파일 크기는 10MB 이하여야 합니다.');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('row_id', rowId);
+    formData.append('field_name', fieldName);
+    
+    fetch('/diary/upload_file/', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // 성공 알림
+            showNotification('파일이 성공적으로 업로드되었습니다.', 'success');
+            
+            // 테이블 새로고침
+            refreshTable();
+            
+            // 모달 닫기
+            // if (document.getElementById('detailModal')) {
+            //     document.getElementById('detailModal').style.display = 'none';
+            // }
+        } else {
+            alert('파일 업로드 실패: ' + (data.error || '알 수 없는 오류'));
+        }
+    })
+    .catch(error => {
+        console.error('파일 업로드 오류:', error);
+        alert('파일 업로드 중 오류가 발생했습니다.');
+    })
+    .finally(() => {
+        // 파일 입력 초기화
+        fileInput.value = '';
+    });
 }
 

@@ -62,6 +62,125 @@ function formatNumberWithComma(value) {
     return parseInt(numericValue).toLocaleString();
 }
 
+// 한국어 단위로 변환하는 함수
+function formatToKoreanCurrency(amount) {
+    if (!amount || amount === 0) return '0원';
+    
+    const numAmount = typeof amount === 'string' ? parseInt(amount.replace(/[^\d]/g, '')) : amount;
+    if (isNaN(numAmount) || numAmount === 0) return '0원';
+    
+    let result = '';
+    let remaining = numAmount;
+    
+    // 억 단위 처리
+    if (remaining >= 100000000) {
+        const eok = Math.floor(remaining / 100000000);
+        result += eok + '억';
+        remaining = remaining % 100000000;
+    }
+    
+    // 천만 단위 처리 (천으로 표시)
+    if (remaining >= 10000000) {
+        const cheon = Math.floor(remaining / 10000000);
+        if (result) result += ' ';
+        result += cheon + '천';
+        remaining = remaining % 10000000;
+    }
+    
+    // 백만 단위 처리
+    if (remaining >= 1000000) {
+        const baek = Math.floor(remaining / 1000000);
+        if (result) result += ' ';
+        result += baek + '백';
+        remaining = remaining % 1000000;
+    }
+    
+    // 만 단위가 남아있으면 추가
+    if (remaining >= 10000) {
+        if (result) result += '만';
+        else result = Math.floor(remaining / 10000) + '만';
+    } else if (result) {
+        result += '만';
+    }
+    
+    return result + '원';
+}
+
+// 한국어 단위를 숫자로 변환하는 함수
+function parseKoreanCurrency(value) {
+    if (!value || value === '') return 0;
+    
+    const str = value.toString().replace(/[원,\s]/g, '');
+    
+    // 이미 숫자인 경우
+    if (/^\d+$/.test(str)) {
+        return parseInt(str);
+    }
+    
+    let result = 0;
+    let temp = 0;
+    
+    // 억 단위 처리
+    const 억Match = str.match(/(\d+)억/);
+    if (억Match) {
+        result += parseInt(억Match[1]) * 100000000;
+    }
+    
+    // 나머지 부분 처리
+    let remaining = str.replace(/\d+억/, '');
+    
+    // 천만, 백만, 십만, 만 단위 처리
+    const 천만Match = remaining.match(/(\d+)천만/);
+    if (천만Match) {
+        temp += parseInt(천만Match[1]) * 10000000;
+        remaining = remaining.replace(/\d+천만/, '');
+    }
+    
+    const 백만Match = remaining.match(/(\d+)백만/);
+    if (백만Match) {
+        temp += parseInt(백만Match[1]) * 1000000;
+        remaining = remaining.replace(/\d+백만/, '');
+    }
+    
+    const 십만Match = remaining.match(/(\d+)십만/);
+    if (십만Match) {
+        temp += parseInt(십만Match[1]) * 100000;
+        remaining = remaining.replace(/\d+십만/, '');
+    }
+    
+    const 만Match = remaining.match(/(\d+)만/);
+    if (만Match) {
+        temp += parseInt(만Match[1]) * 10000;
+        remaining = remaining.replace(/\d+만/, '');
+    }
+    
+    // 천, 백, 십, 일 단위 처리
+    const 천Match = remaining.match(/(\d+)천/);
+    if (천Match) {
+        temp += parseInt(천Match[1]) * 1000;
+        remaining = remaining.replace(/\d+천/, '');
+    }
+    
+    const 백Match = remaining.match(/(\d+)백/);
+    if (백Match) {
+        temp += parseInt(백Match[1]) * 100;
+        remaining = remaining.replace(/\d+백/, '');
+    }
+    
+    const 십Match = remaining.match(/(\d+)십/);
+    if (십Match) {
+        temp += parseInt(십Match[1]) * 10;
+        remaining = remaining.replace(/\d+십/, '');
+    }
+    
+    // 남은 숫자 처리
+    if (remaining && /^\d+$/.test(remaining)) {
+        temp += parseInt(remaining);
+    }
+    
+    return result + temp;
+}
+
 // 콤마 제거하고 숫자 값 반환하는 함수
 function removeCommaFromNumber(value) {
     if (!value || value === '') return '';

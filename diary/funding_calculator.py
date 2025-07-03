@@ -126,7 +126,7 @@ class PolicyFundRecommendationEngineV2:
         
         # 자격 요건 확인
         if not (
-            company_data['industry'] in ['제조업', 'IT'] and
+            company_data['industry'] in ['제조업', '정보통신업'] and
             (company_data['credit_score'] >= 800 or 
              company_data.get('experience_years', 0) >= 15) and
             company_data.get('experience_years', 0) >= 3
@@ -291,7 +291,7 @@ class PolicyFundRecommendationEngineV2:
         
         # 자격 요건 확인
         if not (
-            company_data['industry'] in ['제조업', 'IT'] and
+            company_data['industry'] in ['제조업', '정보통신업'] and
             company_data['ceo_age'] < 40 and
             (company_data.get('is_startup') or company_data['business_months'] <= 36) and
             company_data['credit_score'] >= 800 and

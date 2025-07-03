@@ -30,6 +30,8 @@ import requests
 import logging
 from django.contrib.auth.decorators import login_required
 from .funding_calculator import FundingCalculator
+from board.models import BizInfo
+from django.db.models import Q
 
 logger = logging.getLogger(__name__)
 
@@ -1604,7 +1606,13 @@ def upload_audio_file(request):
                 texts = converted_text + user_input
 
                 response = llm.invoke(texts)
-                gpt_summary = response.content.replace("**", "").replace("#", "").strip()
+                # 다양한 종류의 공백 문자를 제거하는 강력한 정리
+                import re
+                gpt_summary = response.content.replace("**", "").replace("#", "")
+                # 모든 종류의 공백 문자 제거 (공백, 탭, 개행 등)
+                gpt_summary = re.sub(r'^\s+', '', gpt_summary)  # 앞쪽 공백 제거
+                gpt_summary = re.sub(r'\s+$', '', gpt_summary)  # 뒤쪽 공백 제거
+                gpt_summary = re.sub(r'\n\s*\n', '\n\n', gpt_summary)  # 연속된 빈 줄 정리
                 print("[GPT 응답 원본]:", gpt_summary)
                 
                 # 임시 파일 삭제
@@ -2513,7 +2521,98 @@ def get_funding_recommendation(request):
         
         # V2.0 엔진을 위한 정확한 existing_funds 구조 생성 (만원 -> 원 변환)
         # 실제 기대출 데이터 키에 맞춰 정확한 매핑
+        print(f'업종 : {company_data["industry"]} ')
+        print(f'매출 : {company_data["annual_revenue"]} ')
+        print(f'신용점수 : {company_data["credit_score"]} ')
+        print(f'직원수 : {company_data["employees"]} ')
+        print(f'업력 : {company_data["business_months"]} ')
 
+        biz_region = _get_attribute_value(user, row, '지역')
+        biz_industry = company_data['industry']
+
+        # 매출액 카테고리 분류
+        original_revenue = company_data['annual_revenue']
+        if original_revenue == 0:
+            biz_revenue = "매출 없음"
+        elif original_revenue <= 100000000:  # 1억 이하
+            biz_revenue = "1억 이하"
+        elif original_revenue <= 500000000:  # 1~5억
+            biz_revenue = "1~5억"
+        elif original_revenue <= 1000000000:  # 5~10억
+            biz_revenue = "5~10억"
+        elif original_revenue <= 3000000000:  # 10~30억
+            biz_revenue = "10~30억"
+        else:  # 30억 이상
+            biz_revenue = "30억 이상"
+        
+        # 직원수 카테고리 분류
+        original_employees = company_data['employees']
+        if original_employees == 0:
+            biz_employees = "직원 없음"
+        elif original_employees <= 4:  # 1~4인
+            biz_employees = "1~4인"
+        else:  # 5인 이상
+            biz_employees = "5인 이상"
+
+        if biz_employees in ["1~4인", "5~9인"] and biz_industry in ["광업", "제조업", "건설업", "운수업"] :
+            biz_employees = "소상공인"
+        elif biz_employees == "1~4인":
+            biz_employees = "소상공인"
+        elif biz_employees in ["10인 이상", "5~9인"]:
+            biz_employees = "중소기업"
+        
+        # 업력 카테고리 분류 (개월을 년으로 환산)
+        original_business_months = company_data['business_months']
+        business_years = original_business_months / 12
+        if business_years < 3:  # 3년 미만
+            biz_business_months = "3년 미만"
+        else:  # 3년 이상
+            biz_business_months = "3년 이상"
+
+        print(f'지역 : {biz_region} ')
+        print(f'업종 : {biz_industry} ')
+        print(f'매출 : {biz_revenue} ')
+        print(f'규모 : {biz_employees} ')
+        print(f'업력 : {biz_business_months} ')
+
+        biz_data = BizInfo.objects.filter(
+                                        (Q(region__contains=biz_region) | Q(region__contains="전국"))\
+                                       & Q(possible_industry__contains=biz_industry) \
+                                       & Q(revenue__contains=biz_revenue)\
+                                       & Q(business_period__contains=biz_business_months) \
+                                       & Q(target__contains=biz_employees)
+                                       )[:5]
+        
+        # 공고 추천 데이터 준비
+        recommended_notices = []
+        pblanc_ids = []
+        
+        for biz in biz_data:
+            print(f'biz_data : {biz.pblanc_id}')
+            pblanc_ids.append(biz.pblanc_id)
+            # 접수 기간 처리
+            if biz.reception_start and biz.reception_end:
+                start_str = str(biz.reception_start)
+                end_str = str(biz.reception_end)
+                
+                if start_str == "1900-01-01" and end_str == "9999-12-31":
+                    apply_period = "상시접수"
+                elif start_str == "1900-01-01":
+                    apply_period = f"~ {end_str}"
+                elif end_str == "9999-12-31":
+                    apply_period = "상시접수 (지원금 소모 시 까지)"
+                else:
+                    apply_period = f"{start_str} ~ {end_str}"
+            else:
+                apply_period = "상시접수"
+            
+            recommended_notices.append({
+                'pblanc_id': biz.pblanc_id,
+                'title': biz.title,
+                'institution': biz.institution_name,
+                'apply_period': apply_period,
+                'support_amount': biz.support_field if biz.support_field else "지원규모 미정"
+            })
 
         existing_funds = {
             'kibo_general': 0,  # 일반보증은 별도 없음
@@ -2599,6 +2698,7 @@ def get_funding_recommendation(request):
             '자금들': detailed_funds_dict,
             '총자금': total_amount,
             '상세정보': individual_funds,
+            'pblanc_ids': pblanc_ids,  # 공고 ID 목록 추가
             'v2_info': {
                 'version': recommendation_result['system_info']['version'],
                 'calculation_time': recommendation_result['calculation_time'],
@@ -2628,6 +2728,7 @@ def get_funding_recommendation(request):
             'success': True,
             'total_recommended_amount': f"{total_amount:,}원",
             'individual_funds': individual_funds,
+            'recommended_notices': recommended_notices,  # 공고 추천 데이터 추가
             'analysis_summary': {
                 'total_products': len(individual_funds),
                 'confidence': '95%',
@@ -2870,3 +2971,57 @@ def delete_row(request):
         return JsonResponse({'success': False, 'error': 'Invalid JSON'})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
+
+@csrf_exempt
+def get_recommended_notices(request):
+    """저장된 pblanc_ids를 이용해 공고 정보를 반환하는 API"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': '잘못된 요청 방식입니다.'})
+    
+    try:
+        data = json.loads(request.body)
+        pblanc_ids = data.get('pblanc_ids', [])
+        
+        if not pblanc_ids:
+            return JsonResponse({'success': True, 'recommended_notices': []})
+        
+        # pblanc_ids를 이용해 BizInfo에서 공고 정보 조회
+        biz_data = BizInfo.objects.filter(pblanc_id__in=pblanc_ids)
+        
+        recommended_notices = []
+        for biz in biz_data:
+            # 접수 기간 처리
+            if biz.reception_start and biz.reception_end:
+                start_str = str(biz.reception_start)
+                end_str = str(biz.reception_end)
+                
+                if start_str == "1900-01-01" and end_str == "9999-12-31":
+                    apply_period = "상시접수"
+                elif start_str == "1900-01-01":
+                    apply_period = f"~ {end_str}"
+                elif end_str == "9999-12-31":
+                    apply_period = "상시접수 (지원금 소모 시 까지)"
+                else:
+                    apply_period = f"{start_str} ~ {end_str}"
+            else:
+                apply_period = "상시접수"
+            
+            recommended_notices.append({
+                'pblanc_id': biz.pblanc_id,
+                'title': biz.title,
+                'institution': biz.institution_name,
+                'apply_period': apply_period,
+                'support_amount': biz.support_field if biz.support_field else "지원규모 미정"
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'recommended_notices': recommended_notices
+        })
+        
+    except Exception as e:
+        print(f"공고 정보 조회 오류: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': '공고 정보를 조회할 수 없습니다.'
+        })

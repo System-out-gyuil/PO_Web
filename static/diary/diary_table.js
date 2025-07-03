@@ -1238,13 +1238,19 @@ function saveNewRowField(tr, field, value) {
     const currentId = tr.getAttribute('data-id');
     console.log(`새 행 필드 저장: ${field} = ${value}, 현재 ID: ${currentId}`);
     
+    // 매출 필드인 경우 한국어 단위를 숫자로 변환
+    let processedValue = value;
+    if (field === '매출' || field.includes('매출')) {
+        processedValue = parseKoreanCurrency(value).toString();
+    }
+    
     // 임시 ID인 경우 (새 행 생성)
     if (currentId && currentId.startsWith('temp_')) {
         console.log('새 행 생성 중...');
         fetch('/diary/create_new_row/', {
             method: 'POST',
             headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: 'field=' + encodeURIComponent(field) + '&value=' + encodeURIComponent(value)
+            body: 'field=' + encodeURIComponent(field) + '&value=' + encodeURIComponent(processedValue)
         }).then(function(response) {
             console.log(`새 행 생성 응답 상태:`, response.status);
             return response.json();
@@ -1275,7 +1281,7 @@ function saveNewRowField(tr, field, value) {
         fetch('/diary/update_row_field/', {
             method: 'POST',
             headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: 'id=' + encodeURIComponent(currentId) + '&field=' + encodeURIComponent(field) + '&value=' + encodeURIComponent(value)
+            body: 'id=' + encodeURIComponent(currentId) + '&field=' + encodeURIComponent(field) + '&value=' + encodeURIComponent(processedValue)
         }).then(function(response) {
             console.log(`${field} 필드 업데이트 응답 상태:`, response.status);
             return response.json();
@@ -1600,13 +1606,19 @@ document.addEventListener('click', function(event) {
 
 // 숫자 필드 업데이트 시 콤마 포맷팅 적용
 function updateCellValue(id, fieldName, value, element) {
+    // 매출 필드인 경우 한국어 단위를 숫자로 변환
+    let processedValue = value;
+    if (fieldName === '매출' || fieldName.includes('매출')) {
+        processedValue = parseKoreanCurrency(value).toString();
+    }
+    
     // 숫자인지 확인 (콤마 제거 후 숫자 변환 가능한지 체크)
-    const numericValue = value.replace(/,/g, '');
+    const numericValue = processedValue.replace(/,/g, '');
     const isNumeric = !isNaN(numericValue) && !isNaN(parseFloat(numericValue));
     
     if (isNumeric && fieldName !== '연락처' && fieldName !== '사업자번호') {
         // 숫자 필드인 경우 콤마 제거 후 서버에 저장
-        const cleanValue = removeCommaFromNumber(value);
+        const cleanValue = removeCommaFromNumber(processedValue);
         
         fetch('/diary/update_cell/', {
             method: 'POST',
@@ -1620,7 +1632,12 @@ function updateCellValue(id, fieldName, value, element) {
         .then(data => {
             if (data.success) {
                 // 성공 시 화면에는 콤마가 포함된 값으로 표시
-                element.textContent = formatNumberWithComma(cleanValue);
+                // 매출 필드는 한국어 단위로 표시
+                if (fieldName === '매출' || fieldName.includes('매출')) {
+                    element.textContent = formatToKoreanCurrency(cleanValue);
+                } else {
+                    element.textContent = formatNumberWithComma(cleanValue);
+                }
                 
                 // 실시간 동기화
                 syncTableAndKanban(fieldName);
@@ -1735,4 +1752,21 @@ function deleteRow(rowId) {
         console.error('Error:', error);
         alert('행 삭제 중 오류가 발생했습니다.');
     });
+}
+
+// 매출 필드 실시간 변환 함수 (테이블용)
+function formatSalesInputRealtimeTable(input) {
+    const value = input.value.replace(/[^\d]/g, '');
+    const numericValue = parseInt(value) || 0;
+    
+    if (numericValue >= 1000000) {
+        const convertedValue = Math.floor(numericValue / 10000);
+        if (convertedValue >= 1) {
+            input.value = convertedValue;
+        } else {
+            input.value = numericValue.toLocaleString();
+        }
+    } else if (numericValue > 0) {
+        input.value = numericValue.toLocaleString();
+    }
 }

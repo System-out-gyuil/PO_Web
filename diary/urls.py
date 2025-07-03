@@ -36,6 +36,7 @@ urlpatterns = [
     path('get_debt_details/<int:row_id>/', views.get_debt_details, name='get_debt_details'),
     path('save_debt_details/', views.save_debt_details, name='save_debt_details'),
     path('get_funding_recommendation/', views.get_funding_recommendation, name='get_funding_recommendation'),
+    path('get_recommended_notices/', views.get_recommended_notices, name='get_recommended_notices'),
     path('save_column_order/', views.save_column_order, name='save_column_order'),
     path('delete_row/', views.delete_row, name='delete_row'),
 ] 

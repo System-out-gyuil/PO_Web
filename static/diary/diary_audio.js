@@ -223,7 +223,7 @@ function createAudioFileElement(fileData, index) {
           </div>
           <div style="display: flex; gap: 5px; margin-left: 15px;">
               <button onclick="showEditModal('${date}', '${fileId}', ${JSON.stringify(fileInfo).replace(/"/g, '&quot;')})" 
-                      style="padding: 6px 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                      style="display: none; padding: 6px 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
                   편집
               </button>
               <a href="${fileInfo.download_url}" download="${fileInfo.original_filename}" 
@@ -249,10 +249,8 @@ function createAudioFileElement(fileData, index) {
                   <span id="toggle-icon-summary-${date}-${fileId}" style="margin-right: 5px;">▶</span>
                   AI 요약
               </button>
-              <div id="summary-${date}-${fileId}" style="background: #e7f3ff; border: 1px solid #bee5eb; border-radius: 4px; padding: 12px; margin-top: 5px; display: none;">
-                  <div style="font-size: 13px; line-height: 1.4; color: #0c5460; white-space: pre-wrap;">
-                      ${fileInfo.gpt_summary}
-                  </div>
+              <div id="summary-${date}-${fileId}" style=" border: 1px solid #bee5eb; border-radius: 4px; padding: 12px; margin-top: 5px; display: none;">
+                  <div style="font-size: 13px; line-height: 1.4;  white-space: pre-wrap;">${fileInfo.gpt_summary}</div>
               </div>
           </div>
       ` : `
@@ -473,9 +471,7 @@ function showTranscript(date, fileId, fileInfo) {
       <div style="font-size: 12px; color: #666; margin-bottom: 15px;">
           업로드 시간: ${fileInfo.upload_time} | 파일 크기: ${(fileInfo.file_size / 1024 / 1024).toFixed(2)}MB
       </div>
-      <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; padding: 15px; white-space: pre-wrap; line-height: 1.6; font-family: monospace;">
-          ${fileInfo.converted_text || '변환된 텍스트가 없습니다.'}
-      </div>
+      <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; padding: 15px; white-space: pre-wrap; line-height: 1.6; font-family: monospace;">${fileInfo.converted_text || '변환된 텍스트가 없습니다.'}</div>
       <div style="text-align: right; margin-top: 15px;">
           <button onclick="this.closest('.transcript-modal').remove()" 
                   style="padding: 8px 16px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">

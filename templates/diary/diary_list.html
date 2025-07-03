@@ -207,7 +207,13 @@
                                 {% endif %}
                             </td>
                         {% else %}
-                            <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" class="{% if attr.assential %}essential-column{% endif %}">{{ row.values|get_item:attr.name|get_item:'label' }}</td>
+                            <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" class="{% if attr.assential %}essential-column{% endif %}">
+                                {% if attr.name == '매출' or '매출' in attr.name %}
+                                    {{ row.values|get_item:attr.name|get_item:'label'|to_korean_currency }}
+                                {% else %}
+                                    {{ row.values|get_item:attr.name|get_item:'label' }}
+                                {% endif %}
+                            </td>
                         {% endif %}
                     {% endfor %}
                     <td class="add-attribute-cell" style="background:#f8f9fa;"></td>
@@ -280,7 +286,7 @@
                     {% for entry in col.entries %}
                     <div class="board-card" data-entry-id="{{ entry.id }}">
                         <div class="board-card-title">{% if entry.name %}{{ entry.name }}{% else %}(이름 없음){% endif %}</div>
-                        <div class="board-card-amount">{% if entry.amount %}₩{{ entry.amount }}{% endif %}</div>
+                        <div class="board-card-amount">{% if entry.amount %}{{ entry.amount|to_korean_currency }}{% endif %}</div>
                     </div>
                     {% endfor %}
                 </div>
