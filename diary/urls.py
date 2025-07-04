@@ -41,4 +41,5 @@ urlpatterns = [
     path('delete_row/', views.delete_row, name='delete_row'),
     path('update_audio_text_notes/', views.update_audio_text_notes, name='update_audio_text_notes'),
     path('update_audio_file_order_and_notes/', views.update_audio_file_order_and_notes, name='update_audio_file_order_and_notes'),
+    path('entry_table_partial/', views.entry_table_partial, name='entry_table_partial'),
 ] 

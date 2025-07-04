@@ -3155,3 +3155,59 @@ def update_audio_file_order_and_notes(request):
 
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
+
+def entry_table_partial(request):
+    user = User.objects.get(id=1)
+    show_detail = request.GET.get('detail', '0') == '1'
+    if show_detail:
+        attributes = Attribute.objects.all().order_by('sort_order', 'id')
+        user_attributes = Attribute.objects.filter(user=user).order_by('sort_order', 'id')
+    else:
+        attributes = Attribute.objects.filter(detail=False).order_by('sort_order', 'id')
+        user_attributes = Attribute.objects.filter(user=user, detail=False).order_by('sort_order', 'id')
+    rows = Row.objects.filter(user=user).order_by('order')
+    rows_data = []
+    for row in rows:
+        row_values = {}
+        for attr in user_attributes:
+            attr_value = AttributeValue.objects.filter(attribute=attr, row=row).first()
+            value = attr_value.value if attr_value else ''
+            if attr.attributeType and attr.attributeType.name == 'dropdown' and value.isdigit():
+                dropdown = DropdownAttribute.objects.filter(id=int(value)).first()
+                if dropdown:
+                    row_values[attr.name] = {'label': dropdown.option, 'color': dropdown.color}
+                else:
+                    row_values[attr.name] = {'label': value, 'color': ''}
+            elif attr.attributeType and attr.attributeType.name == 'file' and value:
+                file_info = json.loads(value)
+                original_filename = file_info.get('original_filename', '파일')
+                row_values[attr.name] = {
+                    'type': 'file',
+                    'label': original_filename,
+                    'download_url': file_info.get('download_url', ''),
+                    'file_size': file_info.get('file_size', 0),
+                    'content_type': file_info.get('content_type', ''),
+                    'original_filename': original_filename
+                }
+            elif attr.attributeType and attr.attributeType.name == 'datetime' and value:
+                try:
+                    if isinstance(value, str):
+                        if 'T' in value or ' ' in value:
+                            dt = datetime.fromisoformat(value.replace('T', ' ').split('.')[0])
+                        else:
+                            dt = datetime.strptime(value, '%Y-%m-%d')
+                        formatted_value = dt.strftime('%Y-%m-%d')
+                    else:
+                        formatted_value = value.strftime('%Y-%m-%d')
+                    row_values[attr.name] = {'label': formatted_value, 'color': ''}
+                except:
+                    row_values[attr.name] = {'label': value, 'color': ''}
+            else:
+                row_values[attr.name] = {'label': value, 'color': ''}
+        rows_data.append({'id': row.id, 'values': row_values})
+    attributes_list = list(attributes.values('name', 'attributeType__name', 'assential'))
+    attributes_obj_list = [SimpleNamespace(**{k.replace('attributeType__name', 'attributeType_name'): v for k, v in d.items()}) for d in attributes_list]
+    return render(request, 'diary/entry_table_partial.html', {
+        'attributes': attributes_obj_list,
+        'rows': rows_data,
+    })

@@ -136,34 +136,41 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                 
                 // 서버 업데이트
                 console.log('서버 업데이트 시작:', {id, selectedRegion});
-                fetch('/600/update/', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                    body: 'id='+id+'&field=지역&value='+encodeURIComponent(selectedRegion)
-                })
-                .then(response => {
-                    console.log('서버 응답 상태:', response.status);
-                    return response.json();
-                })
-                .then(data => {
-                    console.log('서버 응답 데이터:', data);
-                    if (data.success) {
-                        // 실시간 동기화
-                        syncTableAndKanban('지역');
-                        
-                        // 모달 업데이트 콜백이 있는 경우 실행
-                        if (typeof window._modalAfterUpdateAll === 'function') {
-                            window._modalAfterUpdateAll(id); 
-                            window._modalAfterUpdateAll = null; 
+                
+                // 새 행인 경우
+                if (id && id.startsWith('temp_')) {
+                    saveNewRowField(td.parentElement, '지역', selectedRegion);
+                } else {
+                    // 기존 행인 경우
+                    fetch('/600/update/', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                        body: 'id='+id+'&field=지역&value='+encodeURIComponent(selectedRegion)
+                    })
+                    .then(response => {
+                        console.log('서버 응답 상태:', response.status);
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log('서버 응답 데이터:', data);
+                        if (data.success) {
+                            // 실시간 동기화
+                            syncTableAndKanban('지역');
+                            
+                            // 모달 업데이트 콜백이 있는 경우 실행
+                            if (typeof window._modalAfterUpdateAll === 'function') {
+                                window._modalAfterUpdateAll(id); 
+                                window._modalAfterUpdateAll = null; 
+                            }
+                        } else {
+                            throw new Error(data.error || '업데이트 실패');
                         }
-                    } else {
-                        throw new Error(data.error || '업데이트 실패');
-                    }
-                })
-                .catch(error => {
-                    console.error('업데이트 실패:', error);
-                    alert('업데이트 중 오류가 발생했습니다: ' + error.message);
-                });
+                    })
+                    .catch(error => {
+                        console.error('업데이트 실패:', error);
+                        alert('업데이트 중 오류가 발생했습니다: ' + error.message);
+                    });
+                }
             });
         });
         
@@ -265,34 +272,41 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                 
                 // 서버 업데이트
                 console.log('서버 업데이트 시작:', {id, selectedSubregion});
-                fetch('/600/update/', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                    body: 'id='+id+'&field=상세지역&value='+encodeURIComponent(selectedSubregion)
-                })
-                .then(response => {
-                    console.log('서버 응답 상태:', response.status);
-                    return response.json();
-                })
-                .then(data => {
-                    console.log('서버 응답 데이터:', data);
-                    if (data.success) {
-                        // 실시간 동기화
-                        syncTableAndKanban('상세지역');
-                        
-                        // 모달 업데이트 콜백이 있는 경우 실행
-                        if (typeof window._modalAfterUpdateAll === 'function') {
-                            window._modalAfterUpdateAll(id); 
-                            window._modalAfterUpdateAll = null; 
+                
+                // 새 행인 경우
+                if (id && id.startsWith('temp_')) {
+                    saveNewRowField(td.parentElement, '상세지역', selectedSubregion);
+                } else {
+                    // 기존 행인 경우
+                    fetch('/600/update/', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                        body: 'id='+id+'&field=상세지역&value='+encodeURIComponent(selectedSubregion)
+                    })
+                    .then(response => {
+                        console.log('서버 응답 상태:', response.status);
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log('서버 응답 데이터:', data);
+                        if (data.success) {
+                            // 실시간 동기화
+                            syncTableAndKanban('상세지역');
+                            
+                            // 모달 업데이트 콜백이 있는 경우 실행
+                            if (typeof window._modalAfterUpdateAll === 'function') {
+                                window._modalAfterUpdateAll(id); 
+                                window._modalAfterUpdateAll = null; 
+                            }
+                        } else {
+                            throw new Error(data.error || '업데이트 실패');
                         }
-                    } else {
-                        throw new Error(data.error || '업데이트 실패');
-                    }
-                })
-                .catch(error => {
-                    console.error('업데이트 실패:', error);
-                    alert('업데이트 중 오류가 발생했습니다: ' + error.message);
-                });
+                    })
+                    .catch(error => {
+                        console.error('업데이트 실패:', error);
+                        alert('업데이트 중 오류가 발생했습니다: ' + error.message);
+                    });
+                }
             });
         });
         
@@ -425,34 +439,41 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                             
                             // 서버 업데이트
                             console.log('서버 업데이트 시작:', {id, type, optionId});
-                            fetch('/600/update/', {
-                                method: 'POST',
-                                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                                body: 'id='+id+'&field='+encodeURIComponent(type)+'&value='+encodeURIComponent(optionId)
-                            })
-                            .then(response => {
-                                console.log('서버 응답 상태:', response.status);
-                                return response.json();
-                            })
-                            .then(data => {
-                                console.log('서버 응답 데이터:', data);
-                                if (data.success) {
-                                    // 실시간 동기화
-                                    syncTableAndKanban(type);
-                                    
-                                    // 모달 업데이트 콜백이 있는 경우 실행
-                                    if (typeof window._modalAfterUpdateAll === 'function') {
-                                        window._modalAfterUpdateAll(id); 
-                                        window._modalAfterUpdateAll = null; 
+                            
+                            // 새 행인 경우
+                            if (id && id.startsWith('temp_')) {
+                                saveNewRowField(td.parentElement, type, optionId);
+                            } else {
+                                // 기존 행인 경우
+                                fetch('/600/update/', {
+                                    method: 'POST',
+                                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                                    body: 'id='+id+'&field='+encodeURIComponent(type)+'&value='+encodeURIComponent(optionId)
+                                })
+                                .then(response => {
+                                    console.log('서버 응답 상태:', response.status);
+                                    return response.json();
+                                })
+                                .then(data => {
+                                    console.log('서버 응답 데이터:', data);
+                                    if (data.success) {
+                                        // 실시간 동기화
+                                        syncTableAndKanban(type);
+                                        
+                                        // 모달 업데이트 콜백이 있는 경우 실행
+                                        if (typeof window._modalAfterUpdateAll === 'function') {
+                                            window._modalAfterUpdateAll(id); 
+                                            window._modalAfterUpdateAll = null; 
+                                        }
+                                    } else {
+                                        throw new Error(data.error || '업데이트 실패');
                                     }
-                                } else {
-                                    throw new Error(data.error || '업데이트 실패');
-                                }
-                            })
-                            .catch(error => {
-                                console.error('업데이트 실패:', error);
-                                alert('업데이트 중 오류가 발생했습니다: ' + error.message);
-                            });
+                                })
+                                .catch(error => {
+                                    console.error('업데이트 실패:', error);
+                                    alert('업데이트 중 오류가 발생했습니다: ' + error.message);
+                                });
+                            }
                         });
                     });
                     
@@ -653,18 +674,22 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                                         }
                                         
                                         // 서버 업데이트
-                                        fetch('/600/update/', {
-                                            method: 'POST',
-                                            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                                            body: 'id='+id+'&field='+encodeURIComponent(type)+'&value='+encodeURIComponent(data.id)
-                                        })
-                                        .then(response => response.json())
-                                        .then(data => {
-                                            if (data.success) {
-                                                // 실시간 동기화
-                                                syncTableAndKanban(type);
-                                            }
-                                        });
+                                        if (id && id.startsWith('temp_')) {
+                                            saveNewRowField(td.parentElement, type, data.id);
+                                        } else {
+                                            fetch('/600/update/', {
+                                                method: 'POST',
+                                                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                                                body: 'id='+id+'&field='+encodeURIComponent(type)+'&value='+encodeURIComponent(data.id)
+                                            })
+                                            .then(response => response.json())
+                                            .then(data => {
+                                                if (data.success) {
+                                                    // 실시간 동기화
+                                                    syncTableAndKanban(type);
+                                                }
+                                            });
+                                        }
                                     });
                                     
                                     // 입력 필드 초기화
@@ -722,16 +747,23 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                   input.onchange = function() {
                       const id = td.parentElement.getAttribute('data-id');
                       const newValue = input.value;
-                      fetch('/600/update/', {
-                          method: 'POST',
-                          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                          body: 'id=' + id + '&field=' + type + '&value=' + encodeURIComponent(newValue)
-                      }).then(function(response) {
-                          return response.json();
-                      }).then(function(data) {
-                          if (!data.success) alert('수정 실패: ' + data.error);
-                          // 필요시 테이블/보드 갱신
-                      });
+                      
+                      // 새 행인 경우
+                      if (id && id.startsWith('temp_')) {
+                          saveNewRowField(td.parentElement, type, newValue);
+                      } else {
+                          // 기존 행인 경우
+                          fetch('/600/update/', {
+                              method: 'POST',
+                              headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                              body: 'id=' + id + '&field=' + type + '&value=' + encodeURIComponent(newValue)
+                          }).then(function(response) {
+                              return response.json();
+                          }).then(function(data) {
+                              if (!data.success) alert('수정 실패: ' + data.error);
+                              // 필요시 테이블/보드 갱신
+                          });
+                      }
                   };
               } else {
                   // input이 없는 경우 클릭 시 생성
@@ -768,18 +800,23 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                           td.innerText = newValue;
                           td.style.width = '';
                           
-                          // 서버에 업데이트
-                          fetch('/600/update/', {
-                              method: 'POST',
-                              headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                              body: 'id='+id+'&field='+encodeURIComponent(type)+'&value='+encodeURIComponent(newValue)
-                          }).then(function(response) {
-                              return response.json();
-                          }).then(function(data) {
-                              if (!data.success) alert('수정 실패: ' + (data.error || ''));
-                          }).catch(function(error) {
-                              console.error('업데이트 중 오류:', error);
-                          });
+                          // 새 행인 경우
+                          if (id && id.startsWith('temp_')) {
+                              saveNewRowField(td.parentElement, type, newValue);
+                          } else {
+                              // 기존 행인 경우
+                              fetch('/600/update/', {
+                                  method: 'POST',
+                                  headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                                  body: 'id='+id+'&field='+encodeURIComponent(type)+'&value='+encodeURIComponent(newValue)
+                              }).then(function(response) {
+                                  return response.json();
+                              }).then(function(data) {
+                                  if (!data.success) alert('수정 실패: ' + (data.error || ''));
+                              }).catch(function(error) {
+                                  console.error('업데이트 중 오류:', error);
+                              });
+                          }
                       };
                       
                       input.onkeydown = function(e) {
@@ -877,11 +914,18 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                       input.onblur = function() {
                           const newValue = input.value;
                           restoreCell(newValue);
-                          fetch('/600/update/', {
-                              method: 'POST',
-                              headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                              body: 'id='+id+'&field=회사명&value='+encodeURIComponent(newValue)
-                          });
+                          
+                          // 새 행인 경우
+                          if (id && id.startsWith('temp_')) {
+                              saveNewRowField(td.parentElement, '회사명', newValue);
+                          } else {
+                              // 기존 행인 경우
+                              fetch('/600/update/', {
+                                  method: 'POST',
+                                  headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                                  body: 'id='+id+'&field=회사명&value='+encodeURIComponent(newValue)
+                              });
+                          }
                       };
                       input.onkeydown = function(e) {
                           if (e.key === 'Enter') input.blur();
@@ -936,18 +980,23 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                           // 편집 종료 시 td width 해제
                           td.style.width = '';
                           
-                          // 서버에 업데이트
-                          fetch('/600/update/', {
-                              method: 'POST',
-                              headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                              body: 'id='+id+'&field='+encodeURIComponent(type)+'&value='+encodeURIComponent(newValue)
-                          }).then(function(response) {
-                              return response.json();
-                          }).then(function(data) {
-                              if (!data.success) alert('수정 실패: ' + (data.error || ''));
-                          }).catch(function(error) {
-                              console.error('업데이트 중 오류:', error);
-                          });
+                          // 새 행인 경우
+                          if (id && id.startsWith('temp_')) {
+                              saveNewRowField(td.parentElement, type, newValue);
+                          } else {
+                              // 기존 행인 경우
+                              fetch('/600/update/', {
+                                  method: 'POST',
+                                  headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                                  body: 'id='+id+'&field='+encodeURIComponent(type)+'&value='+encodeURIComponent(newValue)
+                              }).then(function(response) {
+                                  return response.json();
+                              }).then(function(data) {
+                                  if (!data.success) alert('수정 실패: ' + (data.error || ''));
+                              }).catch(function(error) {
+                                  console.error('업데이트 중 오류:', error);
+                              });
+                          }
                       };
                       
                       input.onkeydown = function(e) {
@@ -971,55 +1020,100 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
   }
   
   function refreshTable() {
-      fetch('/').then(r=>r.text()).then(html=>{
+      console.log('refreshTable 함수 시작');
+      fetch('/600/entry_table_partial/')
+      .then(r => {
+          console.log('fetch 응답 상태:', r.status);
+          if (!r.ok) {
+              throw new Error('Network response was not ok: ' + r.status);
+          }
+          return r.text();
+      })
+      .then(html => {
+          console.log('HTML 받음, 길이:', html.length);
           const temp = document.createElement('div');
           temp.innerHTML = html;
           const newTable = temp.querySelector('#entryTable');
+          console.log('새 테이블 찾음:', !!newTable);
+          
           if (newTable) {
-              document.getElementById('entryTable').innerHTML = newTable.innerHTML;
-              bindTableCellEvents(); // 테이블 이벤트 복구
+              const currentTable = document.getElementById('entryTable');
+              console.log('현재 테이블 찾음:', !!currentTable);
               
-              // 컬럼 드래그앤드롭 재초기화
-              if (typeof reinitializeDragDrop === 'function') {
-                  reinitializeDragDrop();
-              }
-              
-              // 정렬/필터 데이터 재초기화
-              initializeTableData();
-              
-              // 현재 필터 상태 재적용
-              if (Object.keys(window.filters).length > 0) {
-                  Object.entries(window.filters).forEach(([column, filterValue]) => {
-                      // 필터 입력창에 값 복원
-                      const filterInput = document.querySelector(`input[data-column="${column}"]`);
-                      if (filterInput) {
-                          filterInput.value = filterValue;
-                      }
-                      
-                      // 필터 재적용
-                      window.originalRows.forEach(row => {
-                          let shouldShow = true;
-                          
-                          for (const [filterColumn, filterVal] of Object.entries(window.filters)) {
-                              const cellValue = getCellValue(row, filterColumn).toLowerCase();
-                              if (!cellValue.includes(filterVal)) {
-                                  shouldShow = false;
-                                  break;
-                              }
+              if (currentTable) {
+                  currentTable.innerHTML = newTable.innerHTML;
+                  console.log('테이블 내용 교체 완료');
+                  
+                  bindTableCellEvents(); // 테이블 이벤트 복구
+                  console.log('테이블 이벤트 바인딩 완료');
+                  
+                  // 컬럼 드래그앤드롭 재초기화
+                  if (typeof reinitializeDragDrop === 'function') {
+                      reinitializeDragDrop();
+                      console.log('드래그앤드롭 재초기화 완료');
+                  }
+                  
+                  // 정렬/필터 데이터 재초기화
+                  if (typeof initializeTableData === 'function') {
+                      initializeTableData();
+                      console.log('테이블 데이터 초기화 완료');
+                  }
+                  
+                  // 현재 필터 상태 재적용
+                  if (window.filters && Object.keys(window.filters).length > 0) {
+                      Object.entries(window.filters).forEach(([column, filterValue]) => {
+                          // 필터 입력창에 값 복원
+                          const filterInput = document.querySelector(`input[data-column="${column}"]`);
+                          if (filterInput) {
+                              filterInput.value = filterValue;
                           }
                           
-                          row.style.display = shouldShow ? '' : 'none';
+                          // 필터 재적용
+                          if (window.originalRows) {
+                              window.originalRows.forEach(row => {
+                                  let shouldShow = true;
+                                  
+                                  for (const [filterColumn, filterVal] of Object.entries(window.filters)) {
+                                      const cellValue = getCellValue(row, filterColumn).toLowerCase();
+                                      if (!cellValue.includes(filterVal)) {
+                                          shouldShow = false;
+                                          break;
+                                      }
+                                  }
+                                  
+                                  row.style.display = shouldShow ? '' : 'none';
+                              });
+                          }
                       });
-                  });
+                      console.log('필터 상태 재적용 완료');
+                  }
+                  
+                  // 현재 정렬 상태 재적용
+                  if (window.currentSort && window.currentSort.column) {
+                      if (typeof sortTable === 'function') {
+                          sortTable(window.currentSort.column, window.currentSort.direction);
+                          console.log('정렬 상태 재적용 완료');
+                      }
+                  }
+                  
+                  if (typeof updateFilterStatus === 'function') {
+                      updateFilterStatus();
+                      console.log('필터 상태 업데이트 완료');
+                  }
+                  
+                  console.log('refreshTable 완료');
+              } else {
+                  console.error('현재 테이블을 찾을 수 없음');
               }
-              
-              // 현재 정렬 상태 재적용
-              if (window.currentSort.column) {
-                  sortTable(window.currentSort.column, window.currentSort.direction);
-              }
-              
-              updateFilterStatus();
+          } else {
+              console.error('새 테이블을 찾을 수 없음');
           }
+      })
+      .catch(error => {
+          console.error('refreshTable 오류:', error);
+          // 실패 시 페이지 새로고침으로 폴백
+          console.log('페이지 새로고침으로 폴백');
+          location.reload();
       });
   }
   
@@ -1770,3 +1864,51 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
           input.value = numericValue.toLocaleString();
       }
   }
+
+  // 새로 만들기 버튼 이벤트 바인딩
+  document.addEventListener('DOMContentLoaded', function() {
+      const addRowBtn = document.getElementById('addRowBtn');
+      let isAdding = false;
+      
+      if (addRowBtn) {
+          addRowBtn.onclick = function() {
+              if(isAdding) return;
+              isAdding = true;
+
+              // 서버에 새 행 생성 요청 (회사명: '새 항목')
+              fetch('/600/create_new_row/', {
+                  method: 'POST',
+                  headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                  body: 'field=' + encodeURIComponent('회사명') + '&value=' + encodeURIComponent('새 항목')
+              })
+              .then(function(response) { 
+                  if (!response.ok) {
+                      throw new Error('Network response was not ok');
+                  }
+                  return response.json(); 
+              })
+              .then(function(data) {
+                  if (data.success) {
+                      console.log('새 행 생성 성공:', data);
+                      // 기존 refreshTable 함수 사용
+                      if (typeof refreshTable === 'function') {
+                          refreshTable();
+                      } else {
+                          console.error('refreshTable 함수가 정의되지 않음');
+                          location.reload();
+                      }
+                  } else {
+                      console.error('새 행 생성 실패:', data.error);
+                      alert('새 행 생성 실패: ' + (data.error || ''));
+                  }
+              })
+              .catch(function(error) {
+                  console.error('새 행 생성 중 오류:', error);
+                  alert('새 행 생성 중 오류: ' + error.message);
+              })
+              .finally(function() {
+                  isAdding = false;
+              });
+          };
+      }
+  });
