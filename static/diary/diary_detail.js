@@ -422,7 +422,23 @@ function showDetailModal(rowData, rowId) {
                         `;
                     }
                 } else if (attr.type === 'dropdown') {
-                    inputHtml = `<button type="button" class="add-btn" style="width:100%;background:#f8f9fa;color:#333;border:1px solid #eee;" onclick="openDetailDropdown('${rowId}','${attr.name}',this)">${value||'선택'}</button>`;
+                    // value가 있을 때 색상 정보도 가져오기 위해 options를 fetch
+                    inputHtml = `<button type="button" class="add-btn" id="modal-dropdown-btn-${rowId}-${attr.name}" style="width:100%;background:#f8f9fa;color:#333;border:1px solid #eee;" onclick="openDetailDropdown('${rowId}','${attr.name}',this)">${value||'선택'}</button>`;
+                    // 옵션 색상 fetch 후 버튼 배경색 적용
+                    setTimeout(() => {
+                        fetch('/600/dropdown_options/?field=' + encodeURIComponent(attr.name))
+                            .then(r => r.json())
+                            .then(data => {
+                                if (data.options) {
+                                    const opt = data.options.find(o => o.option === value);
+                                    const btn = document.getElementById(`modal-dropdown-btn-${rowId}-${attr.name}`);
+                                    if (btn && opt && opt.color) {
+                                        btn.style.background = hexToRgba(opt.color, 0.18);
+                                        btn.style.color = '#333';
+                                    }
+                                }
+                            });
+                    }, 0);
                 } else if (attr.type === 'datetime') {
                     // 날짜 형식 변환
                     let dateValue = '';
@@ -788,14 +804,14 @@ function showModalDropdownOptions(rowId, fieldName, btn) {
               const isSelected = option.option === currentValue;
               const backgroundColor = option.color ? hexToRgba(option.color, 0.18) : 'white';
               html += `
-                <div class="dropdown-item" data-option-id="${option.id}" data-option-text="${option.option}"
-                     style="padding: 8px 12px !important; 
-                            cursor: pointer !important; 
-                            border-bottom: 1px solid #f0f0f0 !important;
-                            background: ${backgroundColor} !important;
-                            color: #333 !important;
-                            ${isSelected ? 'border-left: 3px solid #007bff !important; font-weight: bold !important;' : ''}
-                            transition: background-color 0.2s !important;">
+                <div class="dropdown-item" data-option-id="${option.id}" data-option-text="${option.option}" data-color="${option.color||''}"
+                     style="padding: 8px 12px; 
+                            cursor: pointer; 
+                            border-bottom: 1px solid #f0f0f0;
+                            background: ${backgroundColor};
+                            color: #333;
+                            ${isSelected ? 'border-left: 3px solid #007bff; font-weight: bold;' : ''}
+                            transition: background-color 0.2s;">
                   ${option.option}
                 </div>
               `;
@@ -823,22 +839,22 @@ function showModalDropdownOptions(rowId, fieldName, btn) {
               // 호버 효과
               item.addEventListener('mouseenter', function() {
                   if (!this.style.borderLeft.includes('#007bff')) {
-                      const currentBg = this.style.background;
-                      if (currentBg.includes('rgba')) {
-                          this.style.background = currentBg.replace('0.18', '0.3');
+                      const color = this.getAttribute('data-color');
+                      if (color && color !== 'null' && color !== 'undefined') {
+                          this.style.background = hexToRgba(color, 0.3);
                       } else {
-                          this.style.background = '#f8f9fa !important';
+                          this.style.background = '#f8f9fa';
                       }
                   }
               });
-              
-              item.addEventListener('mouseleave', function() {
+              // mouseleave → mouseout
+              item.addEventListener('mouseout', function() {
                   if (!this.style.borderLeft.includes('#007bff')) {
-                      const currentBg = this.style.background;
-                      if (currentBg.includes('rgba')) {
-                          this.style.background = currentBg.replace('0.3', '0.18');
+                      const color = this.getAttribute('data-color');
+                      if (color && color !== 'null' && color !== 'undefined') {
+                          this.style.background = hexToRgba(color, 0.18);
                       } else {
-                          this.style.background = 'white !important';
+                          this.style.background = '#f8f9fa';
                       }
                   }
               });
@@ -850,16 +866,17 @@ function showModalDropdownOptions(rowId, fieldName, btn) {
                   
                   const selectedOptionId = this.getAttribute('data-option-id');
                   const selectedOptionText = this.getAttribute('data-option-text');
-                  console.log('모달에서 드롭다운 옵션 선택됨:', selectedOptionId, selectedOptionText);
-                  
-                  // 드롭다운 제거
+                  const selectedColor = this.getAttribute('data-color');
                   if (dropdown && dropdown.parentNode) {
                       dropdown.parentNode.removeChild(dropdown);
                       window.dropdown = null;
                   }
-                  
+                  // 버튼 배경색 변경
+                  btn.textContent = selectedOptionText;
+                  btn.style.background = selectedColor ? hexToRgba(selectedColor, 0.18) : '#f8f9fa';
+                  btn.style.color = '#333';
                   // 드롭다운 옵션 선택 처리
-                  selectModalDropdownOption(rowId, fieldName, selectedOptionId, selectedOptionText, btn);
+                  selectModalDropdownOption(rowId, fieldName, selectedOptionId, selectedOptionText, btn, selectedColor);
               });
           });
           
@@ -883,11 +900,13 @@ function showModalDropdownOptions(rowId, fieldName, btn) {
 }
 
 // 모달용 드롭다운 옵션 선택 함수
-function selectModalDropdownOption(rowId, fieldName, optionId, optionText, btn) {
+function selectModalDropdownOption(rowId, fieldName, optionId, optionText, btn, color) {
   console.log('selectModalDropdownOption 호출됨:', rowId, fieldName, optionId, optionText);
   
   // 버튼 텍스트 즉시 업데이트
   btn.textContent = optionText;
+  btn.style.background = color ? hexToRgba(color, 0.18) : '#f8f9fa';
+  btn.style.color = '#333';
   
   // 서버에 업데이트 요청
   fetch('/600/update_row_field/', {

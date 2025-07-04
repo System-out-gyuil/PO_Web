@@ -1,4 +1,17 @@
 {% load entry_extras %}
+<style>
+.dropdown-pill {
+  display: inline-block;
+  padding: 4px 14px;
+  border-radius: 16px;
+  font-size: 13px;
+  font-weight: 500;
+  min-width: 48px;
+  text-align: center;
+  background: #eee;
+  color: #333;
+}
+</style>
 <table id="entryTable" style="width:auto; min-width:unset;">
     <thead>
     <tr>
@@ -51,8 +64,10 @@
                         </div>
                     </td>
                 {% elif attr.attributeType_name == 'dropdown' %}
-                    <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" class="{% if attr.assential %}essential-column{% endif %}" style="background:{{ row.values|get_item:attr.name|get_item:'color'|default:''|to_rgba:'0.18' }};">
-                        {{ row.values|get_item:attr.name|get_item:'label' }}
+                    <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" class="{% if attr.assential %}essential-column{% endif %}">
+                        <div class="dropdown-pill" style="background:{{ row.values|get_item:attr.name|get_item:'color'|default:''|to_rgba:'0.18' }}; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">
+                            {{ row.values|get_item:attr.name|get_item:'label' }}
+                        </div>
                     </td>
                 {% elif attr.attributeType_name == 'datetime' %}
                     <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" class="{% if attr.assential %}essential-column{% endif %}">

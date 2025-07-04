@@ -31,7 +31,7 @@ import logging
 from django.contrib.auth.decorators import login_required
 from .funding_calculator import FundingCalculator
 from board.models import BizInfo
-from django.db.models import Q
+from django.db.models import Q, Max
 
 logger = logging.getLogger(__name__)
 
@@ -778,11 +778,16 @@ def add_attribute(request):
             # AttributeType 가져오기 또는 생성
             attribute_type, _ = AttributeType.objects.get_or_create(name=attr_type)
             
+            # 현재 최대 sort_order 구하기
+            max_sort_order = Attribute.objects.aggregate(Max('sort_order'))['sort_order__max']
+            next_sort_order = (max_sort_order or 0) + 1
+            
             # 새 속성 생성
             attribute = Attribute.objects.create(
                 name=name,
                 user=user,
-                attributeType=attribute_type
+                attributeType=attribute_type,
+                sort_order=next_sort_order
             )
             
             return JsonResponse({
