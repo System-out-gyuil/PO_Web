@@ -3050,3 +3050,52 @@ def update_audio_text_notes(request):
         return JsonResponse({'success': True})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
+    
+@csrf_exempt
+def update_audio_file_order_and_notes(request):
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST 요청만 허용됩니다.'})
+
+    row_id = request.POST.get('row_id')
+    notes_json = request.POST.get('notes')
+    audio_json = request.POST.get('ordered_files')
+
+    if not row_id:
+        return JsonResponse({'success': False, 'error': 'row_id 누락'})
+
+    try:
+        notes = json.loads(notes_json or "[]")
+        audio_files = json.loads(audio_json or "[]")
+
+        user = request.user if request.user.is_authenticated else User.objects.get(id=1)
+        row = Row.objects.get(id=row_id, user=user)
+        attr = Attribute.objects.get(name="음성파일", user=user)
+        attr_value = AttributeValue.objects.filter(row=row, attribute=attr).first()
+
+        if not attr_value:
+            return JsonResponse({'success': False, 'error': '해당 속성값이 없습니다.'})
+
+        value = json.loads(attr_value.value or "{}")
+
+        # ✅ 1. 텍스트 노트 저장
+        value["texts"] = notes
+
+        # ✅ 2. 오디오 순서 업데이트
+        for audio in audio_files:
+            date = audio.get("date")
+            file_id = audio.get("file_id")
+            order = audio.get("order")
+
+            # date 키가 있고 그 아래 file_id가 존재할 경우에만
+            if date in value and isinstance(value[date], dict) and file_id in value[date]:
+                value[date][file_id]["order"] = order
+            else:
+                print(f"[스킵] 존재하지 않는 오디오 파일: date={date}, file_id={file_id}")
+
+        attr_value.value = json.dumps(value, ensure_ascii=False)
+        attr_value.save()
+
+        return JsonResponse({'success': True})
+
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})

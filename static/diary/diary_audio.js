@@ -735,51 +735,34 @@ function updateAudioFileOrder(rowId, fileId, newOrder) {
   }
   
   function saveAllOrderToServer() {
-      if (!window.currentDetailRowId) return;
-      const notes = [];
-      const audioOrders = [];
-      document.querySelectorAll('#audioFilesList > .draggable-text-area, #audioFilesList > .audio-file-item').forEach((el, idx) => {
-          if (el.classList.contains('draggable-text-area')) {
-              // 텍스트노트
-              const textarea = el.querySelector('textarea');
-              let id = el.dataset.noteId;
-              if (!id) {
-                  id = 't' + Date.now() + '_' + Math.floor(Math.random()*10000);
-                  el.dataset.noteId = id;
-              }
-              notes.push({ id, text: textarea.value, order: idx });
-          } else if (el.classList.contains('audio-file-item')) {
-              // 음성파일
-              const date = el.getAttribute('data-date');
-              const fileId = el.getAttribute('data-file-id');
-              if (date && fileId) {
-                  audioOrders.push({ date, file_id: fileId, order: idx });
-              }
-          }
-      });
-      // 텍스트노트 순서 저장
-      fetch('/diary/update_audio_text_notes/', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-          body: `row_id=${encodeURIComponent(window.currentDetailRowId)}&notes=${encodeURIComponent(JSON.stringify(notes))}`
-      }).then(r=>r.json()).then(data=>{
-          if(!data.success) alert('텍스트 저장 실패: '+(data.error||''));
-      });
-      // 음성파일 순서 저장
-      fetch('/diary/update_audio_file_order/', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-          body: `row_id=${encodeURIComponent(window.currentDetailRowId)}&ordered_files=${encodeURIComponent(JSON.stringify(audioOrders))}`
-      }).then(r=>r.json()).then(data=>{
-          if(!data.success) alert('음성파일 순서 저장 실패: '+(data.error||''));
-      });
-  }
-  
-  if (typeof Sortable !== 'undefined') {
-      new Sortable(audioFilesList, {
-          animation: 150,
-          onEnd: function(evt) {
-              saveAllOrderToServer();
-          }
-      });
-  }
+    if (!window.currentDetailRowId) return;
+
+    const notes = [];
+    const audioOrders = [];
+
+    document.querySelectorAll('#audioFilesList > .draggable-text-area, #audioFilesList > .audio-file-item').forEach((el, idx) => {
+        if (el.classList.contains('draggable-text-area')) {
+            const textarea = el.querySelector('textarea');
+            let id = el.dataset.noteId;
+            if (!id) {
+                id = 't' + Date.now() + '_' + Math.floor(Math.random() * 10000);
+                el.dataset.noteId = id;
+            }
+            notes.push({ id, text: textarea.value, order: idx });
+        } else if (el.classList.contains('audio-file-item')) {
+            const date = el.getAttribute('data-date');
+            const fileId = el.getAttribute('data-file-id');
+            if (date && fileId) {
+                audioOrders.push({ date, file_id: fileId, order: idx });
+            }
+        }
+    });
+
+    fetch('/diary/update_audio_file_order_and_notes/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `row_id=${encodeURIComponent(window.currentDetailRowId)}&notes=${encodeURIComponent(JSON.stringify(notes))}&ordered_files=${encodeURIComponent(JSON.stringify(audioOrders))}`
+    }).then(r => r.json()).then(data => {
+        if (!data.success) alert('순서 저장 실패: ' + (data.error || ''));
+    });
+}
