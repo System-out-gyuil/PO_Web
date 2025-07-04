@@ -31,7 +31,7 @@ function showDetailModal(rowData, rowId) {
             const sortedAttributes = attributes.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
             
             // 읽기 전용 필드 목록
-            const readonlyFields = ['이름', '생성일', '수정일'];
+            const readonlyFields = ['회사명', '생성일', '수정일'];
             
             // 숨김 필드 목록 (표시하지 않을 속성들)
             const hiddenFields = ['음성파일', '변환된 텍스트'];

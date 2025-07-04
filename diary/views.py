@@ -147,7 +147,7 @@ def diary_list(request):
                 # entry 객체 형태로 변환 (기존 DiaryEntry와 호환)
                 entry_data = {
                     'id': row.id,
-                    'name': row_values.get('이름', ''),
+                    'name': row_values.get('회사명', ''),
                     'amount': row_values.get('매출', ''),
                 }
                 entries.append(entry_data)
@@ -200,9 +200,9 @@ def fu_events(request):
     events = []
     user = User.objects.get(id=1)
     
-    # F/U 일정, 이름, 미팅, 영업진행 속성 가져오기
+    # F/U 일정, 회사명, 미팅, 영업진행 속성 가져오기
     fu_date_attr = Attribute.objects.filter(user=user, name='F/U 일정').first()
-    name_attr = Attribute.objects.filter(user=user, name='이름').first()
+    name_attr = Attribute.objects.filter(user=user, name='회사명').first()
     meeting_attr = Attribute.objects.filter(user=user, name='미팅').first()
     sales_progress_attr = Attribute.objects.filter(user=user, name='영업진행').first()
     
@@ -265,8 +265,8 @@ def fu_events(request):
             if rv.attribute:
                 row_values[rv.attribute.name] = rv.value
         
-        # 이름 가져오기
-        name = row_values.get('이름', '(이름 없음)')
+        # 회사명 가져오기
+        name = row_values.get('회사명', '(회사명 없음)')
         
         # 미팅 날짜 가져오기
         meeting_date = row_values.get('미팅', '')
@@ -521,7 +521,7 @@ def board_view(request):
             # entry 객체 형태로 변환 (기존 DiaryEntry와 호환)
             entry_data = {
                 'id': row.id,
-                'name': row_values.get('이름', ''),
+                'name': row_values.get('회사명', ''),
                 'amount': row_values.get('매출', ''),
             }
             entries.append(entry_data)
@@ -952,7 +952,7 @@ def get_kanban_data(request):
                 # entry 데이터 생성
                 entry_data = {
                     'id': row.id,
-                    'name': row_values.get('이름', ''),
+                    'name': row_values.get('회사명', ''),
                     'amount': row_values.get('매출', ''),
                 }
                 entries.append(entry_data)

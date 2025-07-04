@@ -128,11 +128,11 @@ body { font-family: Arial, sans-serif; margin: 40px; background: #f8f9fa; }
             overflow: visible;
             text-overflow: unset;
         }
-        td[data-field="이름"] {
+        td[data-field="회사명"] {
             position: relative;
         }
         
-        td[data-field="이름"] .name-container {
+        td[data-field="회사명"] .name-container {
             display: flex;
             flex-direction: row;
             align-items: center;
@@ -140,14 +140,14 @@ body { font-family: Arial, sans-serif; margin: 40px; background: #f8f9fa; }
             gap: 4px;
             width: 100%;
         }
-        td[data-field="이름"] .name-text {
+        td[data-field="회사명"] .name-text {
             flex: 1 1 auto;
             min-width: 0;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
         }
-        td[data-field="이름"] .more-btn-wrapper {
+        td[data-field="회사명"] .more-btn-wrapper {
             flex: 0 0 auto;
             width: 32px;
             height: 28px;
@@ -155,7 +155,7 @@ body { font-family: Arial, sans-serif; margin: 40px; background: #f8f9fa; }
             align-items: center;
             justify-content: center;
         }
-        td[data-field="이름"] .more-btn {
+        td[data-field="회사명"] .more-btn {
             display: inline-block;
             width: 28px;
             height: 28px;
@@ -169,7 +169,7 @@ body { font-family: Arial, sans-serif; margin: 40px; background: #f8f9fa; }
             visibility: hidden;
         }
         
-        td[data-field="이름"]:hover .more-btn {
+        td[data-field="회사명"]:hover .more-btn {
             opacity: 1;
             visibility: visible;
         }
