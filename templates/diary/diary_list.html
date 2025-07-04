@@ -631,7 +631,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if(field === '회사명') {
                 // 회사명 필드는 특별한 구조
-                td.innerHTML = '<div class="name-text">새 항목</div><div class="more-btn-wrapper"><div class="more-btn" style="cursor:pointer;">⋯</div></div>';
+                td.innerHTML = '<div style="display:flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:4px;position:relative;"><div class="name-text">새 항목</div><div class="more-btn-wrapper"><div class="more-btn" style="cursor:pointer;">⋯</div></div></div>';
                 td.style.display = 'flex';
                 td.style.flexDirection = 'row';
                 td.style.alignItems = 'center';
