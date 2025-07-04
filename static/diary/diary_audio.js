@@ -892,7 +892,7 @@ function createTextNoteElement(noteData, index) {
                     justify-content: center;
                     z-index: 10;">×</button>
           <textarea id="text-note-${noteId}" 
-                    style="width: 100%; min-height: 50px; max-height: 300px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; line-height: 1.5; resize: none; box-sizing: border-box; overflow-y: hidden;"
+                    style="width: 100%; min-height: 50px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; line-height: 1.5; resize: none; box-sizing: border-box; overflow-y: hidden;"
                     placeholder="텍스트 노트를 입력하세요...">${text}</textarea>
       </div>
   `;
@@ -904,7 +904,7 @@ function createTextNoteElement(noteData, index) {
   // textarea 높이 자동 조절 함수
   function autoResizeTextarea(textarea) {
       textarea.style.height = 'auto';
-      textarea.style.height = Math.min(textarea.scrollHeight, 300) + 'px';
+      textarea.style.height = textarea.scrollHeight + 'px';
   }
   
   // 초기 높이 설정 (텍스트 내용이 설정된 후에 실행)

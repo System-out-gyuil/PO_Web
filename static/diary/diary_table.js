@@ -871,65 +871,125 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                   if (td.querySelector('input')) return;
                   td.style.width = td.offsetWidth + 'px';
                   if(type === '회사명') {
-                      const nameDiv = td.querySelector('.name-text');
-                      if(!nameDiv) return;
-                      const oldValue = nameDiv.innerText;
-                      const id = td.parentElement.getAttribute('data-id');
-                      const input = document.createElement('input');
-                      input.type = 'text';
-                      input.value = oldValue;
-                      input.className = 'table-edit-input';
-                      nameDiv.innerHTML = '';
-                      nameDiv.appendChild(input);
-                      // ...버튼 숨김
-                      const moreBtnWrapper = td.querySelector('.more-btn-wrapper');
-                      if(moreBtnWrapper) moreBtnWrapper.style.visibility = 'hidden';
-                      input.focus();
-                      function restoreCell(value) {
-                          td.innerHTML = `<div class="name-text">${value}</div><div class="more-btn-wrapper"><div class="more-btn" style="cursor:pointer;">⋯</div></div>`;
-                          // ...버튼 이벤트 재바인딩
-                          const newMoreBtn = td.querySelector('.more-btn');
-                          if(newMoreBtn) {
-                              newMoreBtn.onclick = function(e){
-                                  e.stopPropagation();
-                                  const tr = td.closest('tr');
-                                  const id = tr.getAttribute('data-id');
-                                  if(!id) { alert('ID 정보가 없습니다.'); return; }
-                                  // 새로운 Row 시스템의 get_row_details 엔드포인트 사용
-                                  fetch('/600/get_row_details/'+id+'/')
-                                    .then(r => r.json())
-                                    .then(function(data){
-                                        if(data.success) showDetailModal(data.row_data, data.row_id);
-                                        else alert('상세정보 불러오기 실패: '+(data.error||''));
-                                    })
-                                    .catch(function(err){
-                                        alert('상세정보 불러오기 실패: 네트워크 오류\n' + err);
-                                        console.error(err);
-                                    });
-                              };
-                          }
-                          // 편집 종료 시 td width 해제
-                          td.style.width = '';
+                      // ...버튼 이벤트 항상 바인딩
+                      const moreBtn = td.querySelector('.more-btn');
+                      if (moreBtn) {
+                          moreBtn.onclick = function(e) {
+                              e.stopPropagation();
+                              const tr = td.closest('tr');
+                              const id = tr.getAttribute('data-id');
+                              if (!id) { alert('ID 정보가 없습니다.'); return; }
+                              fetch('/600/get_row_details/' + id + '/')
+                                  .then(r => r.json())
+                                  .then(function(data) {
+                                      if (data.success) showDetailModal(data.row_data, data.row_id);
+                                      else alert('상세정보 불러오기 실패: ' + (data.error || ''));
+                                  })
+                                  .catch(function(err) {
+                                      alert('상세정보 불러오기 실패: 네트워크 오류\n' + err);
+                                      console.error(err);
+                                  });
+                          };
                       }
-                      input.onblur = function() {
-                          const newValue = input.value;
-                          restoreCell(newValue);
-                          
-                          // 새 행인 경우
-                          if (id && id.startsWith('temp_')) {
-                              saveNewRowField(td.parentElement, '회사명', newValue);
-                          } else {
-                              // 기존 행인 경우
-                              fetch('/600/update/', {
-                                  method: 'POST',
-                                  headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                                  body: 'id='+id+'&field=회사명&value='+encodeURIComponent(newValue)
-                              });
+                      td.onclick = function(e) {
+                          if (e.target.classList.contains('more-btn')) return;
+                          if (td.querySelector('input')) return;
+                          td.style.width = td.offsetWidth + 'px';
+                          const nameDiv = td.querySelector('.name-text');
+                          if (!nameDiv) return;
+                          const oldValue = nameDiv.innerText;
+                          const id = td.parentElement.getAttribute('data-id');
+                          const input = document.createElement('input');
+                          input.type = 'text';
+                          input.value = oldValue;
+                          input.className = 'table-edit-input';
+                          nameDiv.innerHTML = '';
+                          nameDiv.appendChild(input);
+                          const moreBtnWrapper = td.querySelector('.more-btn-wrapper');
+                          if (moreBtnWrapper) moreBtnWrapper.style.visibility = 'hidden';
+                          input.focus();
+                          function restoreCell(value) {
+                              td.innerHTML = `
+                                <div class="name-container">
+                                  <div class="name-text">${value}</div>
+                                  <div class="more-btn-wrapper"><div class="more-btn" style="cursor:pointer;">⋯</div></div>
+                                </div>
+                              `;
+                              // ...버튼 이벤트 재바인딩
+                              const newMoreBtn = td.querySelector('.more-btn');
+                              if (newMoreBtn) {
+                                  newMoreBtn.onclick = function(e) {
+                                      e.stopPropagation();
+                                      const tr = td.closest('tr');
+                                      const id = tr.getAttribute('data-id');
+                                      if (!id) { alert('ID 정보가 없습니다.'); return; }
+                                      fetch('/600/get_row_details/' + id + '/')
+                                          .then(r => r.json())
+                                          .then(function(data) {
+                                              if (data.success) showDetailModal(data.row_data, data.row_id);
+                                              else alert('상세정보 불러오기 실패: ' + (data.error || ''));
+                                          })
+                                          .catch(function(err) {
+                                              alert('상세정보 불러오기 실패: 네트워크 오류\n' + err);
+                                              console.error(err);
+                                          });
+                                  };
+                              }
+                              // td.onclick도 재바인딩 (more-btn 체크)
+                              td.onclick = function(e) {
+                                  if (e.target.classList.contains('more-btn')) return;
+                                  if (td.querySelector('input')) return;
+                                  td.style.width = td.offsetWidth + 'px';
+                                  const nameDiv = td.querySelector('.name-text');
+                                  if (!nameDiv) return;
+                                  const oldValue = nameDiv.innerText;
+                                  const id = td.parentElement.getAttribute('data-id');
+                                  const input = document.createElement('input');
+                                  input.type = 'text';
+                                  input.value = oldValue;
+                                  input.className = 'table-edit-input';
+                                  nameDiv.innerHTML = '';
+                                  nameDiv.appendChild(input);
+                                  const moreBtnWrapper = td.querySelector('.more-btn-wrapper');
+                                  if (moreBtnWrapper) moreBtnWrapper.style.visibility = 'hidden';
+                                  input.focus();
+                                  input.onblur = function() {
+                                      const newValue = input.value;
+                                      restoreCell(newValue);
+                                      if (id && id.startsWith('temp_')) {
+                                          saveNewRowField(td.parentElement, '회사명', newValue);
+                                      } else {
+                                          fetch('/600/update/', {
+                                              method: 'POST',
+                                              headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                                              body: 'id=' + id + '&field=회사명&value=' + encodeURIComponent(newValue)
+                                          });
+                                      }
+                                  };
+                                  input.onkeydown = function(e) {
+                                      if (e.key === 'Enter') input.blur();
+                                      if (e.key === 'Escape') restoreCell(oldValue);
+                                  };
+                              };
+                              td.style.width = '';
                           }
-                      };
-                      input.onkeydown = function(e) {
-                          if (e.key === 'Enter') input.blur();
-                          if (e.key === 'Escape') restoreCell(oldValue);
+                          input.onblur = function() {
+                              const newValue = input.value;
+                              restoreCell(newValue);
+                              if (id && id.startsWith('temp_')) {
+                                  saveNewRowField(td.parentElement, '회사명', newValue);
+                              } else {
+                                  fetch('/600/update/', {
+                                      method: 'POST',
+                                      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                                      body: 'id=' + id + '&field=회사명&value=' + encodeURIComponent(newValue)
+                                  });
+                              }
+                          };
+                          input.onkeydown = function(e) {
+                              if (e.key === 'Enter') input.blur();
+                              if (e.key === 'Escape') restoreCell(oldValue);
+                          };
                       };
                   } else {
                       // 일반 텍스트 필드들 처리
