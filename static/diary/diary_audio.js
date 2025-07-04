@@ -863,7 +863,16 @@ function saveAllOrderToServer(sortableContainer) {
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: `row_id=${encodeURIComponent(window.currentDetailRowId)}&notes=${encodeURIComponent(JSON.stringify(notes))}&ordered_files=${encodeURIComponent(JSON.stringify(audioOrders))}`
     }).then(r=>r.json()).then(data=>{
-        if(!data.success) alert('순서 저장 실패: '+(data.error||''));
+        if(data.success) {
+            console.log('순서 저장 성공, 전체 재렌더링 시작');
+            // 성공 시 전체 재렌더링하여 placeholder 올바르게 배치
+            refreshAudioFileData();
+        } else {
+            alert('순서 저장 실패: '+(data.error||''));
+        }
+    }).catch(error => {
+        console.error('순서 저장 중 오류:', error);
+        alert('순서 저장 중 오류가 발생했습니다.');
     });
 }
 

@@ -227,7 +227,7 @@ function hexToRgba(hex, alpha) {
 
 
 function updateEntryField(id, field, value) {
-  fetch('/diary/update/', {
+  fetch('/600/update/', {
       method: 'POST',
       headers: {'Content-Type': 'application/x-www-form-urlencoded'},
       body: 'id='+encodeURIComponent(id)+'&field='+encodeURIComponent(field)+'&value='+encodeURIComponent(value)
@@ -239,7 +239,7 @@ function updateEntryField(id, field, value) {
           return;
       }
       // 항상 최신 entry로 모달/테이블/보드 동기화
-      return fetch('/diary/update/?id='+id);
+      return fetch('/600/update/?id='+id);
   })
   .then(r => r ? r.json() : null)
   .then(function(data){

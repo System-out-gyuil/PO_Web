@@ -22,7 +22,7 @@ function bindKanbanSortable() {
               evt.item.style.border = '2px solid #007bff';
               evt.item.style.background = '#f8f9fa';
               
-              fetch('/diary/update_row_field/', {
+              fetch('/600/update_row_field/', {
                   method: 'POST',
                   headers: {
                       'Content-Type': 'application/x-www-form-urlencoded',
@@ -107,7 +107,7 @@ function bindKanbanSortable() {
           const entryId = card.getAttribute('data-entry-id');
           if(entryId) {
               // 새로운 Row 시스템의 get_row_details 엔드포인트 사용
-              fetch('/diary/get_row_details/'+entryId+'/')
+              fetch('/600/get_row_details/'+entryId+'/')
                 .then(r=>r.json())
                 .then(function(data){
                     if(data.success) showDetailModal(data.row_data, data.row_id);
@@ -124,7 +124,7 @@ function bindKanbanSortable() {
           const currentKanbanAttr = btn.closest('.board-col').getAttribute('data-attr-name') || window.SELECTED_KANBAN_ATTR;
           
           // 새 행 생성 - 선택된 칸반 속성 필드를 해당 컬럼의 상태로 설정
-          fetch('/diary/create_new_row/', {
+          fetch('/600/create_new_row/', {
               method: 'POST',
               headers: {'Content-Type': 'application/x-www-form-urlencoded'},
               body: 'field='+encodeURIComponent(currentKanbanAttr)+'&value='+encodeURIComponent(statusId)
@@ -154,7 +154,7 @@ function updateKanbanBoard(attrName) {
   // 로딩 표시
   loadingIndicator.style.display = 'block';
   
-  fetch('/diary/get_kanban_data/?attr_name=' + encodeURIComponent(attrName))
+  fetch('/600/get_kanban_data/?attr_name=' + encodeURIComponent(attrName))
       .then(response => response.json())
       .then(data => {
           loadingIndicator.style.display = 'none';
@@ -184,12 +184,12 @@ function updateKanbanBoard(attrName) {
                   
                   col.entries.forEach(function(entry) {
                       const entryName = entry.name || '(이름 없음)';
-                      const entryAmount = entry.amount ? `₩${entry.amount}` : '';
+                      const entryAmount = entry.amount;
                       
                       boardHTML += `
                           <div class="board-card" data-entry-id="${entry.id}">
-                              <div class="board-card-title">${entryName}</div>
-                              <div class="board-card-amount">${entryAmount}</div>
+                            <div class="board-card-title">${entryName || '(회사명 없음)'}</div>
+                            <div class="board-card-amount">${entryAmount ? formatKoreanCurrency(entryAmount) : ''}</div>
                           </div>
                       `;
                   });
@@ -232,7 +232,7 @@ function refreshKanban() {
 // 모달의 드롭다운 값을 업데이트하는 헬퍼 함수
 function updateModalDropdownValue(fieldName, newValue) {
     // 드롭다운 옵션 목록을 가져와서 새 값에 해당하는 텍스트 찾기
-    fetch('/diary/dropdown_options/', {
+    fetch('/600/dropdown_options/', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: 'field=' + encodeURIComponent(fieldName)
@@ -269,4 +269,67 @@ function getCsrfToken() {
         .find(row => row.startsWith('csrftoken='))
         ?.split('=')[1];
     return cookieValue || '';
+}
+
+// 한국 통화 형식으로 변환하는 함수 (Django to_korean_currency 필터와 동일)
+function formatKoreanCurrency(value) {
+    if (!value) return '0원';
+    
+    try {
+        // 문자열인 경우 숫자만 추출
+        let num;
+        if (typeof value === 'string') {
+            num = parseInt(value.replace(/\D/g, ''));
+        } else {
+            num = parseInt(value);
+        }
+        
+        if (isNaN(num) || num === 0) {
+            return '0원';
+        }
+        
+        let result = '';
+        let remaining = num;
+        
+        // 억 단위 처리
+        if (remaining >= 100000000) {
+            const eok = Math.floor(remaining / 100000000);
+            result += eok + '억';
+            remaining = remaining % 100000000;
+        }
+        
+        // 천만 단위 처리 (천으로 표시)
+        if (remaining >= 10000000) {
+            const cheon = Math.floor(remaining / 10000000);
+            if (result) {
+                result += ' ';
+            }
+            result += cheon + '천';
+            remaining = remaining % 10000000;
+        }
+        
+        // 백만 단위 처리
+        if (remaining >= 1000000) {
+            const baek = Math.floor(remaining / 1000000);
+            if (result) {
+                result += ' ';
+            }
+            result += baek + '백';
+            remaining = remaining % 1000000;
+        }
+        
+        // 만 단위가 남아있으면 추가
+        if (remaining >= 10000) {
+            if (result) {
+                result += '만';
+            } else {
+                result = Math.floor(remaining / 10000) + '만';
+            }
+        }
+        
+        return result + '원';
+        
+    } catch (error) {
+        return String(value);
+    }
 }

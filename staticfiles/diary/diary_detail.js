@@ -17,7 +17,7 @@ function showDetailModal(rowData, rowId) {
     const user = { id: 1 }; // 임시로 user id 1 사용
     
     // 백엔드에서 사용자의 속성 목록을 가져와야 함
-    fetch('/diary/get_user_attributes/')
+    fetch('/600/get_user_attributes/')
         .then(response => response.json())
         .then(data => {
             if (!data.success) {
@@ -334,7 +334,7 @@ function showDetailModal(rowData, rowId) {
                     if (hasFile) {
                         console.log('파일이 있는 경우:', displayFileName);
                         // 파일이 있는 경우: 파일명 + 수정 버튼 + 삭제 버튼
-                        const downloadUrl = fileInfo.download_url || `/diary/download_file/${rowId}/${fieldName}/`;
+                        const downloadUrl = fileInfo.download_url || `/600/download_file/${rowId}/${fieldName}/`;
                         inputHtml = `
                             <div style="display: flex; align-items: center; gap: 8px;">
                                 <span onclick="window.open('${downloadUrl}', '_blank')"  
@@ -575,10 +575,10 @@ function formatToKoreanCurrency(amount) {
         if (result) result += '만';
         else result = Math.floor(remaining / 10000) + '만';
     } else if (result) {
-        result += '만';
+        result += '';
     }
     
-    return result + '원';
+    return result + '';
 }
 
 // 한국어 통화를 숫자로 변환하는 함수
@@ -637,7 +637,7 @@ function updateRowFieldWithKoreanCurrency(rowId, fieldName, value) {
     }
     
     // 서버에 숫자 값으로 저장
-    fetch('/diary/update_row_field/', {
+    fetch('/600/update_row_field/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -686,7 +686,7 @@ function openDetailDropdown(rowId, fieldName, btn) {
   
   console.log('일반 드롭다운 처리');
   // 일반 드롭다운 속성 처리
-  fetch('/diary/get_user_attributes/')
+  fetch('/600/get_user_attributes/')
       .then(r => r.json())
       .then(function(attributesData) {
           if (!attributesData.success) {
@@ -714,7 +714,7 @@ function showModalDropdownOptions(rowId, fieldName, btn) {
   console.log('showModalDropdownOptions 호출됨:', rowId, fieldName, btn);
   
   // 드롭다운 옵션 가져오기
-  fetch('/diary/dropdown_options/?field=' + encodeURIComponent(fieldName))
+  fetch('/600/dropdown_options/?field=' + encodeURIComponent(fieldName))
       .then(r => r.json())
       .then(function(data) {
           console.log('모달 드롭다운 옵션 로드됨:', data);
@@ -890,7 +890,7 @@ function selectModalDropdownOption(rowId, fieldName, optionId, optionText, btn) 
   btn.textContent = optionText;
   
   // 서버에 업데이트 요청
-  fetch('/diary/update_row_field/', {
+  fetch('/600/update_row_field/', {
       method: 'POST',
       headers: {
           'Content-Type': 'application/json',
@@ -1131,7 +1131,7 @@ function showModalSubregionDropdown(rowId, fieldName, btn) {
   console.log('showModalSubregionDropdown 호출됨:', rowId, fieldName, btn);
   
   // 서버에서 현재 지역 가져오기
-  fetch(`/diary/get_row_details/${rowId}/`)
+  fetch(`/600/get_row_details/${rowId}/`)
     .then(response => response.json())
     .then(data => {
       console.log('서버 응답 데이터:', data);
@@ -1309,7 +1309,7 @@ function showModalSubregionDropdown(rowId, fieldName, btn) {
 // 모달용 지역 옵션 선택 함수
 function selectModalRegionOption(rowId, regionText, element) {
   // 서버에 업데이트 요청
-  fetch('/diary/update_row_field/', {
+  fetch('/600/update_row_field/', {
       method: 'POST',
       headers: {'Content-Type': 'application/x-www-form-urlencoded'},
       body: 'id=' + encodeURIComponent(rowId) + '&field=지역&value=' + encodeURIComponent(regionText)
@@ -1343,7 +1343,7 @@ function selectModalRegionOption(rowId, regionText, element) {
           const firstSubregion = (regionMap[regionText] || [])[0] || '';
           if (firstSubregion) {
               // 상세지역도 함께 업데이트
-              fetch('/diary/update_row_field/', {
+              fetch('/600/update_row_field/', {
                   method: 'POST',
                   headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                   body: 'id=' + encodeURIComponent(rowId) + '&field=상세지역&value=' + encodeURIComponent(firstSubregion)
@@ -1352,7 +1352,7 @@ function selectModalRegionOption(rowId, regionText, element) {
               .then(function(data) {
                   if (data.success) {
                       // 모달 새로고침
-                      fetch('/diary/get_row_details/' + rowId + '/')
+                      fetch('/600/get_row_details/' + rowId + '/')
                           .then(r => r.json())
                           .then(function(data) {
                               if (data.success) {
@@ -1396,7 +1396,7 @@ function selectModalRegionOption(rowId, regionText, element) {
               }
               
               // 모달 새로고침
-              fetch('/diary/get_row_details/' + rowId + '/')
+              fetch('/600/get_row_details/' + rowId + '/')
                   .then(r => r.json())
                   .then(function(data) {
                       if (data.success) {
@@ -1413,7 +1413,7 @@ function selectModalRegionOption(rowId, regionText, element) {
 // 모달용 상세지역 옵션 선택 함수
 function selectModalSubregionOption(rowId, subregionText, element) {
   // 서버에 업데이트 요청
-  fetch('/diary/update_row_field/', {
+  fetch('/600/update_row_field/', {
       method: 'POST',
       headers: {'Content-Type': 'application/x-www-form-urlencoded'},
       body: 'id=' + encodeURIComponent(rowId) + '&field=상세지역&value=' + encodeURIComponent(subregionText)
@@ -1425,7 +1425,7 @@ function selectModalSubregionOption(rowId, subregionText, element) {
           closeDropdown();
           
           // 모달 새로고침
-          fetch('/diary/get_row_details/' + rowId + '/')
+          fetch('/600/get_row_details/' + rowId + '/')
               .then(r => r.json())
               .then(function(data) {
                   if (data.success) {
@@ -1493,7 +1493,7 @@ function updateDebtField(rowId, debtKey, value) {
     }
     
     // 서버에 저장
-    fetch('/diary/update_debt_field/', {
+    fetch('/600/update_debt_field/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -1601,7 +1601,7 @@ function requestFundingRecommendation(rowId) {
     showNotification('추천자금을 분석 중입니다...', 'info');
     
     // 백엔드에 추천자금 요청
-    fetch('/diary/get_funding_recommendation/', {
+    fetch('/600/get_funding_recommendation/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -1662,7 +1662,7 @@ function requestFundingRecommendation(rowId) {
             const existingDetailModal = document.querySelector('#detailModal');
             if (existingDetailModal) {
                 // 서버에서 최신 데이터를 가져와서 백그라운드에서 준비 (모달은 닫지 않음)
-                fetch(`/diary/get_row_details/${rowId}/`)
+                fetch(`/600/get_row_details/${rowId}/`)
                     .then(response => response.json())
                     .then(updatedData => {
                         if (updatedData.success) {
@@ -2010,7 +2010,7 @@ function closeFundingRecommendationModal() {
 // 자금 상세보기 모달 함수
 function showFundingDetailModal(rowId, fieldName) {
     // 서버에서 행 데이터 가져오기
-    fetch(`/diary/get_row_details/${rowId}/`)
+    fetch(`/600/get_row_details/${rowId}/`)
         .then(response => response.json())
         .then(data => {
             if (!data.success) {
@@ -2044,7 +2044,7 @@ function showFundingDetailModal(rowId, fieldName) {
             // pblanc_ids가 있으면 공고 정보를 서버에서 가져오기
             let recommendedNoticesPromise = Promise.resolve([]);
             if (fundingData.pblanc_ids && fundingData.pblanc_ids.length > 0) {
-                recommendedNoticesPromise = fetch('/diary/get_recommended_notices/', {
+                recommendedNoticesPromise = fetch('/600/get_recommended_notices/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -2439,7 +2439,7 @@ function updateRowFieldWithNumber(rowId, fieldName, value) {
 }
 
 function updateRowField(rowId, fieldName, value) {
-    fetch('/diary/update_row_field/', {
+    fetch('/600/update_row_field/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -2612,7 +2612,7 @@ function formatDebtInputRealtime(input, rowId, categoryKey) {
 // 파일 다운로드 함수
 function downloadFile(rowId, fieldName) {
     // 직접 다운로드 URL로 이동
-    window.open(`/diary/download_file/${rowId}/${fieldName}/`, '_blank');
+    window.open(`/600/download_file/${rowId}/${fieldName}/`, '_blank');
 }
 
 // 파일 삭제 함수
@@ -2623,7 +2623,7 @@ function deleteFile(rowId, fieldName) {
         return;
     }
     
-    fetch('/diary/delete_file/', {
+    fetch('/600/delete_file/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -2684,7 +2684,7 @@ function uploadFile(rowId, fieldName, fileInput) {
     formData.append('row_id', rowId);
     formData.append('field_name', fieldName);
     
-    fetch('/diary/upload_file/', {
+    fetch('/600/upload_file/', {
         method: 'POST',
         body: formData,
         headers: {
@@ -2758,7 +2758,7 @@ function updateFileFieldInModal(rowId, fieldName, fileInfo) {
     const fileContainer = targetFieldDiv.querySelector('div[style*="flex:1"]');
     if (fileContainer) {
         const fileName = fileInfo.original_filename || fileInfo.filename || '업로드된 파일';
-        const downloadUrl = fileInfo.download_url || `/diary/download_file/${rowId}/${fieldName}/`;
+        const downloadUrl = fileInfo.download_url || `/600/download_file/${rowId}/${fieldName}/`;
         
         fileContainer.innerHTML = `
             <div style="display: flex; align-items: center;">
