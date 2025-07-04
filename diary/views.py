@@ -1509,11 +1509,11 @@ def upload_audio_file(request):
             })
         
         # 파일 크기 제한 (100MB)
-        max_file_size = 100 * 1024 * 1024  # 100MB
+        max_file_size = 1024 * 1024 * 1024  # 100MB
         if audio_file.size > max_file_size:
             return JsonResponse({
                 'success': False,
-                'error': '파일 크기가 100MB를 초과합니다.'
+                'error': '파일 크기가 1GB를 초과합니다.'
             })
         
         # 오디오 파일 검증
