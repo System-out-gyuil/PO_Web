@@ -1,0 +1,272 @@
+function bindKanbanSortable() {
+  document.querySelectorAll('.board-cards').forEach(function(col){
+      new Sortable(col, {
+          group: 'kanban',
+          animation: 150,
+          onStart: function(evt) {
+              // 드래그 시작 시 시각적 피드백
+              evt.item.style.opacity = '0.6';
+          },
+          onEnd: function(evt) {
+              // 드래그 종료 시 원래 상태로 복원
+              evt.item.style.opacity = '1';
+          },
+          onAdd: function(evt){
+              const entryId = evt.item.getAttribute('data-entry-id');
+              const newStatusId = col.parentElement.getAttribute('data-status-id');
+              const currentKanbanAttr = col.parentElement.getAttribute('data-attr-name') || window.SELECTED_KANBAN_ATTR;
+              
+              console.log(`칸반보드 드래그앤드롭: 항목 ${entryId}을 ${currentKanbanAttr} = ${newStatusId}로 변경`);
+              
+              // 로딩 상태 표시
+              evt.item.style.border = '2px solid #007bff';
+              evt.item.style.background = '#f8f9fa';
+              
+              fetch('/diary/update_row_field/', {
+                  method: 'POST',
+                  headers: {
+                      'Content-Type': 'application/x-www-form-urlencoded',
+                      'X-CSRFToken': getCsrfToken()
+                  },
+                  body: 'id='+entryId+'&field='+encodeURIComponent(currentKanbanAttr)+'&value='+encodeURIComponent(newStatusId)
+              })
+              .then(response => {
+                  if (!response.ok) {
+                      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                  }
+                  return response.json();
+              })
+              .then(data => {
+                  if (data.success) {
+                      console.log('칸반보드 드래그앤드롭 업데이트 성공');
+                      
+                      // 성공 상태 표시
+                      evt.item.style.border = '2px solid #28a745';
+                      evt.item.style.background = '#d4edda';
+                      
+                      // 실시간으로 테이블 새로고침
+                      if (typeof refreshTable === 'function') {
+                          refreshTable();
+                      }
+                      
+                      // 열린 상세보기 모달이 있다면 해당 행의 드롭다운 값도 업데이트
+                      const detailModal = document.getElementById('detailModal');
+                      if (detailModal && detailModal.style.display !== 'none' && window.currentDetailRowId == entryId) {
+                          console.log('열린 모달의 드롭다운 값을 업데이트합니다');
+                          // 모달의 해당 필드 버튼 텍스트 업데이트
+                          updateModalDropdownValue(currentKanbanAttr, newStatusId);
+                      }
+                      
+                      // F/U 일정 관련 칸반보드인 경우 캘린더도 새로고침
+                      if (currentKanbanAttr === 'F/U 일정' && window.calendar) {
+                          window.calendar.refetchEvents();
+                      }
+                      
+                      // 1초 후 원래 스타일로 복원
+                      setTimeout(() => {
+                          evt.item.style.border = '';
+                          evt.item.style.background = '';
+                      }, 1000);
+                      
+                  } else {
+                      throw new Error(data.error || '업데이트 실패');
+                  }
+              })
+              .catch(error => {
+                  console.error('칸반보드 드래그앤드롭 오류:', error);
+                  
+                  // 오류 상태 표시
+                  evt.item.style.border = '2px solid #dc3545';
+                  evt.item.style.background = '#f8d7da';
+                  
+                  // 오류 알림
+                  if (typeof showNotification === 'function') {
+                      showNotification('드래그앤드롭 업데이트에 실패했습니다: ' + error.message, 'error');
+                  } else {
+                      alert('드래그앤드롭 업데이트에 실패했습니다: ' + error.message);
+                  }
+                  
+                  // 2초 후 원래 스타일로 복원
+                  setTimeout(() => {
+                      evt.item.style.border = '';
+                      evt.item.style.background = '';
+                  }, 2000);
+                  
+                  // 실패 시 칸반보드 새로고침으로 원래 상태로 복원
+                  setTimeout(() => {
+                      refreshKanban();
+                  }, 1000);
+              });
+          }
+      });
+  });
+  
+  // 칸반 카드 클릭 시 상세 모달
+  document.querySelectorAll('.board-card').forEach(function(card){
+      card.onclick = function(e) {
+          const entryId = card.getAttribute('data-entry-id');
+          if(entryId) {
+              // 새로운 Row 시스템의 get_row_details 엔드포인트 사용
+              fetch('/diary/get_row_details/'+entryId+'/')
+                .then(r=>r.json())
+                .then(function(data){
+                    if(data.success) showDetailModal(data.row_data, data.row_id);
+                    else alert('상세정보 불러오기 실패: '+(data.error||''));
+                });
+          }
+      };
+  });
+  
+  // 새 카드 추가 버튼 이벤트
+  document.querySelectorAll('.add-card-btn').forEach(function(btn){
+      btn.onclick = function() {
+          const statusId = btn.closest('.board-col').getAttribute('data-status-id');
+          const currentKanbanAttr = btn.closest('.board-col').getAttribute('data-attr-name') || window.SELECTED_KANBAN_ATTR;
+          
+          // 새 행 생성 - 선택된 칸반 속성 필드를 해당 컬럼의 상태로 설정
+          fetch('/diary/create_new_row/', {
+              method: 'POST',
+              headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+              body: 'field='+encodeURIComponent(currentKanbanAttr)+'&value='+encodeURIComponent(statusId)
+          }).then(function(response) {
+              return response.json();
+          }).then(function(data) {
+              if (data.success && data.id) {
+                  // 칸반보드와 테이블 새로고침
+                  refreshKanban();
+                  refreshTable();
+              } else {
+                  alert('새 카드 생성 실패: ' + (data.error || ''));
+              }
+          }).catch(function(error) {
+              console.error('새 카드 생성 중 오류:', error);
+              alert('새 카드 생성 중 오류 발생: ' + error.message);
+          });
+      };
+  });
+}
+
+// 칸반보드 필터 기능 추가
+function updateKanbanBoard(attrName) {
+  const loadingIndicator = document.getElementById('kanbanLoadingIndicator');
+  const boardView = document.getElementById('boardView');
+  
+  // 로딩 표시
+  loadingIndicator.style.display = 'block';
+  
+  fetch('/diary/get_kanban_data/?attr_name=' + encodeURIComponent(attrName))
+      .then(response => response.json())
+      .then(data => {
+          loadingIndicator.style.display = 'none';
+          
+          if (data.success) {
+              // 칸반보드 HTML 생성
+              let boardHTML = '<div class="board-container">';
+              
+              data.board.forEach(function(col) {
+                  let colStyle = '';
+                  if (col.status.color) {
+                      colStyle = `background:${hexToRgba(col.status.color, 0.10)};`;
+                  }
+                  
+                  let titleStyle = '';
+                  if (col.status.color) {
+                      titleStyle = `background:${hexToRgba(col.status.color, 0.18)};border-left:6px solid ${col.status.color};padding-left:10px;`;
+                  } else {
+                      titleStyle = 'border-left:6px solid #007bff;padding-left:10px;';
+                  }
+                  
+                  boardHTML += `
+                      <div class="board-col" data-status-id="${col.status.id}" data-attr-name="${attrName}" style="${colStyle}">
+                          <div class="board-col-title" style="${titleStyle}">${col.status.name}</div>
+                          <div class="board-cards">
+                  `;
+                  
+                  col.entries.forEach(function(entry) {
+                      const entryName = entry.name || '(이름 없음)';
+                      const entryAmount = entry.amount ? `₩${entry.amount}` : '';
+                      
+                      boardHTML += `
+                          <div class="board-card" data-entry-id="${entry.id}">
+                              <div class="board-card-title">${entryName}</div>
+                              <div class="board-card-amount">${entryAmount}</div>
+                          </div>
+                      `;
+                  });
+                  
+                  boardHTML += `
+                          </div>
+                          <button class="add-card-btn" style="display:none;"></button>
+                      </div>
+                  `;
+              });
+              
+              boardHTML += '</div>';
+              
+              // 기존 보드 교체
+              boardView.innerHTML = boardHTML;
+              
+              // 이벤트 바인딩 재설정
+              bindKanbanSortable();
+              
+              // 전역 변수 업데이트
+              window.SELECTED_KANBAN_ATTR = attrName;
+              
+          } else {
+              alert('칸반보드 데이터를 불러오는데 실패했습니다: ' + (data.error || ''));
+          }
+      })
+      .catch(error => {
+          loadingIndicator.style.display = 'none';
+          console.error('칸반보드 업데이트 오류:', error);
+          alert('칸반보드 업데이트 중 오류가 발생했습니다: ' + error.message);
+      });
+}
+
+// 칸반보드 새로고침 (현재 선택된 속성으로)
+function refreshKanban() {
+  const currentAttr = document.getElementById('kanbanAttributeSelect').value || window.SELECTED_KANBAN_ATTR;
+  updateKanbanBoard(currentAttr);
+}
+
+// 모달의 드롭다운 값을 업데이트하는 헬퍼 함수
+function updateModalDropdownValue(fieldName, newValue) {
+    // 드롭다운 옵션 목록을 가져와서 새 값에 해당하는 텍스트 찾기
+    fetch('/diary/dropdown_options/', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'field=' + encodeURIComponent(fieldName)
+    })
+    .then(r => r.json())
+    .then(function(data) {
+        if (data.success && data.options) {
+            const option = data.options.find(opt => opt.id == newValue);
+            if (option) {
+                // 모달 내의 해당 필드 버튼 찾기
+                const modal = document.getElementById('detailModal');
+                if (modal) {
+                    const buttons = modal.querySelectorAll('button.add-btn');
+                    buttons.forEach(button => {
+                        const onclickAttr = button.getAttribute('onclick');
+                        if (onclickAttr && onclickAttr.includes(`'${fieldName}'`)) {
+                            button.textContent = option.name;
+                            console.log(`모달 드롭다운 업데이트: ${fieldName} = ${option.name}`);
+                        }
+                    });
+                }
+            }
+        }
+    })
+    .catch(error => {
+        console.error('드롭다운 옵션 조회 오류:', error);
+    });
+}
+
+// CSRF 토큰 가져오기 함수
+function getCsrfToken() {
+    const cookieValue = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('csrftoken='))
+        ?.split('=')[1];
+    return cookieValue || '';
+}
