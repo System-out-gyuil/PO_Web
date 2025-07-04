@@ -184,12 +184,12 @@ function updateKanbanBoard(attrName) {
                   
                   col.entries.forEach(function(entry) {
                       const entryName = entry.name || '(이름 없음)';
-                      const entryAmount = entry.amount ? `₩${entry.amount}` : '';
+                      const entryAmount = entry.amount;
                       
                       boardHTML += `
                           <div class="board-card" data-entry-id="${entry.id}">
-                              <div class="board-card-title">${entryName}</div>
-                              <div class="board-card-amount">${entryAmount}</div>
+                            <div class="board-card-title">${entryName || '(회사명 없음)'}</div>
+                            <div class="board-card-amount">${entryAmount ? formatKoreanCurrency(entryAmount) : ''}</div>
                           </div>
                       `;
                   });
@@ -269,4 +269,67 @@ function getCsrfToken() {
         .find(row => row.startsWith('csrftoken='))
         ?.split('=')[1];
     return cookieValue || '';
+}
+
+// 한국 통화 형식으로 변환하는 함수 (Django to_korean_currency 필터와 동일)
+function formatKoreanCurrency(value) {
+    if (!value) return '0원';
+    
+    try {
+        // 문자열인 경우 숫자만 추출
+        let num;
+        if (typeof value === 'string') {
+            num = parseInt(value.replace(/\D/g, ''));
+        } else {
+            num = parseInt(value);
+        }
+        
+        if (isNaN(num) || num === 0) {
+            return '0원';
+        }
+        
+        let result = '';
+        let remaining = num;
+        
+        // 억 단위 처리
+        if (remaining >= 100000000) {
+            const eok = Math.floor(remaining / 100000000);
+            result += eok + '억';
+            remaining = remaining % 100000000;
+        }
+        
+        // 천만 단위 처리 (천으로 표시)
+        if (remaining >= 10000000) {
+            const cheon = Math.floor(remaining / 10000000);
+            if (result) {
+                result += ' ';
+            }
+            result += cheon + '천';
+            remaining = remaining % 10000000;
+        }
+        
+        // 백만 단위 처리
+        if (remaining >= 1000000) {
+            const baek = Math.floor(remaining / 1000000);
+            if (result) {
+                result += ' ';
+            }
+            result += baek + '백';
+            remaining = remaining % 1000000;
+        }
+        
+        // 만 단위가 남아있으면 추가
+        if (remaining >= 10000) {
+            if (result) {
+                result += '만';
+            } else {
+                result = Math.floor(remaining / 10000) + '만';
+            }
+        }
+        
+        return result + '원';
+        
+    } catch (error) {
+        return String(value);
+    }
 }

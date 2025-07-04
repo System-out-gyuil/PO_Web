@@ -108,9 +108,9 @@ def to_korean_currency(value):
             else:
                 result = str(remaining // 10000) + '만'
         elif result:
-            result += '만'
+            result += ''
         
-        return result + '원'
+        return result + ''
         
     except (ValueError, TypeError):
         return str(value) 
