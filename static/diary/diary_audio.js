@@ -326,8 +326,7 @@ function createAudioFileElement(fileData, index) {
                   AI 요약
               </button>
               <div id="summary-${date}-${fileId}" style="background: #e7f3ff; border: 1px solid #bee5eb; border-radius: 4px; padding: 12px; margin-top: 5px; display: none;">
-                  <div style="font-size: 13px; line-height: 1.4; color: #0c5460; white-space: pre-wrap;">
-                      ${fileInfo.gpt_summary}
+                  <div style="font-size: 13px; line-height: 1.4; color: #0c5460; white-space: pre-wrap;">${fileInfo.gpt_summary}
                   </div>
               </div>
           </div>
@@ -549,8 +548,7 @@ function showTranscript(date, fileId, fileInfo) {
       <div style="font-size: 12px; color: #666; margin-bottom: 15px;">
           업로드 시간: ${fileInfo.upload_time} | 파일 크기: ${(fileInfo.file_size / 1024 / 1024).toFixed(2)}MB
       </div>
-      <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; padding: 15px; white-space: pre-wrap; line-height: 1.6; font-family: monospace;">
-          ${fileInfo.converted_text || '변환된 텍스트가 없습니다.'}
+      <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; padding: 15px; white-space: pre-wrap; line-height: 1.6; font-family: monospace;">${fileInfo.converted_text || '변환된 텍스트가 없습니다.'}
       </div>
       <div style="text-align: right; margin-top: 15px;">
           <button onclick="this.closest('.transcript-modal').remove()" 
@@ -792,31 +790,8 @@ function saveTextNotesToServer() {
 }
 
 function addTextArea() {
-    const sortableContainer = document.getElementById('sortableAudioContainer');
-    if (!sortableContainer) {
-        console.error('정렬 가능한 컨테이너를 찾을 수 없습니다.');
-        return;
-    }
-    
-    // 새로운 노트 ID 생성
-    const noteId = 't' + Date.now() + '_' + Math.floor(Math.random()*10000);
-    
-    // 새로운 텍스트 노트 데이터 생성
-    const newNoteData = {
-        type: 'text',
-        noteId: noteId,
-        text: '',
-        order: sortableContainer.children.length // 현재 아이템 수를 order로 사용
-    };
-    
-    // 새로운 텍스트 노트 요소 생성
-    const textElement = createTextNoteElement(newNoteData, sortableContainer.children.length);
-    
-    // 컨테이너에 추가
-    sortableContainer.appendChild(textElement);
-    
-    // 서버에 저장
-    saveTextNotesToServer();
+    // 항상 0번째에 추가 시도 (컨테이너가 없으면 insertTextNoteAtIndex에서 생성)
+    insertTextNoteAtIndex(0);
 }
 
 function saveAllOrderToServer(sortableContainer) {
@@ -1048,13 +1023,24 @@ function createAddPlaceholder(insertIndex) {
 
 // 지정한 인덱스에 텍스트 노트 추가 함수
 function insertTextNoteAtIndex(index) {
-    const sortableContainer = document.getElementById('sortableAudioContainer');
-    if (!sortableContainer) return;
-    
+    let sortableContainer = document.getElementById('sortableAudioContainer');
+    if (!sortableContainer) {
+        // 컨테이너가 없으면 새로 생성
+        sortableContainer = document.createElement('div');
+        sortableContainer.id = 'sortableAudioContainer';
+        sortableContainer.style.cssText = 'display: flex; flex-direction: column; gap: 0; position: relative;';
+        const audioFilesList = document.getElementById('audioFilesList');
+        if (audioFilesList) {
+            audioFilesList.innerHTML = '';
+            audioFilesList.appendChild(sortableContainer);
+        }
+        // 맨 앞에 placeholder 추가
+        sortableContainer.appendChild(createAddPlaceholder(0));
+        index = 0; // 첫 번째 위치에 추가
+    }
     // 기존 아이템들의 order를 재정렬
     const items = sortableContainer.querySelectorAll('.audio-file-item, .text-note-item');
     const newOrder = [];
-    
     // 클릭한 위치 이전의 아이템들
     for (let i = 0; i < index; i++) {
         if (items[i]) {
@@ -1069,11 +1055,9 @@ function insertTextNoteAtIndex(index) {
             }
         }
     }
-    
     // 새로 추가할 텍스트 노트
     const noteId = 't' + Date.now() + '_' + Math.floor(Math.random()*10000);
     newOrder.push({ id: noteId, text: '', order: index, type: 'text' });
-    
     // 클릭한 위치 이후의 아이템들
     for (let i = index; i < items.length; i++) {
         if (items[i]) {
@@ -1088,11 +1072,9 @@ function insertTextNoteAtIndex(index) {
             }
         }
     }
-    
     // 백엔드에 새로운 순서 저장
     const notes = newOrder.filter(item => item.type === 'text');
     const audioOrders = newOrder.filter(item => !item.type);
-    
     fetch('/600/update_audio_file_order_and_notes/', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},

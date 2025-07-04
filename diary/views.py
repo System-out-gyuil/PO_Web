@@ -3101,7 +3101,8 @@ def update_audio_file_order_and_notes(request):
         attr_value = AttributeValue.objects.filter(row=row, attribute=attr).first()
 
         if not attr_value:
-            return JsonResponse({'success': False, 'error': '해당 속성값이 없습니다.'})
+            # 최초 생성: 빈 dict으로 생성
+            attr_value = AttributeValue.objects.create(row=row, attribute=attr, value='{}')
 
         value = json.loads(attr_value.value or "{}")
 
