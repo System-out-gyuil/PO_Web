@@ -575,10 +575,10 @@ function formatToKoreanCurrency(amount) {
         if (result) result += '만';
         else result = Math.floor(remaining / 10000) + '만';
     } else if (result) {
-        result += '만';
+        result += '';
     }
     
-    return result + '원';
+    return result + '';
 }
 
 // 한국어 통화를 숫자로 변환하는 함수
