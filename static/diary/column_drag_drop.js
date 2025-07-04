@@ -221,7 +221,7 @@ function saveColumnOrder() {
     console.log('저장할 컬럼 순서:', columnOrder);
     
     // 서버에 컬럼 순서 저장
-    fetch('/diary/save_column_order/', {
+    fetch('/600/save_column_order/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

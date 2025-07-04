@@ -136,7 +136,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                 
                 // 서버 업데이트
                 console.log('서버 업데이트 시작:', {id, selectedRegion});
-                fetch('/diary/update/', {
+                fetch('/600/update/', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                     body: 'id='+id+'&field=지역&value='+encodeURIComponent(selectedRegion)
@@ -265,7 +265,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                 
                 // 서버 업데이트
                 console.log('서버 업데이트 시작:', {id, selectedSubregion});
-                fetch('/diary/update/', {
+                fetch('/600/update/', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                     body: 'id='+id+'&field=상세지역&value='+encodeURIComponent(selectedSubregion)
@@ -314,7 +314,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
         // 일반 드롭다운 (구분, 영업진행 등) 처리
         console.log('일반 드롭다운 처리 시작:', {type, id});
         
-        fetch('/diary/dropdown_options/?field=' + encodeURIComponent(type))
+        fetch('/600/dropdown_options/?field=' + encodeURIComponent(type))
             .then(r => r.json())
             .then(function(data) {
                 console.log('드롭다운 옵션 로드됨:', data);
@@ -425,7 +425,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                             
                             // 서버 업데이트
                             console.log('서버 업데이트 시작:', {id, type, optionId});
-                            fetch('/diary/update/', {
+                            fetch('/600/update/', {
                                 method: 'POST',
                                 headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                                 body: 'id='+id+'&field='+encodeURIComponent(type)+'&value='+encodeURIComponent(optionId)
@@ -463,7 +463,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                             const optionId = this.getAttribute('data-color-edit');
                             const newColor = this.value;
                             
-                            fetch('/diary/dropdown_options/?field=' + encodeURIComponent(type) + '&id=' + optionId + '&color=' + encodeURIComponent(newColor), {
+                            fetch('/600/dropdown_options/?field=' + encodeURIComponent(type) + '&id=' + optionId + '&color=' + encodeURIComponent(newColor), {
                                 method: 'PUT'
                             })
                             .then(response => response.json())
@@ -492,7 +492,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                             const optionId = this.getAttribute('data-del');
                             
                             if (confirm('이 옵션을 삭제하시겠습니까?')) {
-                                fetch('/diary/dropdown_options/?field=' + encodeURIComponent(type) + '&id=' + optionId, {
+                                fetch('/600/dropdown_options/?field=' + encodeURIComponent(type) + '&id=' + optionId, {
                                     method: 'DELETE'
                                 })
                                 .then(response => response.json())
@@ -533,7 +533,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                             const handleSave = () => {
                                 const newText = input.value.trim();
                                 if (newText && newText !== oldText) {
-                                    fetch('/diary/dropdown_options/?field=' + encodeURIComponent(type) + '&id=' + optionId + '&name=' + encodeURIComponent(newText), {
+                                    fetch('/600/dropdown_options/?field=' + encodeURIComponent(type) + '&id=' + optionId + '&name=' + encodeURIComponent(newText), {
                                         method: 'PUT'
                                     })
                                     .then(response => response.json())
@@ -593,7 +593,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                     const handleAdd = () => {
                         const newOptionName = addInput.value.trim();
                         if (newOptionName) {
-                            fetch('/diary/dropdown_options/?field=' + encodeURIComponent(type), {
+                            fetch('/600/dropdown_options/?field=' + encodeURIComponent(type), {
                                 method: 'POST',
                                 headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                                 body: 'name=' + encodeURIComponent(newOptionName)
@@ -653,7 +653,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                                         }
                                         
                                         // 서버 업데이트
-                                        fetch('/diary/update/', {
+                                        fetch('/600/update/', {
                                             method: 'POST',
                                             headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                                             body: 'id='+id+'&field='+encodeURIComponent(type)+'&value='+encodeURIComponent(data.id)
@@ -722,7 +722,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                   input.onchange = function() {
                       const id = td.parentElement.getAttribute('data-id');
                       const newValue = input.value;
-                      fetch('/diary/update/', {
+                      fetch('/600/update/', {
                           method: 'POST',
                           headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                           body: 'id=' + id + '&field=' + type + '&value=' + encodeURIComponent(newValue)
@@ -769,7 +769,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                           td.style.width = '';
                           
                           // 서버에 업데이트
-                          fetch('/diary/update/', {
+                          fetch('/600/update/', {
                               method: 'POST',
                               headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                               body: 'id='+id+'&field='+encodeURIComponent(type)+'&value='+encodeURIComponent(newValue)
@@ -859,7 +859,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                                   const id = tr.getAttribute('data-id');
                                   if(!id) { alert('ID 정보가 없습니다.'); return; }
                                   // 새로운 Row 시스템의 get_row_details 엔드포인트 사용
-                                  fetch('/diary/get_row_details/'+id+'/')
+                                  fetch('/600/get_row_details/'+id+'/')
                                     .then(r => r.json())
                                     .then(function(data){
                                         if(data.success) showDetailModal(data.row_data, data.row_id);
@@ -877,7 +877,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                       input.onblur = function() {
                           const newValue = input.value;
                           restoreCell(newValue);
-                          fetch('/diary/update/', {
+                          fetch('/600/update/', {
                               method: 'POST',
                               headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                               body: 'id='+id+'&field=회사명&value='+encodeURIComponent(newValue)
@@ -937,7 +937,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                           td.style.width = '';
                           
                           // 서버에 업데이트
-                          fetch('/diary/update/', {
+                          fetch('/600/update/', {
                               method: 'POST',
                               headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                               body: 'id='+id+'&field='+encodeURIComponent(type)+'&value='+encodeURIComponent(newValue)
@@ -1026,7 +1026,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
   
   // 새로운 필드 업데이트 함수
   function updateRowField(rowId, field, value) {
-      fetch('/diary/update_row_field/', {
+      fetch('/600/update_row_field/', {
           method: 'POST',
           headers: {'Content-Type': 'application/x-www-form-urlencoded'},
           body: 'id='+encodeURIComponent(rowId)+'&field='+encodeURIComponent(field)+'&value='+encodeURIComponent(value)
@@ -1048,7 +1048,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
           
           // 모달이 열려있는 경우 모달 데이터도 새로고침
           if (document.getElementById('detailModal') && document.getElementById('detailModal').style.display !== 'none') {
-              fetch('/diary/get_row_details/'+rowId+'/')
+              fetch('/600/get_row_details/'+rowId+'/')
                 .then(r => r.json())
                 .then(function(data){
                     if(data.success) showDetailModal(data.row_data, data.row_id);
@@ -1201,7 +1201,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                       td.style.width = '';
                       
                       // 서버에 업데이트
-                      fetch('/diary/update/', {
+                      fetch('/600/update/', {
                           method: 'POST',
                           headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                           body: 'id='+id+'&field='+encodeURIComponent(type)+'&value='+encodeURIComponent(newValue)
@@ -1247,7 +1247,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
       // 임시 ID인 경우 (새 행 생성)
       if (currentId && currentId.startsWith('temp_')) {
           console.log('새 행 생성 중...');
-          fetch('/diary/create_new_row/', {
+          fetch('/600/create_new_row/', {
               method: 'POST',
               headers: {'Content-Type': 'application/x-www-form-urlencoded'},
               body: 'field=' + encodeURIComponent(field) + '&value=' + encodeURIComponent(processedValue)
@@ -1278,7 +1278,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
       // 실제 ID가 있는 경우 (기존 행 업데이트)
       else if (currentId && !currentId.startsWith('temp_')) {
           console.log('기존 행 업데이트 중...');
-          fetch('/diary/update_row_field/', {
+          fetch('/600/update_row_field/', {
               method: 'POST',
               headers: {'Content-Type': 'application/x-www-form-urlencoded'},
               body: 'id=' + encodeURIComponent(currentId) + '&field=' + encodeURIComponent(field) + '&value=' + encodeURIComponent(processedValue)
@@ -1379,7 +1379,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
           });
       } else {
           // dropdown_options API를 사용하는 드롭다운 (구분, 영업진행, 가능성 등)
-          fetch('/diary/dropdown_options/?field=' + encodeURIComponent(type))
+          fetch('/600/dropdown_options/?field=' + encodeURIComponent(type))
               .then(r => r.json())
               .then(function(data) {
                   if (data.options) {
@@ -1414,7 +1414,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                       dropdown.querySelector('.add-btn').onclick = function(){
                           const val = dropdown.querySelector('input[type=text]').value.trim();
                           if(val) {
-                              fetch('/diary/dropdown_options/?field=' + encodeURIComponent(type), {
+                              fetch('/600/dropdown_options/?field=' + encodeURIComponent(type), {
                                   method: 'POST',
                                   headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                                   body: 'name=' + encodeURIComponent(val)
@@ -1485,7 +1485,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
       const colorInput = li.querySelector('input[data-color-edit]');
       if(colorInput) {
           colorInput.onchange = function(e){
-              fetch('/diary/dropdown_options/?field=' + encodeURIComponent(type) + '&id=' + colorInput.getAttribute('data-color-edit') + '&color=' + encodeURIComponent(colorInput.value), {
+              fetch('/600/dropdown_options/?field=' + encodeURIComponent(type) + '&id=' + colorInput.getAttribute('data-color-edit') + '&color=' + encodeURIComponent(colorInput.value), {
                   method: 'PUT'
               }).then(r => r.json()).then(data => {
                   if(data.success) {
@@ -1508,7 +1508,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
           delBtn.onclick = function(e){
               e.stopPropagation();
               if(confirm('삭제할까요?')) {
-                  fetch('/diary/dropdown_options/?field=' + encodeURIComponent(type) + '&id=' + delBtn.getAttribute('data-del'), {
+                  fetch('/600/dropdown_options/?field=' + encodeURIComponent(type) + '&id=' + delBtn.getAttribute('data-del'), {
                       method: 'DELETE'
                   }).then(r => r.json()).then(data => {
                       if(data.success) {
@@ -1539,7 +1539,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
               input.focus();
               input.onkeydown = function(ev){
                   if(ev.key==='Enter'){
-                      fetch('/diary/dropdown_options/?field=' + encodeURIComponent(type) + '&id=' + editBtn.getAttribute('data-edit') + '&name=' + encodeURIComponent(input.value), {
+                      fetch('/600/dropdown_options/?field=' + encodeURIComponent(type) + '&id=' + editBtn.getAttribute('data-edit') + '&name=' + encodeURIComponent(input.value), {
                           method: 'PUT'
                       }).then(r => r.json()).then(data => {
                           if(data.success) {
@@ -1620,7 +1620,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
           // 숫자 필드인 경우 콤마 제거 후 서버에 저장
           const cleanValue = removeCommaFromNumber(processedValue);
           
-          fetch('/diary/update_cell/', {
+          fetch('/600/update_cell/', {
               method: 'POST',
               headers: {
                   'Content-Type': 'application/x-www-form-urlencoded',
@@ -1652,7 +1652,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
           });
       } else {
           // 일반 텍스트 필드인 경우 기존 로직 사용
-          fetch('/diary/update_cell/', {
+          fetch('/600/update_cell/', {
               method: 'POST',
               headers: {
                   'Content-Type': 'application/x-www-form-urlencoded',
@@ -1721,7 +1721,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
           return;
       }
       
-      fetch('/diary/delete_row/', {
+      fetch('/600/delete_row/', {
           method: 'POST',
           headers: {
               'Content-Type': 'application/json',

@@ -1736,7 +1736,8 @@ def upload_audio_file(request):
                 'converted_text': converted_text,
                 'gpt_summary': gpt_summary,
                 'upload_time': datetime.now().strftime('%H:%M:%S'),
-                'order': 0  # 새로 업로드된 파일은 항상 맨 위에
+                'order': 0,  # 새로 업로드된 파일은 항상 맨 위에
+                'type': 'audio'  # 타입 구분을 위한 필드 추가
             }
             
             # 날짜별로 데이터 구조화
@@ -3044,7 +3045,34 @@ def update_audio_text_notes(request):
             data = json.loads(attr_value.value) if attr_value.value else {}
         except:
             data = {}
-        data['texts'] = notes
+        
+        # 오늘 날짜 생성 (텍스트 노트를 저장할 날짜)
+        from datetime import date
+        today = date.today().strftime('%y.%m.%d')
+        
+        # 오늘 날짜가 없으면 생성
+        if today not in data:
+            data[today] = {}
+        
+        # 기존 텍스트 노트들 제거 (같은 날짜의 텍스트 타입만)
+        keys_to_remove = []
+        for key, value in data[today].items():
+            if isinstance(value, dict) and value.get('type') == 'text':
+                keys_to_remove.append(key)
+        
+        for key in keys_to_remove:
+            del data[today][key]
+        
+        # 새로운 텍스트 노트들 추가
+        for note in notes:
+            note_id = note.get('id')
+            if note_id:
+                data[today][note_id] = {
+                    'text': note.get('text', ''),
+                    'order': note.get('order', 0),
+                    'type': 'text'
+                }
+        
         attr_value.value = json.dumps(data, ensure_ascii=False)
         attr_value.save()
         return JsonResponse({'success': True})
@@ -3077,8 +3105,33 @@ def update_audio_file_order_and_notes(request):
 
         value = json.loads(attr_value.value or "{}")
 
-        # ✅ 1. 텍스트 노트 저장
-        value["texts"] = notes
+        # 오늘 날짜 생성 (텍스트 노트를 저장할 날짜)
+        from datetime import date
+        today = date.today().strftime('%y.%m.%d')
+        
+        # 오늘 날짜가 없으면 생성
+        if today not in value:
+            value[today] = {}
+
+        # ✅ 1. 텍스트 노트 저장 (기존 텍스트 노트들 제거 후 새로 추가)
+        # 기존 텍스트 노트들 제거 (같은 날짜의 텍스트 타입만)
+        keys_to_remove = []
+        for key, item_value in value[today].items():
+            if isinstance(item_value, dict) and item_value.get('type') == 'text':
+                keys_to_remove.append(key)
+        
+        for key in keys_to_remove:
+            del value[today][key]
+        
+        # 새로운 텍스트 노트들 추가
+        for note in notes:
+            note_id = note.get('id')
+            if note_id:
+                value[today][note_id] = {
+                    'text': note.get('text', ''),
+                    'order': note.get('order', 0),
+                    'type': 'text'
+                }
 
         # ✅ 2. 오디오 순서 업데이트
         for audio in audio_files:
@@ -3089,6 +3142,9 @@ def update_audio_file_order_and_notes(request):
             # date 키가 있고 그 아래 file_id가 존재할 경우에만
             if date in value and isinstance(value[date], dict) and file_id in value[date]:
                 value[date][file_id]["order"] = order
+                # 기존 오디오 파일에 type 필드가 없으면 추가
+                if "type" not in value[date][file_id]:
+                    value[date][file_id]["type"] = "audio"
             else:
                 print(f"[스킵] 존재하지 않는 오디오 파일: date={date}, file_id={file_id}")
 

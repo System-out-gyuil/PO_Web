@@ -85,7 +85,7 @@
                 return;
             }
             
-            fetch('/diary/delete_attribute/', {
+            fetch('/600/delete_attribute/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
@@ -521,7 +521,7 @@ document.addEventListener('DOMContentLoaded', function() {
             initialView: 'dayGridMonth',
             locale: 'ko',
             height: 700,
-            events: '/diary/fu_events/',
+            events: '/600/fu_events/',
             headerToolbar: {
                 left: 'prev,next today',
                 center: 'title',
@@ -549,7 +549,7 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             eventClick: function(info) {
                 // 새로운 Row 시스템에 맞게 수정
-                fetch('/diary/get_row_details/' + info.event.id + '/')
+                fetch('/600/get_row_details/' + info.event.id + '/')
                   .then(r => {
                       if (!r.ok) throw new Error('Network response was not ok');
                       return r.json();
@@ -578,7 +578,7 @@ document.addEventListener('DOMContentLoaded', function() {
             onEnd: function (evt) {
                 // 순서 변경 시 서버에 반영
                 const ids = Array.from(document.querySelectorAll('#entryTbody tr[data-id]')).map(tr => tr.getAttribute('data-id'));
-                fetch('/diary/reorder/', {
+                fetch('/600/reorder/', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({order: ids})
@@ -783,7 +783,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             alert('저장 후 사용 가능합니다.'); 
                             return; 
                         }
-                        fetch('/diary/update/?id='+id)
+                        fetch('/600/update/?id='+id)
                           .then(r => r.text())
                           .then(function(text){
                               try {
@@ -1034,7 +1034,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const id = tr.getAttribute('data-id');
             if(!id) { alert('ID 정보가 없습니다.'); return; }
             // 새로운 Row 시스템의 get_row_details 엔드포인트 사용
-            fetch('/diary/get_row_details/'+id+'/')
+            fetch('/600/get_row_details/'+id+'/')
               .then(r => r.json())
               .then(function(data){
                   if(data.success) showDetailModal(data.row_data, data.row_id);
@@ -1075,7 +1075,7 @@ function saveNewAttribute() {
     }
     
     // 서버에 새 속성 추가 요청
-    fetch('/diary/add_attribute/', {
+    fetch('/600/add_attribute/', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: 'name=' + encodeURIComponent(name) + '&type=' + encodeURIComponent(type)
@@ -1299,7 +1299,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // 모달용 드롭다운 옵션 표시 함수 (일반 드롭다운 속성용)
 function showModalDropdownOptions(rowId, fieldName, btn) {
-    fetch('/diary/dropdown_options/?field=' + encodeURIComponent(fieldName))
+    fetch('/600/dropdown_options/?field=' + encodeURIComponent(fieldName))
         .then(r => r.json())
         .then(function(data) {
             if (!data.options) {
@@ -1407,7 +1407,7 @@ function showModalDropdownOptions(rowId, fieldName, btn) {
 // 모달용 드롭다운 옵션 선택 함수 (일반 드롭다운 속성용)
 function selectModalDropdownOption(rowId, fieldName, optionId, optionText, element) {
     // 서버에 업데이트 요청
-    fetch('/diary/update_row_field/', {
+    fetch('/600/update_row_field/', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: 'id=' + encodeURIComponent(rowId) + '&field=' + encodeURIComponent(fieldName) + '&value=' + encodeURIComponent(optionId)
@@ -1419,7 +1419,7 @@ function selectModalDropdownOption(rowId, fieldName, optionId, optionText, eleme
             closeDropdown();
             
             // 모달 새로고침
-            fetch('/diary/get_row_details/' + rowId + '/')
+            fetch('/600/get_row_details/' + rowId + '/')
                 .then(r => r.json())
                 .then(function(data) {
                     if (data.success) {
@@ -1446,7 +1446,7 @@ function selectModalDropdownOption(rowId, fieldName, optionId, optionText, eleme
 
 // 모달용 새 드롭다운 옵션 추가 함수 (일반 드롭다운 속성용)
 function addNewModalDropdownOption(rowId, fieldName, newOption, element) {
-    fetch('/diary/dropdown_options/?field=' + encodeURIComponent(fieldName), {
+    fetch('/600/dropdown_options/?field=' + encodeURIComponent(fieldName), {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: 'name=' + encodeURIComponent(newOption)
@@ -1489,7 +1489,7 @@ function handleFileUpload(rowId, fieldName, fileInput) {
     const uploadingText = '업로드 중...';
     
     // 파일 업로드 요청
-    fetch('/diary/upload_file/', {
+    fetch('/600/upload_file/', {
         method: 'POST',
         body: formData
     })
@@ -1502,7 +1502,7 @@ function handleFileUpload(rowId, fieldName, fileInput) {
             alert('파일 업로드 완료!\n파일명: ' + file.name);
             
             // 모달 데이터 새로고침
-            fetch('/diary/get_row_details/' + rowId + '/')
+            fetch('/600/get_row_details/' + rowId + '/')
                 .then(r => r.json())
                 .then(function(data) {
                     if (data.success) {
@@ -1548,7 +1548,7 @@ function deleteFile(rowId, fieldName) {
     }
     
     // 파일 삭제 요청
-    fetch('/diary/delete_file/', {
+    fetch('/600/delete_file/', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: 'row_id=' + encodeURIComponent(rowId) + '&field_name=' + encodeURIComponent(fieldName)
@@ -1561,7 +1561,7 @@ function deleteFile(rowId, fieldName) {
             alert('파일이 성공적으로 삭제되었습니다.');
             
             // 모달 데이터 새로고침
-            fetch('/diary/get_row_details/' + rowId + '/')
+            fetch('/600/get_row_details/' + rowId + '/')
                 .then(r => r.json())
                 .then(function(data) {
                     if (data.success) {
@@ -1629,7 +1629,7 @@ function handleAudioUpload(fileInput) {
     }
     
     // 음성파일 업로드 및 텍스트 변환 요청
-    fetch('/diary/upload_audio_file/', {
+    fetch('/600/upload_audio_file/', {
         method: 'POST',
         body: formData
     })
@@ -1746,7 +1746,7 @@ function saveConvertedText() {
     const { date, fileId } = window.selectedAudioFile;
     
     // 서버에 텍스트 업데이트 요청
-    fetch('/diary/update_audio_text/', {
+    fetch('/600/update_audio_text/', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: `row_id=${encodeURIComponent(window.currentDetailRowId)}&date=${encodeURIComponent(date)}&file_id=${encodeURIComponent(fileId)}&converted_text=${encodeURIComponent(textValue)}`
@@ -1816,7 +1816,7 @@ function openDebtDetailsModal(rowId) {
     currentDebtRowId = rowId;
     
     // 기존 데이터 불러오기
-    fetch('/diary/get_debt_details/' + rowId + '/')
+    fetch('/600/get_debt_details/' + rowId + '/')
         .then(response => response.json())
         .then(data => {
             if (data.success) {
@@ -1872,7 +1872,7 @@ function saveDebtDetails() {
     const total = Object.values(debtData).reduce((sum, val) => sum + val, 0);
     
     // 서버에 저장
-    fetch('/diary/save_debt_details/', {
+    fetch('/600/save_debt_details/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
