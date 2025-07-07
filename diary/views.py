@@ -33,6 +33,7 @@ from .funding_calculator import FundingCalculator
 from board.models import BizInfo
 from django.db.models import Q, Max
 import re
+from datetime import date
 
 logger = logging.getLogger(__name__)
 
@@ -1220,7 +1221,7 @@ def delete_file(request):
             attribute = Attribute.objects.get(name=field_name, user=user)
             
             # 파일 타입 속성인지 확인
-            if attribute.type != 'file':
+            if attribute.attributeType.name != 'file':
                 return JsonResponse({
                     'success': False,
                     'error': '파일 타입이 아닙니다.'
@@ -1757,11 +1758,10 @@ def upload_audio_file(request):
             }
             
             # 날짜별로 데이터 구조화
-            if today not in existing_data:
-                existing_data[today] = {}
-            
-            # 해당 날짜에 파일 추가 (파일ID를 키로 사용)
-            existing_data[today][file_id] = new_file_data
+            if 'data' not in existing_data:
+                existing_data['data'] = {}
+            new_file_data['upload_date'] = today
+            existing_data['data'][file_id] = new_file_data
             
             # 음성파일 속성에 전체 데이터 저장
             if existing_attr_value:
@@ -2032,8 +2032,8 @@ def update_audio_text(request):
             audio_data = {}
         
         # 해당 날짜의 파일 데이터 찾기 및 업데이트
-        if date in audio_data and file_id in audio_data[date]:
-            audio_data[date][file_id]['converted_text'] = converted_text
+        if file_id in audio_data.get('data', {}):
+            audio_data['data'][file_id]['converted_text'] = converted_text
             
             # 데이터베이스에 저장
             attr_value.value = json.dumps(audio_data, ensure_ascii=False)
@@ -2098,8 +2098,8 @@ def update_audio_memo(request):
             audio_data = {}
         
         # 해당 날짜와 파일 ID의 메모 업데이트
-        if date in audio_data and file_id in audio_data[date]:
-            audio_data[date][file_id]['memo'] = memo
+        if file_id in audio_data.get('data', {}):
+            audio_data['data'][file_id]['memo'] = memo
             
             # 업데이트된 데이터 저장
             audio_attr_value.value = json.dumps(audio_data, ensure_ascii=False)
@@ -3042,14 +3042,15 @@ def get_recommended_notices(request):
 def update_audio_text_notes(request):
     """
     음성파일 노트(텍스트) 추가/수정/순서변경
-    POST: row_id, notes(JSON string: [{id, text, order}, ...])
+    POST: row_id, date, notes(JSON string: [{id, text, order}, ...])
     """
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'POST만 허용'})
     try:
         row_id = request.POST.get('row_id')
         notes_json = request.POST.get('notes')
-        if not row_id or not notes_json:
+        target_date = request.POST.get('date')
+        if not row_id or not notes_json or not target_date:
             return JsonResponse({'success': False, 'error': '필수 파라미터 누락'})
         notes = json.loads(notes_json)
         user = User.objects.get(id=1)
@@ -3061,34 +3062,25 @@ def update_audio_text_notes(request):
             data = json.loads(attr_value.value) if attr_value.value else {}
         except:
             data = {}
-        
-        # 오늘 날짜 생성 (텍스트 노트를 저장할 날짜)
-        from datetime import date
-        today = date.today().strftime('%y.%m.%d')
-        
-        # 오늘 날짜가 없으면 생성
-        if today not in data:
-            data[today] = {}
-        
+        # 지정한 날짜가 없으면 생성
+        if 'data' not in data:
+            data['data'] = {}
         # 기존 텍스트 노트들 제거 (같은 날짜의 텍스트 타입만)
         keys_to_remove = []
-        for key, value in data[today].items():
+        for key, value in data['data'].items():
             if isinstance(value, dict) and value.get('type') == 'text':
                 keys_to_remove.append(key)
-        
         for key in keys_to_remove:
-            del data[today][key]
-        
+            del data['data'][key]
         # 새로운 텍스트 노트들 추가
         for note in notes:
             note_id = note.get('id')
             if note_id:
-                data[today][note_id] = {
+                data['data'][note_id] = {
                     'text': note.get('text', ''),
                     'order': note.get('order', 0),
                     'type': 'text'
                 }
-        
         attr_value.value = json.dumps(data, ensure_ascii=False)
         attr_value.save()
         return JsonResponse({'success': True})
@@ -3122,48 +3114,35 @@ def update_audio_file_order_and_notes(request):
 
         value = json.loads(attr_value.value or "{}")
 
-        # 오늘 날짜 생성 (텍스트 노트를 저장할 날짜)
-        from datetime import date
-        today = date.today().strftime('%y.%m.%d')
-        
-        # 오늘 날짜가 없으면 생성
-        if today not in value:
-            value[today] = {}
+        # 'data' 키가 없으면 생성
+        if 'data' not in value:
+            value['data'] = {}
 
-        # ✅ 1. 텍스트 노트 저장 (기존 텍스트 노트들 제거 후 새로 추가)
-        # 기존 텍스트 노트들 제거 (같은 날짜의 텍스트 타입만)
+        # 1. 텍스트 노트 저장 (기존 텍스트 노트들 제거 후 새로 추가)
         keys_to_remove = []
-        for key, item_value in value[today].items():
+        for key, item_value in value['data'].items():
             if isinstance(item_value, dict) and item_value.get('type') == 'text':
                 keys_to_remove.append(key)
-        
         for key in keys_to_remove:
-            del value[today][key]
-        
-        # 새로운 텍스트 노트들 추가
+            del value['data'][key]
         for note in notes:
             note_id = note.get('id')
             if note_id:
-                value[today][note_id] = {
+                value['data'][note_id] = {
                     'text': note.get('text', ''),
                     'order': note.get('order', 0),
-                    'type': 'text'
+                    'type': 'text',
+                    'upload_date': note.get('upload_date', '')
                 }
 
-        # ✅ 2. 오디오 순서 업데이트
+        # 2. 오디오 순서 업데이트
         for audio in audio_files:
-            date = audio.get("date")
             file_id = audio.get("file_id")
             order = audio.get("order")
-
-            # date 키가 있고 그 아래 file_id가 존재할 경우에만
-            if date in value and isinstance(value[date], dict) and file_id in value[date]:
-                value[date][file_id]["order"] = order
-                # 기존 오디오 파일에 type 필드가 없으면 추가
-                if "type" not in value[date][file_id]:
-                    value[date][file_id]["type"] = "audio"
-            else:
-                print(f"[스킵] 존재하지 않는 오디오 파일: date={date}, file_id={file_id}")
+            if file_id in value['data']:
+                value['data'][file_id]["order"] = order
+                if "type" not in value['data'][file_id]:
+                    value['data'][file_id]["type"] = "audio"
 
         attr_value.value = json.dumps(value, ensure_ascii=False)
         attr_value.save()

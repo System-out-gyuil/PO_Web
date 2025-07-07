@@ -146,6 +146,7 @@ function updateAudioFileManagement(audioFileValue) {
           
           allItems.forEach((item, index) => {
               if (item.type === 'audio') {
+                  console.log('audio 아이템:', item);
                   const fileElement = createAudioFileElement(item, index);
                   sortableContainer.appendChild(fileElement);
               } else if (item.type === 'text') {
@@ -179,6 +180,9 @@ function updateAudioFileManagement(audioFileValue) {
       // 데이터가 없는 경우
       showNoContentMessage(audioFilesList, noAudioFilesMessage);
   }
+  
+  // 음성파일 데이터를 전역 변수에 저장
+  window.audioFileData = audioFileData;
 }
 
 // 내용이 없을 때 메시지 표시 함수
@@ -297,7 +301,7 @@ function createAudioFileElement(fileData, index) {
                   🎵 ${fileInfo.original_filename}
               </div>
               <div style="font-size: 12px; color: #666;">
-                  ${date} | 크기: ${(fileInfo.file_size / 1024 / 1024).toFixed(2)}MB | 업로드: ${fileInfo.upload_time}
+                  업로드: ${fileInfo.upload_date} ${fileInfo.upload_time} | 크기: ${(fileInfo.file_size / 1024 / 1024).toFixed(2)}MB
               </div>
           </div>
           <div style="display: flex; gap: 5px; margin-left: 15px;">
@@ -760,52 +764,137 @@ function changeAudioFile() {
 function saveTextNotesToServer() {
     if (!window.currentDetailRowId) return;
     const notes = [];
-    
-    // 현재 컨테이너에서 텍스트 노트들만 수집
     const container = document.getElementById('sortableAudioContainer');
     if (!container) return;
-    
-    container.querySelectorAll('.text-note-item').forEach((el, idx) => {
-        const textarea = el.querySelector('textarea');
-        let id = el.dataset.noteId;
-        if (!id) {
-            id = 't' + Date.now() + '_' + Math.floor(Math.random()*10000);
-            el.dataset.noteId = id;
+    const actualItems = container.querySelectorAll('.audio-file-item, .text-note-item');
+    let noteIndex = 0;
+    actualItems.forEach((el, idx) => {
+        if (el.classList.contains('text-note-item')) {
+            const textarea = el.querySelector('textarea');
+            let id = el.dataset.noteId;
+            if (!id) {
+                id = 't' + Date.now() + '_' + Math.floor(Math.random()*10000);
+                el.dataset.noteId = id;
+            }
+            notes.push({ 
+                id, 
+                text: textarea.value, 
+                order: noteIndex,
+                type: 'text',
+                upload_date: getTodayStr()
+            });
+            noteIndex++;
         }
-        notes.push({ 
-            id, 
-            text: textarea.value, 
-            order: idx,
-            type: 'text'
-        });
     });
-    
     fetch('/600/update_audio_text_notes/', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: `row_id=${encodeURIComponent(window.currentDetailRowId)}&notes=${encodeURIComponent(JSON.stringify(notes))}`
+        body: `row_id=${encodeURIComponent(window.currentDetailRowId)}&date=${encodeURIComponent('data')}&notes=${encodeURIComponent(JSON.stringify(notes))}`
     }).then(r=>r.json()).then(data=>{
         if(!data.success) alert('텍스트 저장 실패: '+(data.error||''));
     });
 }
 
 function addTextArea() {
-    // 항상 0번째에 추가 시도 (컨테이너가 없으면 insertTextNoteAtIndex에서 생성)
-    insertTextNoteAtIndex(0);
+    let sortableContainer = document.getElementById('sortableAudioContainer');
+    if (!sortableContainer) {
+        // 음성파일이 없어도 컨테이너 생성
+        sortableContainer = document.createElement('div');
+        sortableContainer.id = 'sortableAudioContainer';
+        sortableContainer.style.cssText = 'display: flex; flex-direction: column; gap: 0; position: relative;';
+        const audioFilesList = document.getElementById('audioFilesList');
+        if (audioFilesList) {
+            audioFilesList.innerHTML = '';
+            audioFilesList.appendChild(sortableContainer);
+        }
+        // 맨 앞에 placeholder 추가
+        sortableContainer.appendChild(createAddPlaceholder(0));
+    }
+    const actualItems = sortableContainer.querySelectorAll('.audio-file-item, .text-note-item');
+    const newIndex = actualItems.length;
+    const noteId = 't' + Date.now() + '_' + Math.floor(Math.random()*10000);
+    const newNoteData = {
+        type: 'text',
+        noteId: noteId,
+        text: '',
+        order: newIndex
+    };
+    const textElement = createTextNoteElement(newNoteData, newIndex);
+    sortableContainer.appendChild(textElement);
+    const placeholder = createAddPlaceholder(newIndex + 1);
+    sortableContainer.appendChild(placeholder);
+    saveTextNotesToServer();
+}
+
+function insertTextNoteAtIndex(index) {
+    let sortableContainer = document.getElementById('sortableAudioContainer');
+    if (!sortableContainer) {
+        sortableContainer = document.createElement('div');
+        sortableContainer.id = 'sortableAudioContainer';
+        sortableContainer.style.cssText = 'display: flex; flex-direction: column; gap: 0; position: relative;';
+        const audioFilesList = document.getElementById('audioFilesList');
+        if (audioFilesList) {
+            audioFilesList.innerHTML = '';
+            audioFilesList.appendChild(sortableContainer);
+        }
+        sortableContainer.appendChild(createAddPlaceholder(0));
+        index = 0;
+    }
+    const actualItems = sortableContainer.querySelectorAll('.audio-file-item, .text-note-item');
+    const newOrder = [];
+    for (let i = 0; i < index; i++) {
+        if (actualItems[i]) {
+            const item = actualItems[i];
+            if (item.classList.contains('audio-file-item')) {
+                const fileId = item.getAttribute('data-file-id');
+                newOrder.push({ file_id: fileId, order: i });
+            } else if (item.classList.contains('text-note-item')) {
+                const noteId = item.dataset.noteId;
+                const textarea = item.querySelector('textarea');
+                newOrder.push({ id: noteId, text: textarea ? textarea.value : '', order: i, type: 'text', upload_date: getTodayStr() });
+            }
+        }
+    }
+    const noteId = 't' + Date.now() + '_' + Math.floor(Math.random()*10000);
+    newOrder.push({ id: noteId, text: '', order: index, type: 'text', upload_date: getTodayStr() });
+    for (let i = index; i < actualItems.length; i++) {
+        if (actualItems[i]) {
+            const item = actualItems[i];
+            if (item.classList.contains('audio-file-item')) {
+                const fileId = item.getAttribute('data-file-id');
+                newOrder.push({ file_id: fileId, order: i + 1 });
+            } else if (item.classList.contains('text-note-item')) {
+                const noteId = item.dataset.noteId;
+                const textarea = item.querySelector('textarea');
+                newOrder.push({ id: noteId, text: textarea ? textarea.value : '', order: i + 1, type: 'text', upload_date: getTodayStr() });
+            }
+        }
+    }
+    const notes = newOrder.filter(item => item.type === 'text');
+    const audioOrders = newOrder.filter(item => !item.type);
+    fetch('/600/update_audio_file_order_and_notes/', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: `row_id=${encodeURIComponent(window.currentDetailRowId)}&date=${encodeURIComponent('data')}&notes=${encodeURIComponent(JSON.stringify(notes))}&ordered_files=${encodeURIComponent(JSON.stringify(audioOrders))}`
+    }).then(r => r.json()).then(data => {
+        if (data.success) {
+            refreshAudioFileData();
+        } else {
+            console.error('텍스트 추가 실패:', data.error);
+            alert('텍스트 추가 실패: ' + (data.error || ''));
+        }
+    });
 }
 
 function saveAllOrderToServer(sortableContainer) {
     if (!window.currentDetailRowId) return;
     const notes = [];
     const audioOrders = [];
-    
-    // sortableContainer가 없으면 전체 컨테이너에서 찾기
     const container = sortableContainer || document.getElementById('sortableAudioContainer');
     if (!container) return;
-    
-    container.querySelectorAll('.audio-file-item, .text-note-item').forEach((el, idx) => {
+    const actualItems = container.querySelectorAll('.audio-file-item, .text-note-item');
+    actualItems.forEach((el, idx) => {
         if (el.classList.contains('text-note-item')) {
-            // 텍스트노트
             const textarea = el.querySelector('textarea');
             let id = el.dataset.noteId;
             if (!id) {
@@ -816,10 +905,10 @@ function saveAllOrderToServer(sortableContainer) {
                 id, 
                 text: textarea.value, 
                 order: idx,
-                type: 'text'
+                type: 'text',
+                upload_date: getTodayStr()
             });
         } else if (el.classList.contains('audio-file-item')) {
-            // 음성파일
             const date = el.getAttribute('data-date');
             const fileId = el.getAttribute('data-file-id');
             if (date && fileId) {
@@ -831,23 +920,22 @@ function saveAllOrderToServer(sortableContainer) {
             }
         }
     });
-    
-    // 텍스트노트와 오디오 파일 순서를 함께 저장
     fetch('/600/update_audio_file_order_and_notes/', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: `row_id=${encodeURIComponent(window.currentDetailRowId)}&notes=${encodeURIComponent(JSON.stringify(notes))}&ordered_files=${encodeURIComponent(JSON.stringify(audioOrders))}`
+        body: `row_id=${encodeURIComponent(window.currentDetailRowId)}&date=${encodeURIComponent('data')}&notes=${encodeURIComponent(JSON.stringify(notes))}&ordered_files=${encodeURIComponent(JSON.stringify(audioOrders))}`
     }).then(r=>r.json()).then(data=>{
         if(data.success) {
-            console.log('순서 저장 성공, 전체 재렌더링 시작');
-            // 성공 시 전체 재렌더링하여 placeholder 올바르게 배치
-            refreshAudioFileData();
+            console.log('순서 저장 성공');
         } else {
+            console.error('순서 저장 실패:', data.error);
             alert('순서 저장 실패: '+(data.error||''));
+            refreshAudioFileData();
         }
     }).catch(error => {
         console.error('순서 저장 중 오류:', error);
         alert('순서 저장 중 오류가 발생했습니다.');
+        refreshAudioFileData();
     });
 }
 
@@ -873,24 +961,44 @@ function createTextNoteElement(noteData, index) {
   textElement.onmouseenter = () => textElement.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
   textElement.onmouseleave = () => textElement.style.boxShadow = 'none';
   
+  // 삭제 버튼 호버 효과 추가
+  textElement.addEventListener('mouseenter', function() {
+      const deleteBtn = this.querySelector('button');
+      if (deleteBtn) {
+          deleteBtn.style.background = '#c82333';
+          deleteBtn.style.transform = 'scale(1.1)';
+      }
+  });
+  
+  textElement.addEventListener('mouseleave', function() {
+      const deleteBtn = this.querySelector('button');
+      if (deleteBtn) {
+          deleteBtn.style.background = '#dc3545';
+          deleteBtn.style.transform = 'scale(1)';
+      }
+  });
+  
   textElement.innerHTML = `
       <div style="position: relative;">
           <button onclick="deleteTextNote('${noteId}')" 
                   style="position: absolute;
-                    top: -5px;
-                    right: -5px;
-                    width: 20px;
-                    height: 20px;
-                    background:rgba(235, 235, 235, 0.79);
-                    color: #dc3545;
+                    top: -8px;
+                    right: -8px;
+                    width: 24px;
+                    height: 24px;
+                    background: #dc3545;
+                    color: white;
                     border: none;
                     border-radius: 50%;
                     cursor: pointer;
-                    font-size: 12px;
+                    font-size: 14px;
+                    font-weight: bold;
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    z-index: 10;">×</button>
+                    z-index: 10;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                    transition: all 0.2s ease;">×</button>
           <textarea id="text-note-${noteId}" 
                     style="width: 100%; min-height: 50px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; line-height: 1.5; resize: none; box-sizing: border-box; overflow-y: hidden;"
                     placeholder="텍스트 노트를 입력하세요...">${text}</textarea>
@@ -899,7 +1007,15 @@ function createTextNoteElement(noteData, index) {
   
   // textarea 입력시 저장
   const textarea = textElement.querySelector(`#text-note-${noteId}`);
-  textarea.onchange = saveTextNotesToServer;
+  
+  // 디바운스된 저장 함수 (중복 저장 방지)
+  let saveTimeout;
+  textarea.addEventListener('input', function() {
+    clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(() => {
+      saveTextNotesToServer();
+    }, 500); // 0.5초 후 저장
+  });
   
   // textarea 높이 자동 조절 함수
   function autoResizeTextarea(textarea) {
@@ -917,51 +1033,89 @@ function createTextNoteElement(noteData, index) {
       autoResizeTextarea(this);
   });
   
-  // focus out 시 내용이 비어있으면 삭제
-  textarea.onblur = function() {
-      if (this.value.trim() === '') {
-          deleteTextNote(noteId);
-      }
-  };
-  
   return textElement;
 }
 
 // 텍스트 노트 삭제 함수
 function deleteTextNote(noteId) {
+    console.log('deleteTextNote 호출됨:', noteId);
     const noteElement = document.querySelector(`[data-note-id="${noteId}"]`);
-    if (!noteElement) return;
-    
-    // 삭제할 요소의 인덱스 찾기
+    if (!noteElement) {
+        console.log('삭제할 노트 요소를 찾을 수 없음:', noteId);
+        return;
+    }
     const sortableContainer = document.getElementById('sortableAudioContainer');
-    const allItems = sortableContainer.querySelectorAll('.audio-file-item, .text-note-item, .add-placeholder');
+    if (!sortableContainer) {
+        console.error('sortableAudioContainer를 찾을 수 없음');
+        return;
+    }
+    const actualItems = sortableContainer.querySelectorAll('.audio-file-item, .text-note-item');
     let targetIndex = -1;
-    
-    for (let i = 0; i < allItems.length; i++) {
-        if (allItems[i] === noteElement) {
+    for (let i = 0; i < actualItems.length; i++) {
+        if (actualItems[i] === noteElement) {
             targetIndex = i;
             break;
         }
     }
-    
-    if (targetIndex === -1) return;
-    
-    // 삭제할 요소와 양쪽 placeholder 제거
-    const prevPlaceholder = targetIndex > 0 ? allItems[targetIndex - 1] : null;
-    const nextPlaceholder = targetIndex < allItems.length - 1 ? allItems[targetIndex + 1] : null;
-    
-    // 텍스트 노트 요소 제거
-    noteElement.remove();
-    
-    // 양쪽 placeholder가 모두 있으면 하나만 남기고 하나 제거
-    if (prevPlaceholder && nextPlaceholder && 
-        prevPlaceholder.classList.contains('add-placeholder') && 
-        nextPlaceholder.classList.contains('add-placeholder')) {
-        nextPlaceholder.remove();
+    console.log('삭제할 요소 인덱스:', targetIndex);
+    if (targetIndex === -1) {
+        console.log('삭제할 요소의 인덱스를 찾을 수 없음');
+        return;
     }
-    
-    // 서버에 업데이트된 노트 목록 저장
-    saveTextNotesToServer();
+    const remainingNotes = [];
+    actualItems.forEach((el, idx) => {
+        if (el !== noteElement && el.classList.contains('text-note-item')) {
+            const textarea = el.querySelector('textarea');
+            let id = el.dataset.noteId;
+            if (!id) {
+                id = 't' + Date.now() + '_' + Math.floor(Math.random()*10000);
+                el.dataset.noteId = id;
+            }
+            const adjustedIndex = idx > targetIndex ? idx - 1 : idx;
+            remainingNotes.push({ 
+                id, 
+                text: textarea ? textarea.value : '', 
+                order: adjustedIndex,
+                type: 'text',
+                upload_date: getTodayStr()
+            });
+        }
+    });
+    console.log('삭제 후 남을 노트들:', remainingNotes);
+    fetch('/600/update_audio_text_notes/', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: `row_id=${encodeURIComponent(window.currentDetailRowId)}&date=${encodeURIComponent('data')}&notes=${encodeURIComponent(JSON.stringify(remainingNotes))}`
+    }).then(r=>r.json()).then(data=>{
+        if(data.success) {
+            console.log('서버에 삭제 상태 저장 성공');
+            noteElement.remove();
+            const placeholders = sortableContainer.querySelectorAll('.add-placeholder');
+            for (let i = 0; i < placeholders.length - 1; i++) {
+                const current = placeholders[i];
+                const next = placeholders[i + 1];
+                let hasOtherElement = false;
+                let element = current.nextElementSibling;
+                while (element && element !== next) {
+                    if (!element.classList.contains('add-placeholder')) {
+                        hasOtherElement = true;
+                        break;
+                    }
+                    element = element.nextElementSibling;
+                }
+                if (!hasOtherElement) {
+                    next.remove();
+                }
+            }
+            console.log('텍스트 노트 삭제 완료');
+        } else {
+            console.error('텍스트 삭제 저장 실패:', data.error);
+            alert('텍스트 삭제 실패: ' + (data.error || ''));
+        }
+    }).catch(error => {
+        console.error('텍스트 삭제 요청 오류:', error);
+        alert('텍스트 삭제 중 오류가 발생했습니다.');
+    });
 }
 
 // 셀 사이에 hover 시만 보이는 텍스트 추가 placeholder 생성 함수
@@ -1021,70 +1175,8 @@ function createAddPlaceholder(insertIndex) {
     return placeholder;
 }
 
-// 지정한 인덱스에 텍스트 노트 추가 함수
-function insertTextNoteAtIndex(index) {
-    let sortableContainer = document.getElementById('sortableAudioContainer');
-    if (!sortableContainer) {
-        // 컨테이너가 없으면 새로 생성
-        sortableContainer = document.createElement('div');
-        sortableContainer.id = 'sortableAudioContainer';
-        sortableContainer.style.cssText = 'display: flex; flex-direction: column; gap: 0; position: relative;';
-        const audioFilesList = document.getElementById('audioFilesList');
-        if (audioFilesList) {
-            audioFilesList.innerHTML = '';
-            audioFilesList.appendChild(sortableContainer);
-        }
-        // 맨 앞에 placeholder 추가
-        sortableContainer.appendChild(createAddPlaceholder(0));
-        index = 0; // 첫 번째 위치에 추가
-    }
-    // 기존 아이템들의 order를 재정렬
-    const items = sortableContainer.querySelectorAll('.audio-file-item, .text-note-item');
-    const newOrder = [];
-    // 클릭한 위치 이전의 아이템들
-    for (let i = 0; i < index; i++) {
-        if (items[i]) {
-            const item = items[i];
-            if (item.classList.contains('audio-file-item')) {
-                const date = item.getAttribute('data-date');
-                const fileId = item.getAttribute('data-file-id');
-                newOrder.push({ date, file_id: fileId, order: i });
-            } else if (item.classList.contains('text-note-item')) {
-                const noteId = item.dataset.noteId;
-                newOrder.push({ id: noteId, text: item.querySelector('textarea').value, order: i, type: 'text' });
-            }
-        }
-    }
-    // 새로 추가할 텍스트 노트
-    const noteId = 't' + Date.now() + '_' + Math.floor(Math.random()*10000);
-    newOrder.push({ id: noteId, text: '', order: index, type: 'text' });
-    // 클릭한 위치 이후의 아이템들
-    for (let i = index; i < items.length; i++) {
-        if (items[i]) {
-            const item = items[i];
-            if (item.classList.contains('audio-file-item')) {
-                const date = item.getAttribute('data-date');
-                const fileId = item.getAttribute('data-file-id');
-                newOrder.push({ date, file_id: fileId, order: i + 1 });
-            } else if (item.classList.contains('text-note-item')) {
-                const noteId = item.dataset.noteId;
-                newOrder.push({ id: noteId, text: item.querySelector('textarea').value, order: i + 1, type: 'text' });
-            }
-        }
-    }
-    // 백엔드에 새로운 순서 저장
-    const notes = newOrder.filter(item => item.type === 'text');
-    const audioOrders = newOrder.filter(item => !item.type);
-    fetch('/600/update_audio_file_order_and_notes/', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: `row_id=${encodeURIComponent(window.currentDetailRowId)}&notes=${encodeURIComponent(JSON.stringify(notes))}&ordered_files=${encodeURIComponent(JSON.stringify(audioOrders))}`
-    }).then(r => r.json()).then(data => {
-        if (data.success) {
-            // 성공 시 페이지 새로고침 또는 데이터 재로드
-            refreshAudioFileData();
-        } else {
-            alert('텍스트 추가 실패: ' + (data.error || ''));
-        }
-    });
+// 오늘 날짜를 YY.MM.DD 형식으로 반환하는 함수
+function getTodayStr() {
+    const d = new Date();
+    return d.toISOString().slice(2, 10).replace(/-/g, '.');
 }
