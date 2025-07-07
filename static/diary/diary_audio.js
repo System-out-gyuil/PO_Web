@@ -1180,3 +1180,4 @@ function getTodayStr() {
     const d = new Date();
     return d.toISOString().slice(2, 10).replace(/-/g, '.');
 }
+

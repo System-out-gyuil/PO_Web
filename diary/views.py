@@ -1117,11 +1117,28 @@ def upload_file(request):
                     print(f"서명된 URL 생성 실패: {e}")
                     signed_download_url = download_url
                 
+                # 서명된 미리보기 URL 생성 (24시간 유효, inline으로 설정)
+                try:
+                    signed_preview_url = s3_client.generate_presigned_url(
+                        'get_object',
+                        Params={
+                            'Bucket': settings.AWS_STORAGE_BUCKET_NAME,
+                            'Key': s3_key,
+                            'ResponseContentDisposition': 'inline'
+                        },
+                        ExpiresIn=86400  # 24시간
+                    )
+                    print(f"서명된 미리보기 URL 생성 성공 (24시간 유효)")
+                except Exception as e:
+                    print(f"서명된 미리보기 URL 생성 실패: {e}")
+                    signed_preview_url = download_url
+                
                 print(f"S3 업로드 성공:")
                 print(f"  원본 파일명: {uploaded_file.name}")
                 print(f"  S3 파일명: {unique_filename}")
                 print(f"  다운로드 URL: {download_url}")
-                print(f"  서명된 URL: {signed_download_url}")
+                print(f"  서명된 다운로드 URL: {signed_download_url}")
+                print(f"  서명된 미리보기 URL: {signed_preview_url}")
                 
                 # 파일 정보를 JSON 형태로 저장
                 file_data = {
@@ -1129,6 +1146,7 @@ def upload_file(request):
                     'stored_filename': unique_filename,
                     's3_key': s3_key,
                     'download_url': signed_download_url,
+                    'preview_url': signed_preview_url,
                     'public_url': download_url,
                     'file_size': uploaded_file.size,
                     'content_type': uploaded_file.content_type
@@ -1152,6 +1170,7 @@ def upload_file(request):
                     'file_info': {
                         'original_filename': uploaded_file.name,
                         'download_url': signed_download_url,
+                        'preview_url': signed_preview_url,
                         'file_size': uploaded_file.size,
                         'content_type': uploaded_file.content_type
                     }
@@ -1691,11 +1710,28 @@ def upload_audio_file(request):
                     print(f"서명된 URL 생성 실패: {e}")
                     signed_download_url = download_url
                 
+                # 서명된 미리보기 URL 생성 (24시간 유효, inline으로 설정)
+                try:
+                    signed_preview_url = s3_client.generate_presigned_url(
+                        'get_object',
+                        Params={
+                            'Bucket': settings.AWS_STORAGE_BUCKET_NAME,
+                            'Key': s3_key,
+                            'ResponseContentDisposition': 'inline'
+                        },
+                        ExpiresIn=86400  # 24시간
+                    )
+                    print(f"서명된 미리보기 URL 생성 성공 (24시간 유효)")
+                except Exception as e:
+                    print(f"서명된 미리보기 URL 생성 실패: {e}")
+                    signed_preview_url = download_url
+                
                 print(f"S3 업로드 성공:")
                 print(f"  원본 파일명: {audio_file.name}")
                 print(f"  S3 파일명: {unique_filename}")
                 print(f"  다운로드 URL: {download_url}")
-                print(f"  서명된 URL: {signed_download_url}")
+                print(f"  서명된 다운로드 URL: {signed_download_url}")
+                print(f"  서명된 미리보기 URL: {signed_preview_url}")
                 
             except Exception as e:
                 print(f"S3 업로드 실패: {e}")
@@ -1747,6 +1783,7 @@ def upload_audio_file(request):
                 'stored_filename': unique_filename,
                 's3_key': s3_key,
                 'download_url': signed_download_url,
+                'preview_url': signed_preview_url,
                 'public_url': download_url,
                 'file_size': audio_file.size,
                 'content_type': audio_file.content_type,
@@ -1785,6 +1822,7 @@ def upload_audio_file(request):
                 'file_info': {
                     'original_filename': audio_file.name,
                     'download_url': signed_download_url,
+                    'preview_url': signed_preview_url,
                     'file_size': audio_file.size,
                     'content_type': audio_file.content_type,
                     'upload_time': new_file_data['upload_time']
@@ -1849,6 +1887,7 @@ def get_audio_files_by_date(request):
                             'converted_text': file_info.get('converted_text', ''),
                             'gpt_summary': file_info.get('gpt_summary', ''),
                             'download_url': file_info.get('download_url', ''),
+                            'preview_url': file_info.get('preview_url', ''),
                             'file_size': file_info.get('file_size', 0),
                             'upload_time': file_info.get('upload_time', ''),
                             'content_type': file_info.get('content_type', '')

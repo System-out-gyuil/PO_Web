@@ -355,20 +355,38 @@ function showDetailModal(rowData, rowId) {
                                           text-decoration: underline;
                                       ">📎 ${displayFileName}</span>
                                       <button type="button" 
-                        onclick="window.open('${downloadUrl}', '_blank')" 
-                        style="
-                            padding: 6px 12px; 
-                            background: #17a2b8; 
-                            color: white; 
-                            border: none; 
-                            border-radius: 4px; 
-                            cursor: pointer; 
-                            font-size: 12px;
-                            font-weight: 500;
-                            margin-right: 5px;
-                        ">
-                    다운로드
-                </button>
+                                            onclick='showFilePreviewModal(${JSON.stringify({
+                                                ...fileInfo,
+                                                download_url: fileInfo.preview_url || fileInfo.download_url
+                                            }).replace(/'/g, "&#39;").replace(/\"/g, "&quot;")})' 
+                                            style="
+                                                padding: 6px 12px; 
+                                                background: #ffc107; 
+                                                color: #333; 
+                                                border: none; 
+                                                border-radius: 4px; 
+                                                cursor: pointer; 
+                                                font-size: 12px;
+                                                font-weight: 500;
+                                                margin-right: 5px;
+                                            ">
+                                            미리보기
+                                        </button>
+                                      <button type="button" 
+                                            onclick="window.open('${downloadUrl}', '_blank')" 
+                                            style="
+                                                padding: 6px 12px; 
+                                                background: #17a2b8; 
+                                                color: white; 
+                                                border: none; 
+                                                border-radius: 4px; 
+                                                cursor: pointer; 
+                                                font-size: 12px;
+                                                font-weight: 500;
+                                                margin-right: 5px;
+                                            ">
+                                        다운로드
+                                    </button>
                                 <button type="button" 
                                         onclick="document.getElementById('file_${attr.name}_${rowId}').click()" 
                                         style="
@@ -2791,53 +2809,71 @@ function updateFileFieldInModal(rowId, fieldName, fileInfo) {
             <div style="display: flex; align-items: center;">
                 <span style="flex: 1; color: #28a745; font-size: 14px; padding: 8px 0;">📎 ${fileName} (업로드 완료)</span>
                 <button type="button" 
-                        onclick="window.open('${downloadUrl}', '_blank')" 
-                        style="
-                            padding: 6px 12px; 
-                            background: #17a2b8; 
-                            color: white; 
-                            border: none; 
-                            border-radius: 4px; 
-                            cursor: pointer; 
-                            font-size: 12px;
-                            font-weight: 500;
-                            margin-right: 5px;
-                        ">
+                    onclick='showFilePreviewModal(${JSON.stringify({
+                        ...fileInfo,
+                        download_url: fileInfo.preview_url || fileInfo.download_url
+                    }).replace(/'/g, "&#39;").replace(/\"/g, "&quot;")})' 
+                    style="
+                        padding: 6px 12px; 
+                        background: #ffc107; 
+                        color: #333; 
+                        border: none; 
+                        border-radius: 4px; 
+                        cursor: pointer; 
+                        font-size: 12px;
+                        font-weight: 500;
+                        margin-right: 5px;
+                    ">
+                    미리보기
+                </button>
+                <button type="button" 
+                    onclick="window.open('${downloadUrl}', '_blank')" 
+                    style="
+                        padding: 6px 12px; 
+                        background: #17a2b8; 
+                        color: white; 
+                        border: none; 
+                        border-radius: 4px; 
+                        cursor: pointer; 
+                        font-size: 12px;
+                        font-weight: 500;
+                        margin-right: 5px;
+                    ">
                     다운로드
                 </button>
                 <button type="button" 
-                        onclick="document.getElementById('file_${fieldName}_${rowId}').click()" 
-                        style="
-                            padding: 6px 12px; 
-                            background: #28a745; 
-                            color: white; 
-                            border: none; 
-                            border-radius: 4px; 
-                            cursor: pointer; 
-                            font-size: 12px;
-                            font-weight: 500;
-                            margin-right: 5px;
-                        ">
+                    onclick="document.getElementById('file_${fieldName}_${rowId}').click()" 
+                    style="
+                        padding: 6px 12px; 
+                        background: #28a745; 
+                        color: white; 
+                        border: none; 
+                        border-radius: 4px; 
+                        cursor: pointer; 
+                        font-size: 12px;
+                        font-weight: 500;
+                        margin-right: 5px;
+                    ">
                     수정
                 </button>
                 <button type="button" 
-                        onclick="deleteFile('${rowId}', '${fieldName}')" 
-                        style="
-                            padding: 6px 12px; 
-                            background: #dc3545; 
-                            color: white; 
-                            border: none; 
-                            border-radius: 4px; 
-                            cursor: pointer; 
-                            font-size: 12px;
-                            font-weight: 500;
-                        ">
+                    onclick="deleteFile('${rowId}', '${fieldName}')" 
+                    style="
+                        padding: 6px 12px; 
+                        background: #dc3545; 
+                        color: white; 
+                        border: none; 
+                        border-radius: 4px; 
+                        cursor: pointer; 
+                        font-size: 12px;
+                        font-weight: 500;
+                    ">
                     삭제
                 </button>
                 <input type="file" 
-                       id="file_${fieldName}_${rowId}" 
-                       style="display: none;"
-                       onchange="uploadFile('${rowId}', '${fieldName}', this)">
+                    id="file_${fieldName}_${rowId}" 
+                    style="display: none;"
+                    onchange="uploadFile('${rowId}', '${fieldName}', this)">
             </div>
         `;
         
