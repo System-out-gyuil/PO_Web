@@ -735,8 +735,6 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
           const type = td.getAttribute('data-field');
           const dataType = td.getAttribute('data-type');
           
-          console.log('테이블 셀 이벤트 바인딩:', {field: type, dataType: dataType});
-          
           if (dataType === 'datetime') {
               const input = td.querySelector('input[type="date"]');
               if (input) {
@@ -824,16 +822,13 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
           } 
           // 드롭다운 타입이거나 지역/상세지역 필드인 경우
           else if(dataType === 'dropdown' || dataType === 'region' || dataType === 'region_detail' || type === '지역' || type === '상세지역') {
-              console.log('드롭다운 필드 감지:', {field: type, dataType: dataType});
               td.style.cursor = 'pointer';
               td.onclick = function(e) {
-                  console.log('드롭다운 클릭됨:', {field: type, dataType: dataType});
                   e.stopPropagation();
                   
                   const id = td.parentElement.getAttribute('data-id');
                   
                   if(dataType === 'region' || type === '지역') {
-                      console.log('지역 드롭다운 처리');
                       // 회사명 필드인 경우 .name-text에서 값 추출, 다른 필드는 td.innerText 사용
                       const currentValue = (type === '회사명') ? 
                           (td.querySelector('.name-text')?.innerText.trim() || '') : 
@@ -997,50 +992,41 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                       
                       let inputType = 'text';
                       // 날짜 필드들은 date input 사용
-                      if (['TA','미팅','F/U 일정'].includes(type) || dataType === 'datetime') {
+                      if (["TA","미팅","F/U 일정"].includes(type) || dataType === 'datetime') {
                           inputType = 'date';
                       }
                       
                       const input = document.createElement('input');
                       input.type = inputType;
-                      input.value = (inputType==='date' && oldValue) ? oldValue.trim().slice(0,10) : oldValue.trim();
-                      input.className = 'table-edit-input';
-                      input.style.position = 'absolute';
-                      input.style.left = '0';
-                      input.style.top = '0';
-                      input.style.width = 'max-content';
-                      input.style.minWidth = '100%';
-                      input.style.background = '#fffbe6';
-                      input.style.zIndex = '10';
-                      input.style.border = 'none';
-                      input.style.fontSize = 'inherit';
-                      input.style.fontFamily = 'inherit';
-                      input.style.lineHeight = 'inherit';
-                      input.style.padding = '0';
-                      input.style.margin = '0';
-                      
-                      td.appendChild(input);
-                      input.focus();
-                      if(inputType === 'text') input.select();
-                      
-                      input.onblur = function() {
-                          const newValue = input.value;
-                          // 회사명 필드인 경우 .name-text 업데이트, 다른 필드는 td.innerText 업데이트
-                          if(type === '회사명') {
-                              const nameTextDiv = td.querySelector('.name-text');
-                              if(nameTextDiv) nameTextDiv.innerText = newValue;
-                              if(input.parentNode) input.parentNode.removeChild(input);
-                          } else {
-                              td.innerText = newValue;
+                      // 매출 필드라면 한글 단위로 표시, 아니면 기존 값
+                      if (type === '매출' || type.includes('매출')) {
+                          const raw = td.getAttribute('data-raw');
+                          let initialValue = '';
+                          if (raw && !isNaN(parseInt(raw, 10))) {
+                              initialValue = formatNumberWithComma(parseInt(raw, 10));
                           }
-                          // 편집 종료 시 td width 해제
-                          td.style.width = '';
-                          
-                          // 새 행인 경우
-                          if (id && id.startsWith('temp_')) {
-                              saveNewRowField(td.parentElement, type, newValue);
-                          } else {
-                              // 기존 행인 경우
+                          input.value = initialValue;
+                          input.oninput = function(e) {
+                              // 숫자만 추출 후 콤마 포맷팅
+                              let val = this.value.replace(/[^0-9]/g, '');
+                              this.value = formatNumberWithComma(val);
+                          };
+                          input.onblur = function() {
+                              const cleanValue = removeCommaFromNumber(this.value);
+                              updateCellValue(id, type, cleanValue, td);
+                          };
+                      } else {
+                          input.value = (inputType==='date' && oldValue) ? oldValue.trim().slice(0,10) : oldValue.trim();
+                          input.onblur = function() {
+                              const newValue = input.value;
+                              if(type === '회사명') {
+                                  const nameTextDiv = td.querySelector('.name-text');
+                                  if(nameTextDiv) nameTextDiv.innerText = newValue;
+                                  if(input.parentNode) input.parentNode.removeChild(input);
+                              } else {
+                                  td.innerText = newValue;
+                              }
+                              td.style.width = '';
                               fetch('/600/update/', {
                                   method: 'POST',
                                   headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -1052,13 +1038,16 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                               }).catch(function(error) {
                                   console.error('업데이트 중 오류:', error);
                               });
-                          }
-                      };
-                      
+                          };
+                      }
+                      input.className = 'table-edit-input';
+                      td.innerHTML = '';
+                      td.appendChild(input);
+                      input.focus();
+                      if(inputType === 'text') input.select();
                       input.onkeydown = function(e) {
                           if (e.key === 'Enter') input.blur();
-                          if (e.key === 'Escape') { 
-                              // 회사명 필드인 경우 .name-text 복원, 다른 필드는 td.innerText 복원
+                          if (e.key === 'Escape') {
                               if(type === '회사명') {
                                   const nameTextDiv = td.querySelector('.name-text');
                                   if(nameTextDiv) nameTextDiv.innerText = oldValue;
@@ -1323,7 +1312,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                   
                   let inputType = 'text';
                   // 날짜 필드들은 date input 사용
-                  if (['TA','미팅','F/U 일정'].includes(field) || type === 'datetime') {
+                  if (["TA","미팅","F/U 일정"].includes(field) || type === 'datetime') {
                       inputType = 'date';
                   }
                   
@@ -1768,10 +1757,15 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
   
   // 숫자 필드 업데이트 시 콤마 포맷팅 적용
   function updateCellValue(id, fieldName, value, element) {
-      // 매출 필드인 경우 한국어 단위를 숫자로 변환
+      console.log('updateCellValue 호출:', {id, fieldName, value, element});
       let processedValue = value;
       if (fieldName === '매출' || fieldName.includes('매출')) {
-          processedValue = parseKoreanCurrency(value).toString();
+          let raw = (value || '').toString().replace(/[^\d]/g, '');
+          if (raw) {
+              processedValue = parseInt(raw).toString();
+          } else {
+              processedValue = '';
+          }
       }
       
       // 숫자인지 확인 (콤마 제거 후 숫자 변환 가능한지 체크)
@@ -1782,7 +1776,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
           // 숫자 필드인 경우 콤마 제거 후 서버에 저장
           const cleanValue = removeCommaFromNumber(processedValue);
           
-          fetch('/600/update_cell/', {
+          fetch('/600/update_row_field/', {
               method: 'POST',
               headers: {
                   'Content-Type': 'application/x-www-form-urlencoded',
@@ -1814,7 +1808,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
           });
       } else {
           // 일반 텍스트 필드인 경우 기존 로직 사용
-          fetch('/600/update_cell/', {
+          fetch('/600/update_row_field/', {
               method: 'POST',
               headers: {
                   'Content-Type': 'application/x-www-form-urlencoded',
@@ -1980,3 +1974,11 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
           };
       }
   });
+
+  // 매출 셀 더블클릭/수정 시 한글 단위 → 숫자(콤마)로 입력
+  function showNumberForEdit(input) {
+      const value = input.value;
+      const number = parseKoreanCurrency(value);
+      input.value = formatNumberWithComma(number);
+      input.select();
+  }

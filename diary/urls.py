@@ -42,4 +42,7 @@ urlpatterns = [
     path('update_audio_text_notes/', views.update_audio_text_notes, name='update_audio_text_notes'),
     path('update_audio_file_order_and_notes/', views.update_audio_file_order_and_notes, name='update_audio_file_order_and_notes'),
     path('entry_table_partial/', views.entry_table_partial, name='entry_table_partial'),
+    path('toggle_attribute_visibility/', views.toggle_attribute_visibility, name='toggle_attribute_visibility'),
+    path('get_hidden_attributes/', views.get_hidden_attributes, name='get_hidden_attributes'),
+    path('get_all_attributes/', views.get_all_attributes, name='get_all_attributes'),
 ] 

@@ -255,12 +255,20 @@ function showDetailModal(rowData, rowId) {
                         </div>
                     `;
                 } else if (attr.name === '매출' || attr.name.includes('매출')) {
-                    // 매출 필드는 한국어 단위로 표시
+                    // 매출 필드는 클릭 시 input 생성, 실시간 콤마 포맷팅
                     const numericValue = parseFloat(value) || 0;
                     const displayValue = numericValue ? formatToKoreanCurrency(numericValue) : '';
-                    inputHtml = `<input type="text" value="${displayValue}" data-field="${attr.name}" 
-                                       oninput="formatSalesInputRealtime(this, '${rowId}', '${attr.name}')"
-                                       onblur="updateRowFieldWithKoreanCurrency('${rowId}', '${attr.name}', this.value)">`;
+                    const rawValue = numericValue ? formatNumberWithComma(numericValue) : '';
+                    
+                    inputHtml = `
+                        <div class="sales-field-container" 
+                             data-field="${attr.name}" 
+                             data-raw="${numericValue}"
+                             onclick="createSalesInput(this, '${rowId}', '${attr.name}')"
+                             style="cursor: pointer; padding: 8px; border: 1px solid #ced4da; border-radius: 4px; background: white; min-height: 20px;">
+                            ${displayValue || '클릭하여 입력'}
+                        </div>
+                    `;
                 } else if (attr.name === '업종') {
                     // 업종 드롭다운 처리
                     const industryOptions = [
@@ -2899,5 +2907,74 @@ function updateFileFieldInModalAfterDelete(rowId, fieldName) {
     } else {
         console.log('파일 컨테이너를 찾을 수 없음');
     }
+}
+
+// 한글 금액 → 숫자(콤마)로 변환하여 입력모드로 전환
+function showNumberForEdit(input, rowId, fieldName) {
+    const value = input.value;
+    const number = parseKoreanCurrency(value);
+    input.value = formatNumberWithComma(number);
+    input.select();
+}
+
+// 상세 모달용 매출 input 생성 함수
+function createSalesInput(container, rowId, fieldName) {
+    // 이미 input이 있으면 무시
+    if (container.querySelector('input')) return;
+    
+    const raw = container.getAttribute('data-raw');
+    let initialValue = '';
+    if (raw && !isNaN(parseInt(raw, 10))) {
+        initialValue = formatNumberWithComma(parseInt(raw, 10));
+    }
+    
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = initialValue;
+    input.style.cssText = `
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #007bff;
+        border-radius: 4px;
+        background: #fffbe6;
+        font-size: inherit;
+        font-family: inherit;
+        box-sizing: border-box;
+    `;
+    
+    // 실시간 콤마 포맷팅
+    input.oninput = function(e) {
+        let val = this.value.replace(/[^0-9]/g, '');
+        this.value = formatNumberWithComma(val);
+    };
+    
+    // 저장 시 콤마 제거 후 백엔드 전송
+    input.onblur = function() {
+        const cleanValue = removeCommaFromNumber(this.value);
+        updateRowFieldWithKoreanCurrency(rowId, fieldName, cleanValue);
+        
+        // input 제거하고 원래 컨테이너로 복원
+        container.innerHTML = cleanValue ? formatToKoreanCurrency(cleanValue) : '클릭하여 입력';
+        container.setAttribute('data-raw', cleanValue);
+    };
+    
+    // Enter 키로 저장
+    input.onkeydown = function(e) {
+        if (e.key === 'Enter') {
+            input.blur();
+        } else if (e.key === 'Escape') {
+            // 취소 시 원래 값으로 복원
+            const originalValue = container.getAttribute('data-raw');
+            const displayValue = originalValue && !isNaN(parseInt(originalValue, 10)) ? 
+                formatToKoreanCurrency(parseInt(originalValue, 10)) : '클릭하여 입력';
+            container.innerHTML = displayValue;
+        }
+    };
+    
+    // 컨테이너 내용을 input으로 교체
+    container.innerHTML = '';
+    container.appendChild(input);
+    input.focus();
+    input.select();
 }
 

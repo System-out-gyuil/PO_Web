@@ -56,10 +56,11 @@ function closeDropdown() {
 
 // 숫자에 콤마 추가하는 함수
 function formatNumberWithComma(value) {
-    if (!value || value === '') return '';
-    const numericValue = value.toString().replace(/[^0-9.-]/g, '');
-    if (numericValue === '' || isNaN(numericValue)) return value;
-    return parseInt(numericValue).toLocaleString();
+    console.log('formatNumberWithComma 호출됨:', value);
+    if (!value && value !== 0) return '';
+    const num = typeof value === 'string' ? parseInt(value.replace(/[^\d]/g, '')) : value;
+    if (isNaN(num)) return '';
+    return num.toLocaleString();
 }
 
 // 한국어 단위로 변환하는 함수

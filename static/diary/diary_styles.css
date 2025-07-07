@@ -269,7 +269,7 @@ body { font-family: Arial, sans-serif; margin: 40px; background: #f8f9fa; }
             background: #dc3545;
             color: white;
             border: none;
-            padding: 6px 12px;
+            padding: 8px 12px;
             border-radius: 4px;
             cursor: pointer;
             font-size: 12px;
@@ -282,9 +282,11 @@ body { font-family: Arial, sans-serif; margin: 40px; background: #f8f9fa; }
         
         .filter-controls {
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             margin-bottom: 15px;
             gap: 10px;
+            flex-direction: column;
+            margin-left: 60px;
         }
         
         .filter-status {

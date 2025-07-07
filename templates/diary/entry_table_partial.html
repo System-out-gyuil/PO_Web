@@ -101,7 +101,7 @@
                         {% endif %}
                     </td>
                 {% else %}
-                    <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" class="{% if attr.assential %}essential-column{% endif %}">
+                    <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}"{% if attr.name == '매출' or '매출' in attr.name %} data-raw="{{ row.values|get_item:attr.name|get_item:'value'|default:'0' }}"{% endif %} class="{% if attr.assential %}essential-column{% endif %}">
                         {% if attr.name == '매출' or '매출' in attr.name %}
                             {{ row.values|get_item:attr.name|get_item:'label'|to_korean_currency }}
                         {% else %}

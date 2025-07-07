@@ -83,6 +83,7 @@ class Attribute(models.Model):
     assential = models.BooleanField(default=False)
     detail = models.BooleanField(default=False)
     sort_order = models.IntegerField(default=0, db_index=True)
+    view_select = models.BooleanField(default=False)
 
     class Meta:
         ordering = ['sort_order', 'id']  # sort_order 필드로 기본 정렬

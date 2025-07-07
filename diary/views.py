@@ -32,6 +32,7 @@ from django.contrib.auth.decorators import login_required
 from .funding_calculator import FundingCalculator
 from board.models import BizInfo
 from django.db.models import Q, Max
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -43,13 +44,13 @@ def diary_list(request):
     # detail 필터링 추가: 기본적으로 detail=False인 속성만 표시
     show_detail = request.GET.get('detail', '0') == '1'  # detail=1이면 상세 속성도 표시
     
-    # 속성 필터링: detail 값에 따라 필터링
+    # 속성 필터링: detail 값과 view_select 값에 따라 필터링
     if show_detail:
-        attributes = Attribute.objects.all().order_by('sort_order', 'id')  # sort_order 필드로 정렬
-        user_attributes = Attribute.objects.filter(user=user).order_by('sort_order', 'id')  # sort_order 필드로 정렬
+        attributes = Attribute.objects.filter(view_select=True).order_by('sort_order', 'id')  # view_select=True인 속성만 표시
+        user_attributes = Attribute.objects.filter(user=user, view_select=True).order_by('sort_order', 'id')  # view_select=True인 속성만 표시
     else:
-        attributes = Attribute.objects.filter(detail=False).order_by('sort_order', 'id')  # sort_order 필드로 정렬
-        user_attributes = Attribute.objects.filter(user=user, detail=False).order_by('sort_order', 'id')  # sort_order 필드로 정렬
+        attributes = Attribute.objects.filter(detail=False, view_select=True).order_by('sort_order', 'id')  # detail=False이고 view_select=True인 속성만 표시
+        user_attributes = Attribute.objects.filter(user=user, detail=False, view_select=True).order_by('sort_order', 'id')  # detail=False이고 view_select=True인 속성만 표시
     
     attr_map = {attr.name: attr for attr in user_attributes}
     
@@ -64,7 +65,14 @@ def diary_list(request):
             attr_value = AttributeValue.objects.filter(attribute=attr, row=row).first()
             value = attr_value.value if attr_value else ''
             
-            if attr.attributeType and attr.attributeType.name == 'dropdown' and value.isdigit():
+            if attr.name == '매출' or '매출' in attr.name:
+                numeric_value = parse_korean_currency(value)
+                row_values[attr.name] = {
+                    'label': value,  # 화면 표시용(한글 단위 등)
+                    'value': numeric_value,  # 실제 숫자값
+                    'color': ''
+                }
+            elif attr.attributeType and attr.attributeType.name == 'dropdown' and value.isdigit():
                 dropdown = DropdownAttribute.objects.filter(id=int(value)).first()
                 if dropdown:
                     row_values[attr.name] = {'label': dropdown.option, 'color': dropdown.color}
@@ -654,6 +662,7 @@ def update_row_field(request):
                 row_id = data.get('row_id')
                 field = data.get('field_name')
                 value = data.get('value', '')
+                print(row_id, field, value)
             except json.JSONDecodeError:
                 return JsonResponse({'success': False, 'error': 'Invalid JSON'})
         else:
@@ -661,6 +670,7 @@ def update_row_field(request):
             row_id = request.POST.get('id')
             field = request.POST.get('field')
             value = request.POST.get('value', '')
+            print(row_id, field, value)
         
         if not row_id or not field:
             return JsonResponse({'success': False, 'error': 'Missing id or field'})
@@ -787,7 +797,8 @@ def add_attribute(request):
                 name=name,
                 user=user,
                 attributeType=attribute_type,
-                sort_order=next_sort_order
+                sort_order=next_sort_order,
+                view_select=True
             )
             
             return JsonResponse({
@@ -3164,13 +3175,9 @@ def update_audio_file_order_and_notes(request):
 
 def entry_table_partial(request):
     user = User.objects.get(id=1)
-    show_detail = request.GET.get('detail', '0') == '1'
-    if show_detail:
-        attributes = Attribute.objects.all().order_by('sort_order', 'id')
-        user_attributes = Attribute.objects.filter(user=user).order_by('sort_order', 'id')
-    else:
-        attributes = Attribute.objects.filter(detail=False).order_by('sort_order', 'id')
-        user_attributes = Attribute.objects.filter(user=user, detail=False).order_by('sort_order', 'id')
+    # 항상 detail=False, view_select=True만 표시
+    attributes = Attribute.objects.filter(user=user, detail=False, view_select=True).order_by('sort_order', 'id')
+    user_attributes = attributes
     rows = Row.objects.filter(user=user).order_by('order')
     rows_data = []
     for row in rows:
@@ -3178,7 +3185,14 @@ def entry_table_partial(request):
         for attr in user_attributes:
             attr_value = AttributeValue.objects.filter(attribute=attr, row=row).first()
             value = attr_value.value if attr_value else ''
-            if attr.attributeType and attr.attributeType.name == 'dropdown' and value.isdigit():
+            if attr.name == '매출' or '매출' in attr.name:
+                numeric_value = parse_korean_currency(value)
+                row_values[attr.name] = {
+                    'label': value,  # 화면 표시용(한글 단위 등)
+                    'value': numeric_value,  # 실제 숫자값
+                    'color': ''
+                }
+            elif attr.attributeType and attr.attributeType.name == 'dropdown' and value.isdigit():
                 dropdown = DropdownAttribute.objects.filter(id=int(value)).first()
                 if dropdown:
                     row_values[attr.name] = {'label': dropdown.option, 'color': dropdown.color}
@@ -3217,3 +3231,107 @@ def entry_table_partial(request):
         'attributes': attributes_obj_list,
         'rows': rows_data,
     })
+
+@csrf_exempt
+def toggle_attribute_visibility(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            attribute_name = data.get('attribute_name')
+            
+            if not attribute_name:
+                return JsonResponse({'success': False, 'error': '속성명이 필요합니다.'})
+            
+            # 속성 찾기
+            user = User.objects.get(id=1)
+            attribute = Attribute.objects.filter(user=user, name=attribute_name).first()
+            
+            if not attribute:
+                return JsonResponse({'success': False, 'error': '속성을 찾을 수 없습니다.'})
+            
+            # view_select 값 토글
+            attribute.view_select = not attribute.view_select
+            attribute.save()
+            
+            return JsonResponse({
+                'success': True, 
+                'view_select': attribute.view_select,
+                'message': f'"{attribute_name}" 속성이 {"표시" if attribute.view_select else "숨김"} 상태로 변경되었습니다.'
+            })
+            
+        except json.JSONDecodeError:
+            return JsonResponse({'success': False, 'error': '잘못된 JSON 형식입니다.'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'POST 요청만 허용됩니다.'}, status=405)
+
+@require_GET
+def get_hidden_attributes(request):
+    """숨겨진 속성들(detail=False, view_select=False)을 가져오는 API"""
+    try:
+        user = User.objects.get(id=1)
+        hidden_attributes = Attribute.objects.filter(
+            user=user, 
+            detail=False, 
+            view_select=False
+        ).order_by('sort_order', 'id')
+        
+        attributes_data = []
+        for attr in hidden_attributes:
+            attributes_data.append({
+                'id': attr.id,
+                'name': attr.name,
+                'attributeType_name': attr.attributeType.name if attr.attributeType else '',
+                'assential': attr.assential,
+                'detail': attr.detail,
+                'view_select': attr.view_select,
+                'sort_order': attr.sort_order
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'attributes': attributes_data
+        })
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+@require_GET
+def get_all_attributes(request):
+    """detail=False인 모든 속성(필수 포함)을 반환하는 API"""
+    try:
+        user = User.objects.get(id=1)
+        attributes = Attribute.objects.filter(user=user, detail=False).order_by('sort_order', 'id')
+        attributes_data = []
+        for attr in attributes:
+            attributes_data.append({
+                'id': attr.id,
+                'name': attr.name,
+                'attributeType_name': attr.attributeType.name if attr.attributeType else '',
+                'assential': attr.assential,
+                'view_select': attr.view_select,
+                'sort_order': attr.sort_order
+            })
+        return JsonResponse({'success': True, 'attributes': attributes_data})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+def parse_korean_currency(value):
+    if not value:
+        return 0
+    s = str(value).replace(',', '').replace(' ', '').replace('원', '')
+    if s.isdigit():
+        return int(s)
+    # 억, 만, 천 등 한글 단위 파싱
+    units = {'억': 100000000, '천만': 10000000, '백만': 1000000, '십만': 100000, '만': 10000, '천': 1000, '백': 100, '십': 10}
+    total = 0
+    for unit, factor in units.items():
+        match = re.search(r'(\d+)' + unit, s)
+        if match:
+            total += int(match.group(1)) * factor
+            s = s.replace(match.group(0), '')
+    # 남은 숫자
+    if s.isdigit():
+        total += int(s)
+    return total
