@@ -611,10 +611,24 @@ function showFilePreviewModal(fileInfo) {
         viewerHtml = `<iframe src="${previewUrl}" style="width:100%; height:80vh;" frameborder="0"></iframe>`;
         console.log('PDF 파일 처리');
     } else if (
-        ['docx', 'xlsx', 'xls', 'pptx', 'ppt'].includes(ext) ||
+        ['xlsx', 'xls'].includes(ext) ||
+        (fileInfo.content_type && fileInfo.content_type.includes('spreadsheetml'))
+    ) {
+        viewerHtml = `
+            <div style="text-align:center; color:#888; padding:40px;">
+                이 파일 형식은 미리보기를 지원하지 않습니다.<br>
+                아래 버튼을 눌러 파일을 다운로드하세요.<br><br>
+                <button onclick="window.open('${fileInfo.download_url}', '_blank')"
+                        style="padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                    파일 다운로드
+                </button>
+            </div>
+        `;
+        console.log('엑셀 파일 미리보기 미지원 안내');
+    } else if (
+        ['docx', 'pptx', 'ppt'].includes(ext) ||
         (fileInfo.content_type && (
             fileInfo.content_type.includes('wordprocessingml') ||
-            fileInfo.content_type.includes('spreadsheetml') ||
             fileInfo.content_type.includes('presentationml')
         ))
     ) {
@@ -629,7 +643,7 @@ function showFilePreviewModal(fileInfo) {
                 </button>
             </div>
         `;
-        console.log('문서/엑셀/파워포인트 파일 처리 (Google Docs Viewer)');
+        console.log('문서/파워포인트 파일 처리 (Google Docs Viewer)');
     } else if (ext === 'hwp' || fileInfo.content_type === 'application/x-hwp') {
         if (fileInfo.converted_pdf_url) {
             viewerHtml = `<iframe src="${fileInfo.converted_pdf_url}" style="width:100%; height:80vh;" frameborder="0"></iframe>`;

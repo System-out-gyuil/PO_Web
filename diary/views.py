@@ -1110,9 +1110,9 @@ def upload_file(request):
                             'Bucket': settings.AWS_STORAGE_BUCKET_NAME,
                             'Key': s3_key
                         },
-                        ExpiresIn=86400  # 24시간
+                        ExpiresIn=300  # 5분
                     )
-                    print(f"서명된 다운로드 URL 생성 성공 (24시간 유효)")
+                    print(f"서명된 다운로드 URL 생성 성공 (5분 유효)")
                 except Exception as e:
                     print(f"서명된 URL 생성 실패: {e}")
                     signed_download_url = download_url
@@ -1126,9 +1126,9 @@ def upload_file(request):
                             'Key': s3_key,
                             'ResponseContentDisposition': 'inline'
                         },
-                        ExpiresIn=86400  # 24시간
+                        ExpiresIn=300  # 5분
                     )
-                    print(f"서명된 미리보기 URL 생성 성공 (24시간 유효)")
+                    print(f"서명된 미리보기 URL 생성 성공 (5분 유효)")
                 except Exception as e:
                     print(f"서명된 미리보기 URL 생성 실패: {e}")
                     signed_preview_url = download_url
@@ -1364,7 +1364,7 @@ def download_file(request, row_id, field_name):
                                     'Bucket': settings.AWS_STORAGE_BUCKET_NAME,
                                     'Key': s3_key
                                 },
-                                ExpiresIn=3600  # 1시간
+                                ExpiresIn=300  # 5분
                             )
                             
                             print(f"새로운 서명된 다운로드 URL 생성: {signed_url}")
@@ -1703,9 +1703,9 @@ def upload_audio_file(request):
                             'Bucket': settings.AWS_STORAGE_BUCKET_NAME,
                             'Key': s3_key
                         },
-                        ExpiresIn=86400  # 24시간
+                        ExpiresIn=300  # 5분
                     )
-                    print(f"서명된 다운로드 URL 생성 성공 (24시간 유효)")
+                    print(f"서명된 다운로드 URL 생성 성공 (5분 유효)")
                 except Exception as e:
                     print(f"서명된 URL 생성 실패: {e}")
                     signed_download_url = download_url
@@ -1719,9 +1719,9 @@ def upload_audio_file(request):
                             'Key': s3_key,
                             'ResponseContentDisposition': 'inline'
                         },
-                        ExpiresIn=86400  # 24시간
+                        ExpiresIn=300  # 5분
                     )
-                    print(f"서명된 미리보기 URL 생성 성공 (24시간 유효)")
+                    print(f"서명된 미리보기 URL 생성 성공 (5분 유효)")
                 except Exception as e:
                     print(f"서명된 미리보기 URL 생성 실패: {e}")
                     signed_preview_url = download_url
