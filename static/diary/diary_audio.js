@@ -245,11 +245,21 @@ function showNoContentMessage(audioFilesList, noAudioFilesMessage) {
           margin: 20px 0;
       `;
       messageDiv.innerHTML = `
-          <div style="font-size: 48px; margin-bottom: 15px;">📝</div>
-          <div style="font-size: 16px; font-weight: bold; margin-bottom: 8px;">음성파일과 텍스트 노트가 없습니다</div>
-          <div style="font-size: 14px; color: #888;">
-              음성파일을 업로드하거나 텍스트 노트를 추가해보세요
-          </div>
+          <div style="text-align: center; padding: 40px 20px; color: #666;">
+                <div style="font-size: 48px; margin-bottom: 15px;">📝</div>
+                <div style="font-size: 16px; font-weight: bold; margin-bottom: 8px;">음성파일과 텍스트 노트가 없습니다</div>
+                <div style="font-size: 14px; color: #888; margin-bottom: 24px;">
+                    음성파일을 업로드하거나 텍스트 노트를 추가해보세요
+                </div>
+                <div style="display: flex; justify-content: center; gap: 12px;">
+                    <button onclick="addTextCell()" style="padding: 10px 18px; background: #bfcfc2; color: #222; border: none; border-radius: 6px; font-size: 15px; font-weight: bold; cursor: pointer;">
+                        + 텍스트 추가
+                    </button>
+                    <button onclick="addFileCell()" style="padding: 10px 18px; background: #22b573; color: #fff; border: none; border-radius: 6px; font-size: 15px; font-weight: bold; cursor: pointer;">
+                        + 파일 추가
+                    </button>
+                </div>
+            </div>
       `;
       audioFilesList.appendChild(messageDiv);
   }
@@ -857,32 +867,73 @@ function saveTextNotesToServer() {
 
 // 텍스트 셀 추가 함수
 function addTextCell() {
-  if (!window.audioFileData) window.audioFileData = { data: {} };
-  const dataDict = window.audioFileData;
-  const newId = 't' + Date.now() + '_' + Math.floor(Math.random()*10000);
-  const order = Object.keys(dataDict.data).length;
-  dataDict.data[newId] = { id: newId, type: 'text', text: '', order };
-  
-  // 성공 알림
-  showNotification('텍스트 노트가 추가되었습니다.', 'success');
-  
-  // 영업노트 섹션 비동기 리렌더링
-  refreshSalesNoteSection();
+    console.log('addTextCell 호출됨');
+    
+    // audioFileData 초기화
+    if (!window.audioFileData) {
+        window.audioFileData = { data: {} };
+    }
+    
+    const newId = 't' + Date.now() + '_' + Math.floor(Math.random()*10000);
+    const order = Object.keys(window.audioFileData.data).length;
+    
+    // 새 텍스트 노트 데이터 생성
+    const newTextNote = {
+        id: newId,
+        type: 'text',
+        text: '',
+        order: order,
+        upload_date: getTodayStr()
+    };
+    
+    // 로컬 데이터에 추가
+    window.audioFileData.data[newId] = newTextNote;
+    
+    console.log('새 텍스트 노트 데이터:', newTextNote);
+    console.log('업데이트된 audioFileData:', window.audioFileData);
+    
+    // 서버에 저장
+    fetch('/600/update_audio_file_order_and_notes/', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: `row_id=${encodeURIComponent(window.currentDetailRowId)}&notes=${encodeURIComponent(JSON.stringify([newTextNote]))}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            console.log('텍스트 노트 서버 저장 성공');
+            // 성공 알림
+            showNotification('텍스트 노트가 추가되었습니다.', 'success');
+            // 영업노트 섹션 비동기 리렌더링
+            refreshSalesNoteSection();
+        } else {
+            console.error('텍스트 노트 서버 저장 실패:', data.error);
+            showNotification('텍스트 노트 추가 실패: ' + (data.error || ''), 'error');
+        }
+    })
+    .catch(error => {
+        console.error('텍스트 노트 추가 중 오류:', error);
+        showNotification('텍스트 노트 추가 중 오류가 발생했습니다.', 'error');
+    });
 }
 
 // 파일 추가 함수 (파일 업로드 input 트리거)
 function addFileCell() {
-  let fileInput = document.getElementById('multiFileInput');
-  if (!fileInput) {
-    fileInput = document.createElement('input');
-    fileInput.type = 'file';
-    fileInput.id = 'multiFileInput';
-    fileInput.style.display = 'none';
-    fileInput.onchange = function() { handleMultiFileUpload(this); };
-    document.body.appendChild(fileInput);
-  }
-  fileInput.value = '';
-  fileInput.click();
+    console.log('addFileCell 호출됨');
+    
+    let fileInput = document.getElementById('multiFileInput');
+    if (!fileInput) {
+        fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.id = 'multiFileInput';
+        fileInput.style.display = 'none';
+        fileInput.onchange = function() { 
+            handleMultiFileUpload(this); 
+        };
+        document.body.appendChild(fileInput);
+    }
+    fileInput.value = '';
+    fileInput.click();
 }
 
 // 파일 업로드 핸들러 (오디오는 기존 로직, 그 외는 type별로 dict 저장)
@@ -975,23 +1026,38 @@ function createImageFileElement(fileData, index) {
   imageElement.onmouseenter = () => imageElement.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
   imageElement.onmouseleave = () => imageElement.style.boxShadow = 'none';
   
+  // 먼저 기본 구조 생성 (이미지 URL은 나중에 설정)
   imageElement.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
           <div style="flex: 1;">
-              <div style="font-weight: bold; color: #333; margin-bottom: 4px;">
+              <div style="font-weight: bold; color: #333; margin-bottom: 8px;">
                   🖼️ ${fileInfo.original_filename || fileInfo.filename}
               </div>
-              <div style="font-size: 12px; color: #666;">
+              <div style="font-size: 12px; color: #666; margin-bottom: 10px;">
                   크기: ${(fileInfo.file_size / 1024 / 1024).toFixed(2)}MB
               </div>
+              
+              <!-- 이미지 썸네일 영역 -->
+              <div style="position: relative; display: inline-block; cursor: pointer;" onclick="showImagePreview('${fileId}', '${fileInfo.original_filename || fileInfo.filename}')">
+                  <div id="image-thumbnail-${fileId}" style="width: 250px; height: 200px; border-radius: 6px; border: 1px solid #ddd; background: #f8f9fa; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease;">
+                      <div style="text-align: center; color: #6c757d;">
+                          <div style="font-size: 24px; margin-bottom: 8px;">⏳</div>
+                          <div style="font-size: 12px;">이미지 로딩 중...</div>
+                      </div>
+                  </div>
+              </div>
+              <div style="font-size: 11px; color: #888; margin-top: 5px; font-style: italic;">
+                  이미지를 클릭하면 확대해서 볼 수 있습니다
+              </div>
           </div>
-          <div style="display: flex; gap: 5px; margin-left: 15px;">
-            <button onclick="showFilePreview('${fileId}', ${JSON.stringify(fileInfo).replace(/\"/g, '&quot;')})" 
-                    style="padding: 6px 12px; background: #ffc107; color: #333; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;">
+          
+          <div style="gap: 5px; margin-left: 15px;">
+              <button onclick="showFilePreview('${fileId}', ${JSON.stringify(fileInfo).replace(/\"/g, '&quot;')})" 
+                      style="padding: 6px 12px; background: #ffc107; color: #333; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;">
                   미리보기
-            </button>
+              </button>
               <a href="${fileInfo.download_url}" download="${fileInfo.original_filename || fileInfo.filename}" 
-                 style="padding: 6px 12px; background: #6c757d; color: white; text-decoration: none; border-radius: 4px; font-size: 12px; display: inline-block;">
+                 style="padding: 6px 12px; background: #6c757d; color: white; text-decoration: none; border-radius: 4px; font-size: 12px; display: inline-block; text-align: center;">
                   다운로드
               </a>
               <button onclick="deleteAudioFileItem('${fileId}', '${fileInfo.original_filename || fileInfo.filename}')" 
@@ -1002,7 +1068,168 @@ function createImageFileElement(fileData, index) {
       </div>
   `;
   
+  // 이미지 URL 요청 및 썸네일 설정
+  loadImageThumbnail(fileId, fileInfo);
+  
   return imageElement;
+}
+
+// 이미지 썸네일 로드 함수
+function loadImageThumbnail(fileId, fileInfo) {
+    // 서버에서 새로운 서명된 URL 요청
+    fetch(`/600/get_file_preview_url/${fileId}/?row_id=${window.currentDetailRowId}`, {
+        method: 'GET',
+        headers: {
+            'X-CSRFToken': getCsrfToken()
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        const thumbnailContainer = document.getElementById(`image-thumbnail-${fileId}`);
+        if (!thumbnailContainer) return;
+        
+        if (data.success && data.preview_url) {
+            // 성공적으로 URL을 받았으면 이미지 표시
+            thumbnailContainer.innerHTML = `
+                <img src="${data.preview_url}" 
+                     alt="${fileInfo.original_filename || fileInfo.filename}"
+                     style="max-width: 250px; max-height: 200px; border-radius: 6px; object-fit: cover; transition: all 0.2s ease;"
+                     onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjhmOWZhIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMiIgZmlsbD0iIzZjNzU3ZCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlPC90ZXh0Pjwvc3ZnPg==';"
+                     onmouseenter="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.2)';"
+                     onmouseleave="this.style.transform='scale(1)'; this.style.boxShadow='none';">
+            `;
+        } else {
+            // URL을 받지 못했으면 에러 상태 표시
+            thumbnailContainer.innerHTML = `
+                <div style="text-align: center; color: #dc3545;">
+                    <div style="font-size: 24px; margin-bottom: 8px;">❌</div>
+                    <div style="font-size: 12px;">이미지 로드 실패</div>
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        console.error('이미지 썸네일 로드 실패:', error);
+        const thumbnailContainer = document.getElementById(`image-thumbnail-${fileId}`);
+        if (thumbnailContainer) {
+            thumbnailContainer.innerHTML = `
+                <div style="text-align: center; color: #dc3545;">
+                    <div style="font-size: 24px; margin-bottom: 8px;">❌</div>
+                    <div style="font-size: 12px;">이미지 로드 실패</div>
+                </div>
+            `;
+        }
+    });
+}
+
+// 이미지 확대 보기 함수 (썸네일 클릭 시)
+function showImagePreview(fileId, filename) {
+    // 기존 모달이 있으면 제거
+    const existingModal = document.getElementById('imagePreviewModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // 새 모달 생성
+    const modal = document.createElement('div');
+    modal.id = 'imagePreviewModal';
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.9);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 10000;
+        cursor: pointer;
+    `;
+    
+    // 로딩 상태 표시
+    modal.innerHTML = `
+        <div style="position: relative; max-width: 90%; max-height: 90%; text-align: center;">
+            <div style="color: white; margin-bottom: 20px;">
+                <div style="font-size: 48px; margin-bottom: 10px;">⏳</div>
+                <div style="font-size: 16px;">이미지를 로딩 중...</div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // 새로운 서명된 URL 요청
+    fetch(`/600/get_file_preview_url/${fileId}/?row_id=${window.currentDetailRowId}`, {
+        method: 'GET',
+        headers: {
+            'X-CSRFToken': getCsrfToken()
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.preview_url) {
+            // 성공적으로 URL을 받았으면 이미지 표시
+            modal.innerHTML = `
+                <div style="position: relative; max-width: 90%; max-height: 90%;">
+                    <img src="${data.preview_url}" 
+                         alt="${filename}"
+                         style="max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px;"
+                         onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjhmOWZhIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzZjNzU3ZCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIGxvYWQgZmFpbGVkPC90ZXh0Pjwvc3ZnPg==';">
+                    <button onclick="closeImagePreviewModal()" 
+                            style="position: absolute; top: -40px; right: 0; background: #dc3545; color: white; border: none; border-radius: 4px; padding: 8px 12px; cursor: pointer; font-size: 14px;">
+                        닫기
+                    </button>
+                </div>
+            `;
+        } else {
+            // URL을 받지 못했으면 에러 상태 표시
+            modal.innerHTML = `
+                <div style="position: relative; max-width: 90%; max-height: 90%; text-align: center;">
+                    <div style="color: white; margin-bottom: 20px;">
+                        <div style="font-size: 48px; margin-bottom: 10px;">❌</div>
+                        <div style="font-size: 18px; margin-bottom: 10px;">이미지 로드 실패</div>
+                        <div style="font-size: 14px; color: #ccc;">${data.error || '이미지를 불러올 수 없습니다.'}</div>
+                    </div>
+                    <button onclick="closeImagePreviewModal()" 
+                            style="background: #dc3545; color: white; border: none; border-radius: 4px; padding: 8px 16px; cursor: pointer; font-size: 14px;">
+                        닫기
+                    </button>
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        console.error('이미지 미리보기 로드 실패:', error);
+        modal.innerHTML = `
+            <div style="position: relative; max-width: 90%; max-height: 90%; text-align: center;">
+                <div style="color: white; margin-bottom: 20px;">
+                    <div style="font-size: 48px; margin-bottom: 10px;">❌</div>
+                    <div style="font-size: 18px; margin-bottom: 10px;">이미지 로드 실패</div>
+                    <div style="font-size: 14px; color: #ccc;">네트워크 오류가 발생했습니다.</div>
+                </div>
+                <button onclick="closeImagePreviewModal()" 
+                        style="background: #dc3545; color: white; border: none; border-radius: 4px; padding: 8px 16px; cursor: pointer; font-size: 14px;">
+                    닫기
+                </button>
+            </div>
+        `;
+    });
+    
+    // 모달 외부 클릭시 닫기
+    modal.onclick = function(e) {
+        if (e.target === modal) {
+            closeImagePreviewModal();
+        }
+    };
+}
+
+// 이미지 미리보기 모달 닫기 함수
+function closeImagePreviewModal() {
+    const modal = document.getElementById('imagePreviewModal');
+    if (modal) {
+        modal.remove();
+    }
 }
 
 // 문서 파일 요소 생성 함수
@@ -1070,98 +1297,6 @@ function createDocumentFileElement(fileData, index) {
   `;
   
   return fileElement;
-}
-
-// 이미지 모달 열기 함수
-function openImageModal(imageUrl, filename) {
-  // 기존 모달이 있으면 제거
-  const existingModal = document.getElementById('imageModal');
-  if (existingModal) {
-      existingModal.remove();
-  }
-  
-  // 새 모달 생성
-  const modal = document.createElement('div');
-  modal.id = 'imageModal';
-  modal.style.cssText = `
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.8);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 10000;
-      cursor: pointer;
-  `;
-  
-  modal.innerHTML = `
-      <div style="position: relative; max-width: 90%; max-height: 90%;">
-          <img src="${imageUrl}" 
-               alt="${filename}"
-               style="max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px;">
-          <button onclick="closeImageModal()" 
-                  style="position: absolute; top: -40px; right: 0; background: #dc3545; color: white; border: none; border-radius: 4px; padding: 8px 12px; cursor: pointer; font-size: 14px;">
-              닫기
-          </button>
-      </div>
-  `;
-  
-  // 모달 클릭시 닫기
-  modal.onclick = function(e) {
-      if (e.target === modal) {
-          closeImageModal();
-      }
-  };
-  
-  document.body.appendChild(modal);
-}
-
-// 이미지 모달 닫기 함수
-function closeImageModal() {
-  const modal = document.getElementById('imageModal');
-  if (modal) {
-      modal.remove();
-  }
-}
-
-// 모든 파일 타입 업로드 함수 (플레이스홀더용)
-function showMultiFileUpload(insertIndex) {
-    // 숨겨진 파일 입력 요소 생성
-    const fileInput = document.createElement('input');
-    fileInput.type = 'file';
-    fileInput.accept = '*/*'; // 모든 파일 타입 허용
-    fileInput.style.display = 'none';
-    
-    // 파일 선택 시 처리
-    fileInput.onchange = function() {
-        const file = this.files[0];
-        if (!file) return;
-        
-        // 파일 크기 체크 (10MB 제한)
-        if (file.size > 10 * 1024 * 1024) {
-            alert('파일 크기는 10MB 이하여야 합니다.');
-            return;
-        }
-        
-        // 파일 타입에 따른 처리
-        if (file.type.startsWith('audio/')) {
-            // 오디오 파일은 기존 로직 사용
-            handleAudioFileUpload(file, insertIndex);
-        } else {
-            // 이미지, 문서, 기타 파일은 새로운 로직 사용
-            handleGeneralFileUpload(file, insertIndex);
-        }
-        
-        // 임시 요소 제거
-        document.body.removeChild(fileInput);
-    };
-    
-    // 파일 선택 다이얼로그 열기
-    document.body.appendChild(fileInput);
-    fileInput.click();
 }
 
 // 오디오 파일 업로드 처리 함수
@@ -1331,7 +1466,7 @@ function getFileInfoFromDOM(item) {
     return fileInfo;
 }
 
-// 셀 사이에 hover 시만 보이는 텍스트 추가 placeholder 생성 함수
+// 셀 사이에 hover 시만 보이는 텍스트/파일 추가 placeholder 생성 함수
 function createAddPlaceholder(insertIndex) {
     const placeholder = document.createElement('div');
     placeholder.className = 'add-placeholder';
@@ -1346,7 +1481,6 @@ function createAddPlaceholder(insertIndex) {
         transition: all 0.2s;
         overflow: hidden;
     `;
-    
     // 내부 버튼 컨테이너
     const btnContainer = document.createElement('div');
     btnContainer.style.cssText = `
@@ -1366,7 +1500,6 @@ function createAddPlaceholder(insertIndex) {
         flex-direction: column;
         gap: 8px;
     `;
-    
     // 텍스트 추가 버튼
     const textBtn = document.createElement('div');
     textBtn.textContent = '📝 텍스트 추가';
@@ -1383,7 +1516,6 @@ function createAddPlaceholder(insertIndex) {
         text-align: center;
         width: 100%;
     `;
-    
     // 파일 추가 버튼
     const fileBtn = document.createElement('div');
     fileBtn.textContent = '📎 파일 추가';
@@ -1400,7 +1532,6 @@ function createAddPlaceholder(insertIndex) {
         text-align: center;
         width: 100%;
     `;
-    
     // 호버 효과
     textBtn.onmouseenter = () => {
         textBtn.style.background = '#a8c2ae';
@@ -1410,7 +1541,6 @@ function createAddPlaceholder(insertIndex) {
         textBtn.style.background = '#bfcfc2';
         textBtn.style.transform = 'scale(1)';
     };
-    
     fileBtn.onmouseenter = () => {
         fileBtn.style.background = '#1ea366';
         fileBtn.style.transform = 'scale(1.02)';
@@ -1419,22 +1549,18 @@ function createAddPlaceholder(insertIndex) {
         fileBtn.style.background = '#22b573';
         fileBtn.style.transform = 'scale(1)';
     };
-    
     // 클릭 이벤트
     textBtn.onclick = function(e) {
         e.stopPropagation();
         window.insertTextNoteAtIndex(insertIndex);
     };
-    
     fileBtn.onclick = function(e) {
         e.stopPropagation();
         showMultiFileUpload(insertIndex);
     };
-    
     btnContainer.appendChild(textBtn);
     btnContainer.appendChild(fileBtn);
     placeholder.appendChild(btnContainer);
-    
     // hover 시만 보이게
     placeholder.onmouseenter = () => { 
         placeholder.style.height = '80px';
@@ -1448,7 +1574,7 @@ function createAddPlaceholder(insertIndex) {
         placeholder.style.marginBottom = '0px';
         btnContainer.style.display = 'none';
     };
-    
+    // 항상 비어있을 때도 placeholder가 하나는 남도록 보장 (렌더링 로직에서 체크 필요)
     return placeholder;
 }
 
@@ -1461,7 +1587,6 @@ function getTodayStr() {
 // 텍스트 노트 요소 생성 함수
 function createTextNoteElement(noteData, index) {
   const { noteId, text, order } = noteData;
-  
   const textElement = document.createElement('div');
   textElement.className = 'text-note-item';
   textElement.style.cssText = `
@@ -1475,11 +1600,9 @@ function createTextNoteElement(noteData, index) {
   textElement.setAttribute('data-note-id', noteId);
   textElement.setAttribute('data-type', 'text');
   textElement.setAttribute('data-order', order);
-  
   // 호버 효과
   textElement.onmouseenter = () => textElement.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
   textElement.onmouseleave = () => textElement.style.boxShadow = 'none';
-  
   // 삭제 버튼 호버 효과 추가
   textElement.addEventListener('mouseenter', function() {
       const deleteBtn = this.querySelector('button');
@@ -1488,7 +1611,6 @@ function createTextNoteElement(noteData, index) {
           deleteBtn.style.transform = 'scale(1.1)';
       }
   });
-  
   textElement.addEventListener('mouseleave', function() {
       const deleteBtn = this.querySelector('button');
       if (deleteBtn) {
@@ -1496,10 +1618,8 @@ function createTextNoteElement(noteData, index) {
           deleteBtn.style.transform = 'scale(1)';
       }
   });
-  
   // text 값이 undefined나 null인 경우 빈 문자열로 처리
   const safeText = text || '';
-  
   textElement.innerHTML = `
       <div style="position: relative;">
           <button onclick="deleteTextNote('${noteId}')" 
@@ -1522,18 +1642,28 @@ function createTextNoteElement(noteData, index) {
                     box-shadow: 0 2px 4px rgba(0,0,0,0.2);
                     transition: all 0.2s ease;">×</button>
           <textarea id="text-note-${noteId}" 
-                    style="width: 100%; min-height: 50px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; line-height: 1.5; resize: none; box-sizing: border-box; overflow-y: hidden;"
+                    style="width: 100%; min-height: 50px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; line-height: 1.5; resize: none; box-sizing: border-box; overflow: hidden;"
                     placeholder="텍스트 노트를 입력하세요...">${safeText}</textarea>
       </div>
   `;
   
-  // textarea 입력시 저장
+  // textarea 입력시 저장 및 자동 높이 조절
   const textarea = textElement.querySelector(`#text-note-${noteId}`);
   
   if (textarea) {
+      // 자동 높이 조절 함수
+      function adjustHeight() {
+          textarea.style.height = 'auto';
+          textarea.style.height = textarea.scrollHeight + 'px';
+      }
+      
       // 디바운스된 저장 함수 (중복 저장 방지)
       let saveTimeout;
       textarea.addEventListener('input', function() {
+          // 자동 높이 조절
+          adjustHeight();
+          
+          // 저장
           clearTimeout(saveTimeout);
           saveTimeout = setTimeout(() => {
               console.log('텍스트 입력 감지:', this.value);
@@ -1541,16 +1671,9 @@ function createTextNoteElement(noteData, index) {
           }, 500); // 0.5초 후 저장
       });
       
-      // textarea 자동 높이 조절
-      textarea.addEventListener('input', function() {
-          this.style.height = 'auto';
-          this.style.height = Math.min(this.scrollHeight, 300) + 'px';
-      });
-      
       // 초기 높이 설정
       setTimeout(() => {
-          textarea.style.height = 'auto';
-          textarea.style.height = Math.min(textarea.scrollHeight, 300) + 'px';
+          adjustHeight();
       }, 100);
   } else {
       console.error('textarea를 찾을 수 없음:', noteId);

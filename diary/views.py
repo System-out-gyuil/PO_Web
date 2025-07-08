@@ -3632,16 +3632,20 @@ def get_file_preview_url(request, file_id):
                     'error': '잘못된 데이터 형식입니다.'
                 })
             
-            # 파일 정보 찾기
-            file_info = None
-            if 'data' in audio_data and file_id in audio_data['data']:
-                file_info = audio_data['data'][file_id]
-            
-            if not file_info:
-                return JsonResponse({
-                    'success': False,
-                    'error': '파일을 찾을 수 없습니다.'
-                })
+            # 파일 정보 찾기 (id, stored_filename, filename 등으로 유연하게)
+            file_info = None  # ← 이 줄 추가!
+            if 'data' in audio_data:
+                for k, v in audio_data['data'].items():
+                    if not isinstance(v, dict):
+                        continue
+                    if (
+                        k == file_id or
+                        v.get('id') == file_id or
+                        v.get('stored_filename') == file_id or
+                        v.get('filename') == file_id
+                    ):
+                        file_info = v
+                        break
             
             # S3 키 가져오기
             s3_key = file_info.get('s3_key')

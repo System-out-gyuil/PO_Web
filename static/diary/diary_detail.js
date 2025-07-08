@@ -338,17 +338,16 @@ function showDetailModal(rowData, rowId) {
                         if (fileInfo.type === 'img') {
                             inputHtml = `
                                 <div style="text-align:center;">
-                                    <img src="${fileInfo.download_url || fileInfo.url}" style="max-width:180px;max-height:120px;display:block;margin:0 auto;border-radius:8px;" />
                                     <div style="margin-top:8px;">
-                                        <button onclick="window.open('${fileInfo.preview_url || fileInfo.download_url}', '_blank')" 
+                                        <button onclick="showFilePreview('${fileInfo.id || fileInfo.stored_filename || fileInfo.filename}', ${JSON.stringify(fileInfo).replace(/\"/g, '&quot;')}, '${rowId}', '${attr.name}')"
                                                 style="padding: 6px 12px; background: #ffc107; color: #333; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500; margin-right: 5px;">
                                             미리보기
                                         </button>
-                                        <button onclick="window.open('${fileInfo.download_url}', '_blank')" 
+                                        <button onclick="window.open('${fileInfo.download_url}', '_blank')"
                                                 style="padding: 6px 12px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500; margin-right: 5px;">
                                             다운로드
                                         </button>
-                                        <button onclick="deleteFile('${rowId}', '${attr.name}')" 
+                                        <button onclick="deleteFile('${rowId}', '${attr.name}')"
                                                 style="padding: 6px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;">
                                             삭제
                                         </button>
@@ -360,11 +359,11 @@ function showDetailModal(rowData, rowId) {
                                 <div>
                                     <audio controls src="${fileInfo.download_url || fileInfo.url}"></audio>
                                     <div style="margin-top:8px;">
-                                        <button onclick="window.open('${fileInfo.download_url}', '_blank')" 
+                                        <button onclick="window.open('${fileInfo.download_url}', '_blank')"
                                                 style="padding: 6px 12px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500; margin-right: 5px;">
                                             다운로드
                                         </button>
-                                        <button onclick="deleteFile('${rowId}', '${attr.name}')" 
+                                        <button onclick="deleteFile('${rowId}', '${attr.name}')"
                                                 style="padding: 6px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;">
                                             삭제
                                         </button>
@@ -376,15 +375,15 @@ function showDetailModal(rowData, rowId) {
                             inputHtml = `
                                 <div style="display:flex;align-items:center;gap:8px;">
                                     <span style="width:60%;">📄 ${displayFileName}</span>
-                                    <button onclick="window.open('${fileInfo.preview_url || fileInfo.download_url}', '_blank')" 
+                                    <button onclick="showFilePreview('${fileInfo.id || fileInfo.stored_filename || fileInfo.filename}', ${JSON.stringify(fileInfo).replace(/\"/g, '&quot;')}, '${rowId}', '${attr.name}')"
                                             style="padding: 6px 12px; background: #ffc107; color: #333; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500; margin-right: 5px;">
                                         미리보기
                                     </button>
-                                    <button onclick="window.open('${fileInfo.download_url}', '_blank')" 
+                                    <button onclick="window.open('${fileInfo.download_url}', '_blank')"
                                             style="padding: 6px 12px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500; margin-right: 5px;">
                                         다운로드
                                     </button>
-                                    <button onclick="deleteFile('${rowId}', '${attr.name}')" 
+                                    <button onclick="deleteFile('${rowId}', '${attr.name}')"
                                             style="padding: 6px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;">
                                         삭제
                                     </button>
@@ -2982,5 +2981,59 @@ function createSalesInput(container, rowId, fieldName) {
     container.appendChild(input);
     input.focus();
     input.select();
+}
+
+function showFilePreview(fileId, fileInfo, rowId, fieldName) {
+    // fileId가 없거나 숫자가 아니면 fileInfo에서 최대한 추출
+    if (!fileId || fileId === 'undefined' || fileId === 'null') {
+        fileId = (fileInfo && (fileInfo.id || fileInfo.stored_filename || fileInfo.filename)) || '';
+    }
+    // rowId도 없으면 fileInfo에서 추출 시도
+    if (!rowId && fileInfo && fileInfo.row_id) {
+        rowId = fileInfo.row_id;
+    }
+    if (!fileId) {
+        showNotification('파일 정보가 올바르지 않습니다.', 'error');
+        return;
+    }
+    if (!rowId) {
+        showNotification('행 정보가 올바르지 않습니다.', 'error');
+        return;
+    }
+    // 서버에 row_id도 함께 전달
+    fetch(`/600/get_file_preview_url/${fileId}/?row_id=${rowId}`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.success && data.preview_url) {
+                // 파일 타입에 따라 미리보기 모달 표시 (이미지, PDF, 텍스트 등)
+                let contentHtml = '';
+                if (fileInfo && fileInfo.type === 'img') {
+                    contentHtml = `<img src="${data.preview_url}" alt="미리보기" style="max-width:100%;max-height:70vh;display:block;margin:0 auto;">`;
+                } else if (fileInfo && fileInfo.type === 'pdf') {
+                    contentHtml = `<iframe src="${data.preview_url}" style="width:90vw;height:70vh;border:none;"></iframe>`;
+                } else if (fileInfo && fileInfo.type === 'audio') {
+                    contentHtml = `<audio controls src="${data.preview_url}" style="width:100%;"></audio>`;
+                } else if (fileInfo && fileInfo.type === 'video') {
+                    contentHtml = `<video controls src="${data.preview_url}" style="max-width:100%;max-height:70vh;"></video>`;
+                } else {
+                    contentHtml = `<iframe src="${data.preview_url}" style="width:90vw;height:70vh;border:none;"></iframe>`;
+                }
+                showModal({
+                    title: fileInfo && (fileInfo.original_filename || fileInfo.filename || fileInfo.stored_filename) || '파일 미리보기',
+                    content: contentHtml
+                });
+            } else {
+                showModal({
+                    title: fileInfo && (fileInfo.original_filename || fileInfo.filename || fileInfo.stored_filename) || '파일 미리보기',
+                    content: `<div style="text-align:center;padding:40px 0;"><div style="font-size:48px;color:#dc3545;">✗</div><div style="margin-top:16px;font-size:18px;font-weight:500;">미리보기 로드 실패</div><div style="margin-top:8px;color:#888;">${data.error || '파일을 찾을 수 없습니다.'}</div><button onclick="window.open('${fileInfo && fileInfo.download_url ? fileInfo.download_url : '#'}','_blank')" style="margin-top:20px;padding:10px 24px;background:#007bff;color:white;border:none;border-radius:6px;font-size:16px;cursor:pointer;">새 창에서 열기</button></div>`
+                });
+            }
+        })
+        .catch(err => {
+            showModal({
+                title: fileInfo && (fileInfo.original_filename || fileInfo.filename || fileInfo.stored_filename) || '파일 미리보기',
+                content: `<div style="text-align:center;padding:40px 0;"><div style="font-size:48px;color:#dc3545;">✗</div><div style="margin-top:16px;font-size:18px;font-weight:500;">미리보기 로드 실패</div><div style="margin-top:8px;color:#888;">${err.message || '알 수 없는 오류'}</div></div>`
+            });
+        });
 }
 
