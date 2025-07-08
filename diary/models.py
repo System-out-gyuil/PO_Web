@@ -95,10 +95,7 @@ class Attribute(models.Model):
 class CalendarSettings(models.Model):
     """캘린더 설정을 위한 모델"""
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='calendar_settings')
-    date_field = models.ForeignKey(Attribute, on_delete=models.CASCADE, related_name='calendar_date_settings', 
-                                  help_text='카드 생성 기준 날짜 필드')
-    content_fields = models.JSONField(default=list, 
-                                     help_text='카드에 표시할 내용 필드들의 리스트')
+    settings = models.JSONField(default=dict)  # {date_fields: [...], custom_events: [...]}
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

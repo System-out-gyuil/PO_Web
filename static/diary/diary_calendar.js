@@ -4,9 +4,13 @@ let calendarSettings = {
     content_fields: ['회사명', '미팅', '영업진행']
 };
 
+// 완전 랜덤 16진수 색상 함수
+function randomColor() {
+    return '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
+}
+
 // 캘린더 설정 모달 함수
-function showCalendarSettingsModal() {
-    // datetime 속성들과 모든 속성들을 가져와서 모달 생성
+function showCalendarSettingsModal(forceSettings) {
     Promise.all([
         fetch('/600/get_datetime_attributes/').then(r => r.json()),
         fetch('/600/get_user_attributes/').then(r => r.json()),
@@ -17,21 +21,91 @@ function showCalendarSettingsModal() {
             return;
         }
 
-        // 현재 설정 업데이트
-        calendarSettings = settingsData.settings;
+        // settings를 window.calendarSettings에 저장 (forceSettings가 있으면 그걸 사용)
+        let settings = forceSettings || settingsData.settings || {};
+        settings.date_fields = settings.date_fields || [];
+        settings.custom_events = settings.custom_events || [];
+        window.calendarSettings = settings;
 
-        // datetime 속성들로 드롭다운 생성
-        const dateFieldOptions = datetimeData.attributes.map(attr => 
-            `<option value="${attr.name}" ${attr.name === calendarSettings.date_field ? 'selected' : ''}>${attr.name}</option>`
-        ).join('');
+        const datetimeAttrs = datetimeData.attributes;
+        const allAttrs = attributesData.attributes;
 
-        // 모든 속성들로 체크박스 생성 (type 필터링)
-        const allowedTypes = ['text', 'datetime', 'region', 'region detail', 'number'];
-        const filteredAttributes = attributesData.attributes.filter(attr =>
-            allowedTypes.includes(attr.type) && attr.name !== '회사명'
-        );
+        // 기준 날짜 필드 체크박스
+        const dateFieldIds = settings.date_fields.map(df => df.attribute);
+        // 컬러 정보 맵 생성 (DB에 저장된 값만 사용)
+        const dateFieldColors = {};
+        settings.date_fields.forEach(df => { dateFieldColors[df.attribute] = df.color; });
+        const dateFieldOptions = datetimeAttrs.map(attr => {
+            // 컬러피커 value는 무조건 settings.date_fields의 color만 사용
+            let color = dateFieldColors[attr.id];
+            // 만약 체크되어 있는데 color가 없으면(새로 추가된 경우) 랜덤 색상 부여
+            if (dateFieldIds.includes(attr.id) && !color) {
+                color = randomColor();
+                dateFieldColors[attr.id] = color;
+                let df = settings.date_fields.find(df => df.attribute === attr.id);
+                if (df) df.color = color;
+            }
+            // 체크 안된 경우(아직 추가 안된 경우)는 기본색상(혹은 빈값)
+            return `<label style="display:flex;align-items:center;margin-bottom:6px;">
+                <input type="checkbox" class="date-field-checkbox" value="${attr.id}" ${dateFieldIds.includes(attr.id) ? 'checked' : ''} style="margin-right:8px;">
+                <span style="margin-right:8px;">${attr.name}</span>
+                <input type="color" class="date-field-color" value="${color || '#e5e7eb'}" data-date-attr="${attr.id}" style="margin-left:8px;width:28px;height:28px;border:none;background:none;cursor:pointer;">
+            </label>`;
+        }).join('');
 
-        // 스타일 추가 (최초 1회만)
+        // 날짜 필드별 카드에 표시할 내용 체크박스
+        function renderContentFieldsSection() {
+            return datetimeAttrs.map(attr => {
+                const df = settings.date_fields.find(df => df.attribute === attr.id) || { content_fields: ['회사명'], color: dateFieldColors[attr.id] || randomColor() };
+                // 회사명은 항상 기본 포함, 체크박스에는 안 보임
+                const allowedTypes = ['text', 'datetime', 'region', 'region detail', 'number'];
+                const filteredAttrs = allAttrs.filter(a => allowedTypes.includes(a.type) && a.name !== '회사명');
+                const checkboxes = filteredAttrs.map(a =>
+                    `<div class="calendar-setting-row${df.content_fields.includes(a.name) ? ' checked-row' : ''}" data-attr="${a.name}">
+                        <input type="checkbox" class="calendar-setting-checkbox" data-date-attr="${attr.id}" value="${a.name}" ${df.content_fields.includes(a.name) ? 'checked' : ''} style="margin:0;">
+                        <label for="content_${attr.id}_${a.name}" style="width:90%;margin-left:8px;">${a.name}</label>
+                    </div>`
+                ).join('');
+                return `
+                    <div class="content-fields-section" data-date-attr="${attr.id}" style="margin-bottom:18px;${dateFieldIds.includes(attr.id) ? '' : 'display:none;'}">
+                        <div style="font-weight:bold;color:#333;margin-bottom:6px;">[${attr.name}] 카드에 표시할 내용</div>
+                        ${checkboxes}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // 커스텀 이벤트 UI (color 필드 추가, 누락시 자동 랜덤색상 보정)
+        function renderCustomEventsSection() {
+            const events = settings.custom_events || [];
+            // color가 없으면 랜덤 색상 부여
+            events.forEach(ev => {
+                if (!ev.color || ev.color === 'undefined' || ev.color === '') {
+                    ev.color = randomColor();
+                }
+            });
+            return `
+                <div style="margin-top:18px;">
+                    <div style="font-weight:bold;color:#333;margin-bottom:6px;">커스텀 일정 추가</div>
+                    <div id="customEventsList">
+                        ${events.map((ev, idx) => `
+                            <div class="custom-event-row" data-idx="${idx}" style="display:flex;align-items:center;margin-bottom:6px;gap:4px;">
+                                <input type="text" class="custom-event-title" value="${ev.title || ''}" placeholder="제목" style="width:80px;">
+                                <input type="date" class="custom-event-start" value="${ev.start || ev.date || ''}" style="width:120px;">
+                                <span style="margin:0 2px;">~</span>
+                                <input type="date" class="custom-event-end" value="${ev.end || ev.date || ''}" style="width:120px;">
+                                <input type="text" class="custom-event-content" value="${ev.content || ''}" placeholder="내용" style="width:100px;">
+                                <input type="color" class="custom-event-color" value="${ev.color || '#e5e7eb'}" style="width:28px;height:28px;border:none;background:none;cursor:pointer;">
+                                <button type="button" class="remove-custom-event" style="color:#fff;background:#dc3545;border:none;border-radius:3px;padding:2px 8px;cursor:pointer;">삭제</button>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <button type="button" id="addCustomEventBtn" style="margin-top:6px;padding:4px 12px;background:#007bff;color:#fff;border:none;border-radius:4px;cursor:pointer;">+ 일정 추가</button>
+                </div>
+            `;
+        }
+
+        // 스타일(한 번만)
         if (!document.getElementById('calendarSettingRowStyle')) {
             const style = document.createElement('style');
             style.id = 'calendarSettingRowStyle';
@@ -57,54 +131,21 @@ function showCalendarSettingsModal() {
             document.head.appendChild(style);
         }
 
-        // 체크박스 + 이름, 체크시 배경색
-        const contentFieldOptions = filteredAttributes.map(attr => {
-            const checked = calendarSettings.content_fields.includes(attr.name);
-            return `
-                <div class="calendar-setting-row${checked ? ' checked-row' : ''}" data-attr="${attr.name}">
-                    <input type="checkbox" class="calendar-setting-checkbox" id="content_${attr.name}" value="${attr.name}" ${checked ? 'checked' : ''} style="margin:0;">
-                    <label for="content_${attr.name}">${attr.name}</label>
-                </div>
-            `;
-        }).join('');
-
-        // 모달 삽입 후, 체크박스 이벤트로 배경색 토글
-        setTimeout(() => {
-            document.querySelectorAll('.calendar-setting-row input[type="checkbox"]').forEach(cb => {
-                cb.addEventListener('change', function() {
-                    const rowDiv = this.closest('.calendar-setting-row');
-                    if (this.checked) {
-                        rowDiv.classList.add('checked-row');
-                    } else {
-                        rowDiv.classList.remove('checked-row');
-                    }
-                });
-            });
-        }, 10);
-
+        // 모달 HTML
         const modalHTML = `
             <div id="calendarSettingsModal" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;">
-                <div style="background:white;border-radius:8px;padding:20px;width:500px;max-width:90%;max-height:80%;overflow-y:auto;">
+                <div style="background:white;border-radius:8px;padding:20px;width:540px;max-width:95vw;max-height:90vh;overflow-y:auto;">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
                         <h3 style="margin:0;color:#333;">캘린더 설정</h3>
                         <button onclick="closeCalendarSettingsModal()" style="background:none;border:none;font-size:20px;cursor:pointer;">&times;</button>
                     </div>
-                    
-                    <div style="margin-bottom:20px;">
-                        <label style="display:block;margin-bottom:8px;font-weight:bold;color:#333;">카드 생성 기준 날짜 필드:</label>
-                        <select id="dateFieldSelect" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;">
-                            ${dateFieldOptions}
-                        </select>
+                    <div style="margin-bottom:18px;">
+                        <label style="display:block;margin-bottom:8px;font-weight:bold;color:#333;">카드 생성 기준 날짜 필드(복수 선택):</label>
+                        <div id="dateFieldCheckboxes">${dateFieldOptions}</div>
                     </div>
-                    
-                    <div style="margin-bottom:20px;">
-                        <label style="display:block;margin-bottom:8px;font-weight:bold;color:#333;">카드에 표시할 내용:</label>
-                        <div style="max-height:200px;overflow-y:auto;border:1px solid #ddd;border-radius:4px;padding:10px;">
-                            ${contentFieldOptions}
-                        </div>
-                    </div>
-                    
-                    <div style="display:flex;justify-content:flex-end;gap:10px;">
+                    <div id="contentFieldsSections">${renderContentFieldsSection()}</div>
+                    ${renderCustomEventsSection()}
+                    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:18px;">
                         <button onclick="closeCalendarSettingsModal()" style="padding:8px 16px;border:1px solid #ddd;background:#f8f9fa;border-radius:4px;cursor:pointer;">취소</button>
                         <button onclick="saveCalendarSettings()" style="padding:8px 16px;border:none;background:#007bff;color:white;border-radius:4px;cursor:pointer;">저장</button>
                     </div>
@@ -114,11 +155,108 @@ function showCalendarSettingsModal() {
 
         // 기존 모달 제거 후 새 모달 추가
         const existingModal = document.getElementById('calendarSettingsModal');
-        if (existingModal) {
-            existingModal.remove();
-        }
-
+        if (existingModal) existingModal.remove();
         document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+        // 동적 이벤트 바인딩
+        // 1. 기준 날짜 필드 체크박스 → content_fields section show/hide
+        document.querySelectorAll('.date-field-checkbox').forEach(cb => {
+            cb.addEventListener('change', function() {
+                const attrId = parseInt(this.value);
+                const section = document.querySelector(`.content-fields-section[data-date-attr="${attrId}"]`);
+                if (this.checked) {
+                    section.style.display = '';
+                    // 없으면 settings.date_fields에 추가 (랜덤 색상)
+                    if (!settings.date_fields.find(df => df.attribute === attrId)) {
+                        settings.date_fields.push({ attribute: attrId, content_fields: ['회사명'], color: dateFieldColors[attrId] || randomColor() });
+                    }
+                } else {
+                    section.style.display = 'none';
+                    // settings.date_fields에서 제거
+                    settings.date_fields = settings.date_fields.filter(df => df.attribute !== attrId);
+                }
+            });
+        });
+
+        // 1-2. 컬러피커 변경 시 settings.date_fields의 color 동기화
+        document.querySelectorAll('.date-field-color').forEach(input => {
+            input.addEventListener('input', function() {
+                const attrId = parseInt(this.getAttribute('data-date-attr'));
+                let df = settings.date_fields.find(df => df.attribute === attrId);
+                if (df) df.color = this.value;
+                dateFieldColors[attrId] = this.value;
+            });
+        });
+
+        // 2. content_fields 체크박스 → settings.date_fields 동기화 + 배경색 토글
+        document.querySelectorAll('.calendar-setting-checkbox').forEach(cb => {
+            cb.addEventListener('change', function() {
+                const attrId = parseInt(this.getAttribute('data-date-attr'));
+                let df = settings.date_fields.find(df => df.attribute === attrId);
+                if (!df) {
+                    df = { attribute: attrId, content_fields: ['회사명'] };
+                    settings.date_fields.push(df);
+                }
+                if (this.checked) {
+                    if (!df.content_fields.includes(this.value)) df.content_fields.push(this.value);
+                    this.closest('.calendar-setting-row').classList.add('checked-row');
+                } else {
+                    df.content_fields = df.content_fields.filter(f => f !== this.value);
+                    this.closest('.calendar-setting-row').classList.remove('checked-row');
+                }
+                // 회사명은 항상 포함
+                if (!df.content_fields.includes('회사명')) df.content_fields.unshift('회사명');
+            });
+        });
+
+        // 3. 커스텀 이벤트 추가/삭제/수정
+        document.getElementById('addCustomEventBtn').onclick = function() {
+            window.calendarSettings.custom_events = window.calendarSettings.custom_events || [];
+            // 새 커스텀 일정 추가 (color도 포함)
+            window.calendarSettings.custom_events.push({ title: '', date: '', content: '', color: '#e5e7eb' });
+            // 모달 리렌더링 없이 행만 동적으로 추가
+            const idx = window.calendarSettings.custom_events.length - 1;
+            const rowHtml = `
+                <div class="custom-event-row" data-idx="${idx}" style="display:flex;align-items:center;margin-bottom:6px;">
+                    <input type="text" class="custom-event-title" value="" placeholder="제목" style="width:90px;margin-right:6px;">
+                    <input type="date" class="custom-event-start" value="" style="margin-right:6px;">
+                    <input type="date" class="custom-event-end" value="" style="margin-right:6px;">
+                    <input type="text" class="custom-event-content" value="" placeholder="내용" style="width:120px;margin-right:6px;">
+                    <input type="color" class="custom-event-color" value="#e5e7eb" style="margin-right:6px;width:28px;height:28px;border:none;background:none;cursor:pointer;">
+                    <button type="button" class="remove-custom-event" style="color:#fff;background:#dc3545;border:none;border-radius:3px;padding:2px 8px;cursor:pointer;">삭제</button>
+                </div>
+            `;
+            document.getElementById('customEventsList').insertAdjacentHTML('beforeend', rowHtml);
+            bindCustomEventRowEvents(idx);
+        };
+        // 삭제/수정 이벤트 바인딩 함수
+        function bindCustomEventRowEvents(idx) {
+            const row = document.querySelector(`.custom-event-row[data-idx="${idx}"]`);
+            if (!row) return;
+            row.querySelector('.remove-custom-event').onclick = function() {
+                window.calendarSettings.custom_events.splice(idx, 1);
+                row.remove();
+                // 인덱스 재정렬
+                document.querySelectorAll('.custom-event-row').forEach((r, i) => r.setAttribute('data-idx', i));
+            };
+            row.querySelector('.custom-event-title').addEventListener('input', function() {
+                window.calendarSettings.custom_events[idx].title = this.value;
+            });
+            row.querySelector('.custom-event-start').addEventListener('input', function() {
+                window.calendarSettings.custom_events[idx].start = this.value;
+            });
+            row.querySelector('.custom-event-end').addEventListener('input', function() {
+                window.calendarSettings.custom_events[idx].end = this.value;
+            });
+            row.querySelector('.custom-event-content').addEventListener('input', function() {
+                window.calendarSettings.custom_events[idx].content = this.value;
+            });
+            row.querySelector('.custom-event-color').addEventListener('input', function() {
+                window.calendarSettings.custom_events[idx].color = this.value;
+            });
+        }
+        // 기존 커스텀 이벤트 행에도 바인딩
+        document.querySelectorAll('.custom-event-row').forEach((row, idx) => bindCustomEventRowEvents(idx));
     }).catch(error => {
         console.error('캘린더 설정 모달 생성 오류:', error);
         alert('설정을 불러오는데 실패했습니다.');
@@ -133,45 +271,55 @@ function closeCalendarSettingsModal() {
 }
 
 function saveCalendarSettings() {
-    // 선택된 값들 가져오기
-    const dateField = document.getElementById('dateFieldSelect').value;
-    let contentFields = Array.from(document.querySelectorAll('#calendarSettingsModal input[type="checkbox"]:checked'))
-        .map(cb => cb.value);
-    // '회사명'을 항상 맨 앞에 추가
-    if (!contentFields.includes('회사명')) {
-        contentFields.unshift('회사명');
-    }
+    const modal = document.getElementById('calendarSettingsModal');
+    if (!modal) return;
 
-    // 최소 하나의 내용 필드는 선택되어야 함
-    if (contentFields.length === 0) {
-        alert('카드에 표시할 내용을 최소 하나 선택해주세요.');
-        return;
-    }
+    // 1. 기준 날짜 필드
+    const dateFieldIds = Array.from(modal.querySelectorAll('.date-field-checkbox:checked')).map(cb => parseInt(cb.value));
 
-    const newSettings = {
-        date_field: dateField,
-        content_fields: contentFields
-    };
+    // 1-1. 각 필드의 컬러 값 매핑
+    const colorInputs = Array.from(modal.querySelectorAll('.date-field-color'));
+    const colorMap = {};
+    colorInputs.forEach(input => {
+        const attrId = parseInt(input.getAttribute('data-date-attr'));
+        colorMap[attrId] = input.value;
+    });
 
-    // 설정 저장
+    // 2. 각 날짜 필드별 표시 내용 + color
+    const date_fields = dateFieldIds.map(attrId => {
+        const checkedFields = ['회사명'].concat(
+            Array.from(modal.querySelectorAll(`.content-fields-section[data-date-attr="${attrId}"] input[type="checkbox"]:checked`)).map(cb => cb.value)
+        ).filter((v, i, arr) => arr.indexOf(v) === i);
+        return { attribute: attrId, content_fields: checkedFields, color: colorMap[attrId] };
+    });
+
+    // 3. 커스텀 이벤트 (color 포함)
+    const custom_events = Array.from(modal.querySelectorAll('.custom-event-row')).map(row => ({
+        title: row.querySelector('.custom-event-title').value,
+        start: row.querySelector('.custom-event-start').value,
+        end: row.querySelector('.custom-event-end').value,
+        date: row.querySelector('.custom-event-start').value, // 호환성
+        content: row.querySelector('.custom-event-content').value,
+        color: row.querySelector('.custom-event-color').value
+    }));
+
+    const settings = { date_fields, custom_events };
+
     fetch('/600/save_calendar_settings/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'X-CSRFToken': getCsrfToken()
         },
-        body: JSON.stringify(newSettings)
+        body: JSON.stringify({ settings })
     }).then(response => response.json())
     .then(data => {
         if (data.success) {
-            // 설정 업데이트
-            calendarSettings = newSettings;
-            
-            // 캘린더 새로고침
-            if (window.calendar) {
+            if (window.calendar && typeof window.calendar.refetchEvents === 'function') {
                 window.calendar.refetchEvents();
+            } else {
+                initializeCalendarWithSettings();
             }
-            
             closeCalendarSettingsModal();
             alert('캘린더 설정이 저장되었습니다.');
         } else {
@@ -199,13 +347,30 @@ function getCsrfToken() {
     return '';
 }
 
+function hexToRgba(hex, alpha) {
+    hex = hex.replace('#', '');
+    if (hex.length === 3) hex = hex.split('').map(x => x + x).join('');
+    const r = parseInt(hex.substring(0,2), 16);
+    const g = parseInt(hex.substring(2,4), 16);
+    const b = parseInt(hex.substring(4,6), 16);
+    return `rgba(${r},${g},${b},${alpha})`;
+}
+
 // 캘린더 초기화 함수 (설정을 반영한 버전)
 function initializeCalendarWithSettings() {
     const calendarEl = document.getElementById('calendar');
     if (!calendarEl) return;
+    if (!window.calendarSettings) window.calendarSettings = { date_fields: [], custom_events: [] };
 
-    // 설정에 따른 이벤트 URL 생성
-    const eventUrl = `/600/calendar_events/?date_field=${encodeURIComponent(calendarSettings.date_field)}&${calendarSettings.content_fields.map(field => `content_fields=${encodeURIComponent(field)}`).join('&')}`;
+    // 모든 기준 날짜 필드의 이벤트를 한 번에 불러옴
+    const eventUrl = `/600/calendar_events/`;
+
+    // 캘린더 렌더 직후 한 번만 모든 셀의 테두리 초기화
+    function clearAllCellBorders() {
+        document.querySelectorAll('.fc-daygrid-day').forEach(cell => {
+            cell.style.border = '';
+        });
+    }
 
     const calendar = new FullCalendar.Calendar(calendarEl, {
         initialView: 'dayGridMonth',
@@ -217,14 +382,28 @@ function initializeCalendarWithSettings() {
             center: 'title',
             right: 'dayGridMonth,listMonth'
         },
+        eventOrder: function(a, b) {
+            // 커스텀 일정이 항상 먼저(위에) 오도록
+            if ((b.extendedProps.is_custom ? 1 : 0) - (a.extendedProps.is_custom ? 1 : 0) !== 0) {
+                return (b.extendedProps.is_custom ? 1 : 0) - (a.extendedProps.is_custom ? 1 : 0);
+            }
+            // 같은 종류면 기본 정렬
+            return a.start - b.start;
+        },
         eventContent: function(arg) {
             const name = arg.event.title;
             const content = arg.event.extendedProps.content || {};
             const status = arg.event.extendedProps.status_name;
             const statusColor = arg.event.extendedProps.status_color || '#bbb';
+            const dateFieldName = arg.event.extendedProps.date_field_name || '';
+            let dateFieldColor = arg.event.extendedProps.date_field_color || arg.event.extendedProps.color;
+            if (!dateFieldColor || dateFieldColor === 'undefined' || dateFieldColor === '') dateFieldColor = '#e5e7eb';
+            if (arg.event.extendedProps.is_custom) {
+                console.log('커스텀 일정 카드 color:', name, dateFieldColor);
+            }
+            let colorRgba = hexToRgba(dateFieldColor, arg.event.extendedProps.is_custom ? 0.45 : 0.18);
 
-            // 카드 필드 렌더링
-            const fields = calendarSettings.content_fields
+            const fields = Object.keys(content)
                 .filter(field => field !== '회사명')
                 .map((field, idx, arr) => {
                     const isLast = idx === arr.length - 1;
@@ -242,13 +421,11 @@ function initializeCalendarWithSettings() {
                     `;
                 }).join('');
 
-            // 상태 표시
             let statusHtml = '';
             if (status) {
                 statusHtml = `<span style="display:inline-block;background:${statusColor};color:#fff;padding:2px 8px;border-radius:6px;font-size:0.92em;margin-top:6px;">${status}</span>`;
             }
 
-            // 카드 전체 스타일
             return {
                 html: `
                     <div style="
@@ -256,12 +433,15 @@ function initializeCalendarWithSettings() {
                         box-sizing:border-box;
                         padding:10px 12px 8px 12px;
                         border-radius:12px;
-                        background:#fff;
+                        background:${colorRgba};
                         box-shadow:0 2px 8px 0 rgba(0,0,0,0.06);
                         border:1px solid #e5e7eb;
                         color:#222;
                     ">
-                        <div style="font-weight:bold; font-size:1.08em; margin-bottom:6px;">${name}</div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;">
+                        <div style="width:30%; font-size:1.05em;font-weight:bold;color:${dateFieldColor};margin-bottom:2px;">${dateFieldName}</div>
+                        <div style="width:70%; font-weight:bold; font-size:1.08em; margin-bottom:6px;">${name}</div>
+                    </div>
                         ${fields}
                         ${statusHtml}
                     </div>
@@ -269,6 +449,10 @@ function initializeCalendarWithSettings() {
             };
         },
         eventClick: function(info) {
+            // 커스텀 일정이면 상세보기 모달을 띄우지 않음
+            if (info.event.extendedProps.is_custom) {
+                return;
+            }
             // 이벤트 클릭 시 기존 상세보기 모달 표시
             const rowId = info.event.id;
             fetch(`/600/get_row_details/${rowId}/`)
@@ -280,35 +464,41 @@ function initializeCalendarWithSettings() {
                         alert('상세정보 불러오기 실패: ' + (data.error || ''));
                     }
                 });
+        },
+        eventDidMount: function(arg) {
+            // 커스텀 일정 기간 지원: start~end
+            if (arg.event.extendedProps.is_custom) {
+                let color = arg.event.extendedProps.date_field_color || arg.event.extendedProps.color;
+                if (!color || color === 'undefined' || color === '') color = '#e5e7eb';
+                // 기간 처리
+                let start = arg.event.start;
+                let end = arg.event.end ? arg.event.end : start; // end는 exclusive
+                let current = new Date(start);
+                while (current < end) {
+                    const dateStr = current.toISOString().slice(0, 10);
+                    const cell = document.querySelector(`.fc-daygrid-day[data-date='${dateStr}']`);
+                    if (cell) {
+                        cell.style.border = `2.5px solid ${color}`;
+                    }
+                    current.setDate(current.getDate() + 1);
+                }
+            }
+        },
+        datesSet: function() {
+            // 뷰가 바뀔 때마다 셀 테두리 초기화
+            clearAllCellBorders();
         }
     });
 
     calendar.render();
     window.calendar = calendar;
+    // 렌더 직후 한 번 초기화
+    clearAllCellBorders();
 }
 
-// 페이지 로드 시 캘린더 설정 불러오기 및 초기화
-document.addEventListener('DOMContentLoaded', function() {
-    // 캘린더 설정 불러오기
-    fetch('/600/get_calendar_settings/')
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                calendarSettings = data.settings;
-            }
-            // 캘린더 초기화
-            initializeCalendarWithSettings();
-        })
-        .catch(error => {
-            console.error('캘린더 설정 불러오기 오류:', error);
-            // 기본 설정으로 캘린더 초기화
-            initializeCalendarWithSettings();
-        });
-});
-
-// 캘린더 모달 외부 클릭 시 닫기
-document.addEventListener('click', function(e) {
-  if (e.target && e.target.id === 'calendarSettingsModal') {
-      closeCalendarSettingsModal();
-  }
-});
+// DOMContentLoaded 시점에 캘린더 자동 렌더링
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeCalendarWithSettings);
+} else {
+    initializeCalendarWithSettings();
+}
