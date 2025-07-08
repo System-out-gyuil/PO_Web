@@ -1077,7 +1077,7 @@ function createImageFileElement(fileData, index) {
 // 이미지 썸네일 로드 함수
 function loadImageThumbnail(fileId, fileInfo) {
     // 서버에서 새로운 서명된 URL 요청
-    fetch(`/600/get_file_preview_url/${fileId}/?row_id=${window.currentDetailRowId}`, {
+    fetch(`/600/get_file_preview_url_note/${fileId}/?row_id=${window.currentDetailRowId}`, {
         method: 'GET',
         headers: {
             'X-CSRFToken': getCsrfToken()
@@ -1160,7 +1160,7 @@ function showImagePreview(fileId, filename) {
     document.body.appendChild(modal);
     
     // 새로운 서명된 URL 요청
-    fetch(`/600/get_file_preview_url/${fileId}/?row_id=${window.currentDetailRowId}`, {
+    fetch(`/600/get_file_preview_url_note/${fileId}/?row_id=${window.currentDetailRowId}`, {
         method: 'GET',
         headers: {
             'X-CSRFToken': getCsrfToken()
@@ -1265,37 +1265,67 @@ function createDocumentFileElement(fileData, index) {
       } else if (fileInfo.content_type.includes('excel') || fileInfo.content_type.includes('xlsx')) {
           fileIcon = '📗';
       } else if (fileInfo.content_type.includes('powerpoint') || fileInfo.content_type.includes('pptx')) {
-          fileIcon = '📙';
+          fileIcon = '��';
       }
   }
   
-  fileElement.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-          <div style="flex: 1;">
-              <div style="font-weight: bold; color: #333; margin-bottom: 4px;">
-                  ${fileIcon} ${fileInfo.original_filename || fileInfo.filename}
-              </div>
-              <div style="font-size: 12px; color: #666;">
-                  크기: ${(fileInfo.file_size / 1024 / 1024).toFixed(2)}MB
-              </div>
-          </div>
-          <div style="display: flex; gap: 5px; margin-left: 15px;">
-            <button onclick="showFilePreview('${fileId}', ${JSON.stringify(fileInfo).replace(/"/g, '&quot;')})" 
-                    style="padding: 6px 12px; background: #ffc107; color: #333; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;">
-                  미리보기
-            </button>
-              <a href="${fileInfo.download_url}" download="${fileInfo.original_filename || fileInfo.filename}" 
-                 style="padding: 6px 12px; background: #6c757d; color: white; text-decoration: none; border-radius: 4px; font-size: 12px; display: inline-block;">
-                  다운로드
-              </a>
-              <button onclick="deleteAudioFileItem('${fileId}', '${fileInfo.original_filename || fileInfo.filename}')" 
-                      style="padding: 6px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
-                  삭제
-              </button>
-          </div>
+  // 미리보기, 다운로드, 삭제 버튼 컨테이너 생성
+  const buttonContainer = document.createElement('div');
+  buttonContainer.style.display = 'flex';
+  buttonContainer.style.gap = '5px';
+  buttonContainer.style.marginLeft = '15px';
+
+  // 미리보기 버튼
+  const previewBtn = document.createElement('button');
+  previewBtn.textContent = '미리보기';
+  previewBtn.style.cssText = 'padding: 6px 12px; background: #ffc107; color: #333; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;';
+  previewBtn.onclick = function(e) {
+    e.stopPropagation();
+    showFilePreview(fileId, fileInfo);
+  };
+
+  // 다운로드 버튼
+  const downloadBtn = document.createElement('a');
+  downloadBtn.textContent = '다운로드';
+  downloadBtn.href = fileInfo.download_url;
+  downloadBtn.download = fileInfo.original_filename || fileInfo.filename;
+  downloadBtn.style.cssText = 'padding: 6px 12px; background: #6c757d; color: white; text-decoration: none; border-radius: 4px; font-size: 12px; display: inline-block;';
+
+  // 삭제 버튼
+  const deleteBtn = document.createElement('button');
+  deleteBtn.textContent = '삭제';
+  deleteBtn.style.cssText = 'padding: 6px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;';
+  deleteBtn.onclick = function(e) {
+    e.stopPropagation();
+    deleteAudioFileItem(fileId, fileInfo.original_filename || fileInfo.filename);
+  };
+
+  buttonContainer.appendChild(previewBtn);
+  buttonContainer.appendChild(downloadBtn);
+  buttonContainer.appendChild(deleteBtn);
+
+  // 파일 정보 영역 생성
+  const infoDiv = document.createElement('div');
+  infoDiv.style.flex = '1';
+  infoDiv.innerHTML = `
+      <div style="font-weight: bold; color: #333; margin-bottom: 4px;">
+          ${fileIcon} ${fileInfo.original_filename || fileInfo.filename}
+      </div>
+      <div style="font-size: 12px; color: #666;">
+          크기: ${(fileInfo.file_size / 1024 / 1024).toFixed(2)}MB
       </div>
   `;
-  
+
+  // 전체 레이아웃
+  const rowDiv = document.createElement('div');
+  rowDiv.style.display = 'flex';
+  rowDiv.style.justifyContent = 'space-between';
+  rowDiv.style.alignItems = 'center';
+  rowDiv.style.marginBottom = '10px';
+  rowDiv.appendChild(infoDiv);
+  rowDiv.appendChild(buttonContainer);
+
+  fileElement.appendChild(rowDiv);
   return fileElement;
 }
 
@@ -1556,7 +1586,7 @@ function createAddPlaceholder(insertIndex) {
     };
     fileBtn.onclick = function(e) {
         e.stopPropagation();
-        showMultiFileUpload(insertIndex);
+        addFileCell();
     };
     btnContainer.appendChild(textBtn);
     btnContainer.appendChild(fileBtn);
@@ -1851,6 +1881,7 @@ function showFilePreview(fileId, fileInfo) {
     
     const fileName = fileInfo.original_filename || fileInfo.filename || 'Unknown';
     const contentType = fileInfo.content_type || '';
+    const fileExt = fileName.split('.').pop()?.toLowerCase() || '';
     
     // 로딩 상태 표시
     modal.innerHTML = `
@@ -1877,7 +1908,7 @@ function showFilePreview(fileId, fileInfo) {
     document.body.appendChild(modal);
     
     // 새로운 S3 서명된 URL 요청
-    fetch(`/600/get_file_preview_url/${fileId}/?row_id=${window.currentDetailRowId}`, {
+    fetch(`/600/get_file_preview_url_note/${fileId}/?row_id=${window.currentDetailRowId}`, {
         method: 'GET',
         headers: {
             'X-CSRFToken': getCsrfToken()
@@ -1890,7 +1921,7 @@ function showFilePreview(fileId, fileInfo) {
             let previewContent = '';
             
             // 파일 타입에 따른 미리보기 생성
-            if (contentType.startsWith('image/')) {
+            if (contentType.startsWith('image/') || fileInfo.type === 'img') {
                 // 이미지 파일
                 previewContent = `
                     <img src="${fileUrl}" 
@@ -1898,7 +1929,7 @@ function showFilePreview(fileId, fileInfo) {
                          style="max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px;"
                          onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjhmOWZhIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzZjNzU3ZCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIGxvYWQgZmFpbGVkPC90ZXh0Pjwvc3ZnPg==';">
                 `;
-            } else if (contentType.includes('pdf')) {
+            } else if (contentType === 'application/pdf' || fileExt === 'pdf' || fileInfo.type === 'pdf') {
                 // PDF 파일
                 previewContent = `
                     <iframe src="${fileUrl}" 
@@ -1934,6 +1965,31 @@ function showFilePreview(fileId, fileInfo) {
                         </audio>
                     </div>
                 `;
+            } else if (['docx', 'doc', 'pptx', 'ppt', 'xlsx', 'xls'].includes(fileExt) || 
+                       contentType.includes('wordprocessingml') || 
+                       contentType.includes('presentationml') || 
+                       contentType.includes('spreadsheetml') ||
+                       contentType.includes('msword')) {
+                // Office 문서 파일들 - Google Docs Viewer 사용
+                const encodedUrl = encodeURIComponent(fileUrl);
+                previewContent = `
+                    <div style="width: 100%; height: 100%; display: flex; flex-direction: column;">
+                        <iframe src="https://docs.google.com/viewer?url=${encodedUrl}&embedded=true"
+                                style="flex: 1; border: none; border-radius: 8px;"
+                                title="${fileName}">
+                        </iframe>
+                        <div style="text-align: center; margin-top: 15px; padding: 10px;">
+                            <button onclick="window.open('${fileUrl}', '_blank')" 
+                                    style="padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">
+                                새 창에서 열기
+                            </button>
+                            <button onclick="window.open('${fileInfo.download_url || fileUrl}', '_blank')" 
+                                    style="padding: 8px 16px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                다운로드
+                            </button>
+                        </div>
+                    </div>
+                `;
             } else {
                 // 지원하지 않는 파일 타입
                 previewContent = `
@@ -1943,10 +1999,14 @@ function showFilePreview(fileId, fileInfo) {
                         <div style="font-size: 14px; color: #666; margin-bottom: 20px;">
                             이 파일 타입은 미리보기를 지원하지 않습니다.
                         </div>
-                        <a href="${fileUrl}" target="_blank" 
-                           style="padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 4px; font-weight: 500;">
+                        <button onclick="window.open('${fileUrl}', '_blank')" 
+                                style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; font-weight: 500; margin-right: 10px; cursor: pointer;">
                             새 창에서 열기
-                        </a>
+                        </button>
+                        <button onclick="window.open('${fileInfo.download_url || fileUrl}', '_blank')" 
+                                style="padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 4px; font-weight: 500; cursor: pointer;">
+                            다운로드
+                        </button>
                     </div>
                 `;
             }
@@ -1967,10 +2027,10 @@ function showFilePreview(fileId, fileInfo) {
                         <div style="font-size: 14px; color: #666; margin-bottom: 20px;">
                             ${data.error || '파일을 불러올 수 없습니다.'}
                         </div>
-                        <a href="${fileInfo.preview_url || fileInfo.download_url}" target="_blank" 
-                           style="padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 4px; font-weight: 500;">
+                        <button onclick="window.open('${fileInfo.preview_url || fileInfo.download_url}', '_blank')" 
+                                style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; font-weight: 500; cursor: pointer;">
                             새 창에서 열기
-                        </a>
+                        </button>
                     </div>
                 `;
             }
@@ -1988,10 +2048,10 @@ function showFilePreview(fileId, fileInfo) {
                     <div style="font-size: 14px; color: #666; margin-bottom: 20px;">
                         파일을 불러올 수 없습니다. 새 창에서 열어주세요.
                     </div>
-                    <a href="${fileInfo.preview_url || fileInfo.download_url}" target="_blank" 
-                       style="padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 4px; font-weight: 500;">
+                    <button onclick="window.open('${fileInfo.preview_url || fileInfo.download_url}', '_blank')" 
+                            style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; font-weight: 500; cursor: pointer;">
                         새 창에서 열기
-                    </a>
+                    </button>
                 </div>
             `;
         }

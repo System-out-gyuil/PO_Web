@@ -1,6 +1,6 @@
 from django.urls import path
 from . import views
-from .views import upload_note_file, delete_note_file, update_note_order_and_notes, get_file_preview_url
+from .views import upload_note_file, delete_note_file, update_note_order_and_notes, get_file_preview_url, get_file_preview_url_note
 
 urlpatterns = [
     path('', views.diary_list, name='diary_list'),
@@ -49,5 +49,6 @@ urlpatterns = [
     path('upload_note_file/', upload_note_file, name='upload_note_file'),
     path('delete_note_file/', delete_note_file, name='delete_note_file'),
     path('update_note_order_and_notes/', update_note_order_and_notes, name='update_note_order_and_notes'),
-    path('get_file_preview_url/<str:file_id>/', get_file_preview_url, name='get_file_preview_url'),
+    path('get_file_preview_url/<str:row_id>/<str:field_name>/', get_file_preview_url, name='get_file_preview_url'),
+    path('get_file_preview_url_note/<str:file_id>/', get_file_preview_url_note, name='get_file_preview_url_note'),
 ] 

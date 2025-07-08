@@ -1141,6 +1141,29 @@ def upload_file(request):
                 print(f"  서명된 다운로드 URL: {signed_download_url}")
                 print(f"  서명된 미리보기 URL: {signed_preview_url}")
                 
+                # 파일 타입 결정 (확장자와 content_type 기반)
+                file_extension = os.path.splitext(uploaded_file.name)[1].lower()
+                content_type = uploaded_file.content_type or ''
+                
+                # 파일 타입 분류
+                file_type = 'file'  # 기본값
+                if content_type.startswith('image/'):
+                    file_type = 'img'
+                elif content_type == 'application/pdf':
+                    file_type = 'pdf'
+                elif content_type.startswith('audio/'):
+                    file_type = 'audio'
+                elif content_type.startswith('video/'):
+                    file_type = 'video'
+                elif file_extension in ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']:
+                    file_type = 'img'
+                elif file_extension == '.pdf':
+                    file_type = 'pdf'
+                elif file_extension in ['.mp3', '.wav', '.ogg', '.m4a']:
+                    file_type = 'audio'
+                elif file_extension in ['.mp4', '.avi', '.mov', '.wmv']:
+                    file_type = 'video'
+                
                 # 파일 정보를 JSON 형태로 저장
                 file_data = {
                     'original_filename': uploaded_file.name,
@@ -1150,7 +1173,8 @@ def upload_file(request):
                     'preview_url': signed_preview_url,
                     'public_url': download_url,
                     'file_size': uploaded_file.size,
-                    'content_type': uploaded_file.content_type
+                    'content_type': uploaded_file.content_type,
+                    'type': file_type  # 파일 타입 추가
                 }
                 
                 # AttributeValue에 파일 정보 저장
@@ -1173,7 +1197,8 @@ def upload_file(request):
                         'download_url': signed_download_url,
                         'preview_url': signed_preview_url,
                         'file_size': uploaded_file.size,
-                        'content_type': uploaded_file.content_type
+                        'content_type': uploaded_file.content_type,
+                        'type': file_type  # 파일 타입 추가
                     }
                 })
                 
@@ -3593,116 +3618,118 @@ def update_note_order_and_notes(request):
     })
 
 @csrf_exempt
-def get_file_preview_url(request, file_id):
+def get_file_preview_url_note(request, file_id):
     """파일 미리보기를 위한 새로운 S3 서명된 URL을 생성하는 API"""
     if request.method == 'GET':
+        print(f"get_file_preview_url_note 호출됨: {file_id}")
         try:
             row_id = request.GET.get('row_id')
-            
             if not row_id:
-                return JsonResponse({
-                    'success': False,
-                    'error': 'row_id가 필요합니다.'
-                })
-            
-            # 사용자 ID를 1로 고정
+                return JsonResponse({'success': False, 'error': 'row_id가 필요합니다.'})
             user = User.objects.get(id=1)
-            
-            # Row와 음성파일 속성 조회
             row = Row.objects.get(id=row_id, user=user)
             audio_attribute = Attribute.objects.get(name='음성파일', user=user)
-            
-            # 음성파일 데이터 조회
-            attr_value = AttributeValue.objects.filter(
-                row=row,
-                attribute=audio_attribute
-            ).first()
-            
+            attr_value = AttributeValue.objects.filter(row=row, attribute=audio_attribute).first()
             if not attr_value or not attr_value.value:
-                return JsonResponse({
-                    'success': False,
-                    'error': '파일 데이터를 찾을 수 없습니다.'
-                })
-            
+                return JsonResponse({'success': False, 'error': '파일 데이터를 찾을 수 없습니다.'})
             try:
                 audio_data = json.loads(attr_value.value)
             except json.JSONDecodeError:
-                return JsonResponse({
-                    'success': False,
-                    'error': '잘못된 데이터 형식입니다.'
-                })
-            
-            # 파일 정보 찾기 (id, stored_filename, filename 등으로 유연하게)
-            file_info = None  # ← 이 줄 추가!
+                return JsonResponse({'success': False, 'error': '잘못된 데이터 형식입니다.'})
+            file_info = None
             if 'data' in audio_data:
                 for k, v in audio_data['data'].items():
                     if not isinstance(v, dict):
                         continue
-                    if (
-                        k == file_id or
-                        v.get('id') == file_id or
-                        v.get('stored_filename') == file_id or
-                        v.get('filename') == file_id
-                    ):
+                    # 정확히 key 또는 stored_filename으로만 매칭
+                    if k == file_id or v.get('stored_filename') == file_id:
                         file_info = v
                         break
-            
-            # S3 키 가져오기
+            if not file_info:
+                return JsonResponse({'success': False, 'error': f'파일 ID {file_id}를 찾을 수 없습니다.'})
             s3_key = file_info.get('s3_key')
             if not s3_key:
-                return JsonResponse({
-                    'success': False,
-                    'error': 'S3 키가 없습니다.'
-                })
-            
-            # 새로운 S3 서명된 URL 생성
+                return JsonResponse({'success': False, 'error': 'S3 키가 없습니다.'})
             try:
                 import boto3
                 from django.conf import settings
-                
                 s3_client = boto3.client(
                     's3',
                     aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
                     aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
                     region_name=settings.AWS_S3_REGION_NAME
                 )
-                
-                # 미리보기용 서명된 URL 생성 (1시간 유효)
+                content_type = file_info.get('content_type', '')
+                if (content_type == 'application/pdf' or 
+                    content_type.startswith('image/') or
+                    content_type == 'text/plain' or
+                    content_type == 'text/html' or
+                    content_type == 'text/css' or
+                    content_type == 'text/javascript' or
+                    content_type == 'application/json' or
+                    content_type == 'application/xml'):
+                    content_disposition = 'inline'
+                else:
+                    content_disposition = 'attachment'
                 signed_preview_url = s3_client.generate_presigned_url(
                     'get_object',
                     Params={
                         'Bucket': settings.AWS_STORAGE_BUCKET_NAME,
                         'Key': s3_key,
-                        'ResponseContentDisposition': 'inline'
+                        'ResponseContentDisposition': content_disposition
                     },
-                    ExpiresIn=3600  # 1시간
+                    ExpiresIn=3600
                 )
-                
-                return JsonResponse({
-                    'success': True,
-                    'preview_url': signed_preview_url
-                })
-                
+                return JsonResponse({'success': True, 'preview_url': signed_preview_url})
             except Exception as e:
-                print(f"S3 서명된 URL 생성 실패: {e}")
-                return JsonResponse({
-                    'success': False,
-                    'error': f'S3 URL 생성 실패: {str(e)}'
-                })
-            
+                return JsonResponse({'success': False, 'error': f'S3 URL 생성 실패: {str(e)}'})
         except Row.DoesNotExist:
-            return JsonResponse({
-                'success': False,
-                'error': '해당 행을 찾을 수 없습니다.'
-            })
+            return JsonResponse({'success': False, 'error': '해당 행을 찾을 수 없습니다.'})
         except Exception as e:
-            print(f"파일 미리보기 URL 생성 중 오류: {e}")
-            return JsonResponse({
-                'success': False,
-                'error': f'처리 중 오류가 발생했습니다: {str(e)}'
-            })
-    
-    return JsonResponse({
-        'success': False,
-        'error': 'GET 요청만 허용됩니다.'
-    })
+            return JsonResponse({'success': False, 'error': f'처리 중 오류가 발생했습니다: {str(e)}'})
+    return JsonResponse({'success': False, 'error': 'GET 요청만 허용됩니다.'})
+
+@require_GET
+def get_file_preview_url(request, row_id, field_name):
+    """단일 파일 필드(영업노트 방식) presigned URL 반환"""
+    try:
+        user = User.objects.get(id=1)
+        row = Row.objects.get(id=row_id, user=user)
+        attr = Attribute.objects.get(name=field_name, user=user)
+        attr_value = AttributeValue.objects.get(row=row, attribute=attr)
+        file_info = json.loads(attr_value.value)
+        s3_key = file_info.get('s3_key')
+        if not s3_key:
+            return JsonResponse({'success': False, 'error': 'S3 키가 없습니다.'})
+        import boto3
+        from django.conf import settings
+        s3_client = boto3.client(
+            's3',
+            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+            region_name=settings.AWS_S3_REGION_NAME
+        )
+        content_type = file_info.get('content_type', '')
+        if (content_type == 'application/pdf' or 
+            content_type.startswith('image/') or
+            content_type == 'text/plain' or
+            content_type == 'text/html' or
+            content_type == 'text/css' or
+            content_type == 'text/javascript' or
+            content_type == 'application/json' or
+            content_type == 'application/xml'):
+            content_disposition = 'inline'
+        else:
+            content_disposition = 'attachment'
+        signed_preview_url = s3_client.generate_presigned_url(
+            'get_object',
+            Params={
+                'Bucket': settings.AWS_STORAGE_BUCKET_NAME,
+                'Key': s3_key,
+                'ResponseContentDisposition': content_disposition
+            },
+            ExpiresIn=3600
+        )
+        return JsonResponse({'success': True, 'preview_url': signed_preview_url})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})

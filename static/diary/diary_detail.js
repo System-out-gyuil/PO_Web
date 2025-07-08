@@ -334,24 +334,43 @@ function showDetailModal(rowData, rowId) {
                         }
                     }
                     if (hasFile && fileInfo) {
+                        // 파일 키 추출 - 실제 저장된 키를 찾기 위해 여러 방법 시도
+                        let fileKey = '';
+                        if (fileInfo.id) {
+                            fileKey = fileInfo.id;
+                        } else if (fileInfo.stored_filename) {
+                            // stored_filename에서 UUID 부분만 추출
+                            const filename = fileInfo.stored_filename;
+                            if (filename.includes('-')) {
+                                // UUID 형태인 경우 그대로 사용
+                                fileKey = filename;
+                            } else {
+                                // 숫자 키인 경우 그대로 사용
+                                fileKey = filename;
+                            }
+                        } else if (fileInfo.filename) {
+                            fileKey = fileInfo.filename;
+                        }
+                        
+                        console.log('파일 미리보기용 키:', fileKey, 'fileInfo:', fileInfo);
+                        
                         // 타입 분기
                         if (fileInfo.type === 'img') {
                             inputHtml = `
-                                <div style="text-align:center;">
-                                    <div style="margin-top:8px;">
-                                        <button onclick="showFilePreview('${fileInfo.id || fileInfo.stored_filename || fileInfo.filename}', ${JSON.stringify(fileInfo).replace(/\"/g, '&quot;')}, '${rowId}', '${attr.name}')"
-                                                style="padding: 6px 12px; background: #ffc107; color: #333; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500; margin-right: 5px;">
-                                            미리보기
-                                        </button>
-                                        <button onclick="window.open('${fileInfo.download_url}', '_blank')"
-                                                style="padding: 6px 12px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500; margin-right: 5px;">
-                                            다운로드
-                                        </button>
-                                        <button onclick="deleteFile('${rowId}', '${attr.name}')"
-                                                style="padding: 6px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;">
-                                            삭제
-                                        </button>
-                                    </div>
+                                <div style="display:flex;align-items:center;gap:8px;">
+                                    <span style="width:60%;">📄 ${displayFileName}</span>
+                                    <button onclick="showFilePreviewModal(${JSON.stringify({...fileInfo, field_name: attr.name}).replace(/\"/g, '&quot;')})"
+                                            style="padding: 6px 12px; background: #ffc107; color: #333; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500; margin-right: 5px;">
+                                        미리보기
+                                    </button>
+                                    <button onclick="window.open('${fileInfo.download_url}', '_blank')"
+                                            style="padding: 6px 12px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500; margin-right: 5px;">
+                                        다운로드
+                                    </button>
+                                    <button onclick="deleteFile('${rowId}', '${attr.name}')"
+                                            style="padding: 6px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;">
+                                        삭제
+                                    </button>
                                 </div>
                             `;
                         } else if (fileInfo.type === 'audio') {
@@ -375,7 +394,7 @@ function showDetailModal(rowData, rowId) {
                             inputHtml = `
                                 <div style="display:flex;align-items:center;gap:8px;">
                                     <span style="width:60%;">📄 ${displayFileName}</span>
-                                    <button onclick="showFilePreview('${fileInfo.id || fileInfo.stored_filename || fileInfo.filename}', ${JSON.stringify(fileInfo).replace(/\"/g, '&quot;')}, '${rowId}', '${attr.name}')"
+                                    <button onclick="showFilePreviewModal(${JSON.stringify({...fileInfo, field_name: attr.name}).replace(/\"/g, '&quot;')})"
                                             style="padding: 6px 12px; background: #ffc107; color: #333; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500; margin-right: 5px;">
                                         미리보기
                                     </button>
@@ -2778,10 +2797,7 @@ function updateFileFieldInModal(rowId, fieldName, fileInfo) {
             <div style="display: flex; align-items: center;">
                 <span style="flex: 1; color: #28a745; font-size: 14px; padding: 8px 0;">📎 ${fileName} (업로드 완료)</span>
                 <button type="button" 
-                    onclick='showFilePreviewModal(${JSON.stringify({
-                        ...fileInfo,
-                        download_url: fileInfo.preview_url || fileInfo.download_url
-                    }).replace(/'/g, "&#39;").replace(/\"/g, "&quot;")})' 
+                    onclick="showFilePreviewModal(${JSON.stringify({...fileInfo, field_name: attr.name}).replace(/\"/g, "&#39;").replace(/\"/g, "&quot;")})" 
                     style="
                         padding: 6px 12px; 
                         background: #ffc107; 
@@ -3000,38 +3016,93 @@ function showFilePreview(fileId, fileInfo, rowId, fieldName) {
         showNotification('행 정보가 올바르지 않습니다.', 'error');
         return;
     }
+    
+    const fileName = fileInfo.original_filename || fileInfo.filename || fileInfo.stored_filename || 'Unknown';
+    const contentType = fileInfo.content_type || '';
+    const fileExt = fileName.split('.').pop()?.toLowerCase() || '';
+    
     // 서버에 row_id도 함께 전달
-    fetch(`/600/get_file_preview_url/${fileId}/?row_id=${rowId}`)
+    fetch(`/600/get_file_preview_url/${fileId}/${fieldName}/?row_id=${rowId}`)
         .then(r => r.json())
         .then(data => {
             if (data.success && data.preview_url) {
-                // 파일 타입에 따라 미리보기 모달 표시 (이미지, PDF, 텍스트 등)
+                // 파일 타입에 따라 미리보기 모달 표시
                 let contentHtml = '';
-                if (fileInfo && fileInfo.type === 'img') {
-                    contentHtml = `<img src="${data.preview_url}" alt="미리보기" style="max-width:100%;max-height:70vh;display:block;margin:0 auto;">`;
-                } else if (fileInfo && fileInfo.type === 'pdf') {
-                    contentHtml = `<iframe src="${data.preview_url}" style="width:90vw;height:70vh;border:none;"></iframe>`;
-                } else if (fileInfo && fileInfo.type === 'audio') {
-                    contentHtml = `<audio controls src="${data.preview_url}" style="width:100%;"></audio>`;
-                } else if (fileInfo && fileInfo.type === 'video') {
-                    contentHtml = `<video controls src="${data.preview_url}" style="max-width:100%;max-height:70vh;"></video>`;
+                const fileUrl = data.preview_url;
+                
+                if (contentType.startsWith('image/') || fileInfo.type === 'img') {
+                    // 이미지 파일
+                    contentHtml = `<img src="${fileUrl}" alt="미리보기" style="max-width:100%;max-height:70vh;display:block;margin:0 auto;">`;
+                } else if (contentType === 'application/pdf' || fileExt === 'pdf' || fileInfo.type === 'pdf') {
+                    // PDF 파일
+                    contentHtml = `<iframe src="${fileUrl}" style="width:90vw;height:70vh;border:none;"></iframe>`;
+                } else if (contentType.includes('audio/') || fileInfo.type === 'audio') {
+                    // 오디오 파일
+                    contentHtml = `<audio controls src="${fileUrl}" style="width:100%;"></audio>`;
+                } else if (contentType.includes('video/') || fileInfo.type === 'video') {
+                    // 비디오 파일
+                    contentHtml = `<video controls src="${fileUrl}" style="max-width:100%;max-height:70vh;"></video>`;
+                } else if (['docx', 'doc', 'pptx', 'ppt', 'xlsx', 'xls'].includes(fileExt) || 
+                           contentType.includes('wordprocessingml') || 
+                           contentType.includes('presentationml') || 
+                           contentType.includes('spreadsheetml') ||
+                           contentType.includes('msword')) {
+                    // Office 문서 파일들 - Google Docs Viewer 사용
+                    const encodedUrl = encodeURIComponent(fileUrl);
+                    contentHtml = `
+                        <div style="width: 90vw; height: 70vh; display: flex; flex-direction: column;">
+                            <iframe src="https://docs.google.com/viewer?url=${encodedUrl}&embedded=true"
+                                    style="flex: 1; border: none;"
+                                    title="${fileName}">
+                            </iframe>
+                            <div style="text-align: center; margin-top: 15px; padding: 10px;">
+                                <button onclick="window.open('${fileUrl}', '_blank')" 
+                                        style="padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">
+                                    새 창에서 열기
+                                </button>
+                                <button onclick="window.open('${fileInfo.download_url || fileUrl}', '_blank')" 
+                                        style="padding: 8px 16px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                    다운로드
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                } else if (contentType.includes('text/') || contentType.includes('application/json') || contentType.includes('application/xml')) {
+                    // 텍스트 파일
+                    contentHtml = `<iframe src="${fileUrl}" style="width:90vw;height:70vh;border:none;"></iframe>`;
                 } else {
-                    contentHtml = `<iframe src="${data.preview_url}" style="width:90vw;height:70vh;border:none;"></iframe>`;
+                    // 지원하지 않는 파일 타입
+                    contentHtml = `
+                        <div style="text-align:center;padding:40px 0;">
+                            <div style="font-size:48px;color:#dc3545;">📄</div>
+                            <div style="margin-top:16px;font-size:18px;font-weight:500;">${fileName}</div>
+                            <div style="margin-top:8px;color:#888;">이 파일 타입은 미리보기를 지원하지 않습니다.</div>
+                            <button onclick="window.open('${fileUrl}','_blank')" 
+                                    style="margin-top:20px;padding:10px 24px;background:#007bff;color:white;border:none;border-radius:6px;font-size:16px;cursor:pointer;margin-right:10px;">
+                                새 창에서 열기
+                            </button>
+                            <button onclick="window.open('${fileInfo.download_url || fileUrl}','_blank')" 
+                                    style="margin-top:20px;padding:10px 24px;background:#28a745;color:white;border:none;border-radius:6px;font-size:16px;cursor:pointer;">
+                                다운로드
+                            </button>
+                        </div>
+                    `;
                 }
+                
                 showModal({
-                    title: fileInfo && (fileInfo.original_filename || fileInfo.filename || fileInfo.stored_filename) || '파일 미리보기',
+                    title: fileName,
                     content: contentHtml
                 });
             } else {
                 showModal({
-                    title: fileInfo && (fileInfo.original_filename || fileInfo.filename || fileInfo.stored_filename) || '파일 미리보기',
+                    title: fileName,
                     content: `<div style="text-align:center;padding:40px 0;"><div style="font-size:48px;color:#dc3545;">✗</div><div style="margin-top:16px;font-size:18px;font-weight:500;">미리보기 로드 실패</div><div style="margin-top:8px;color:#888;">${data.error || '파일을 찾을 수 없습니다.'}</div><button onclick="window.open('${fileInfo && fileInfo.download_url ? fileInfo.download_url : '#'}','_blank')" style="margin-top:20px;padding:10px 24px;background:#007bff;color:white;border:none;border-radius:6px;font-size:16px;cursor:pointer;">새 창에서 열기</button></div>`
                 });
             }
         })
         .catch(err => {
             showModal({
-                title: fileInfo && (fileInfo.original_filename || fileInfo.filename || fileInfo.stored_filename) || '파일 미리보기',
+                title: fileName,
                 content: `<div style="text-align:center;padding:40px 0;"><div style="font-size:48px;color:#dc3545;">✗</div><div style="margin-top:16px;font-size:18px;font-weight:500;">미리보기 로드 실패</div><div style="margin-top:8px;color:#888;">${err.message || '알 수 없는 오류'}</div></div>`
             });
         });
