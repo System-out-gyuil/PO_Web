@@ -1,5 +1,6 @@
 from django.db import models
 import random
+import json
 
 # Create your models here.
 
@@ -90,6 +91,47 @@ class Attribute(models.Model):
 
     def __str__(self):
         return self.name
+
+class CalendarSettings(models.Model):
+    """캘린더 설정을 위한 모델"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='calendar_settings')
+    date_field = models.ForeignKey(Attribute, on_delete=models.CASCADE, related_name='calendar_date_settings', 
+                                  help_text='카드 생성 기준 날짜 필드')
+    content_fields = models.JSONField(default=list, 
+                                     help_text='카드에 표시할 내용 필드들의 리스트')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['user']  # 사용자당 하나의 설정만 허용
+        verbose_name = '캘린더 설정'
+        verbose_name_plural = '캘린더 설정'
+
+    def __str__(self):
+        return f"{self.user.name}의 캘린더 설정"
+
+    def get_content_fields_list(self):
+        """content_fields를 리스트로 반환"""
+        if isinstance(self.content_fields, str):
+            try:
+                return json.loads(self.content_fields)
+            except json.JSONDecodeError:
+                return []
+        return self.content_fields or []
+
+    def set_content_fields_list(self, fields_list):
+        """content_fields를 리스트로 설정"""
+        if isinstance(fields_list, list):
+            self.content_fields = fields_list
+        else:
+            self.content_fields = []
+
+    def get_settings_dict(self):
+        """설정을 딕셔너리 형태로 반환"""
+        return {
+            'date_field': self.date_field.name if self.date_field else None,
+            'content_fields': self.get_content_fields_list()
+        }
     
 class Row(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)

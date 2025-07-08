@@ -581,3 +581,7 @@ body { font-family: Arial, sans-serif; margin: 40px; background: #f8f9fa; }
             gap: 4px;
             height: 55px;
         }
+
+        .calendar-setting-checkbox {
+            width: 10%;
+        }

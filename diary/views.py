@@ -1,5 +1,5 @@
 from django.shortcuts import render
-from .models import DiaryEntry, Category, Region, SalesStatus, BaseAttribute, Attribute, AttributeValue, User, DropdownAttribute, Row, AttributeType
+from .models import DiaryEntry, Category, Region, SalesStatus, BaseAttribute, Attribute, AttributeValue, User, DropdownAttribute, Row, AttributeType, CalendarSettings
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
@@ -3733,3 +3733,268 @@ def get_file_preview_url(request, row_id, field_name):
         return JsonResponse({'success': True, 'preview_url': signed_preview_url})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
+
+@require_GET
+def get_datetime_attributes(request):
+    """datetime 타입의 속성 목록을 반환하는 API"""
+    try:
+        user = User.objects.get(id=1)
+        datetime_attributes = Attribute.objects.filter(
+            user=user, 
+            attributeType__name='datetime'
+        ).order_by('name')
+        
+        attributes_data = []
+        for attr in datetime_attributes:
+            attributes_data.append({
+                'id': attr.id,
+                'name': attr.name,
+                'type': 'datetime'
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'attributes': attributes_data
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })
+
+@require_GET
+def get_calendar_settings(request):
+    """캘린더 설정을 반환하는 API"""
+    try:
+        user = User.objects.get(id=1)
+        
+        # 사용자의 캘린더 설정 가져오기
+        calendar_settings = CalendarSettings.objects.filter(user=user).first()
+        
+        if calendar_settings:
+            # 저장된 설정이 있으면 반환
+            settings = calendar_settings.get_settings_dict()
+        else:
+            # 저장된 설정이 없으면 기본값 생성
+            # datetime 타입의 첫 번째 속성을 기본 날짜 필드로 사용
+            datetime_attr = Attribute.objects.filter(
+                user=user, 
+                attributeType__name='datetime'
+            ).first()
+            
+            # 기본 내용 필드들 (회사명은 항상 포함)
+            default_content_fields = ['회사명']
+            
+            # 다른 주요 속성들 추가
+            other_attrs = Attribute.objects.filter(
+                user=user,
+                name__in=['미팅', '영업진행', '매출', '담당자']
+            ).exclude(name='회사명')
+            
+            for attr in other_attrs:
+                default_content_fields.append(attr.name)
+            
+            settings = {
+                'date_field': datetime_attr.name if datetime_attr else None,
+                'content_fields': default_content_fields
+            }
+        
+        return JsonResponse({
+            'success': True,
+            'settings': settings
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })
+
+@csrf_exempt
+def save_calendar_settings(request):
+    """캘린더 설정을 저장하는 API"""
+    if request.method == 'POST':
+        try:
+            user = User.objects.get(id=1)
+            data = json.loads(request.body)
+            
+            date_field_name = data.get('date_field')
+            content_fields = data.get('content_fields', [])
+            
+            # 날짜 필드 속성 찾기
+            date_field_attr = None
+            if date_field_name:
+                date_field_attr = Attribute.objects.filter(
+                    user=user, 
+                    name=date_field_name,
+                    attributeType__name='datetime'
+                ).first()
+            
+            # 캘린더 설정 가져오기 또는 생성
+            calendar_settings, created = CalendarSettings.objects.get_or_create(
+                user=user,
+                defaults={
+                    'date_field': date_field_attr,
+                    'content_fields': content_fields
+                }
+            )
+            
+            if not created:
+                # 기존 설정 업데이트
+                calendar_settings.date_field = date_field_attr
+                calendar_settings.set_content_fields_list(content_fields)
+                calendar_settings.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': '캘린더 설정이 저장되었습니다.'
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            })
+    
+    return JsonResponse({'error': 'Invalid method'}, status=405)
+
+@require_GET
+def calendar_events(request):
+    """설정에 따른 캘린더 이벤트를 반환하는 API"""
+    try:
+        user = User.objects.get(id=1)
+        
+        # 설정 가져오기
+        calendar_settings = CalendarSettings.objects.filter(user=user).first()
+        
+        if calendar_settings:
+            # 저장된 설정 사용
+            date_field_name = calendar_settings.date_field.name if calendar_settings.date_field else None
+            content_fields = calendar_settings.get_content_fields_list()
+        else:
+            # 기본값 사용
+            date_field_name = request.GET.get('date_field')
+            content_fields = request.GET.getlist('content_fields') or ['회사명', '미팅', '영업진행']
+            
+            # 날짜 필드가 없으면 datetime 타입의 첫 번째 속성 사용
+            if not date_field_name:
+                datetime_attr = Attribute.objects.filter(
+                    user=user, 
+                    attributeType__name='datetime'
+                ).first()
+                date_field_name = datetime_attr.name if datetime_attr else None
+        
+        events = []
+        
+        # 날짜 필드가 없으면 빈 이벤트 반환
+        if not date_field_name:
+            return JsonResponse(events, safe=False, encoder=DjangoJSONEncoder)
+        
+        # 날짜 필드 속성 찾기
+        date_attr = Attribute.objects.filter(user=user, name=date_field_name).first()
+        if not date_attr:
+            return JsonResponse(events, safe=False, encoder=DjangoJSONEncoder)
+        
+        # 모든 행을 가져와서 날짜가 있는지 확인
+        all_rows = Row.objects.filter(user=user)
+        processed_rows = set()
+        
+        for row in all_rows:
+            if row.id in processed_rows:
+                continue
+                
+            # 해당 행의 날짜 값 찾기
+            date_attr_value = AttributeValue.objects.filter(
+                row=row,
+                attribute=date_attr
+            ).first()
+            
+            if not date_attr_value or not date_attr_value.value:
+                continue
+                
+            date_value = date_attr_value.value.strip() if date_attr_value.value else ''
+            
+            if not date_value:
+                continue
+                
+            # 날짜 파싱 및 유효성 검사
+            try:
+                if isinstance(date_value, str):
+                    if 'T' in date_value:
+                        dt = datetime.fromisoformat(date_value.replace('T', ' ').split('.')[0])
+                    elif ' ' in date_value and ':' in date_value:
+                        dt = datetime.strptime(date_value, '%Y-%m-%d %H:%M:%S')
+                    elif ' ' in date_value:
+                        dt = datetime.strptime(date_value, '%Y-%m-%d %H:%M')
+                    else:
+                        dt = datetime.strptime(date_value, '%Y-%m-%d')
+                    formatted_date = dt.strftime('%Y-%m-%d')
+                else:
+                    formatted_date = date_value.strftime('%Y-%m-%d')
+            except Exception as e:
+                continue
+            
+            # 해당 행의 모든 속성값들 가져오기
+            row_values = {}
+            for rv in row.values.all():
+                if rv.attribute:
+                    row_values[rv.attribute.name] = rv.value
+            
+            # 카드 내용 구성
+            card_content = {}
+            for field in content_fields:
+                if field in row_values:
+                    value = row_values[field]
+                    
+                    # dropdown 타입인 경우 옵션명으로 변환
+                    if field == '영업진행' and value and str(value).isdigit():
+                        sales_progress_attr = Attribute.objects.filter(user=user, name='영업진행').first()
+                        if sales_progress_attr:
+                            dropdown = DropdownAttribute.objects.filter(
+                                id=int(value),
+                                attribute=sales_progress_attr
+                            ).first()
+                            if dropdown:
+                                card_content[field] = dropdown.option
+                            else:
+                                card_content[field] = value
+                        else:
+                            card_content[field] = value
+                    else:
+                        card_content[field] = value
+                else:
+                    card_content[field] = ''
+            
+            # 회사명을 제목으로 사용
+            title = card_content.get('회사명', '(회사명 없음)')
+            
+            # 상태 정보 (영업진행)
+            status_name = card_content.get('영업진행', '')
+            status_color = '#bbb'
+            
+            if status_name:
+                sales_progress_attr = Attribute.objects.filter(user=user, name='영업진행').first()
+                if sales_progress_attr:
+                    dropdown = DropdownAttribute.objects.filter(
+                        attribute=sales_progress_attr,
+                        option=status_name
+                    ).first()
+                    if dropdown:
+                        status_color = dropdown.color or '#bbb'
+            
+            event_data = {
+                'id': row.id,
+                'title': title,
+                'start': formatted_date,
+                'content': card_content,
+                'status_name': status_name,
+                'status_color': status_color,
+            }
+            events.append(event_data)
+            processed_rows.add(row.id)
+        
+        return JsonResponse(events, safe=False, encoder=DjangoJSONEncoder)
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })

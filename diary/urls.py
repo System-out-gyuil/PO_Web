@@ -51,4 +51,10 @@ urlpatterns = [
     path('update_note_order_and_notes/', update_note_order_and_notes, name='update_note_order_and_notes'),
     path('get_file_preview_url/<str:row_id>/<str:field_name>/', get_file_preview_url, name='get_file_preview_url'),
     path('get_file_preview_url_note/<str:file_id>/', get_file_preview_url_note, name='get_file_preview_url_note'),
+    
+    # 캘린더 설정 관련 API
+    path('get_datetime_attributes/', views.get_datetime_attributes, name='get_datetime_attributes'),
+    path('get_calendar_settings/', views.get_calendar_settings, name='get_calendar_settings'),
+    path('save_calendar_settings/', views.save_calendar_settings, name='save_calendar_settings'),
+    path('calendar_events/', views.calendar_events, name='calendar_events'),
 ] 
