@@ -31,7 +31,7 @@ function showDetailModal(rowData, rowId) {
             const sortedAttributes = attributes.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
             
             // 읽기 전용 필드 목록
-            const readonlyFields = ['회사명', '생성일', '수정일'];
+            const readonlyFields = ['생성일', '수정일'];
             
             // 숨김 필드 목록 (표시하지 않을 속성들)
             const hiddenFields = ['음성파일', '변환된 텍스트'];
@@ -308,23 +308,19 @@ function showDetailModal(rowData, rowId) {
                     let fileInfo = null;
                     let displayFileName = '';
                     let hasFile = false;
-                    
                     // 파일 정보 파싱
                     try {
                         if (value && value !== null && value !== undefined) {
                             if (typeof value === 'object') {
-                                // 이미 객체인 경우
                                 fileInfo = value;
                                 displayFileName = fileInfo.original_filename || fileInfo.stored_filename || fileInfo.filename || 'unknown';
                                 hasFile = true;
                             } else if (typeof value === 'string' && value.trim() !== '') {
                                 if (value.trim().startsWith('{')) {
-                                    // JSON 형태의 파일 정보
                                     fileInfo = JSON.parse(value);
                                     displayFileName = fileInfo.original_filename || fileInfo.stored_filename || fileInfo.filename || 'unknown';
                                     hasFile = true;
                                 } else {
-                                    // 단순 문자열 파일명
                                     displayFileName = value.trim();
                                     hasFile = true;
                                 }
@@ -332,95 +328,69 @@ function showDetailModal(rowData, rowId) {
                         }
                     } catch (e) {
                         console.error('파일 정보 파싱 오류:', e, 'value:', value);
-                        // 파싱 실패 시 기본값 설정
                         if (value) {
                             displayFileName = String(value);
                             hasFile = true;
                         }
                     }
-                    
-                    if (hasFile) {
-                        console.log('파일이 있는 경우:', displayFileName);
-                        // 파일이 있는 경우: 파일명 + 수정 버튼 + 삭제 버튼
-                        const downloadUrl = fileInfo.download_url || `/600/download_file/${rowId}/${fieldName}/`;
-                        inputHtml = `
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <span onclick="window.open('${downloadUrl}', '_blank')"  
-                                      style="
-                                          flex: 1; 
-                                          color: #333; 
-                                          font-size: 14px; 
-                                          padding: 8px 0;
-                                          cursor: pointer;
-                                          text-decoration: underline;
-                                      ">📎 ${displayFileName}</span>
-                                      <button type="button" 
-                                            onclick='showFilePreviewModal(${JSON.stringify({
-                                                ...fileInfo,
-                                                download_url: fileInfo.preview_url || fileInfo.download_url
-                                            }).replace(/'/g, "&#39;").replace(/\"/g, "&quot;")})' 
-                                            style="
-                                                padding: 6px 12px; 
-                                                background: #ffc107; 
-                                                color: #333; 
-                                                border: none; 
-                                                border-radius: 4px; 
-                                                cursor: pointer; 
-                                                font-size: 12px;
-                                                font-weight: 500;
-                                                margin-right: 5px;
-                                            ">
+                    if (hasFile && fileInfo) {
+                        // 타입 분기
+                        if (fileInfo.type === 'img') {
+                            inputHtml = `
+                                <div style="text-align:center;">
+                                    <img src="${fileInfo.download_url || fileInfo.url}" style="max-width:180px;max-height:120px;display:block;margin:0 auto;border-radius:8px;" />
+                                    <div style="margin-top:8px;">
+                                        <button onclick="window.open('${fileInfo.preview_url || fileInfo.download_url}', '_blank')" 
+                                                style="padding: 6px 12px; background: #ffc107; color: #333; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500; margin-right: 5px;">
                                             미리보기
                                         </button>
-                                      <button type="button" 
-                                            onclick="window.open('${downloadUrl}', '_blank')" 
-                                            style="
-                                                padding: 6px 12px; 
-                                                background: #17a2b8; 
-                                                color: white; 
-                                                border: none; 
-                                                border-radius: 4px; 
-                                                cursor: pointer; 
-                                                font-size: 12px;
-                                                font-weight: 500;
-                                                margin-right: 5px;
-                                            ">
+                                        <button onclick="window.open('${fileInfo.download_url}', '_blank')" 
+                                                style="padding: 6px 12px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500; margin-right: 5px;">
+                                            다운로드
+                                        </button>
+                                        <button onclick="deleteFile('${rowId}', '${attr.name}')" 
+                                                style="padding: 6px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;">
+                                            삭제
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
+                        } else if (fileInfo.type === 'audio') {
+                            inputHtml = `
+                                <div>
+                                    <audio controls src="${fileInfo.download_url || fileInfo.url}"></audio>
+                                    <div style="margin-top:8px;">
+                                        <button onclick="window.open('${fileInfo.download_url}', '_blank')" 
+                                                style="padding: 6px 12px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500; margin-right: 5px;">
+                                            다운로드
+                                        </button>
+                                        <button onclick="deleteFile('${rowId}', '${attr.name}')" 
+                                                style="padding: 6px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;">
+                                            삭제
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
+                        } else {
+                            // 일반 파일
+                            inputHtml = `
+                                <div style="display:flex;align-items:center;gap:8px;">
+                                    <span style="width:60%;">📄 ${displayFileName}</span>
+                                    <button onclick="window.open('${fileInfo.preview_url || fileInfo.download_url}', '_blank')" 
+                                            style="padding: 6px 12px; background: #ffc107; color: #333; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500; margin-right: 5px;">
+                                        미리보기
+                                    </button>
+                                    <button onclick="window.open('${fileInfo.download_url}', '_blank')" 
+                                            style="padding: 6px 12px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500; margin-right: 5px;">
                                         다운로드
                                     </button>
-                                <button type="button" 
-                                        onclick="document.getElementById('file_${attr.name}_${rowId}').click()" 
-                                        style="
-                                            padding: 6px 12px; 
-                                            background: #28a745; 
-                                            color: white; 
-                                            border: none; 
-                                            border-radius: 4px; 
-                                            cursor: pointer; 
-                                            font-size: 12px;
-                                            font-weight: 500;
-                                        ">
-                                    수정
-                                </button>
-                                <button type="button" 
-                                        onclick="deleteFile('${rowId}', '${attr.name}')" 
-                                        style="
-                                            padding: 6px 12px; 
-                                            background: #dc3545; 
-                                            color: white; 
-                                            border: none; 
-                                            border-radius: 4px; 
-                                            cursor: pointer; 
-                                            font-size: 12px;
-                                            font-weight: 500;
-                                        ">
-                                    삭제
-                                </button>
-                                <input type="file" 
-                                       id="file_${attr.name}_${rowId}" 
-                                       style="display: none;"
-                                       onchange="uploadFile('${rowId}', '${attr.name}', this)">
-                            </div>
-                        `;
+                                    <button onclick="deleteFile('${rowId}', '${attr.name}')" 
+                                            style="padding: 6px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;">
+                                        삭제
+                                    </button>
+                                </div>
+                            `;
+                        }
                     } else {
                         // 파일이 없는 경우: 파일 선택 버튼
                         inputHtml = `

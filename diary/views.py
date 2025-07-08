@@ -34,6 +34,7 @@ from board.models import BizInfo
 from django.db.models import Q, Max
 import re
 from datetime import date
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -1523,7 +1524,7 @@ def upload_audio_file(request):
     """음성파일을 업로드하고 변환된 텍스트를 저장하는 뷰"""
     
     if request.method == 'POST':
-        audio_file = request.FILES.get('file')
+        audio_file = request.FILES.get('audio_file')
         row_id = request.POST.get('row_id')
         field_name = request.POST.get('field_name', '음성파일')
 
@@ -3115,8 +3116,13 @@ def update_audio_text_notes(request):
         for note in notes:
             note_id = note.get('id')
             if note_id:
+                # 텍스트 값이 undefined나 null인 경우 빈 문자열로 처리
+                text_value = note.get('text', '')
+                if text_value is None:
+                    text_value = ''
+                    
                 data['data'][note_id] = {
-                    'text': note.get('text', ''),
+                    'text': text_value,
                     'order': note.get('order', 0),
                     'type': 'text'
                 }
@@ -3133,14 +3139,17 @@ def update_audio_file_order_and_notes(request):
 
     row_id = request.POST.get('row_id')
     notes_json = request.POST.get('notes')
-    audio_json = request.POST.get('ordered_files')
+
+    print(f"=== update_audio_file_order_and_notes 시작 ===")
+    print(f"row_id: {row_id}")
+    print(f"notes_json: {notes_json}")
 
     if not row_id:
         return JsonResponse({'success': False, 'error': 'row_id 누락'})
 
     try:
         notes = json.loads(notes_json or "[]")
-        audio_files = json.loads(audio_json or "[]")
+        print(f"파싱된 notes: {notes}")
 
         user = request.user if request.user.is_authenticated else User.objects.get(id=1)
         row = Row.objects.get(id=row_id, user=user)
@@ -3152,43 +3161,77 @@ def update_audio_file_order_and_notes(request):
             attr_value = AttributeValue.objects.create(row=row, attribute=attr, value='{}')
 
         value = json.loads(attr_value.value or "{}")
+        print(f"기존 value: {value}")
 
         # 'data' 키가 없으면 생성
         if 'data' not in value:
             value['data'] = {}
 
-        # 1. 텍스트 노트 저장 (기존 텍스트 노트들 제거 후 새로 추가)
-        keys_to_remove = []
-        for key, item_value in value['data'].items():
-            if isinstance(item_value, dict) and item_value.get('type') == 'text':
-                keys_to_remove.append(key)
-        for key in keys_to_remove:
-            del value['data'][key]
-        for note in notes:
-            note_id = note.get('id')
-            if note_id:
-                value['data'][note_id] = {
-                    'text': note.get('text', ''),
-                    'order': note.get('order', 0),
-                    'type': 'text',
-                    'upload_date': note.get('upload_date', '')
-                }
+        # 새로운 순서로 재구성된 데이터
+        new_data = {}
 
-        # 2. 오디오 순서 업데이트
-        for audio in audio_files:
-            file_id = audio.get("file_id")
-            order = audio.get("order")
-            if file_id in value['data']:
-                value['data'][file_id]["order"] = order
-                if "type" not in value['data'][file_id]:
-                    value['data'][file_id]["type"] = "audio"
+        # 모든 아이템을 순서대로 저장
+        for item in notes:
+            item_id = item.get('id')
+            if not item_id:
+                continue
+                
+            print(f"처리 중인 아이템: {item}")
+            
+            if item.get('type') == 'text':
+                # 텍스트 노트
+                text_value = item.get('text', '')
+                if text_value is None:
+                    text_value = ''
+                
+                new_data[item_id] = {
+                    'text': text_value,
+                    'order': item.get('order', 0),
+                    'type': 'text',
+                    'upload_date': item.get('upload_date', '')
+                }
+                print(f"텍스트 노트 저장: {new_data[item_id]}")
+            else:
+                # 파일 (오디오, 이미지, 문서)
+                # notes에서 받은 모든 파일 정보를 그대로 사용 (JS에서 이미 완전한 정보를 보냄)
+                file_data = {
+                    'order': item.get('order', 0),
+                    'type': item.get('type', 'file'),
+                    'original_filename': item.get('original_filename', ''),
+                    'filename': item.get('filename', ''),
+                    'stored_filename': item.get('stored_filename', ''),
+                    's3_key': item.get('s3_key', ''),
+                    'download_url': item.get('download_url', ''),
+                    'preview_url': item.get('preview_url', ''),
+                    'file_size': item.get('file_size', 0),
+                    'content_type': item.get('content_type', ''),
+                    'upload_time': item.get('upload_time', ''),
+                    'upload_date': item.get('upload_date', ''),
+                    'converted_text': item.get('converted_text', ''),
+                    'memo': item.get('memo', ''),
+                    'gpt_summary': item.get('gpt_summary', '')
+                }
+                
+                # None 값들을 빈 문자열로 변환
+                for key, val in file_data.items():
+                    if val is None:
+                        file_data[key] = ''
+                
+                new_data[item_id] = file_data
+                print(f"파일 저장: {new_data[item_id]}")
+
+        # 새로운 데이터로 교체
+        value['data'] = new_data
+        print(f"최종 저장할 value: {value}")
 
         attr_value.value = json.dumps(value, ensure_ascii=False)
         attr_value.save()
 
+        print("=== update_audio_file_order_and_notes 완료 ===")
         return JsonResponse({'success': True})
 
     except Exception as e:
+        print(f"오류 발생: {str(e)}")
         return JsonResponse({'success': False, 'error': str(e)})
 
 def entry_table_partial(request):
@@ -3353,3 +3396,309 @@ def parse_korean_currency(value):
     if s.isdigit():
         total += int(s)
     return total
+
+@csrf_exempt
+def upload_note_file(request):
+    if request.method == 'POST':
+        file = request.FILES.get('file')
+        row_id = request.POST.get('row_id')
+        if not file or not row_id:
+            return JsonResponse({'success': False, 'error': '파일 또는 row_id 누락'})
+        s3_client = boto3.client(
+            's3',
+            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+            region_name=settings.AWS_S3_REGION_NAME
+        )
+        file_extension = os.path.splitext(file.name)[1]
+        unique_filename = f"{uuid.uuid4()}{file_extension}"
+        s3_key = f"note_files/{unique_filename}"
+        s3_client.upload_fileobj(
+            file,
+            settings.AWS_STORAGE_BUCKET_NAME,
+            s3_key,
+            ExtraArgs={
+                'ContentType': file.content_type,
+                'ContentDisposition': f'attachment; filename=\"{file.name}\"'
+            }
+        )
+        download_url = s3_client.generate_presigned_url(
+            'get_object',
+            Params={'Bucket': settings.AWS_STORAGE_BUCKET_NAME, 'Key': s3_key},
+            ExpiresIn=300
+        )
+        preview_url = download_url
+        file_info = {
+            'original_filename': file.name,
+            'stored_filename': unique_filename,
+            's3_key': s3_key,
+            'download_url': download_url,
+            'preview_url': preview_url,
+            'file_size': file.size,
+            'content_type': file.content_type,
+            'type': None,  # type 필드 추가
+        }
+        # 파일 타입 판별
+        if file.content_type.startswith('image/'):
+            file_info['type'] = 'image'
+        elif file.content_type.startswith('audio/'):
+            file_info['type'] = 'audio'
+        else:
+            file_info['type'] = 'file'
+
+        # === DB 저장 로직 추가 ===
+        from .models import User, Row, Attribute, AttributeValue
+        import json
+
+        user = User.objects.get(id=1)
+        row = Row.objects.get(id=row_id, user=user)
+        attr = Attribute.objects.get(name='음성파일', user=user)
+        attr_value, _ = AttributeValue.objects.get_or_create(row=row, attribute=attr)
+        # 기존 값이 있으면 파싱, 없으면 빈 dict
+        try:
+            value_dict = json.loads(attr_value.value) if attr_value.value else {"data": {}}
+        except Exception:
+            value_dict = {"data": {}}
+        
+        # 고유 id 생성
+        import time
+        file_id = f'f{int(time.time()*1000)}'
+        
+        # order 필드 추가 (기존 아이템 개수 + 1)
+        existing_count = len(value_dict.get("data", {}))
+        file_info['order'] = existing_count
+        
+        value_dict["data"][file_id] = file_info
+        attr_value.value = json.dumps(value_dict, ensure_ascii=False)
+        attr_value.save()
+        # === DB 저장 끝 ===
+
+        return JsonResponse({'success': True, 'file_info': file_info, 'file_id': file_id})
+    return JsonResponse({'success': False, 'error': 'Invalid method'})
+
+@csrf_exempt
+def delete_note_file(request):
+    if request.method == 'POST':
+        s3_key = request.POST.get('s3_key')
+        if not s3_key:
+            return JsonResponse({'success': False, 'error': 's3_key 누락'})
+        s3_client = boto3.client(
+            's3',
+            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+            region_name=settings.AWS_S3_REGION_NAME
+        )
+        try:
+            s3_client.delete_object(Bucket=settings.AWS_STORAGE_BUCKET_NAME, Key=s3_key)
+            return JsonResponse({'success': True})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    return JsonResponse({'success': False, 'error': 'Invalid method'})
+
+@csrf_exempt
+def update_note_order_and_notes(request):
+    """노트 순서와 텍스트 노트를 업데이트하는 API"""
+    if request.method == 'POST':
+        try:
+            row_id = request.POST.get('row_id')
+            notes_data = request.POST.get('notes')
+            
+            if not row_id or not notes_data:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'row_id와 notes가 필요합니다.'
+                })
+            
+            # 사용자 ID를 1로 고정
+            user = User.objects.get(id=1)
+            
+            # Row와 음성파일 속성 조회
+            row = Row.objects.get(id=row_id, user=user)
+            audio_attribute = Attribute.objects.get(name='음성파일', user=user)
+            
+            # JSON 데이터 파싱
+            try:
+                notes = json.loads(notes_data)
+            except json.JSONDecodeError:
+                return JsonResponse({
+                    'success': False,
+                    'error': '잘못된 JSON 형식입니다.'
+                })
+            
+            # 기존 데이터 구조 생성
+            existing_data = {'data': {}}
+            
+            # 노트 데이터 처리
+            for note in notes:
+                note_id = note.get('id')
+                note_type = note.get('type', 'file')
+                order = note.get('order', 0)
+                
+                if note_type == 'text':
+                    # 텍스트 노트
+                    existing_data['data'][note_id] = {
+                        'id': note_id,
+                        'type': 'text',
+                        'text': note.get('text', ''),
+                        'order': order,
+                        'upload_date': note.get('upload_date', '')
+                    }
+                else:
+                    # 파일 노트 (기존 파일 정보 유지)
+                    existing_data['data'][note_id] = {
+                        'id': note_id,
+                        'type': note.get('type', 'file'),
+                        'original_filename': note.get('original_filename', ''),
+                        'stored_filename': note.get('stored_filename', ''),
+                        's3_key': note.get('s3_key', ''),
+                        'download_url': note.get('download_url', ''),
+                        'preview_url': note.get('preview_url', ''),
+                        'file_size': note.get('file_size', 0),
+                        'content_type': note.get('content_type', ''),
+                        'order': order,
+                        'upload_date': note.get('upload_date', '')
+                    }
+            
+            # 음성파일 속성에 저장
+            attr_value, created = AttributeValue.objects.get_or_create(
+                row=row,
+                attribute=audio_attribute,
+                defaults={'value': json.dumps(existing_data, ensure_ascii=False)}
+            )
+            
+            if not created:
+                attr_value.value = json.dumps(existing_data, ensure_ascii=False)
+                attr_value.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': '노트 순서와 텍스트 노트가 업데이트되었습니다.'
+            })
+            
+        except Row.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'error': '해당 행을 찾을 수 없습니다.'
+            })
+        except Exception as e:
+            print(f"노트 업데이트 중 오류: {e}")
+            return JsonResponse({
+                'success': False,
+                'error': f'처리 중 오류가 발생했습니다: {str(e)}'
+            })
+    
+    return JsonResponse({
+        'success': False,
+        'error': 'POST 요청만 허용됩니다.'
+    })
+
+@csrf_exempt
+def get_file_preview_url(request, file_id):
+    """파일 미리보기를 위한 새로운 S3 서명된 URL을 생성하는 API"""
+    if request.method == 'GET':
+        try:
+            row_id = request.GET.get('row_id')
+            
+            if not row_id:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'row_id가 필요합니다.'
+                })
+            
+            # 사용자 ID를 1로 고정
+            user = User.objects.get(id=1)
+            
+            # Row와 음성파일 속성 조회
+            row = Row.objects.get(id=row_id, user=user)
+            audio_attribute = Attribute.objects.get(name='음성파일', user=user)
+            
+            # 음성파일 데이터 조회
+            attr_value = AttributeValue.objects.filter(
+                row=row,
+                attribute=audio_attribute
+            ).first()
+            
+            if not attr_value or not attr_value.value:
+                return JsonResponse({
+                    'success': False,
+                    'error': '파일 데이터를 찾을 수 없습니다.'
+                })
+            
+            try:
+                audio_data = json.loads(attr_value.value)
+            except json.JSONDecodeError:
+                return JsonResponse({
+                    'success': False,
+                    'error': '잘못된 데이터 형식입니다.'
+                })
+            
+            # 파일 정보 찾기
+            file_info = None
+            if 'data' in audio_data and file_id in audio_data['data']:
+                file_info = audio_data['data'][file_id]
+            
+            if not file_info:
+                return JsonResponse({
+                    'success': False,
+                    'error': '파일을 찾을 수 없습니다.'
+                })
+            
+            # S3 키 가져오기
+            s3_key = file_info.get('s3_key')
+            if not s3_key:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'S3 키가 없습니다.'
+                })
+            
+            # 새로운 S3 서명된 URL 생성
+            try:
+                import boto3
+                from django.conf import settings
+                
+                s3_client = boto3.client(
+                    's3',
+                    aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+                    aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+                    region_name=settings.AWS_S3_REGION_NAME
+                )
+                
+                # 미리보기용 서명된 URL 생성 (1시간 유효)
+                signed_preview_url = s3_client.generate_presigned_url(
+                    'get_object',
+                    Params={
+                        'Bucket': settings.AWS_STORAGE_BUCKET_NAME,
+                        'Key': s3_key,
+                        'ResponseContentDisposition': 'inline'
+                    },
+                    ExpiresIn=3600  # 1시간
+                )
+                
+                return JsonResponse({
+                    'success': True,
+                    'preview_url': signed_preview_url
+                })
+                
+            except Exception as e:
+                print(f"S3 서명된 URL 생성 실패: {e}")
+                return JsonResponse({
+                    'success': False,
+                    'error': f'S3 URL 생성 실패: {str(e)}'
+                })
+            
+        except Row.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'error': '해당 행을 찾을 수 없습니다.'
+            })
+        except Exception as e:
+            print(f"파일 미리보기 URL 생성 중 오류: {e}")
+            return JsonResponse({
+                'success': False,
+                'error': f'처리 중 오류가 발생했습니다: {str(e)}'
+            })
+    
+    return JsonResponse({
+        'success': False,
+        'error': 'GET 요청만 허용됩니다.'
+    })
