@@ -389,6 +389,7 @@ function formatBusinessOpeningDate(value) {
 
 // 캘린더 초기화 함수 (설정을 반영한 버전)
 function initializeCalendarWithSettings() {
+    console.log('initializeCalendarWithSettings 호출됨');
     const calendarEl = document.getElementById('calendar');
     if (!calendarEl) return;
     if (!window.calendarSettings) window.calendarSettings = { date_fields: [], custom_events: [] };

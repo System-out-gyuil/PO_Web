@@ -3489,6 +3489,33 @@ def get_all_attributes(request):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
 
+@require_GET
+def get_dropdown_attributes(request):
+    """dropdown 타입의 속성 목록을 반환하는 API (칸반보드 필터용)"""
+    try:
+        user = User.objects.get(id=1)
+        dropdown_attributes = Attribute.objects.filter(
+            user=user, 
+            attributeType__name='dropdown',
+            detail=False,
+            view_select=True
+        ).order_by('-assential', 'name')
+        
+        attributes_data = []
+        for attr in dropdown_attributes:
+            attributes_data.append({
+                'id': attr.id,
+                'name': attr.name,
+                'assential': attr.assential
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'attributes': attributes_data
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
 def parse_korean_currency(value):
     """한국어 통화를 숫자로 변환"""
     if not value or value == '0':
@@ -3965,19 +3992,19 @@ def calendar_events(request):
                 formatted_date = dt.strftime('%Y-%m-%d')
             except:
                 continue
-            # 카드 내용
+            # 카드 내용 (빈 값은 제외)
             row_values = {rv.attribute.name: rv.value for rv in row.values.all() if rv.attribute}
-            card_content = {field: row_values.get(field, '') for field in content_fields}
-            events.append({
+            card_content = {field: row_values.get(field, '') for field in content_fields if row_values.get(field, '')}
+            event = {
                 'id': f'{row.id}_{attr_id}',
                 'title': row_values.get('회사명', '(회사명 없음)'),
                 'start': formatted_date,
-                'content': card_content,
-                'status_name': card_content.get('영업진행', ''),
-                'status_color': '#bbb',
                 'date_field_name': attr.name,
                 'date_field_color': color,
-            })
+            }
+            if card_content:
+                event['content'] = card_content
+            events.append(event)
     # 2. 커스텀 이벤트 추가
     for ce in settings.get('custom_events', []):
         color = ce.get('color')
@@ -3985,16 +4012,20 @@ def calendar_events(request):
             color = '#e5e7eb'
         start = ce.get('start') or ce.get('date')
         end = ce.get('end') or ce.get('date')
-        events.append({
+        content = ce.get('content', '')
+        event = {
             'id': f'custom_{ce.get("title")}_{start}',
             'title': ce.get('title'),
             'start': start,
-            'end': end,
-            'content': {'내용': ce.get('content', '')},
-            'is_custom': True,
             'date_field_name': '커스텀',
             'date_field_color': color,
-        })
+            'is_custom': True,
+        }
+        if end:
+            event['end'] = end
+        if content:
+            event['content'] = {'내용': content}
+        events.append(event)
     return JsonResponse(events, safe=False)
 
 def parse_business_data(value):

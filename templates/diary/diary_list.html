@@ -126,6 +126,12 @@
                     alert(data.message);
                     // 페이지 새로고침으로 변경사항 반영
                     location.reload();
+                    
+                    // 칸반보드 필터 업데이트
+                    refreshKanbanFilter();
+                    
+                    // 캘린더 설정 업데이트
+                    refreshCalendarSettings();
                 } else {
                     alert('오류: ' + data.error);
                 }
@@ -753,6 +759,13 @@ function saveNewAttribute() {
             refreshTable();
             loadHiddenAttributes();
             closeAddAttributeModal();
+            
+            // 칸반보드 필터 업데이트
+            refreshKanbanFilter();
+            
+            // 캘린더 설정 업데이트
+            refreshCalendarSettings();
+
         } else {
             alert('속성 추가 실패: ' + (data.error || '알 수 없는 오류'));
         }
@@ -1106,6 +1119,9 @@ function selectModalDropdownOption(rowId, fieldName, optionId, optionText, eleme
             if (fieldName === 'F/U 일정' && window.calendar) {
                 window.calendar.refetchEvents();
             }
+            
+            // 모든 필드 변경 시 캘린더 업데이트
+            refreshCalendar();
         } else {
             alert('수정 실패: ' + (data.error || ''));
         }
@@ -1184,6 +1200,9 @@ function handleFileUpload(rowId, fieldName, fileInput) {
             if (window.kanbanAttribute && '지역' === window.kanbanAttribute) {
                 refreshKanban();
             }
+            
+            // 캘린더 업데이트
+            refreshCalendar();
         } else {
             alert('파일 업로드 실패: ' + (data.error || '알 수 없는 오류'));
         }
@@ -1348,6 +1367,9 @@ function handleAudioUpload(fileInput) {
                 refreshKanban();
             }
             
+            // 캘린더 업데이트
+            refreshCalendar();
+            
             // 대상 날짜 초기화
             window.targetUploadDate = null;
             
@@ -1435,6 +1457,9 @@ function saveConvertedText() {
             if (window.kanbanAttribute && '음성파일' === window.kanbanAttribute) {
                 refreshKanban();
             }
+            
+            // 캘린더 업데이트
+            refreshCalendar();
         } else {
             alert('텍스트 저장 실패: ' + (data.error || '알 수 없는 오류'));
         }
@@ -1570,6 +1595,9 @@ function saveDebtDetails() {
                     refreshKanban();
                 }
             }
+            
+            // 캘린더 업데이트
+            refreshCalendar();
         } else {
             alert('저장 실패: ' + (data.error || '알 수 없는 오류'));
         }
@@ -1726,6 +1754,9 @@ function toggleAttributeVisibility(attributeName, btn) {
                 const iconSpan = btn.parentNode.querySelector('.attr-eye-icon');
                 if (iconSpan) iconSpan.textContent = isVisible ? '👁️' : '👁️‍🗨️';
             }
+            
+            // 캘린더 업데이트
+            refreshCalendar();
         } else {
             showNotification('오류: ' + (data.error || '알 수 없는 오류'), 'error');
         }
@@ -1775,6 +1806,12 @@ function deleteAttributeFromModal(attrName) {
             showNotification(data.message, 'success');
             refreshTable();
             loadHiddenAttributes();
+            
+            // 칸반보드 필터 업데이트
+            refreshKanbanFilter();
+            
+            // 캘린더 설정 업데이트
+            refreshCalendarSettings();
         } else {
             showNotification('오류: ' + (data.error || '알 수 없는 오류'), 'error');
         }
@@ -1848,6 +1885,131 @@ function displayAllAttributes(attributes) {
     });
     hiddenAttributesList.innerHTML = html;
     enableAttributeDragDrop();
+}
+
+// 칸반보드 필터 비동기 업데이트 함수
+function refreshKanbanFilter() {
+    const kanbanSelect = document.getElementById('kanbanAttributeSelect');
+    if (!kanbanSelect) return;
+    
+    fetch('/600/get_dropdown_attributes/')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // 기존 선택된 값 저장
+                const currentValue = kanbanSelect.value;
+                
+                // 옵션 업데이트
+                kanbanSelect.innerHTML = '';
+                data.attributes.forEach(attr => {
+                    const option = document.createElement('option');
+                    option.value = attr.name;
+                    option.textContent = attr.name;
+                    if (attr.name === currentValue) {
+                        option.selected = true;
+                    }
+                    kanbanSelect.appendChild(option);
+                });
+                
+                // 드롭다운 속성 데이터 업데이트
+                window.DROPDOWN_ATTRIBUTES = data.attributes;
+            }
+        })
+        .catch(error => {
+            console.error('칸반보드 필터 업데이트 오류:', error);
+        });
+}
+
+// 캘린더 설정 비동기 업데이트 함수
+function refreshCalendarSettings() {
+    console.log('refreshCalendarSettings 호출됨');
+    // 캘린더 설정 모달이 열려있다면 업데이트
+    const calendarSettingsModal = document.getElementById('calendarSettingsModal');
+    if (calendarSettingsModal && calendarSettingsModal.style.display === 'flex') {
+        // 캘린더 설정 모달의 속성 목록 업데이트
+        fetch('/600/get_all_attributes/')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    updateCalendarSettingsAttributes(data.attributes);
+                }
+            })
+            .catch(error => {
+                console.error('캘린더 설정 업데이트 오류:', error);
+            });
+    }
+}
+
+// 캘린더 설정 모달의 속성 목록 업데이트
+function updateCalendarSettingsAttributes(attributes) {
+    const dateFieldSelect = document.getElementById('calendarDateField');
+    const memoFieldSelect = document.getElementById('calendarMemoField');
+    
+    if (dateFieldSelect) {
+        const currentDateValue = dateFieldSelect.value;
+        dateFieldSelect.innerHTML = '<option value="">날짜 필드 선택</option>';
+        attributes.forEach(attr => {
+            if (attr.attributeType_name === 'datetime') {
+                const option = document.createElement('option');
+                option.value = attr.name;
+                option.textContent = attr.name;
+                if (attr.name === currentDateValue) {
+                    option.selected = true;
+                }
+                dateFieldSelect.appendChild(option);
+            }
+        });
+    }
+    
+    if (memoFieldSelect) {
+        const currentMemoValue = memoFieldSelect.value;
+        memoFieldSelect.innerHTML = '<option value="">메모 필드 선택</option>';
+        attributes.forEach(attr => {
+            const option = document.createElement('option');
+            option.value = attr.name;
+            option.textContent = attr.name;
+            if (attr.name === currentMemoValue) {
+                option.selected = true;
+            }
+            memoFieldSelect.appendChild(option);
+        });
+    }
+}
+
+// 셀 값 수정 시 캘린더 업데이트 함수 추가
+function updateCellValueAndRefreshCalendar(rowId, fieldName, value) {
+    // 기존 셀 값 업데이트 로직
+    fetch('/600/update_row_field/', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'id=' + encodeURIComponent(rowId) + '&field=' + encodeURIComponent(fieldName) + '&value=' + encodeURIComponent(value)
+    })
+    .then(r => r.json())
+    .then(function(data) {
+        if (data.success) {
+            // 테이블과 칸반보드 새로고침
+            refreshTable();
+            if (window.kanbanAttribute && fieldName === window.kanbanAttribute) {
+                refreshKanban();
+            }
+            
+            // 캘린더 업데이트
+            refreshCalendar();
+        } else {
+            alert('수정 실패: ' + (data.error || ''));
+        }
+    })
+    .catch(error => {
+        console.error('셀 값 수정 오류:', error);
+        alert('수정 중 오류가 발생했습니다.');
+    });
+}
+
+// 캘린더 비동기 업데이트 함수
+function refreshCalendar() {
+    if (window.calendar) {
+        window.calendar.refetchEvents();
+    }
 }
 </script>
 

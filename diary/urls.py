@@ -47,6 +47,7 @@ urlpatterns = [
     path('toggle_attribute_visibility/', views.toggle_attribute_visibility, name='toggle_attribute_visibility'),
     path('get_hidden_attributes/', views.get_hidden_attributes, name='get_hidden_attributes'),
     path('get_all_attributes/', views.get_all_attributes, name='get_all_attributes'),
+    path('get_dropdown_attributes/', views.get_dropdown_attributes, name='get_dropdown_attributes'),
     path('upload_note_file/', upload_note_file, name='upload_note_file'),
     path('delete_note_file/', delete_note_file, name='delete_note_file'),
     path('update_note_order_and_notes/', update_note_order_and_notes, name='update_note_order_and_notes'),

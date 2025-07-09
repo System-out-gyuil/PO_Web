@@ -841,6 +841,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                           }).then(function(data) {
                               if (!data.success) alert('수정 실패: ' + data.error);
                               // 필요시 테이블/보드 갱신
+                              refreshCalendarSettings();
                           });
                       }
                   };
@@ -1308,45 +1309,44 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
   
   // 새로운 필드 업데이트 함수
   function updateRowField(rowId, field, value) {
-      fetch('/600/update_row_field/', {
+      fetch('/600/update/', {
           method: 'POST',
-          headers: {
-              'Content-Type': 'application/json',
-              'X-CSRFToken': getCsrfToken()
-          },
-          body: JSON.stringify({
-              row_id: rowId,
-              field_name: field,
-              value: value
-          })
+          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+          body: 'id=' + encodeURIComponent(rowId) + '&field=' + encodeURIComponent(field) + '&value=' + encodeURIComponent(value)
       })
-      .then(r=>r.json())
-      .then(function(data){
-          if(!data.success) {
-              alert('수정 실패: '+(data.error||''));
+      .then(function(response) {
+          return response.json();
+      })
+      .then(function(data) {
+          if (!data.success) {
+              alert('수정 실패: ' + data.error);
               return;
           }
           
-          // 부분 업데이트로 변경 (전체 테이블 새로고침 대신)
-          updateTableCell(rowId, field, value);
-          
-          // F/U 일정 필드인 경우 캘린더도 새로고침
-          if(field === 'F/U 일정' && window.calendar) {
-              window.calendar.refetchEvents();
+          // datetime 타입 속성이 수정된 경우 캘린더 설정 새로고침
+          if (typeof refreshCalendarSettings === 'function') {
+              refreshCalendarSettings();
           }
           
-          // 모달이 열려있는 경우 모달 데이터도 새로고침
-          if (document.getElementById('detailModal') && document.getElementById('detailModal').style.display !== 'none') {
-              fetch('/600/get_row_details/'+rowId+'/')
-                .then(r => r.json())
-                .then(function(data){
-                    if(data.success) showDetailModal(data.row_data, data.row_id);
-                });
+          // 테이블과 칸반보드 실시간 업데이트
+          if (typeof refreshTable === 'function') {
+              refreshTable();
+          }
+          
+          // 칸반보드 실시간 업데이트 - 현재 칸반보드 속성과 일치하는 경우
+          const currentKanbanAttr = document.getElementById('kanbanAttributeSelect') ? 
+              document.getElementById('kanbanAttributeSelect').value : 
+              window.SELECTED_KANBAN_ATTR || window.kanbanAttribute;
+              
+          if (currentKanbanAttr && field === currentKanbanAttr) {
+              if (typeof refreshKanban === 'function') {
+                  refreshKanban();
+              }
           }
       })
-      .catch(function(err){
+      .catch(function(error) {
+          console.error('업데이트 오류:', error);
           alert('수정 실패: 네트워크 오류');
-          console.error(err);
       });
   }
   

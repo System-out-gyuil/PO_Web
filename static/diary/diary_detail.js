@@ -3616,14 +3616,19 @@ function updateRowField(rowId, field, value) {
             window.calendar.refetchEvents();
         }
         
-        // 모달이 열려있는 경우 모달 데이터도 새로고침
-        if (document.getElementById('detailModal') && document.getElementById('detailModal').style.display !== 'none') {
-            fetch('/600/get_row_details/'+rowId+'/')
-              .then(r => r.json())
-              .then(function(data){
-                  if(data.success) showDetailModal(data.row_data, data.row_id);
-              });
+        // datetime 타입 속성이 수정된 경우 캘린더 설정 새로고침
+        if (typeof refreshCalendarSettings === 'function') {
+            refreshCalendarSettings();
         }
+        
+        // 모달 리랜더링 제거 - 모달은 그대로 유지
+        // if (document.getElementById('detailModal') && document.getElementById('detailModal').style.display !== 'none') {
+        //     fetch('/600/get_row_details/'+rowId+'/')
+        //       .then(r => r.json())
+        //       .then(function(data){
+        //           if(data.success) showDetailModal(data.row_data, data.row_id);
+        //       });
+        // }
     })
     .catch(function(err){
         alert('수정 실패: 네트워크 오류');
