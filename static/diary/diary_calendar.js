@@ -433,7 +433,7 @@ function initializeCalendarWithSettings() {
             if (arg.event.extendedProps.is_custom) {
                 console.log('커스텀 일정 카드 color:', name, dateFieldColor);
             }
-            let colorRgba = hexToRgba(dateFieldColor, arg.event.extendedProps.is_custom ? 0.45 : 0.18);
+            let colorRgba = hexToRgba(dateFieldColor, arg.event.extendedProps.is_custom ? 0.45 : 0.5);
 
             const fields = Object.keys(content)
                 .filter(field => field !== '회사명')
@@ -474,7 +474,7 @@ function initializeCalendarWithSettings() {
                         border-radius:12px;
                         background:${colorRgba};
                         box-shadow:0 2px 8px 0 rgba(0,0,0,0.06);
-                        border:1px solid #e5e7eb;
+                        border:1px solid rgb(158, 158, 158);
                         color:#222;
                     ">
                     <div style="display:flex;align-items:center;justify-content:space-between;">

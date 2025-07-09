@@ -81,14 +81,24 @@ def diary_list(request):
     attr_map = {attr.name: attr for attr in user_attributes}
     
     # 행 데이터는 모든 행을 가져옴 (필터링은 속성 레벨에서 처리)
-    rows = Row.objects.filter(user=user).order_by('order')
+    # 쿼리 최적화: select_related와 prefetch_related 적용
+    rows = Row.objects.filter(user=user).select_related('user').prefetch_related(
+        'values__attribute__attributeType',
+        'values__attribute__dropdown_attributes'
+    ).order_by('order')
     
     # 각 행의 속성 값들을 가져오기 (필터링된 속성만)
     rows_data = []
     for row in rows:
         row_values = {}
         for attr in user_attributes:  # 이미 필터링된 속성들만 사용
-            attr_value = AttributeValue.objects.filter(attribute=attr, row=row).first()
+            # prefetch된 데이터에서 찾기
+            attr_value = None
+            for value in row.values.all():
+                if value.attribute_id == attr.id:
+                    attr_value = value
+                    break
+            
             value = attr_value.value if attr_value else ''
             
             if attr.name == '매출' or '매출' in attr.name:
@@ -99,7 +109,13 @@ def diary_list(request):
                     'color': ''
                 }
             elif attr.attributeType and attr.attributeType.name == 'dropdown' and value.isdigit():
-                dropdown = DropdownAttribute.objects.filter(id=int(value)).first()
+                # prefetch된 dropdown 데이터에서 찾기
+                dropdown = None
+                for dropdown_attr in attr.dropdown_attributes.all():
+                    if dropdown_attr.id == int(value):
+                        dropdown = dropdown_attr
+                        break
+                
                 if dropdown:
                     row_values[attr.name] = {'label': dropdown.option, 'color': dropdown.color}
                 else:
@@ -158,21 +174,24 @@ def diary_list(request):
         selected_kanban_attr = kanban_attr.name
     
     if kanban_attr:
-        # 선택된 속성의 드롭다운 옵션들 가져오기
-        dropdown_options = DropdownAttribute.objects.filter(attribute=kanban_attr).order_by('id')
+        # 선택된 속성의 드롭다운 옵션들 가져오기 (prefetch된 데이터 활용)
+        dropdown_options = kanban_attr.dropdown_attributes.all().order_by('id')
         
         for option in dropdown_options:
-            # 해당 상태를 가진 행들 찾기
-            rows = Row.objects.filter(
+            # 해당 상태를 가진 행들 찾기 (쿼리 최적화)
+            rows_with_status = Row.objects.filter(
                 user=user,
                 values__attribute=kanban_attr,
                 values__value=str(option.id)
+            ).prefetch_related(
+                'values__attribute',
+                'values__attribute__dropdown_attributes'
             ).order_by('order', 'id')
             
             # 각 행의 데이터를 entry 형태로 변환
             entries = []
-            for row in rows:
-                # 행의 속성값들 가져오기
+            for row in rows_with_status:
+                # 행의 속성값들 가져오기 (prefetch된 데이터 활용)
                 row_values = {}
                 for attr_value in row.values.all():
                     if attr_value.attribute:
@@ -208,8 +227,9 @@ def diary_list(request):
     dropdown_attrs = user_attributes.filter(attributeType__name='dropdown')
     dropdown_options_dict = {}
     for attr in dropdown_attrs:
-        options = DropdownAttribute.objects.filter(attribute=attr).values('id', 'option', 'color')
-        dropdown_options_dict[attr.name] = list(options)
+        # prefetch된 데이터 활용
+        options = list(attr.dropdown_attributes.values('id', 'option', 'color'))
+        dropdown_options_dict[attr.name] = options
 
     # dropdown 속성들을 JSON으로 전달 (필터링된 것만)
     dropdown_attributes_json = json.dumps([
@@ -234,11 +254,11 @@ def fu_events(request):
     events = []
     user = User.objects.get(id=1)
     
-    # F/U 일정, 회사명, 미팅, 영업진행 속성 가져오기
-    fu_date_attr = Attribute.objects.filter(user=user, name='F/U 일정').first()
-    name_attr = Attribute.objects.filter(user=user, name='회사명').first()
-    meeting_attr = Attribute.objects.filter(user=user, name='미팅').first()
-    sales_progress_attr = Attribute.objects.filter(user=user, name='영업진행').first()
+    # F/U 일정, 회사명, 미팅, 영업진행 속성 가져오기 (쿼리 최적화)
+    fu_date_attr = Attribute.objects.filter(user=user, name='F/U 일정').select_related('attributeType').first()
+    name_attr = Attribute.objects.filter(user=user, name='회사명').select_related('attributeType').first()
+    meeting_attr = Attribute.objects.filter(user=user, name='미팅').select_related('attributeType').first()
+    sales_progress_attr = Attribute.objects.filter(user=user, name='영업진행').select_related('attributeType').first()
     
     print(f"F/U 일정 속성: {fu_date_attr}")
     
@@ -246,8 +266,12 @@ def fu_events(request):
         print("F/U 일정 속성을 찾을 수 없습니다.")
         return JsonResponse(events, safe=False, encoder=DjangoJSONEncoder)
     
-    # 모든 행을 가져와서 F/U 일정이 있는지 확인
-    all_rows = Row.objects.filter(user=user)
+    # 모든 행을 가져와서 F/U 일정이 있는지 확인 (쿼리 최적화)
+    all_rows = Row.objects.filter(user=user).prefetch_related(
+        'values__attribute',
+        'values__attribute__attributeType',
+        'values__attribute__dropdown_attributes'
+    )
     processed_rows = set()  # 중복 처리 방지
     
     print(f"총 행 개수: {all_rows.count()}")
@@ -256,11 +280,12 @@ def fu_events(request):
         if row.id in processed_rows:
             continue
             
-        # 해당 행의 F/U 일정 값 찾기
-        fu_attr_value = AttributeValue.objects.filter(
-            row=row,
-            attribute=fu_date_attr
-        ).first()
+        # 해당 행의 F/U 일정 값 찾기 (prefetch된 데이터 활용)
+        fu_attr_value = None
+        for attr_value in row.values.all():
+            if attr_value.attribute_id == fu_date_attr.id:
+                fu_attr_value = attr_value
+                break
         
         if not fu_attr_value or not fu_attr_value.value:
             continue
@@ -293,7 +318,7 @@ def fu_events(request):
             print(f"  날짜 파싱 실패 ({fu_date_value}): {e}")
             continue  # 날짜 파싱 실패 시 건너뛰기
         
-        # 해당 행의 모든 속성값들 가져오기
+        # 해당 행의 모든 속성값들 가져오기 (prefetch된 데이터 활용)
         row_values = {}
         for rv in row.values.all():
             if rv.attribute:
@@ -317,16 +342,20 @@ def fu_events(request):
             except:
                 meeting_date = str(meeting_date)
         
-        # 영업진행 상태 가져오기
+        # 영업진행 상태 가져오기 (prefetch된 데이터 활용)
         sales_progress_value = row_values.get('영업진행', '')
         status_name = ''
         status_color = '#bbb'
         
         if sales_progress_value and str(sales_progress_value).isdigit():
-            dropdown = DropdownAttribute.objects.filter(
-                id=int(sales_progress_value),
-                attribute=sales_progress_attr
-            ).first()
+            # prefetch된 dropdown 데이터에서 찾기
+            dropdown = None
+            if sales_progress_attr:
+                for dropdown_attr in sales_progress_attr.dropdown_attributes.all():
+                    if dropdown_attr.id == int(sales_progress_value):
+                        dropdown = dropdown_attr
+                        break
+            
             if dropdown:
                 status_name = dropdown.option
                 status_color = dropdown.color or '#bbb'
@@ -524,29 +553,32 @@ def status_list(request):
 def board_view(request):
     user = User.objects.get(id=1)  # 현재 사용자
     
-    # "영업진행" 속성 가져오기
-    sales_progress_attr = Attribute.objects.filter(user=user, name='영업진행').first()
+    # "영업진행" 속성 가져오기 (쿼리 최적화)
+    sales_progress_attr = Attribute.objects.filter(user=user, name='영업진행').select_related('attributeType').first()
     
     if not sales_progress_attr:
         # 영업진행 속성이 없으면 빈 보드 반환
         return render(request, 'diary/diary_list.html', {'board': [], 'statuses': []})
     
-    # 영업진행 속성의 드롭다운 옵션들 가져오기
-    dropdown_options = DropdownAttribute.objects.filter(attribute=sales_progress_attr).order_by('id')
+    # 영업진행 속성의 드롭다운 옵션들 가져오기 (prefetch된 데이터 활용)
+    dropdown_options = sales_progress_attr.dropdown_attributes.all().order_by('id')
     
     board = []
     for option in dropdown_options:
-        # 해당 영업진행 상태를 가진 행들 찾기
+        # 해당 영업진행 상태를 가진 행들 찾기 (쿼리 최적화)
         rows = Row.objects.filter(
             user=user,
             values__attribute=sales_progress_attr,
             values__value=str(option.id)
+        ).prefetch_related(
+            'values__attribute',
+            'values__attribute__dropdown_attributes'
         ).order_by('order', 'id')
         
         # 각 행의 데이터를 entry 형태로 변환
         entries = []
         for row in rows:
-            # 행의 속성값들 가져오기
+            # 행의 속성값들 가져오기 (prefetch된 데이터 활용)
             row_values = {}
             for attr_value in row.values.all():
                 if attr_value.attribute:
@@ -865,9 +897,19 @@ def add_attribute(request):
 def get_row_details(request, row_id):
     try:
         user = User.objects.get(id=1)
-        row = Row.objects.get(id=row_id, user=user)
+        # 쿼리 최적화: select_related와 prefetch_related 적용
+        row = Row.objects.filter(id=row_id, user=user).select_related('user').prefetch_related(
+            'values__attribute__attributeType',
+            'values__attribute__dropdown_attributes'
+        ).first()
         
-        # 행의 모든 속성값들 가져오기
+        if not row:
+            return JsonResponse({
+                'success': False,
+                'error': '해당 데이터를 찾을 수 없습니다.'
+            })
+        
+        # 행의 모든 속성값들 가져오기 (prefetch된 데이터 활용)
         row_data = {}
         for attr_value in row.values.all():
             if attr_value.attribute:
@@ -897,13 +939,15 @@ def get_row_details(request, row_id):
                     except (ValueError, TypeError):
                         row_data[attr_name] = 0
                 else:
-                    # 드롭다운 타입인 경우 텍스트 값으로 변환
+                    # 드롭다운 타입인 경우 텍스트 값으로 변환 (prefetch된 데이터 활용)
                     if attr_value.attribute.attributeType and attr_value.attribute.attributeType.name == 'dropdown':
                         if value and value.isdigit():
-                            dropdown = DropdownAttribute.objects.filter(
-                                id=int(value),
-                                attribute=attr_value.attribute
-                            ).first()
+                            # prefetch된 dropdown 데이터에서 찾기
+                            dropdown = None
+                            for dropdown_attr in attr_value.attribute.dropdown_attributes.all():
+                                if dropdown_attr.id == int(value):
+                                    dropdown = dropdown_attr
+                                    break
                             if dropdown:
                                 value = dropdown.option
                     # 파일 타입인 경우 JSON 파싱하여 객체로 반환
@@ -922,11 +966,6 @@ def get_row_details(request, row_id):
             'row_id': row.id
         })
         
-    except Row.DoesNotExist:
-        return JsonResponse({
-            'success': False,
-            'error': '해당 데이터를 찾을 수 없습니다.'
-        })
     except Exception as e:
         return JsonResponse({
             'success': False,
@@ -3347,16 +3386,29 @@ def update_audio_file_order_and_notes(request):
 
 def entry_table_partial(request):
     user = User.objects.get(id=1)
-    # 항상 detail=False, view_select=True만 표시
-    attributes = Attribute.objects.filter(user=user, detail=False, view_select=True).order_by('sort_order', 'id')
+    # 항상 detail=False, view_select=True만 표시 (쿼리 최적화)
+    attributes = Attribute.objects.filter(user=user, detail=False, view_select=True).select_related('attributeType').order_by('sort_order', 'id')
     user_attributes = attributes
-    rows = Row.objects.filter(user=user).order_by('order')
+    
+    # 쿼리 최적화: select_related와 prefetch_related 적용
+    rows = Row.objects.filter(user=user).select_related('user').prefetch_related(
+        'values__attribute__attributeType',
+        'values__attribute__dropdown_attributes'
+    ).order_by('order')
+    
     rows_data = []
     for row in rows:
         row_values = {}
         for attr in user_attributes:
-            attr_value = AttributeValue.objects.filter(attribute=attr, row=row).first()
+            # prefetch된 데이터에서 찾기
+            attr_value = None
+            for value in row.values.all():
+                if value.attribute_id == attr.id:
+                    attr_value = value
+                    break
+            
             value = attr_value.value if attr_value else ''
+            
             if attr.name == '매출' or '매출' in attr.name:
                 numeric_value = parse_korean_currency(value)
                 row_values[attr.name] = {
@@ -3365,7 +3417,13 @@ def entry_table_partial(request):
                     'color': ''
                 }
             elif attr.attributeType and attr.attributeType.name == 'dropdown' and value.isdigit():
-                dropdown = DropdownAttribute.objects.filter(id=int(value)).first()
+                # prefetch된 dropdown 데이터에서 찾기
+                dropdown = None
+                for dropdown_attr in attr.dropdown_attributes.all():
+                    if dropdown_attr.id == int(value):
+                        dropdown = dropdown_attr
+                        break
+                
                 if dropdown:
                     row_values[attr.name] = {'label': dropdown.option, 'color': dropdown.color}
                 else:
@@ -3397,6 +3455,7 @@ def entry_table_partial(request):
             else:
                 row_values[attr.name] = {'label': value, 'color': ''}
         rows_data.append({'id': row.id, 'values': row_values})
+    
     attributes_list = list(attributes.values('name', 'attributeType__name', 'assential'))
     attributes_obj_list = [SimpleNamespace(**{k.replace('attributeType__name', 'attributeType_name'): v for k, v in d.items()}) for d in attributes_list]
     return render(request, 'diary/entry_table_partial.html', {
