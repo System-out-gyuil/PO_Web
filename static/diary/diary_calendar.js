@@ -35,7 +35,9 @@ function showCalendarSettingsModal(forceSettings) {
         // 컬러 정보 맵 생성 (DB에 저장된 값만 사용)
         const dateFieldColors = {};
         settings.date_fields.forEach(df => { dateFieldColors[df.attribute] = df.color; });
-        const dateFieldOptions = datetimeAttrs.map(attr => {
+        const dateFieldOptions = datetimeAttrs
+            .filter(attr => attr.name !== '개업년월') // 개업년월 제외
+            .map(attr => {
             // 컬러피커 value는 무조건 settings.date_fields의 color만 사용
             let color = dateFieldColors[attr.id];
             // 만약 체크되어 있는데 color가 없으면(새로 추가된 경우) 랜덤 색상 부여
@@ -217,12 +219,13 @@ function showCalendarSettingsModal(forceSettings) {
             // 모달 리렌더링 없이 행만 동적으로 추가
             const idx = window.calendarSettings.custom_events.length - 1;
             const rowHtml = `
-                <div class="custom-event-row" data-idx="${idx}" style="display:flex;align-items:center;margin-bottom:6px;">
-                    <input type="text" class="custom-event-title" value="" placeholder="제목" style="width:90px;margin-right:6px;">
-                    <input type="date" class="custom-event-start" value="" style="margin-right:6px;">
-                    <input type="date" class="custom-event-end" value="" style="margin-right:6px;">
-                    <input type="text" class="custom-event-content" value="" placeholder="내용" style="width:120px;margin-right:6px;">
-                    <input type="color" class="custom-event-color" value="#e5e7eb" style="margin-right:6px;width:28px;height:28px;border:none;background:none;cursor:pointer;">
+                <div class="custom-event-row" data-idx="${idx}" style="gap:4px;display:flex;align-items:center;margin-bottom:6px;">
+                    <input type="text" class="custom-event-title" value="" placeholder="제목" style="width:80px;">
+                    <input type="date" class="custom-event-start" value="" style="width:120px;">
+                    <span style="margin:0 2px;">~</span>
+                    <input type="date" class="custom-event-end" value="" style="width:120px;">
+                    <input type="text" class="custom-event-content" value="" placeholder="내용" style="width:100px;">
+                    <input type="color" class="custom-event-color" value="#e5e7eb" style="width:28px;height:28px;border:none;background:none;cursor:pointer;">
                     <button type="button" class="remove-custom-event" style="color:#fff;background:#dc3545;border:none;border-radius:3px;padding:2px 8px;cursor:pointer;">삭제</button>
                 </div>
             `;
@@ -356,6 +359,34 @@ function hexToRgba(hex, alpha) {
     return `rgba(${r},${g},${b},${alpha})`;
 }
 
+// 개업년월 필드의 새로운 JSON 형식 처리 함수
+function formatBusinessOpeningDate(value) {
+    if (!value) return '';
+    
+    try {
+        // JSON 형식인지 확인
+        if (typeof value === 'string' && value.startsWith('{')) {
+            const data = JSON.parse(value);
+            
+            // opening_date가 있으면 그대로 반환
+            if (data.opening_date) {
+                return data.opening_date;
+            }
+            
+            // years_ago가 있으면 "n년전" 형식으로 반환
+            if (data.years_ago) {
+                return `${data.years_ago}년전`;
+            }
+        }
+        
+        // 기존 형식이거나 파싱 실패시 그대로 반환
+        return value;
+    } catch (e) {
+        // JSON 파싱 실패시 그대로 반환
+        return value;
+    }
+}
+
 // 캘린더 초기화 함수 (설정을 반영한 버전)
 function initializeCalendarWithSettings() {
     const calendarEl = document.getElementById('calendar');
@@ -407,6 +438,13 @@ function initializeCalendarWithSettings() {
                 .filter(field => field !== '회사명')
                 .map((field, idx, arr) => {
                     const isLast = idx === arr.length - 1;
+                    let fieldValue = content[field] || '';
+                    
+                    // 개업년월 필드인 경우 특별 처리
+                    if (field === '개업년월') {
+                        fieldValue = formatBusinessOpeningDate(fieldValue);
+                    }
+                    
                     return `
                         <div style="
                             display:flex;
@@ -416,7 +454,7 @@ function initializeCalendarWithSettings() {
                             ${!isLast ? 'border-bottom:1px solid #e5e7eb;' : ''}
                         ">
                             <span style="color:#888;min-width:70px;flex-shrink:0;">${field}</span>
-                            <span style="margin-left:8px;color:#222;word-break:break-all;white-space:normal;display:inline-block;max-width:180px;text-align:left;">${content[field] || ''}</span>
+                            <span style="margin-left:8px;color:#222;word-break:break-all;white-space:normal;display:inline-block;max-width:180px;text-align:left;">${fieldValue}</span>
                         </div>
                     `;
                 }).join('');

@@ -1,3 +1,12 @@
+// CSRF 토큰 가져오기 함수
+function getCsrfToken() {
+    const cookieValue = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('csrftoken='))
+        ?.split('=')[1];
+    return cookieValue || '';
+}
+
 function openDropdown(td, type, id, currentId, currentSubregion) {
     console.log('openDropdown 호출됨:', {td, type, id, currentId, currentSubregion});
     
@@ -100,7 +109,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                 const selectedRegion = this.getAttribute('data-region');
                 
                 // UI 업데이트
-                td.innerHTML = `<div class="dropdown-pill" style="background:${selectedRegion === '서울' ? '#007bff' : selectedRegion === '경기' ? '#ff7b7b' : selectedRegion === '인천' ? '#7bff7b' : selectedRegion === '대구' ? '#7b7bff' : selectedRegion === '경북' ? '#ff7bff' : selectedRegion === '경남' ? '#7bff7b' : selectedRegion === '부산' ? '#7b7bff' : selectedRegion === '광주' ? '#ff7b7b' : selectedRegion === '대전' ? '#7bff7b' : selectedRegion === '울산' ? '#7b7bff' : selectedRegion === '세종' ? '#ff7b7b' : selectedRegion === '강원' ? '#7bff7b' : selectedRegion === '충북' ? '#7b7bff' : selectedRegion === '충남' ? '#7bff7b' : selectedRegion === '전북' ? '#7b7bff' : selectedRegion === '전남' ? '#7bff7b' : '#333'}; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">${selectedRegion}</div>`;
+                td.innerHTML = `<div style="display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">${selectedRegion}</div>`;
                 td.setAttribute('data-value', selectedRegion);
                 
                 // 상세지역 td도 같이 변경 (첫 번째 값으로 초기화)
@@ -154,8 +163,8 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                     .then(data => {
                         console.log('서버 응답 데이터:', data);
                         if (data.success) {
-                            // 실시간 동기화
-                            syncTableAndKanban('지역');
+                            // 부분 업데이트로 변경
+                            updateTableCell(id, '지역', selectedRegion);
                             
                             // 모달 업데이트 콜백이 있는 경우 실행
                             if (typeof window._modalAfterUpdateAll === 'function') {
@@ -261,7 +270,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                 const selectedSubregion = this.getAttribute('data-subregion');
                 
                 // UI 업데이트
-                td.innerHTML = `<div class="dropdown-pill" style="background:${selectedSubregion === '서울' ? '#007bff' : selectedSubregion === '경기' ? '#ff7b7b' : selectedSubregion === '인천' ? '#7bff7b' : selectedSubregion === '대구' ? '#7b7bff' : selectedSubregion === '경북' ? '#ff7bff' : selectedSubregion === '경남' ? '#7bff7b' : selectedSubregion === '부산' ? '#7b7bff' : selectedSubregion === '광주' ? '#ff7b7b' : selectedSubregion === '대전' ? '#7bff7b' : selectedSubregion === '울산' ? '#7b7bff' : selectedSubregion === '세종' ? '#ff7b7b' : selectedSubregion === '강원' ? '#7bff7b' : selectedRegion === '충북' ? '#7b7bff' : selectedRegion === '충남' ? '#7bff7b' : selectedRegion === '전북' ? '#7b7bff' : selectedRegion === '전남' ? '#7bff7b' : '#333'}; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">${selectedSubregion}</div>`;
+                td.innerHTML = `<div style="display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">${selectedSubregion}</div>`;
                 td.setAttribute('data-value', selectedSubregion);
                 
                 // 드롭다운 제거
@@ -1140,8 +1149,54 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
       });
   }
   
+  // 부분 업데이트 함수 - 특정 셀만 업데이트
+  function updateTableCell(rowId, field, value) {
+      const row = document.querySelector(`tr[data-id="${rowId}"]`);
+      if (!row) return;
+      
+      const cell = row.querySelector(`td[data-field="${field}"]`);
+      if (!cell) return;
+      
+      // 셀 내용만 업데이트 (전체 테이블 새로고침 없이)
+      if (field === '매출' || field.includes('매출')) {
+          cell.textContent = formatToKoreanCurrency(value);
+      } else if (field === '개업년월') {
+          // 개업년월 특별 처리
+          try {
+              if (typeof value === 'string' && value.startsWith('{')) {
+                  const data = JSON.parse(value);
+                  if (data.opening_date) {
+                      cell.textContent = data.opening_date;
+                  } else if (data.years_ago) {
+                      cell.textContent = `${data.years_ago}년전`;
+                  } else {
+                      cell.textContent = value;
+                  }
+              } else {
+                  cell.textContent = value;
+              }
+          } catch (e) {
+              cell.textContent = value;
+          }
+      } else {
+          cell.textContent = value;
+      }
+      
+      // 실시간 동기화 (캘린더만)
+      if (field === 'F/U 일정' && window.calendar) {
+          window.calendar.refetchEvents();
+      }
+  }
+  
+  // 기존 refreshTable 함수를 최적화된 버전으로 수정
   function refreshTable() {
       console.log('refreshTable 함수 시작');
+      
+      // 현재 스크롤 위치 저장
+      const tableView = document.getElementById('tableView');
+      const scrollTop = tableView ? tableView.scrollTop : 0;
+      const scrollLeft = tableView ? tableView.scrollLeft : 0;
+      
       fetch('/600/entry_table_partial/')
       .then(r => {
           console.log('fetch 응답 상태:', r.status);
@@ -1164,6 +1219,12 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
               if (currentTable) {
                   currentTable.innerHTML = newTable.innerHTML;
                   console.log('테이블 내용 교체 완료');
+                  
+                  // 스크롤 위치 복원
+                  if (tableView) {
+                      tableView.scrollTop = scrollTop;
+                      tableView.scrollLeft = scrollLeft;
+                  }
                   
                   bindTableCellEvents(); // 테이블 이벤트 복구
                   console.log('테이블 이벤트 바인딩 완료');
@@ -1249,8 +1310,15 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
   function updateRowField(rowId, field, value) {
       fetch('/600/update_row_field/', {
           method: 'POST',
-          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-          body: 'id='+encodeURIComponent(rowId)+'&field='+encodeURIComponent(field)+'&value='+encodeURIComponent(value)
+          headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': getCsrfToken()
+          },
+          body: JSON.stringify({
+              row_id: rowId,
+              field_name: field,
+              value: value
+          })
       })
       .then(r=>r.json())
       .then(function(data){
@@ -1259,8 +1327,8 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
               return;
           }
           
-          // 실시간 동기화
-          syncTableAndKanban(field);
+          // 부분 업데이트로 변경 (전체 테이블 새로고침 대신)
+          updateTableCell(rowId, field, value);
           
           // F/U 일정 필드인 경우 캘린더도 새로고침
           if(field === 'F/U 일정' && window.calendar) {
@@ -1555,7 +1623,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
           dropdown.querySelectorAll('span[data-region]').forEach(function(span) {
               span.onclick = function() {
                   selectedRegion = this.getAttribute('data-region');
-                  td.innerHTML = `<div class="dropdown-pill" style="background:${selectedRegion === '서울' ? '#007bff' : selectedRegion === '경기' ? '#ff7b7b' : selectedRegion === '인천' ? '#7bff7b' : selectedRegion === '대구' ? '#7b7bff' : selectedRegion === '경북' ? '#ff7bff' : selectedRegion === '경남' ? '#7bff7b' : selectedRegion === '부산' ? '#7b7bff' : selectedRegion === '광주' ? '#ff7b7b' : selectedRegion === '대전' ? '#7bff7b' : selectedRegion === '울산' ? '#7b7bff' : selectedRegion === '세종' ? '#ff7b7b' : selectedRegion === '강원' ? '#7bff7b' : selectedRegion === '충북' ? '#7b7bff' : selectedRegion === '충남' ? '#7bff7b' : selectedRegion === '전북' ? '#7b7bff' : selectedRegion === '전남' ? '#7bff7b' : '#333'}; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">${selectedRegion}</div>`;
+                  td.innerHTML = `<div class="dropdown-pill" style="display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">${selectedRegion}</div>`;
                   td.setAttribute('data-value', selectedRegion);
                   // 상세지역도 업데이트
                   var subTd = tr.querySelector('td[data-field="상세지역"]');
@@ -1606,7 +1674,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
           dropdown.querySelectorAll('span[data-subregion]').forEach(function(span) {
               span.onclick = function() {
                   selectedSubregion = this.getAttribute('data-subregion');
-                  td.innerHTML = `<div class="dropdown-pill" style="background:${selectedSubregion === '서울' ? '#007bff' : selectedSubregion === '경기' ? '#ff7b7b' : selectedSubregion === '인천' ? '#7bff7b' : selectedSubregion === '대구' ? '#7b7bff' : selectedSubregion === '경북' ? '#ff7bff' : selectedSubregion === '경남' ? '#7bff7b' : selectedSubregion === '부산' ? '#7b7bff' : selectedSubregion === '광주' ? '#ff7b7b' : selectedSubregion === '대전' ? '#7bff7b' : selectedSubregion === '울산' ? '#7b7bff' : selectedSubregion === '세종' ? '#ff7b7b' : selectedSubregion === '강원' ? '#7bff7b' : selectedSubregion === '충북' ? '#7b7bff' : selectedRegion === '충남' ? '#7bff7b' : selectedRegion === '전북' ? '#7b7bff' : selectedRegion === '전남' ? '#7bff7b' : '#333'}; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">${selectedSubregion}</div>`;
+                  td.innerHTML = `<div class="dropdown-pill" style="display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">${selectedSubregion}</div>`;
                   td.setAttribute('data-value', selectedSubregion);
                   closeDropdown();
                   // 상세지역 값 저장
@@ -1919,9 +1987,12 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
   
   // 테이블과 칸반보드 실시간 동기화 함수
   function syncTableAndKanban(fieldName) {
-      // 테이블 새로고침
-      if (typeof refreshTable === 'function') {
-          refreshTable();
+      // 테이블 새로고침은 필요한 경우에만 실행
+      // (드롭다운 옵션 변경, 정렬/필터 변경 등)
+      if (fieldName && ['구분', '영업진행', '가능성', '업종'].includes(fieldName)) {
+          if (typeof refreshTable === 'function') {
+              refreshTable();
+          }
       }
       
       // 칸반보드가 활성화되어 있고 업데이트된 필드가 현재 칸반보드 속성과 일치하는 경우 새로고침

@@ -681,10 +681,17 @@ def create_new_row(request):
 def update_row_field(request):
     if request.method == 'POST':
         try:
-            data = json.loads(request.body)
-            row_id = data.get('row_id')
-            field_name = data.get('field_name')
-            value = data.get('value')
+            # JSON 형식과 form-urlencoded 형식 모두 지원
+            if request.content_type == 'application/json':
+                data = json.loads(request.body)
+                row_id = data.get('row_id')
+                field_name = data.get('field_name')
+                value = data.get('value')
+            else:
+                # form-urlencoded 형식 처리
+                row_id = request.POST.get('id')  # 기존 코드와 호환성 유지
+                field_name = request.POST.get('field')
+                value = request.POST.get('value')
             
             if not row_id or not field_name:
                 return JsonResponse({'success': False, 'error': 'row_id와 field_name이 필요합니다'})
@@ -721,15 +728,31 @@ def update_row_field(request):
             except Attribute.DoesNotExist:
                 return JsonResponse({'success': False, 'error': f'속성 {field_name}을 찾을 수 없습니다'})
             
+            # 드롭다운 타입인 경우 특별 처리
+            if attr.attributeType and attr.attributeType.name == 'dropdown':
+                try:
+                    # value가 숫자인 경우 dropdown ID로 처리
+                    if value and str(value).isdigit():
+                        dropdown = DropdownAttribute.objects.get(id=int(value), attribute=attr)
+                        value_to_save = str(dropdown.id)
+                    else:
+                        # 텍스트 값인 경우 그대로 저장
+                        value_to_save = str(value)
+                except (DropdownAttribute.DoesNotExist, ValueError):
+                    # 드롭다운을 찾을 수 없는 경우 텍스트 값으로 저장
+                    value_to_save = str(value)
+            else:
+                value_to_save = str(value)
+            
             # AttributeValue 조회 또는 생성
             attr_value, created = AttributeValue.objects.get_or_create(
                 row=row, 
                 attribute=attr,
-                defaults={'value': str(value)}
+                defaults={'value': value_to_save}
             )
             
             if not created:
-                attr_value.value = str(value)
+                attr_value.value = value_to_save
                 attr_value.save()
             
             return JsonResponse({'success': True})

@@ -30,8 +30,8 @@ function showDetailModal(rowData, rowId) {
             // 속성을 순서대로 정렬 (sort_order 기준)
             const sortedAttributes = attributes.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
             
-            // 읽기 전용 필드 목록
-            const readonlyFields = ['생성일', '수정일'];
+            // 읽기 전용 필드 목록 - 모든 필드를 수정 가능하게 하기 위해 비움
+            const readonlyFields = [];
             
             // 숨김 필드 목록 (표시하지 않을 속성들)
             const hiddenFields = ['음성파일', '변환된 텍스트'];
@@ -1572,6 +1572,9 @@ function selectModalSubregionOption(rowId, subregionText, element) {
   });
 }
 
+// 모달에서 변경사항이 있었는지 추적하는 전역 변수
+window.modalHasChanges = false;
+
 function closeDetailModal() {
   document.getElementById('detailModal').style.display = 'none';
   
@@ -1580,11 +1583,27 @@ function closeDetailModal() {
   window.currentTextAttributeName = null;
   window.currentAudioFileInfo = null;
   
-  // 모달 닫을 때 테이블, 칸반보드, 캘린더 새로고침
-  refreshTable();
-  refreshKanban();
-  if (window.calendar) {
-      window.calendar.refetchEvents();
+  // 변경사항이 있었을 때만 새로고침 실행
+  if (window.modalHasChanges) {
+    setTimeout(() => {
+      // 테이블 새로고침 (필요한 경우에만)
+      if (typeof refreshTable === 'function') {
+        refreshTable();
+      }
+      
+      // 칸반보드 새로고침 (필요한 경우에만)
+      if (typeof refreshKanban === 'function') {
+        refreshKanban();
+      }
+      
+      // 캘린더 새로고침 (필요한 경우에만)
+      if (window.calendar && typeof window.calendar.refetchEvents === 'function') {
+        window.calendar.refetchEvents();
+      }
+      
+      // 변경사항 플래그 리셋
+      window.modalHasChanges = false;
+    }, 100); // 100ms 지연으로 사용자가 즉시 다른 모달을 열 수 있도록 함
   }
 }
 
@@ -3568,5 +3587,47 @@ function updateBusinessField(rowId, fieldName, dataType, value) {
     // 서버에 업데이트 요청
     const businessDataToSend = JSON.stringify(currentBusinessData);
     updateRowField(rowId, fieldName, businessDataToSend);
+}
+
+// 모달에서 필드 업데이트 함수
+function updateRowField(rowId, field, value) {
+    fetch('/600/update_row_field/', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'id='+encodeURIComponent(rowId)+'&field='+encodeURIComponent(field)+'&value='+encodeURIComponent(value)
+    })
+    .then(r=>r.json())
+    .then(function(data){
+        if(!data.success) {
+            alert('수정 실패: '+(data.error||''));
+            return;
+        }
+        
+        // 모달에서 변경사항이 있었음을 표시
+        window.modalHasChanges = true;
+        
+        // 부분 업데이트로 변경 (전체 테이블 새로고침 대신)
+        if (typeof updateTableCell === 'function') {
+            updateTableCell(rowId, field, value);
+        }
+        
+        // F/U 일정 필드인 경우 캘린더도 새로고침
+        if(field === 'F/U 일정' && window.calendar) {
+            window.calendar.refetchEvents();
+        }
+        
+        // 모달이 열려있는 경우 모달 데이터도 새로고침
+        if (document.getElementById('detailModal') && document.getElementById('detailModal').style.display !== 'none') {
+            fetch('/600/get_row_details/'+rowId+'/')
+              .then(r => r.json())
+              .then(function(data){
+                  if(data.success) showDetailModal(data.row_data, data.row_id);
+              });
+        }
+    })
+    .catch(function(err){
+        alert('수정 실패: 네트워크 오류');
+        console.error(err);
+    });
 }
 
