@@ -678,6 +678,7 @@ body { font-family: Arial, sans-serif; margin: 40px; background: #f8f9fa; }
         background: #fff;
     }
 
+    /* 캘린더 오늘 날짜 스타일 */
     .fc-day-today, .calendar-today {
         background: rgb(255 0 0 / 5%) !important;
       }

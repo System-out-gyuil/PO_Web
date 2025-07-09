@@ -4032,6 +4032,12 @@ def calendar_events(request):
         attr_id = date_field['attribute']
         content_fields = date_field['content_fields']
         color = date_field.get('color', '#e5e7eb')
+        
+        # view_check 필드 확인 - false인 경우 이벤트 생성하지 않음
+        view_check = date_field.get('view_check', True)  # 기본값은 True
+        if view_check is False:
+            continue
+            
         attr = Attribute.objects.filter(id=attr_id, user=user).first()
         if not attr: continue
         for row in Row.objects.filter(user=user):

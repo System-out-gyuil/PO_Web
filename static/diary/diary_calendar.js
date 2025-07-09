@@ -30,48 +30,104 @@ function showCalendarSettingsModal(forceSettings) {
         const datetimeAttrs = datetimeData.attributes;
         const allAttrs = attributesData.attributes;
 
-        // 기준 날짜 필드 체크박스
+        // 기준 날짜 필드 체크박스 - view_check 필드로 표시 여부 제어
         const dateFieldIds = settings.date_fields.map(df => df.attribute);
         // 컬러 정보 맵 생성 (DB에 저장된 값만 사용)
         const dateFieldColors = {};
-        settings.date_fields.forEach(df => { dateFieldColors[df.attribute] = df.color; });
+        settings.date_fields.forEach(df => { 
+            dateFieldColors[df.attribute] = df.color; 
+        });
+        
         const dateFieldOptions = datetimeAttrs
             .filter(attr => attr.name !== '개업년월') // 개업년월 제외
             .map(attr => {
-            // 컬러피커 value는 무조건 settings.date_fields의 color만 사용
             let color = dateFieldColors[attr.id];
-            // 만약 체크되어 있는데 color가 없으면(새로 추가된 경우) 랜덤 색상 부여
             if (dateFieldIds.includes(attr.id) && !color) {
                 color = randomColor();
                 dateFieldColors[attr.id] = color;
                 let df = settings.date_fields.find(df => df.attribute === attr.id);
                 if (df) df.color = color;
             }
-            // 체크 안된 경우(아직 추가 안된 경우)는 기본색상(혹은 빈값)
-            return `<label style="display:flex;align-items:center;margin-bottom:6px;">
-                <input type="checkbox" class="date-field-checkbox" value="${attr.id}" ${dateFieldIds.includes(attr.id) ? 'checked' : ''} style="margin-right:8px;">
-                <span style="margin-right:8px;">${attr.name}</span>
-                <input type="color" class="date-field-color" value="${color || '#e5e7eb'}" data-date-attr="${attr.id}" style="margin-left:8px;width:28px;height:28px;border:none;background:none;cursor:pointer;">
-            </label>`;
+            const existingField = settings.date_fields.find(df => df.attribute === attr.id);
+            const isChecked = existingField ? (existingField.view_check !== false) : false;
+            const allowedTypes = ['text', 'datetime', 'region', 'region detail', 'number'];
+            const filteredAttrs = allAttrs.filter(a => allowedTypes.includes(a.type) && a.name !== '회사명' && a.name !== '개업년월');
+            const checkboxOptions = filteredAttrs.map(a => 
+                `<div class="content-checkbox-row" style="display:flex;align-items:center;padding:4px 8px;margin:2px 0;">
+                    <input type="checkbox" class="content-checkbox" data-date-attr="${attr.id}" value="${a.name}" ${existingField && existingField.content_fields.includes(a.name) ? 'checked' : ''} style="margin-right:8px; width: 10%;">
+                    <label style="margin:0;cursor:pointer;font-size:13px; width: 90%;">${a.name}</label>
+                </div>`
+            ).join('');
+            return `<div style="margin-bottom:12px;border:1px solid #e0e0e0;border-radius:6px;overflow:hidden;">
+                <div style="display:flex;align-items:center;padding:8px 12px;background:#f8f9fa;">
+                    <input type="checkbox" class="date-field-checkbox" value="${attr.id}" ${isChecked ? 'checked' : ''} style="margin-right:8px;">
+                    <span style="margin-right:8px;min-width:80px;font-weight:500;">${attr.name}</span>
+                    <input type="color" class="date-field-color" value="${color || '#e5e7eb'}" data-date-attr="${attr.id}" style="width:28px;height:28px;border:none;background:none;cursor:pointer;margin-right:8px;">
+                    <button type="button" class="content-select-btn" data-date-attr="${attr.id}" style="padding:4px 10px;font-size:13px;border:1px solid #bbb;background:#fff;border-radius:4px;cursor:pointer;">카드에 표시할 내용 선택</button>
+                </div>
+                <div class="content-checkboxes-popup" data-date-attr="${attr.id}" style="display:none;position:absolute;z-index:2000;min-width:180px;max-width:320px;background:#fff;border:1px solid #bbb;box-shadow:0 2px 8px #bbb;border-radius:8px;padding:10px 8px;">
+                    ${checkboxOptions}
+                </div>
+            </div>`;
         }).join('');
 
-        // 날짜 필드별 카드에 표시할 내용 체크박스
+        // 팝업 열기/닫기 및 바깥 클릭 처리
+        setTimeout(() => {
+            document.querySelectorAll('.content-select-btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const attrId = this.getAttribute('data-date-attr');
+                    const popup = document.querySelector(`.content-checkboxes-popup[data-date-attr="${attrId}"]`);
+                    
+                    // 현재 팝업이 열려있는지 확인
+                    const isCurrentlyOpen = popup && popup.style.display === 'block';
+                    
+                    // 모든 팝업 닫기
+                    document.querySelectorAll('.content-checkboxes-popup').forEach(p => p.style.display = 'none');
+                    
+                    // 현재 팝업이 닫혀있었다면 열기
+                    if (!isCurrentlyOpen) {
+                        if (popup) {
+                            const rect = this.getBoundingClientRect();
+                            popup.style.display = 'block';
+                            popup.style.position = 'fixed';
+                            popup.style.left = (rect.left) + 'px';
+                            popup.style.top = (rect.bottom + 4) + 'px';
+                        }
+                    }
+                });
+            });
+            // 바깥 클릭 시 팝업 닫기
+            document.addEventListener('mousedown', function(e) {
+                if (!e.target.closest('.content-checkboxes-popup') && !e.target.classList.contains('content-select-btn')) {
+                    document.querySelectorAll('.content-checkboxes-popup').forEach(p => p.style.display = 'none');
+                }
+            });
+        }, 0);
+
+        // 날짜 필드별 카드에 표시할 내용 드롭다운
         function renderContentFieldsSection() {
             return datetimeAttrs.map(attr => {
                 const df = settings.date_fields.find(df => df.attribute === attr.id) || { content_fields: ['회사명'], color: dateFieldColors[attr.id] || randomColor() };
-                // 회사명은 항상 기본 포함, 체크박스에는 안 보임
+                // 회사명은 항상 기본 포함, 드롭다운에는 안 보임
                 const allowedTypes = ['text', 'datetime', 'region', 'region detail', 'number'];
-                const filteredAttrs = allAttrs.filter(a => allowedTypes.includes(a.type) && a.name !== '회사명');
-                const checkboxes = filteredAttrs.map(a =>
-                    `<div class="calendar-setting-row${df.content_fields.includes(a.name) ? ' checked-row' : ''}" data-attr="${a.name}">
-                        <input type="checkbox" class="calendar-setting-checkbox" data-date-attr="${attr.id}" value="${a.name}" ${df.content_fields.includes(a.name) ? 'checked' : ''} style="margin:0;">
-                        <label for="content_${attr.id}_${a.name}" style="width:90%;margin-left:8px;">${a.name}</label>
-                    </div>`
+                const filteredAttrs = allAttrs.filter(a => allowedTypes.includes(a.type) && a.name !== '회사명' && a.name !== '개업년월');
+                
+                // 드롭다운 옵션 생성
+                const dropdownOptions = filteredAttrs.map(a => 
+                    `<option value="${a.name}" ${df.content_fields.includes(a.name) ? 'selected' : ''}>${a.name}</option>`
                 ).join('');
+                
+                // view_check 필드로 표시 여부 확인
+                const isVisible = df.view_check !== false;
+                
                 return `
-                    <div class="content-fields-section" data-date-attr="${attr.id}" style="margin-bottom:18px;${dateFieldIds.includes(attr.id) ? '' : 'display:none;'}">
+                    <div class="content-fields-section" data-date-attr="${attr.id}" style="margin-bottom:18px;${isVisible ? '' : 'display:none;'}">
                         <div style="font-weight:bold;color:#333;margin-bottom:6px;">[${attr.name}] 카드에 표시할 내용</div>
-                        ${checkboxes}
+                        <select class="content-fields-dropdown" data-date-attr="${attr.id}" multiple style="width:100%;min-height:100px;padding:8px;border:1px solid #ddd;border-radius:4px;">
+                            ${dropdownOptions}
+                        </select>
+                        <div style="font-size:12px;color:#666;margin-top:4px;">Ctrl+클릭으로 여러 항목 선택 가능</div>
                     </div>
                 `;
             }).join('');
@@ -136,16 +192,16 @@ function showCalendarSettingsModal(forceSettings) {
         // 모달 HTML
         const modalHTML = `
             <div id="calendarSettingsModal" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;">
-                <div style="background:white;border-radius:8px;padding:20px;width:540px;max-width:95vw;max-height:90vh;overflow-y:auto;">
+                <div style="background:white;border-radius:8px;padding:20px;width:640px;max-width:95vw;max-height:90vh;overflow-y:auto;">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
                         <h3 style="margin:0;color:#333;">캘린더 설정</h3>
                         <button onclick="closeCalendarSettingsModal()" style="background:none;border:none;font-size:20px;cursor:pointer;">&times;</button>
                     </div>
                     <div style="margin-bottom:18px;">
                         <label style="display:block;margin-bottom:8px;font-weight:bold;color:#333;">카드 생성 기준 날짜 필드(복수 선택):</label>
+                        <div style="font-size:12px;color:#666;margin-bottom:8px;">각 필드 오른쪽의 드롭다운에서 카드에 표시할 내용을 선택하세요. Ctrl+클릭으로 여러 항목 선택 가능합니다.</div>
                         <div id="dateFieldCheckboxes">${dateFieldOptions}</div>
                     </div>
-                    <div id="contentFieldsSections">${renderContentFieldsSection()}</div>
                     ${renderCustomEventsSection()}
                     <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:18px;">
                         <button onclick="closeCalendarSettingsModal()" style="padding:8px 16px;border:1px solid #ddd;background:#f8f9fa;border-radius:4px;cursor:pointer;">취소</button>
@@ -161,21 +217,29 @@ function showCalendarSettingsModal(forceSettings) {
         document.body.insertAdjacentHTML('beforeend', modalHTML);
 
         // 동적 이벤트 바인딩
-        // 1. 기준 날짜 필드 체크박스 → content_fields section show/hide
+        // 1. 기준 날짜 필드 체크박스 → content_fields section show/hide (view_check 필드로 제어)
         document.querySelectorAll('.date-field-checkbox').forEach(cb => {
             cb.addEventListener('change', function() {
                 const attrId = parseInt(this.value);
                 const section = document.querySelector(`.content-fields-section[data-date-attr="${attrId}"]`);
+                let df = settings.date_fields.find(df => df.attribute === attrId);
+                
                 if (this.checked) {
                     section.style.display = '';
                     // 없으면 settings.date_fields에 추가 (랜덤 색상)
-                    if (!settings.date_fields.find(df => df.attribute === attrId)) {
-                        settings.date_fields.push({ attribute: attrId, content_fields: ['회사명'], color: dateFieldColors[attrId] || randomColor() });
+                    if (!df) {
+                        df = { attribute: attrId, content_fields: ['회사명'], color: dateFieldColors[attrId] || randomColor(), view_check: true };
+                        settings.date_fields.push(df);
+                    } else {
+                        // 기존 설정 유지하면서 view_check만 true로 설정
+                        df.view_check = true;
                     }
                 } else {
                     section.style.display = 'none';
-                    // settings.date_fields에서 제거
-                    settings.date_fields = settings.date_fields.filter(df => df.attribute !== attrId);
+                    // settings.date_fields에서 제거하지 않고 view_check만 false로 설정
+                    if (df) {
+                        df.view_check = false;
+                    }
                 }
             });
         });
@@ -190,27 +254,45 @@ function showCalendarSettingsModal(forceSettings) {
             });
         });
 
-        // 2. content_fields 체크박스 → settings.date_fields 동기화 + 배경색 토글
-        document.querySelectorAll('.calendar-setting-checkbox').forEach(cb => {
-            cb.addEventListener('change', function() {
+        // 1-3. 카드 생성 기준 날짜 필드의 드롭다운 변경 시 settings.date_fields 동기화
+        document.querySelectorAll('.date-field-content-dropdown').forEach(dropdown => {
+            dropdown.addEventListener('change', function() {
                 const attrId = parseInt(this.getAttribute('data-date-attr'));
                 let df = settings.date_fields.find(df => df.attribute === attrId);
                 if (!df) {
-                    df = { attribute: attrId, content_fields: ['회사명'] };
+                    df = { attribute: attrId, content_fields: ['회사명'], color: dateFieldColors[attrId] || randomColor(), view_check: true };
                     settings.date_fields.push(df);
                 }
-                if (this.checked) {
-                    if (!df.content_fields.includes(this.value)) df.content_fields.push(this.value);
-                    this.closest('.calendar-setting-row').classList.add('checked-row');
-                } else {
-                    df.content_fields = df.content_fields.filter(f => f !== this.value);
-                    this.closest('.calendar-setting-row').classList.remove('checked-row');
+                // 선택된 옵션들로 content_fields 업데이트
+                df.content_fields = ['회사명'].concat(
+                    Array.from(this.options).filter(opt => opt.selected).map(opt => opt.value)
+                );
+            });
+        });
+
+        // 1-4. 체크박스 변경 시 settings.date_fields 동기화
+        document.querySelectorAll('.content-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const attrId = parseInt(this.getAttribute('data-date-attr'));
+                const value = this.value;
+                let df = settings.date_fields.find(df => df.attribute === attrId);
+                if (!df) {
+                    df = { attribute: attrId, content_fields: ['회사명'], color: dateFieldColors[attrId] || randomColor(), view_check: true };
+                    settings.date_fields.push(df);
                 }
+                
+                if (this.checked) {
+                    if (!df.content_fields.includes(value)) {
+                        df.content_fields.push(value);
+                    }
+                } else {
+                    df.content_fields = df.content_fields.filter(f => f !== value);
+                }
+                
                 // 회사명은 항상 포함
                 if (!df.content_fields.includes('회사명')) df.content_fields.unshift('회사명');
             });
         });
-
         // 3. 커스텀 이벤트 추가/삭제/수정
         document.getElementById('addCustomEventBtn').onclick = function() {
             window.calendarSettings.custom_events = window.calendarSettings.custom_events || [];
@@ -273,6 +355,20 @@ function closeCalendarSettingsModal() {
     }
 }
 
+// 드롭다운 토글 함수
+function toggleContentDropdown(attrId) {
+    const checkboxes = document.querySelector(`.content-checkboxes[data-date-attr="${attrId}"]`);
+    const arrow = document.querySelector(`[onclick="toggleContentDropdown(${attrId})"] .dropdown-arrow`);
+    
+    if (checkboxes.style.display === 'none') {
+        checkboxes.style.display = 'block';
+        arrow.textContent = '▲';
+    } else {
+        checkboxes.style.display = 'none';
+        arrow.textContent = '▼';
+    }
+}
+
 function saveCalendarSettings() {
     const modal = document.getElementById('calendarSettingsModal');
     if (!modal) return;
@@ -288,12 +384,34 @@ function saveCalendarSettings() {
         colorMap[attrId] = input.value;
     });
 
-    // 2. 각 날짜 필드별 표시 내용 + color
-    const date_fields = dateFieldIds.map(attrId => {
+    // 2. 각 날짜 필드별 표시 내용 + color + view_check
+    const date_fields = [];
+    
+    // 모든 datetime 속성에 대해 처리
+    const allDateTimeAttrs = Array.from(modal.querySelectorAll('.date-field-checkbox')).map(cb => parseInt(cb.value));
+    
+    allDateTimeAttrs.forEach(attrId => {
+        const isChecked = modal.querySelector(`.date-field-checkbox[value="${attrId}"]`).checked;
         const checkedFields = ['회사명'].concat(
-            Array.from(modal.querySelectorAll(`.content-fields-section[data-date-attr="${attrId}"] input[type="checkbox"]:checked`)).map(cb => cb.value)
+            Array.from(modal.querySelectorAll(`.content-checkbox[data-date-attr="${attrId}"]:checked`)).map(cb => cb.value)
         ).filter((v, i, arr) => arr.indexOf(v) === i);
-        return { attribute: attrId, content_fields: checkedFields, color: colorMap[attrId] };
+        
+        // 기존 설정이 있으면 유지하고 view_check만 업데이트
+        const existingField = window.calendarSettings.date_fields.find(df => df.attribute === attrId);
+        if (existingField) {
+            existingField.view_check = isChecked;
+            existingField.color = colorMap[attrId] || existingField.color;
+            existingField.content_fields = checkedFields;
+            date_fields.push(existingField);
+        } else {
+            // 새로 추가되는 경우
+            date_fields.push({ 
+                attribute: attrId, 
+                content_fields: checkedFields, 
+                color: colorMap[attrId] || '#e5e7eb',
+                view_check: isChecked
+            });
+        }
     });
 
     // 3. 커스텀 이벤트 (color 포함)
