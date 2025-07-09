@@ -35,6 +35,30 @@ from django.db.models import Q, Max
 import re
 from datetime import date
 import time
+import json
+import re
+from datetime import datetime, timedelta
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_GET, require_http_methods
+from django.shortcuts import render
+from django.contrib.auth.models import User
+from .models import *
+from django.db.models import Q
+from django.core.paginator import Paginator
+from django.http import HttpResponse
+import os
+import boto3
+from botocore.exceptions import ClientError
+import uuid
+import requests
+import base64
+import hashlib
+import hmac
+import time
+from urllib.parse import quote
+import mimetypes
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
@@ -655,70 +679,69 @@ def create_new_row(request):
 
 @csrf_exempt
 def update_row_field(request):
-    """기존 행의 필드 업데이트"""
     if request.method == 'POST':
-        # JSON 요청과 form-data 요청 모두 처리
-        if request.content_type == 'application/json':
-            try:
-                data = json.loads(request.body)
-                row_id = data.get('row_id')
-                field = data.get('field_name')
-                value = data.get('value', '')
-                print(row_id, field, value)
-            except json.JSONDecodeError:
-                return JsonResponse({'success': False, 'error': 'Invalid JSON'})
-        else:
-            # 기존 form-data 요청 처리
-            row_id = request.POST.get('id')
-            field = request.POST.get('field')
-            value = request.POST.get('value', '')
-            print(row_id, field, value)
-        
-        if not row_id or not field:
-            return JsonResponse({'success': False, 'error': 'Missing id or field'})
-            
         try:
-            # 사용자 ID를 1로 고정
+            data = json.loads(request.body)
+            row_id = data.get('row_id')
+            field_name = data.get('field_name')
+            value = data.get('value')
+            
+            if not row_id or not field_name:
+                return JsonResponse({'success': False, 'error': 'row_id와 field_name이 필요합니다'})
+            
+            # 사용자와 행 조회
             user = User.objects.get(id=1)
             row = Row.objects.get(id=row_id, user=user)
-        except Row.DoesNotExist:
-            return JsonResponse({'success': False, 'error': 'Row not found'})
             
-        try:
-            attr = Attribute.objects.get(name=field)
-        except Attribute.DoesNotExist:
-            return JsonResponse({'success': False, 'error': 'Invalid attribute'})
+            # 매출 필드 특별 처리
+            if field_name == '매출' or '매출' in field_name:
+                # 억/천만 단위로 전송된 경우 처리
+                if isinstance(value, dict) and 'eok' in value and 'cheonman' in value:
+                    value = parse_sales_amount(value['eok'], value['cheonman'])
+                else:
+                    # 기존 방식 (숫자 문자열)
+                    value = parse_korean_currency(value)
             
-        attr_type = attr.attributeType.name if attr.attributeType else ''
-        attribute, _ = Attribute.objects.get_or_create(
-            name=attr.name,
-            user=user,
-            defaults={'attributeType': attr.attributeType}
-        )
-        
-        # Dropdown 처리
-        if attr_type == 'dropdown':
+            # 개업년월 필드 특별 처리
+            elif field_name == '개업년월':
+                # JSON 형태로 저장된 데이터는 그대로 유지
+                if isinstance(value, dict):
+                    value = json.dumps(value, ensure_ascii=False)
+                # 문자열이 JSON 형태인지 확인
+                elif isinstance(value, str) and (value.startswith('{') or value.startswith('[')):
+                    # 이미 JSON 형태면 그대로 사용
+                    pass
+                else:
+                    # 일반 문자열인 경우 JSON으로 변환
+                    value = json.dumps({'opening_date': value}, ensure_ascii=False)
+            
+            # 속성 조회
             try:
-                dropdown = DropdownAttribute.objects.get(id=int(value), attribute=attr)
-                value_to_save = str(dropdown.id)
-            except (DropdownAttribute.DoesNotExist, ValueError):
-                return JsonResponse({'success': False, 'error': 'Invalid dropdown value'})
-        else:
-            value_to_save = value
+                attr = Attribute.objects.get(name=field_name, user=user)
+            except Attribute.DoesNotExist:
+                return JsonResponse({'success': False, 'error': f'속성 {field_name}을 찾을 수 없습니다'})
             
-        # 해당 Row의 AttributeValue 업데이트 또는 생성
-        attr_value, created = AttributeValue.objects.get_or_create(
-            row=row,
-            attribute=attribute,
-            defaults={'value': value_to_save}
-        )
-        if not created:
-            attr_value.value = value_to_save
-            attr_value.save()
+            # AttributeValue 조회 또는 생성
+            attr_value, created = AttributeValue.objects.get_or_create(
+                row=row, 
+                attribute=attr,
+                defaults={'value': str(value)}
+            )
             
-        return JsonResponse({'success': True})
-        
-    return JsonResponse({'success': False, 'error': 'Invalid request'})
+            if not created:
+                attr_value.value = str(value)
+                attr_value.save()
+            
+            return JsonResponse({'success': True})
+            
+        except Row.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '행을 찾을 수 없습니다'})
+        except Attribute.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '속성을 찾을 수 없습니다'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'POST 요청만 지원합니다'})
 
 @csrf_exempt
 def dropdown_options(request):
@@ -828,24 +851,47 @@ def get_row_details(request, row_id):
                 attr_name = attr_value.attribute.name
                 value = attr_value.value
                 
-                # 드롭다운 타입인 경우 텍스트 값으로 변환
-                if attr_value.attribute.attributeType and attr_value.attribute.attributeType.name == 'dropdown':
-                    if value and value.isdigit():
-                        dropdown = DropdownAttribute.objects.filter(
-                            id=int(value),
-                            attribute=attr_value.attribute
-                        ).first()
-                        if dropdown:
-                            value = dropdown.option
-                # 파일 타입인 경우 JSON 파싱하여 객체로 반환
-                elif attr_value.attribute.attributeType and attr_value.attribute.attributeType.name == 'file':
-                    if value:
-                        try:
-                            value = json.loads(value)  # JSON 문자열을 객체로 변환
-                        except (json.JSONDecodeError, TypeError):
-                            value = None  # 파싱 실패 시 None
-                
-                row_data[attr_name] = value
+                # 특별한 필드들 처리
+                if attr_name == '개업년월':
+                    # 개업년월 데이터 파싱
+                    business_data = parse_business_data(value)
+                    if business_data:
+                        # 개업년수 계산
+                        business_years = calculate_business_years(
+                            business_data.get('opening_date'),
+                            business_data.get('years_ago')
+                        )
+                        if business_years is not None:
+                            business_data['business_years'] = business_years
+                        row_data[attr_name] = business_data
+                    else:
+                        row_data[attr_name] = {}
+                elif attr_name == '매출' or '매출' in attr_name:
+                    # 매출 데이터는 숫자로 변환
+                    try:
+                        numeric_value = int(value) if value else 0
+                        row_data[attr_name] = numeric_value
+                    except (ValueError, TypeError):
+                        row_data[attr_name] = 0
+                else:
+                    # 드롭다운 타입인 경우 텍스트 값으로 변환
+                    if attr_value.attribute.attributeType and attr_value.attribute.attributeType.name == 'dropdown':
+                        if value and value.isdigit():
+                            dropdown = DropdownAttribute.objects.filter(
+                                id=int(value),
+                                attribute=attr_value.attribute
+                            ).first()
+                            if dropdown:
+                                value = dropdown.option
+                    # 파일 타입인 경우 JSON 파싱하여 객체로 반환
+                    elif attr_value.attribute.attributeType and attr_value.attribute.attributeType.name == 'file':
+                        if value:
+                            try:
+                                value = json.loads(value)  # JSON 문자열을 객체로 변환
+                            except (json.JSONDecodeError, TypeError):
+                                value = None  # 파싱 실패 시 None
+                    
+                    row_data[attr_name] = value
         
         return JsonResponse({
             'success': True,
@@ -2585,6 +2631,7 @@ def get_funding_recommendation(request):
         # 회사 데이터 수집
         company_data = {}
         
+        # 필수 필드들 (기본값 없음)
         # 업종 정보
         industry_value = _get_attribute_value(user, row, '업종')
         company_data['industry'] = industry_value if industry_value else '기타'
@@ -2597,15 +2644,17 @@ def get_funding_recommendation(request):
         credit_value = _get_attribute_value(user, row, '신용점수')
         company_data['credit_score'] = _parse_number(credit_value, 0)
         
-        # 직원수
+        # 기본값이 설정되는 필드들
+        # 직원수 (기본값: 1명)
         employee_value = _get_attribute_value(user, row, '직원수')
-        company_data['employees'] = _parse_number(employee_value, 0)
+        company_data['employees'] = _parse_number(employee_value, 1)
         
-        # 개업년월로부터 업력 계산
+        # 개업년월로부터 업력 계산 (기본값: 3년 = 36개월)
         opening_date_value = _get_attribute_value(user, row, '개업년월')
-        company_data['business_months'] = _calculate_business_months(opening_date_value)
+        calculated_months = _calculate_business_months(opening_date_value)
+        company_data['business_months'] = calculated_months if calculated_months > 0 else 36
         
-        # 기대출 정보에서 기존 부채 및 자금 사용 현황 계산
+        # 기대출 정보에서 기존 부채 및 자금 사용 현황 계산 (기본값: 0)
         debt_data = _get_debt_data(user, row)
         print(f"원본 기대출 데이터: {debt_data}")
         
@@ -2669,13 +2718,23 @@ def get_funding_recommendation(request):
         print(f'규모 : {biz_employees} ')
         print(f'업력 : {biz_business_months} ')
 
-        biz_data = BizInfo.objects.filter(
-                                        (Q(region__contains=biz_region) | Q(region__contains="전국"))\
-                                       & Q(possible_industry__contains=biz_industry) \
-                                       & Q(revenue__contains=biz_revenue)\
-                                       & Q(business_period__contains=biz_business_months) \
-                                       & Q(target__contains=biz_employees)
-                                       )[:5]
+        # region이 None이 아닐 경우에만 지역 조건 포함
+        if biz_region:
+            biz_data = BizInfo.objects.filter(
+                                            (Q(region__contains=biz_region) | Q(region__contains="전국"))\
+                                           & Q(possible_industry__contains=biz_industry) \
+                                           & Q(revenue__contains=biz_revenue)\
+                                           & Q(business_period__contains=biz_business_months) \
+                                           & Q(target__contains=biz_employees)
+                                           )[:5]
+        else:
+            # region이 None인 경우 지역 조건 제외
+            biz_data = BizInfo.objects.filter(
+                                            Q(possible_industry__contains=biz_industry) \
+                                           & Q(revenue__contains=biz_revenue)\
+                                           & Q(business_period__contains=biz_business_months) \
+                                           & Q(target__contains=biz_employees)
+                                           )[:5]
         
         # 공고 추천 데이터 준비
         recommended_notices = []
@@ -2712,13 +2771,17 @@ def get_funding_recommendation(request):
         # 신보 기존 사용액 별도 계산 (하위 호환성)
         company_data['existing_sinbo_debt'] = existing_funds['sinbo']
         
-        # 추가 필드들
-        # 나이 속성에서 CEO 나이 계산
+        # 추가 필드들 (기본값 설정)
+        # 나이 속성에서 CEO 나이 계산 (기본값: 35세)
         age_attribute_value = _get_attribute_value(user, row, '나이')
-        company_data['ceo_age'] = _calculate_age_from_data(age_attribute_value)
+        calculated_age = _calculate_age_from_data(age_attribute_value)
+        company_data['ceo_age'] = calculated_age if calculated_age > 0 else 35
         
         company_data['is_startup'] = company_data['business_months'] <= 36
-        company_data['experience_years'] = int(_get_attribute_value(user, row, '경력'))  # 업력을 경력으로 사용
+        
+        # 경력은 별도 속성에서 가져오기 (기본값: 5년)
+        experience_value = _get_attribute_value(user, row, '경력')
+        company_data['experience_years'] = _parse_number(experience_value, 5)  # 기본값 5년
         
         print("=== 수집된 회사 데이터 ===")
         for key, value in company_data.items():
@@ -3404,23 +3467,33 @@ def get_all_attributes(request):
         return JsonResponse({'success': False, 'error': str(e)})
 
 def parse_korean_currency(value):
-    if not value:
+    """한국어 통화를 숫자로 변환"""
+    if not value or value == '0':
         return 0
-    s = str(value).replace(',', '').replace(' ', '').replace('원', '')
-    if s.isdigit():
-        return int(s)
-    # 억, 만, 천 등 한글 단위 파싱
-    units = {'억': 100000000, '천만': 10000000, '백만': 1000000, '십만': 100000, '만': 10000, '천': 1000, '백': 100, '십': 10}
-    total = 0
-    for unit, factor in units.items():
-        match = re.search(r'(\d+)' + unit, s)
-        if match:
-            total += int(match.group(1)) * factor
-            s = s.replace(match.group(0), '')
-    # 남은 숫자
-    if s.isdigit():
-        total += int(s)
-    return total
+    
+    # 숫자만 추출
+    if isinstance(value, str):
+        # 콤마 제거
+        value = value.replace(',', '')
+        # 숫자가 아닌 문자 제거
+        value = ''.join(c for c in value if c.isdigit())
+    
+    try:
+        return int(value) if value else 0
+    except (ValueError, TypeError):
+        return 0
+
+def parse_sales_amount(eok, cheonman):
+    """억과 천만 단위를 숫자로 변환"""
+    try:
+        eok_amount = int(eok) if eok else 0
+        cheonman_amount = int(cheonman) if cheonman else 0
+        
+        # 총 금액 계산 (억 * 100000000 + 천만 * 10000000)
+        total_amount = eok_amount * 100000000 + cheonman_amount * 10000000
+        return total_amount
+    except (ValueError, TypeError):
+        return 0
 
 @csrf_exempt
 def upload_note_file(request):
@@ -3504,21 +3577,77 @@ def upload_note_file(request):
 @csrf_exempt
 def delete_note_file(request):
     if request.method == 'POST':
+        row_id = request.POST.get('row_id')
+        file_id = request.POST.get('file_id')
         s3_key = request.POST.get('s3_key')
-        if not s3_key:
-            return JsonResponse({'success': False, 'error': 's3_key 누락'})
-        s3_client = boto3.client(
-            's3',
-            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-            region_name=settings.AWS_S3_REGION_NAME
-        )
+        
+        if not row_id or not file_id or not s3_key:
+            return JsonResponse({'success': False, 'error': 'row_id, file_id, s3_key 모두 필요합니다'})
+        
         try:
-            s3_client.delete_object(Bucket=settings.AWS_STORAGE_BUCKET_NAME, Key=s3_key)
-            return JsonResponse({'success': True})
+            # 사용자와 행 조회
+            user = User.objects.get(id=1)
+            row = Row.objects.get(id=row_id, user=user)
+            audio_attr = Attribute.objects.get(name='음성파일', user=user)
+            attr_value = AttributeValue.objects.get(row=row, attribute=audio_attr)
+            
+            # 기존 데이터 파싱
+            try:
+                current_data = json.loads(attr_value.value) if attr_value.value else {}
+            except json.JSONDecodeError:
+                current_data = {}
+            
+            # 'data' 키가 없으면 생성
+            if 'data' not in current_data:
+                current_data['data'] = {}
+            
+            # 해당 file_id가 존재하는지 확인
+            if file_id not in current_data['data']:
+                return JsonResponse({'success': False, 'error': '해당 파일을 찾을 수 없습니다'})
+            
+            # S3에서 파일 삭제
+            s3_client = boto3.client(
+                's3',
+                aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+                aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+                region_name=settings.AWS_S3_REGION_NAME
+            )
+            
+            try:
+                s3_client.delete_object(Bucket=settings.AWS_STORAGE_BUCKET_NAME, Key=s3_key)
+                print(f"S3 파일 삭제 완료: {s3_key}")
+            except Exception as e:
+                print(f"S3 파일 삭제 실패 (계속 진행): {str(e)}")
+                # S3 삭제 실패해도 DB에서 삭제는 진행
+            
+            # DB에서 해당 파일 데이터 삭제
+            del current_data['data'][file_id]
+            
+            # 업데이트된 데이터 저장
+            attr_value.value = json.dumps(current_data, ensure_ascii=False)
+            attr_value.save()
+            
+            print(f"노트 파일 삭제 완료 - Row: {row_id}, File: {file_id}")
+            
+            return JsonResponse({
+                'success': True,
+                'message': '파일이 성공적으로 삭제되었습니다.',
+                'remaining_files': len(current_data['data'])
+            })
+            
+        except User.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '사용자를 찾을 수 없습니다.'})
+        except Row.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '해당 행을 찾을 수 없습니다.'})
+        except Attribute.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '음성파일 속성을 찾을 수 없습니다.'})
+        except AttributeValue.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '속성 값을 찾을 수 없습니다.'})
         except Exception as e:
-            return JsonResponse({'success': False, 'error': str(e)})
-    return JsonResponse({'success': False, 'error': 'Invalid method'})
+            print(f"노트 파일 삭제 중 오류: {e}")
+            return JsonResponse({'success': False, 'error': f'처리 중 오류가 발생했습니다: {str(e)}'})
+    
+    return JsonResponse({'success': False, 'error': 'POST 요청만 허용됩니다.'})
 
 @csrf_exempt
 def update_note_order_and_notes(request):
@@ -3844,3 +3973,144 @@ def calendar_events(request):
             'date_field_color': color,
         })
     return JsonResponse(events, safe=False)
+
+def parse_business_data(value):
+    """개업년월 데이터 파싱"""
+    if not value:
+        return {}
+    
+    # 이미 JSON 형태인 경우
+    if isinstance(value, str) and (value.startswith('{') or value.startswith('[')):
+        try:
+            return json.loads(value)
+        except json.JSONDecodeError:
+            pass
+    
+    # 일반 문자열인 경우 (날짜 형식)
+    if isinstance(value, str):
+        return {'opening_date': value}
+    
+    # 딕셔너리인 경우
+    if isinstance(value, dict):
+        return value
+    
+    return {}
+
+def calculate_business_years(opening_date_str, years_ago=None):
+    """개업년수 계산"""
+    if years_ago:
+        try:
+            return int(years_ago)
+        except (ValueError, TypeError):
+            pass
+    
+    if not opening_date_str:
+        return None
+    
+    try:
+        opening_date = datetime.strptime(opening_date_str, '%Y-%m-%d')
+        current_date = datetime.now()
+        years = current_date.year - opening_date.year
+        if current_date.month < opening_date.month or (current_date.month == opening_date.month and current_date.day < opening_date.day):
+            years -= 1
+        return max(0, years)
+    except (ValueError, TypeError):
+        return None
+
+@csrf_exempt
+def update_sales_field(request):
+    """매출 필드 업데이트 - 억/천만 단위 지원"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            row_id = data.get('row_id')
+            field_name = data.get('field_name')
+            eok = data.get('eok', 0)
+            cheonman = data.get('cheonman', 0)
+            
+            if not row_id or not field_name:
+                return JsonResponse({'success': False, 'error': 'row_id와 field_name이 필요합니다'})
+            
+            # 사용자와 행 조회
+            user = User.objects.get(id=1)
+            row = Row.objects.get(id=row_id, user=user)
+            
+            # 총 금액 계산
+            total_amount = parse_sales_amount(eok, cheonman)
+            
+            # 속성 조회
+            try:
+                attr = Attribute.objects.get(name=field_name, user=user)
+            except Attribute.DoesNotExist:
+                return JsonResponse({'success': False, 'error': f'속성 {field_name}을 찾을 수 없습니다'})
+            
+            # AttributeValue 조회 또는 생성
+            attr_value, created = AttributeValue.objects.get_or_create(
+                row=row, 
+                attribute=attr,
+                defaults={'value': str(total_amount)}
+            )
+            
+            if not created:
+                attr_value.value = str(total_amount)
+                attr_value.save()
+            
+            return JsonResponse({
+                'success': True, 
+                'total_amount': total_amount,
+                'formatted_amount': formatToKoreanCurrency(total_amount) if total_amount > 0 else '0원'
+            })
+            
+        except Row.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '행을 찾을 수 없습니다'})
+        except Attribute.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '속성을 찾을 수 없습니다'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'POST 요청만 지원합니다'})
+
+def formatToKoreanCurrency(amount):
+    """숫자를 한국어 통화 단위로 변환"""
+    if not amount or amount == 0:
+        return '0원'
+    
+    amount = int(amount)
+    if amount == 0:
+        return '0원'
+    
+    result = ''
+    
+    # 억 단위 처리
+    if amount >= 100000000:
+        eok = amount // 100000000
+        result += f'{eok}억'
+        amount = amount % 100000000
+    
+    # 천만 단위 처리
+    if amount >= 10000000:
+        cheonman = amount // 10000000
+        if result:
+            result += f' {cheonman}천'
+        else:
+            result = f'{cheonman}천'
+        amount = amount % 10000000
+    
+    # 백만 단위 처리
+    if amount >= 1000000:
+        baekman = amount // 1000000
+        if result:
+            result += f' {baekman}백'
+        else:
+            result = f'{baekman}백'
+        amount = amount % 1000000
+    
+    # 만 단위 처리
+    if amount >= 10000:
+        man = amount // 10000
+        if result:
+            result += f'{man}만'
+        else:
+            result = f'{man}만'
+    
+    return result + '원'

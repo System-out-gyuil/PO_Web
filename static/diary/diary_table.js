@@ -261,7 +261,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                 const selectedSubregion = this.getAttribute('data-subregion');
                 
                 // UI 업데이트
-                td.innerHTML = `<div class="dropdown-pill" style="background:${selectedSubregion === '서울' ? '#007bff' : selectedSubregion === '경기' ? '#ff7b7b' : selectedSubregion === '인천' ? '#7bff7b' : selectedSubregion === '대구' ? '#7b7bff' : selectedSubregion === '경북' ? '#ff7bff' : selectedSubregion === '경남' ? '#7bff7b' : selectedSubregion === '부산' ? '#7b7bff' : selectedSubregion === '광주' ? '#ff7b7b' : selectedSubregion === '대전' ? '#7bff7b' : selectedSubregion === '울산' ? '#7b7bff' : selectedSubregion === '세종' ? '#ff7b7b' : selectedSubregion === '강원' ? '#7bff7b' : selectedSubregion === '충북' ? '#7b7bff' : selectedSubregion === '충남' ? '#7bff7b' : selectedSubregion === '전북' ? '#7b7bff' : selectedSubregion === '전남' ? '#7bff7b' : '#333'}; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">${selectedSubregion}</div>`;
+                td.innerHTML = `<div class="dropdown-pill" style="background:${selectedSubregion === '서울' ? '#007bff' : selectedSubregion === '경기' ? '#ff7b7b' : selectedSubregion === '인천' ? '#7bff7b' : selectedSubregion === '대구' ? '#7b7bff' : selectedSubregion === '경북' ? '#ff7bff' : selectedSubregion === '경남' ? '#7bff7b' : selectedSubregion === '부산' ? '#7b7bff' : selectedSubregion === '광주' ? '#ff7b7b' : selectedSubregion === '대전' ? '#7bff7b' : selectedSubregion === '울산' ? '#7b7bff' : selectedSubregion === '세종' ? '#ff7b7b' : selectedSubregion === '강원' ? '#7bff7b' : selectedRegion === '충북' ? '#7b7bff' : selectedRegion === '충남' ? '#7bff7b' : selectedRegion === '전북' ? '#7b7bff' : selectedRegion === '전남' ? '#7bff7b' : '#333'}; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">${selectedSubregion}</div>`;
                 td.setAttribute('data-value', selectedSubregion);
                 
                 // 드롭다운 제거
@@ -730,6 +730,82 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
     }
   }
   
+  // Sticky 헤더 기능 초기화
+  function initializeStickyHeader() {
+      console.log('Sticky 헤더 초기화 시작');
+      
+      const tableView = document.getElementById('tableView');
+      const table = document.getElementById('entryTable');
+      
+      if (!tableView || !table) {
+          console.error('테이블 요소를 찾을 수 없습니다.');
+          return;
+      }
+      
+      // 테이블 컨테이너에 스크롤 이벤트 리스너 추가
+      tableView.addEventListener('scroll', function() {
+          const thead = table.querySelector('thead');
+          if (!thead) return;
+          
+          const scrollTop = tableView.scrollTop;
+          
+          // 스크롤이 있을 때 sticky 적용
+          if (scrollTop > 0) {
+              thead.classList.add('sticky');
+              thead.classList.remove('out-of-view');
+          } else {
+              // 스크롤이 없을 때는 기본 상태로 복원
+              thead.classList.remove('sticky');
+              thead.classList.remove('out-of-view');
+          }
+      });
+      
+      // 윈도우 스크롤 이벤트도 추가하여 테이블이 뷰포트를 벗어날 때 처리
+      window.addEventListener('scroll', function() {
+          const thead = table.querySelector('thead');
+          if (!thead) return;
+          
+          const tableViewRect = tableView.getBoundingClientRect();
+          
+          // 테이블이 뷰포트를 벗어났는지 확인
+          const isTableOutOfView = (
+              tableViewRect.bottom < 0 ||
+              tableViewRect.top > window.innerHeight
+          );
+          
+          // 테이블이 뷰포트를 벗어났을 때 sticky 제거
+          if (isTableOutOfView) {
+              thead.classList.remove('sticky');
+              thead.classList.add('out-of-view');
+          } else {
+              thead.classList.remove('out-of-view');
+          }
+      });
+      
+      // 윈도우 리사이즈 시 헤더 위치 재조정
+      window.addEventListener('resize', function() {
+          const thead = table.querySelector('thead');
+          if (thead && thead.classList.contains('sticky')) {
+              // sticky 상태 유지하되 위치 재조정
+              const tableViewRect = tableView.getBoundingClientRect();
+              
+              const isTableOutOfView = (
+                  tableViewRect.bottom < 0 ||
+                  tableViewRect.top > window.innerHeight
+              );
+              
+              if (isTableOutOfView) {
+                  thead.classList.remove('sticky');
+                  thead.classList.add('out-of-view');
+              } else {
+                  thead.classList.remove('out-of-view');
+              }
+          }
+      });
+      
+      console.log('Sticky 헤더 초기화 완료');
+  }
+  
   function bindTableCellEvents() {
       document.querySelectorAll('td[data-field]').forEach(function(td) {
           const type = td.getAttribute('data-field');
@@ -1146,6 +1222,12 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                       console.log('필터 상태 업데이트 완료');
                   }
                   
+                  // Sticky 헤더 재초기화
+                  if (typeof initializeStickyHeader === 'function') {
+                      initializeStickyHeader();
+                      console.log('Sticky 헤더 재초기화 완료');
+                  }
+                  
                   console.log('refreshTable 완료');
               } else {
                   console.error('현재 테이블을 찾을 수 없음');
@@ -1524,7 +1606,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
           dropdown.querySelectorAll('span[data-subregion]').forEach(function(span) {
               span.onclick = function() {
                   selectedSubregion = this.getAttribute('data-subregion');
-                  td.innerHTML = `<div class="dropdown-pill" style="background:${selectedSubregion === '서울' ? '#007bff' : selectedSubregion === '경기' ? '#ff7b7b' : selectedSubregion === '인천' ? '#7bff7b' : selectedSubregion === '대구' ? '#7b7bff' : selectedSubregion === '경북' ? '#ff7bff' : selectedSubregion === '경남' ? '#7bff7b' : selectedSubregion === '부산' ? '#7b7bff' : selectedSubregion === '광주' ? '#ff7b7b' : selectedSubregion === '대전' ? '#7bff7b' : selectedSubregion === '울산' ? '#7b7bff' : selectedSubregion === '세종' ? '#ff7b7b' : selectedSubregion === '강원' ? '#7bff7b' : selectedSubregion === '충북' ? '#7b7bff' : selectedSubregion === '충남' ? '#7bff7b' : selectedSubregion === '전북' ? '#7b7bff' : selectedSubregion === '전남' ? '#7bff7b' : '#333'}; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">${selectedSubregion}</div>`;
+                  td.innerHTML = `<div class="dropdown-pill" style="background:${selectedSubregion === '서울' ? '#007bff' : selectedSubregion === '경기' ? '#ff7b7b' : selectedSubregion === '인천' ? '#7bff7b' : selectedSubregion === '대구' ? '#7b7bff' : selectedSubregion === '경북' ? '#ff7bff' : selectedSubregion === '경남' ? '#7bff7b' : selectedSubregion === '부산' ? '#7b7bff' : selectedSubregion === '광주' ? '#ff7b7b' : selectedSubregion === '대전' ? '#7bff7b' : selectedSubregion === '울산' ? '#7b7bff' : selectedSubregion === '세종' ? '#ff7b7b' : selectedSubregion === '강원' ? '#7bff7b' : selectedSubregion === '충북' ? '#7b7bff' : selectedRegion === '충남' ? '#7bff7b' : selectedRegion === '전북' ? '#7b7bff' : selectedRegion === '전남' ? '#7bff7b' : '#333'}; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">${selectedSubregion}</div>`;
                   td.setAttribute('data-value', selectedSubregion);
                   closeDropdown();
                   // 상세지역 값 저장
@@ -1973,6 +2055,9 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
               });
           };
       }
+      
+      // Sticky 헤더 초기화
+      initializeStickyHeader();
   });
 
   // 매출 셀 더블클릭/수정 시 한글 단위 → 숫자(콤마)로 입력

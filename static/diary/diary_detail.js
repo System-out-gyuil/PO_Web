@@ -255,18 +255,79 @@ function showDetailModal(rowData, rowId) {
                         </div>
                     `;
                 } else if (attr.name === '매출' || attr.name.includes('매출')) {
-                    // 매출 필드는 클릭 시 input 생성, 실시간 콤마 포맷팅
+                    // 매출 필드는 억과 천만 단위로 분리된 입력칸 항상 표시, 저장/취소 버튼 없이 blur로 저장
                     const numericValue = parseFloat(value) || 0;
-                    const displayValue = numericValue ? formatToKoreanCurrency(numericValue) : '';
-                    const rawValue = numericValue ? formatNumberWithComma(numericValue) : '';
+                    const eok = Math.floor(numericValue / 100000000);
+                    const cheonman = Math.floor((numericValue % 100000000) / 10000000);
+                    inputHtml = `
+                        <div class="sales-field-container" data-field="${attr.name}" data-raw="${numericValue}" style="display: flex; align-items: center; gap: 10px; width: 100%; background: white; border: 1px solid #ced4da; border-radius: 4px; padding: 8px; min-height: 20px;">
+                            <div style="display: flex; align-items: center; gap: 5px; flex: 1;">
+                                <input class="input-field" type="number" id="sales_eok_${rowId}" value="${eok}" placeholder="0" min="0"
+                                    style="width: 80px; padding: 8px; border: 1px solid #ced4da; border-radius: 4px; font-size: inherit; font-family: inherit; box-sizing: border-box;"
+                                    onblur="saveSalesInput('${rowId}', '${attr.name}')">
+                                <span style="font-size: 14px; color: #495057;">억</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 5px; flex: 1;">
+                                <input class="input-field" type="number" id="sales_cheonman_${rowId}" value="${cheonman}" placeholder="0" min="0" max="99"
+                                    style="width: 80px; padding: 8px; border: 1px solid #ced4da; border-radius: 4px; font-size: inherit; font-family: inherit; box-sizing: border-box;"
+                                    onblur="saveSalesInput('${rowId}', '${attr.name}')">
+                                <span style="font-size: 14px; color: #495057;">천만</span>
+                            </div>
+                        </div>
+                    `;
+                } else if (attr.name === '개업년월') {
+                    // 개업년월 필드 처리 - 달력과 년전 입력 옵션
+                    let businessData = {};
+                    let displayText = '';
+                    
+                    try {
+                        if (value && typeof value === 'string') {
+                            businessData = JSON.parse(value);
+                        } else if (value && typeof value === 'object') {
+                            businessData = value;
+                        }
+                    } catch (e) {
+                        console.error('개업년월 데이터 파싱 오류:', e);
+                        businessData = {};
+                    }
+                    
+                    // 현재 값에 따른 표시
+                    if (businessData.opening_date) {
+                        displayText = `개업일: ${businessData.opening_date}`;
+                    } else if (businessData.years_ago) {
+                        displayText = `${businessData.years_ago}년 전`;
+                    } else {
+                        displayText = '개업 정보 없음';
+                    }
                     
                     inputHtml = `
-                        <div class="sales-field-container" 
-                             data-field="${attr.name}" 
-                             data-raw="${numericValue}"
-                             onclick="createSalesInput(this, '${rowId}', '${attr.name}')"
-                             style="cursor: pointer; padding: 8px; border: 1px solid #ced4da; border-radius: 4px; background: white; min-height: 20px;">
-                            ${displayValue || '클릭하여 입력'}
+                        <div style="border: 1px solid #e9ecef; border-radius: 6px; padding: 12px; background: #fff;" data-field="${attr.name}" data-current-value='${JSON.stringify(businessData)}'>
+                            <div style="display: flex; flex-direction: column; gap: 12px;">
+                                <!-- 개업일 입력 -->
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <label style="width: 80px; font-weight: bold; color: #495057;">개업일:</label>
+                                    <input type="date" 
+                                           id="opening_date_${rowId}" 
+                                           value="${businessData.opening_date || ''}"
+                                           style="flex: 1; padding: 8px; border: 1px solid #ced4da; border-radius: 4px;"
+                                           onchange="updateBusinessField('${rowId}', '${attr.name}', 'opening_date', this.value)">
+                                    
+                                    <!-- 년전 입력 -->
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <label style="display: flex; align-items: center; gap: 3px; cursor: pointer;">
+                                            <input class="input-field" type="number" 
+                                                   id="years_ago_${rowId}"
+                                                   value="${businessData.years_ago || ''}"
+                                                   placeholder="년수"
+                                                   min="0"
+                                                   max="100"
+                                                   style="width: 60px; padding: 4px; border: 1px solid #ced4da; border-radius: 4px; margin: 0 5px;"
+                                                   onchange="updateBusinessField('${rowId}', '${attr.name}', 'years_ago', this.value)">
+                                            <span style="font-size: 12px;">년 전</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     `;
                 } else if (attr.name === '업종') {
@@ -464,9 +525,9 @@ function showDetailModal(rowData, rowId) {
                             dateValue = value;
                         }
                     }
-                    inputHtml = `<input type="date" value="${dateValue}" data-field="${attr.name}" onchange="updateRowField('${rowId}', '${attr.name}', this.value)">`;
+                    inputHtml = `<input class="input-field" type="date" value="${dateValue}" data-field="${attr.name}" onchange="updateRowField('${rowId}', '${attr.name}', this.value)">`;
                 } else if (attr.type === 'number') {
-                    inputHtml = `<input type="number" value="${value}" data-field="${attr.name}" onchange="updateRowField('${rowId}', '${attr.name}', this.value)">`;
+                    inputHtml = `<input class="input-field" type="number" value="${value}" data-field="${attr.name}" onchange="updateRowField('${rowId}', '${attr.name}', this.value)">`;
                 } else if (attr.type === 'age') {
                     // 나이 필드 처리 - 달력과 체크박스 포함
                     let ageData = {};
@@ -539,14 +600,33 @@ function showDetailModal(rowData, rowId) {
                     inputHtml = `<button type="button" class="add-btn" style="width:100%;background:#f8f9fa;color:#333;border:1px solid #eee;" onclick="openDetailDropdown('${rowId}','${attr.name}',this)">${displayText}</button>`;
                 } else {
                     // 기본 텍스트 필드
-                    inputHtml = `<input type="text" value="${value}" data-field="${attr.name}" onchange="updateRowField('${rowId}', '${attr.name}', this.value)">`;
+                    if (attr.name === '신용점수') {
+                        // 신용점수 필드는 실시간 검증 추가
+                        inputHtml = `<input type="text" value="${value}" data-field="${attr.name}" 
+                                   onchange="updateRowField('${rowId}', '${attr.name}', this.value); highlightRequiredField(this, this.value && this.value !== '0' ? false : true);" 
+                                   oninput="highlightRequiredField(this, this.value && this.value !== '0' ? false : true);">`;
+                    } else {
+                        inputHtml = `<input class="input-field" type="text" value="${value}" data-field="${attr.name}" onchange="updateRowField('${rowId}', '${attr.name}', this.value)">`;
+                    }
                 }
                 
                 // 지역 관련 필드가 아닌 경우에만 HTML에 추가
                 if (attr.name !== '지역' && attr.name !== '상세지역') {
+                    // 라벨 색상 설정
+                    let labelColor = '#333'; // 기본 색상
+                    
+                    // 파란색 라벨 (지역, 기대출, 개업년월, 나이, 경력, 직원수)
+                    if (['기대출', '개업년월', '나이', '경력', '직원수'].includes(attr.name)) {
+                        labelColor = '#007bff';
+                    }
+                    // 붉은색 라벨 (매출, 신용점수, 업종)
+                    else if (['매출', '신용점수', '업종'].includes(attr.name)) {
+                        labelColor = '#dc3545';
+                    }
+                    
                     html += `
                         <div style="display:flex;align-items:center;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #eee;">
-                            <label style="width:120px;font-weight:bold;color:#333;">${attr.name}:</label>
+                            <label style="width:120px;font-weight:bold;color:${labelColor};">${attr.name}:</label>
                             <div style="flex:1;">${inputHtml}</div>
                         </div>
                     `;
@@ -921,6 +1001,11 @@ function selectModalDropdownOption(rowId, fieldName, optionId, optionText, btn, 
   btn.textContent = optionText;
   btn.style.background = color ? hexToRgba(color, 0.18) : '#f8f9fa';
   btn.style.color = '#333';
+  
+  // 업종이 선택되면 빨간 테두리 제거
+  if (fieldName === '업종') {
+    highlightRequiredField(btn, false);
+  }
   
   // 서버에 업데이트 요청
   fetch('/600/update_row_field/', {
@@ -1630,6 +1715,311 @@ function showNotification(message, type = 'info') {
 
 // 추천자금 요청 함수
 function requestFundingRecommendation(rowId) {
+    console.log('=== 추천자금 요청 시작 ===');
+    console.log('Row ID:', rowId);
+    
+    // 필수값 검증
+    const requiredFields = ['신용점수', '업종', '매출'];
+    const missingFields = [];
+    
+    console.log('필수 필드 목록:', requiredFields);
+    
+    // 현재 열린 상세 모달에서 필수값 확인
+    const detailModal = document.getElementById('detailModal');
+    console.log('상세 모달 상태:', {
+        exists: !!detailModal,
+        display: detailModal ? detailModal.style.display : 'N/A'
+    });
+    
+    if (detailModal && detailModal.style.display !== 'none') {
+        console.log('모달이 열려있음 - 모달 내 검증 시작');
+        
+        // 모달이 열려있는 경우 모달 내의 값들을 확인
+        for (const fieldName of requiredFields) {
+            console.log(`\n--- ${fieldName} 필드 검증 시작 ---`);
+            
+            const fieldElement = detailModal.querySelector(`[data-field="${fieldName}"]`);
+            console.log(`${fieldName} 필드 요소:`, {
+                found: !!fieldElement,
+                element: fieldElement
+            });
+            
+            if (fieldElement) {
+                const value = fieldElement.value;
+                console.log(`${fieldName} 값:`, value);
+                
+                // 매출 필드는 특별한 필드로 처리해야 함
+                if (fieldName === '매출' && fieldElement.classList.contains('sales-field-container')) {
+                    console.log(`${fieldName} - 특별한 필드로 재분류`);
+                    // 특별한 필드 처리로 넘어가기 위해 continue
+                    continue;
+                }
+                
+                if (!value || value.trim() === '' || value === '0' || value === '선택' || value === '클릭하여 입력') {
+                    console.log(`${fieldName} - 누락됨 (일반 필드)`);
+                    missingFields.push(fieldName);
+                    // 빨간 테두리 표시
+                    highlightRequiredField(fieldElement, true);
+                } else {
+                    console.log(`${fieldName} - 정상 (일반 필드)`);
+                    // 정상인 경우 원래 스타일로 복원
+                    highlightRequiredField(fieldElement, false);
+                }
+            } else {
+                console.log(`${fieldName} - 특별한 필드 처리 시작`);
+                
+                // 특별한 필드들 처리
+                if (fieldName === '매출') {
+                    console.log('매출 필드 특별 처리 시작');
+                    
+                    // sales-field-container를 직접 찾기
+                    const salesContainer = detailModal.querySelector('.sales-field-container[data-field="매출"]');
+                    const salesInput = detailModal.querySelector('input[data-field="매출"]');
+                    
+                    console.log('매출 필드 검색 결과:', {
+                        salesContainer: !!salesContainer,
+                        salesInput: !!salesInput
+                    });
+                    
+                    if (salesContainer) {
+                        const rawValue = salesContainer.getAttribute('data-raw');
+                        const displayText = salesContainer.textContent.trim();
+                        
+                        console.log('매출 컨테이너 검증 디버깅:', {
+                            rawValue: rawValue,
+                            displayText: displayText,
+                            hasDataRaw: salesContainer.hasAttribute('data-raw'),
+                            containerHTML: salesContainer.innerHTML
+                        });
+                        
+                        // 더 정확한 검증 로직
+                        const hasValidValue = (
+                            rawValue && 
+                            rawValue !== '' && 
+                            !isNaN(parseInt(rawValue, 10)) && 
+                            parseInt(rawValue, 10) >= 0 &&
+                            !displayText.includes('클릭하여 입력') &&
+                            displayText !== ''
+                        );
+                        
+                        console.log('매출 컨테이너 유효성 검사 결과:', hasValidValue);
+                        
+                        if (!hasValidValue) {
+                            console.log('매출 - 누락됨 (컨테이너)');
+                            missingFields.push(fieldName);
+                            // 빨간 테두리 표시
+                            highlightRequiredField(salesContainer, true);
+                        } else {
+                            console.log('매출 - 정상 (컨테이너)');
+                            // 정상인 경우 원래 스타일로 복원
+                            highlightRequiredField(salesContainer, false);
+                        }
+                    } else if (salesInput) {
+                        // input 형태의 매출 필드 처리
+                        const inputValue = salesInput.value.trim();
+                        console.log('매출 input 검증 디버깅:', {
+                            inputValue: inputValue,
+                            inputType: salesInput.type
+                        });
+                        
+                        const hasValidInputValue = (
+                            inputValue && 
+                            inputValue !== '0' && 
+                            inputValue !== '' && 
+                            !isNaN(parseInt(inputValue.replace(/[^\d]/g, ''), 10)) && 
+                            parseInt(inputValue.replace(/[^\d]/g, ''), 10) > 0
+                        );
+                        
+                        console.log('매출 input 유효성 검사 결과:', hasValidInputValue);
+                        
+                        if (!hasValidInputValue) {
+                            console.log('매출 - 누락됨 (input)');
+                            missingFields.push(fieldName);
+                            // 빨간 테두리 표시
+                            highlightRequiredField(salesInput, true);
+                        } else {
+                            console.log('매출 - 정상 (input)');
+                            // 정상인 경우 원래 스타일로 복원
+                            highlightRequiredField(salesInput, false);
+                        }
+                    } else {
+                        console.log('매출 필드를 찾을 수 없음');
+                        missingFields.push(fieldName);
+                    }
+                } else if (fieldName === '업종') {
+                    console.log('업종 필드 특별 처리 시작');
+                    
+                    const industrySelect = detailModal.querySelector('select[onchange*="업종"]');
+                    console.log('업종 select 요소:', {
+                        found: !!industrySelect,
+                        value: industrySelect ? industrySelect.value : 'N/A'
+                    });
+                    
+                    if (industrySelect && (!industrySelect.value || industrySelect.value === '')) {
+                        console.log('업종 - 누락됨');
+                        missingFields.push(fieldName);
+                        // 빨간 테두리 표시
+                        highlightRequiredField(industrySelect, true);
+                    } else if (industrySelect) {
+                        console.log('업종 - 정상');
+                        // 정상인 경우 원래 스타일로 복원
+                        highlightRequiredField(industrySelect, false);
+                    } else {
+                        console.log('업종 select를 찾을 수 없음');
+                        missingFields.push(fieldName);
+                    }
+                } else if (fieldName === '신용점수') {
+                    console.log('신용점수 필드 특별 처리 시작');
+                    
+                    const creditScoreInput = detailModal.querySelector('input[data-field="신용점수"]');
+                    console.log('신용점수 input 요소:', {
+                        found: !!creditScoreInput,
+                        value: creditScoreInput ? creditScoreInput.value : 'N/A'
+                    });
+                    
+                    if (creditScoreInput && (!creditScoreInput.value || creditScoreInput.value === '0' || creditScoreInput.value.trim() === '')) {
+                        console.log('신용점수 - 누락됨');
+                        missingFields.push(fieldName);
+                        // 빨간 테두리 표시
+                        highlightRequiredField(creditScoreInput, true);
+                    } else if (creditScoreInput) {
+                        console.log('신용점수 - 정상');
+                        // 정상인 경우 원래 스타일로 복원
+                        highlightRequiredField(creditScoreInput, false);
+                    } else {
+                        console.log('신용점수 input을 찾을 수 없음');
+                        missingFields.push(fieldName);
+                    }
+                } else {
+                    console.log(`${fieldName} - 특별 처리 없음, 누락으로 처리`);
+                    missingFields.push(fieldName);
+                }
+            }
+        }
+        
+        console.log('\n=== 모달 내 검증 완료 ===');
+        console.log('누락된 필드들:', missingFields);
+        
+    } else {
+        console.log('모달이 닫혀있음 - 서버에서 데이터 가져와서 검증');
+        
+        // 모달이 닫혀있는 경우 서버에서 데이터를 가져와서 확인
+        fetch(`/600/get_row_details/${rowId}/`)
+            .then(response => response.json())
+            .then(data => {
+                console.log('서버 응답:', data);
+                
+                if (data.success) {
+                    const rowData = data.row_data;
+                    console.log('행 데이터:', rowData);
+                    
+                    // 필수값 확인
+                    if (!rowData['신용점수'] || rowData['신용점수'] === '0' || rowData['신용점수'] === '') {
+                        missingFields.push('신용점수');
+                    }
+                    if (!rowData['업종'] || rowData['업종'] === '') {
+                        missingFields.push('업종');
+                    }
+                    
+                    // 매출 검증 로직 개선
+                    const revenueValue = rowData['매출'];
+                    const hasValidRevenue = (
+                        revenueValue && 
+                        revenueValue !== '' && 
+                        !isNaN(parseInt(revenueValue, 10)) && 
+                        parseInt(revenueValue, 10) >= 0
+                    );
+                    
+                    if (!hasValidRevenue) {
+                        missingFields.push('매출');
+                    }
+                    
+                    console.log('서버 검증 결과 - 누락된 필드들:', missingFields);
+                    
+                    // 필수값이 누락된 경우 알림 표시
+                    if (missingFields.length > 0) {
+                        showNotification(`다음 필수 항목을 입력해주세요: ${missingFields.join(', ')}`, 'error');
+                        return;
+                    }
+                    
+                    // 모든 필수값이 있으면 추천 요청 진행
+                    proceedWithFundingRecommendation(rowId);
+                } else {
+                    showNotification('데이터를 가져올 수 없습니다.', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('필수값 검증 중 오류:', error);
+                showNotification('필수값 검증 중 오류가 발생했습니다.', 'error');
+            });
+        return;
+    }
+    
+    // 모달이 열려있는 경우 즉시 검증
+    console.log('\n=== 최종 검증 결과 ===');
+    console.log('누락된 필드들:', missingFields);
+    
+    if (missingFields.length > 0) {
+        console.log('필수값 누락 - 알림 표시');
+        showNotification(`다음 필수 항목을 입력해주세요: ${missingFields.join(', ')}`, 'error');
+        return;
+    }
+    
+    console.log('모든 필수값 확인됨 - 추천 요청 진행');
+    // 모든 필수값이 있으면 추천 요청 진행
+    proceedWithFundingRecommendation(rowId);
+}
+
+// 필수 필드 하이라이트 함수
+function highlightRequiredField(element, isError) {
+    if (!element) return;
+    
+    if (isError) {
+        // 빨간 테두리와 배경색 적용
+        element.style.border = '2px solid #dc3545';
+        element.style.boxShadow = '0 0 5px rgba(220, 53, 69, 0.3)';
+        element.style.backgroundColor = '#fff5f5';
+        
+        // 애니메이션 효과 추가
+        element.style.animation = 'shake 0.5s ease-in-out';
+        
+        // 3초 후 자동으로 스타일 제거
+        setTimeout(() => {
+            if (element.style.border === '2px solid #dc3545') {
+                element.style.border = '';
+                element.style.boxShadow = '';
+                element.style.backgroundColor = '';
+                element.style.animation = '';
+            }
+        }, 3000);
+    } else {
+        // 정상 상태로 복원
+        element.style.border = '';
+        element.style.boxShadow = '';
+        element.style.backgroundColor = '';
+        element.style.animation = '';
+    }
+}
+
+// CSS 애니메이션 추가 (페이지 로드 시)
+document.addEventListener('DOMContentLoaded', function() {
+    // shake 애니메이션 CSS 추가
+    if (!document.getElementById('required-field-animation')) {
+        const style = document.createElement('style');
+        style.id = 'required-field-animation';
+        style.textContent = `
+            @keyframes shake {
+                0%, 100% { transform: translateX(0); }
+                10%, 30%, 50%, 70%, 90% { transform: translateX(-2px); }
+                20%, 40%, 60%, 80% { transform: translateX(2px); }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+});
+
+// 실제 추천자금 요청을 처리하는 함수
+function proceedWithFundingRecommendation(rowId) {
     // 로딩 상태 표시
     showNotification('추천자금을 분석 중입니다...', 'info');
     
@@ -2624,6 +3014,8 @@ function formatSalesInputRealtime(input, rowId, fieldName) {
     // 콤마 형태로 표시
     if (numericValue > 0) {
         input.value = numericValue.toLocaleString();
+        // 매출이 입력되면 빨간 테두리 제거
+        highlightRequiredField(input, false);
     } else {
         input.value = '';
     }
@@ -2938,65 +3330,91 @@ function showNumberForEdit(input, rowId, fieldName) {
     input.select();
 }
 
-// 상세 모달용 매출 input 생성 함수
-function createSalesInput(container, rowId, fieldName) {
-    // 이미 input이 있으면 무시
-    if (container.querySelector('input')) return;
+// 매출 입력값 실시간 업데이트
+function updateSalesFromInputs(rowId, fieldName) {
+    const eokInput = document.getElementById('sales_eok_' + rowId);
+    const cheonmanInput = document.getElementById('sales_cheonman_' + rowId);
     
-    const raw = container.getAttribute('data-raw');
-    let initialValue = '';
-    if (raw && !isNaN(parseInt(raw, 10))) {
-        initialValue = formatNumberWithComma(parseInt(raw, 10));
+    if (!eokInput || !cheonmanInput) return;
+    
+    const eok = parseInt(eokInput.value) || 0;
+    const cheonman = parseInt(cheonmanInput.value) || 0;
+    
+    // 총 금액 계산 (억 * 100000000 + 천만 * 10000000)
+    const totalAmount = eok * 100000000 + cheonman * 10000000;
+    
+    // 전역 변수에 임시 저장
+    window.tempSalesAmount = totalAmount;
+}
+
+// 매출 입력 저장
+function saveSalesInput(rowId, fieldName) {
+    const eokInput = document.getElementById('sales_eok_' + rowId);
+    const cheonmanInput = document.getElementById('sales_cheonman_' + rowId);
+    
+    if (!eokInput || !cheonmanInput) return;
+    
+    const eok = parseInt(eokInput.value) || 0;
+    const cheonman = parseInt(cheonmanInput.value) || 0;
+    
+    // 새로운 API 사용
+    fetch('/600/update_sales_field/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify({
+            row_id: rowId,
+            field_name: fieldName,
+            eok: eok,
+            cheonman: cheonman
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            console.log('매출 정보가 업데이트되었습니다.');
+            
+            // 컨테이너 복원
+            const container = document.querySelector(`[data-field="${fieldName}"]`);
+            if (container) {
+                container.innerHTML = data.formatted_amount || '0원';
+                container.setAttribute('data-raw', data.total_amount);
+                
+                // 값이 있으면 빨간 테두리 제거
+                if (data.total_amount > 0) {
+                    highlightRequiredField(container, false);
+                }
+            }
+            
+            // 테이블과 칸반보드 새로고침
+            if (typeof refreshTable === 'function') {
+                refreshTable();
+            }
+        } else {
+            console.error('매출 업데이트 실패:', data.error);
+            showNotification('매출 정보 업데이트에 실패했습니다.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('매출 업데이트 오류:', error);
+        showNotification('매출 정보 업데이트 중 오류가 발생했습니다.', 'error');
+    });
+}
+
+// 매출 입력 취소
+function cancelSalesInput(rowId, fieldName) {
+    const container = document.querySelector(`[data-field="${fieldName}"]`);
+    if (container) {
+        const originalValue = container.getAttribute('data-raw');
+        const displayValue = originalValue && !isNaN(parseInt(originalValue, 10)) ? 
+            formatToKoreanCurrency(parseInt(originalValue, 10)) : '0원';
+        container.innerHTML = displayValue;
     }
     
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.value = initialValue;
-    input.style.cssText = `
-        width: 100%;
-        padding: 8px;
-        border: 1px solid #007bff;
-        border-radius: 4px;
-        background: #fffbe6;
-        font-size: inherit;
-        font-family: inherit;
-        box-sizing: border-box;
-    `;
-    
-    // 실시간 콤마 포맷팅
-    input.oninput = function(e) {
-        let val = this.value.replace(/[^0-9]/g, '');
-        this.value = formatNumberWithComma(val);
-    };
-    
-    // 저장 시 콤마 제거 후 백엔드 전송
-    input.onblur = function() {
-        const cleanValue = removeCommaFromNumber(this.value);
-        updateRowFieldWithKoreanCurrency(rowId, fieldName, cleanValue);
-        
-        // input 제거하고 원래 컨테이너로 복원
-        container.innerHTML = cleanValue ? formatToKoreanCurrency(cleanValue) : '클릭하여 입력';
-        container.setAttribute('data-raw', cleanValue);
-    };
-    
-    // Enter 키로 저장
-    input.onkeydown = function(e) {
-        if (e.key === 'Enter') {
-            input.blur();
-        } else if (e.key === 'Escape') {
-            // 취소 시 원래 값으로 복원
-            const originalValue = container.getAttribute('data-raw');
-            const displayValue = originalValue && !isNaN(parseInt(originalValue, 10)) ? 
-                formatToKoreanCurrency(parseInt(originalValue, 10)) : '클릭하여 입력';
-            container.innerHTML = displayValue;
-        }
-    };
-    
-    // 컨테이너 내용을 input으로 교체
-    container.innerHTML = '';
-    container.appendChild(input);
-    input.focus();
-    input.select();
+    // 전역 변수 정리
+    delete window.tempSalesAmount;
 }
 
 function showFilePreview(fileId, fileInfo, rowId, fieldName) {
@@ -3106,5 +3524,49 @@ function showFilePreview(fileId, fileInfo, rowId, fieldName) {
                 content: `<div style="text-align:center;padding:40px 0;"><div style="font-size:48px;color:#dc3545;">✗</div><div style="margin-top:16px;font-size:18px;font-weight:500;">미리보기 로드 실패</div><div style="margin-top:8px;color:#888;">${err.message || '알 수 없는 오류'}</div></div>`
             });
         });
+}
+
+// 개업년월 필드 업데이트 함수
+function updateBusinessField(rowId, fieldName, dataType, value) {
+    // 현재 저장된 개업 데이터 가져오기
+    let currentBusinessData = {};
+    const businessElement = document.querySelector(`[data-field="${fieldName}"]`);
+    
+    try {
+        // 기존 데이터 파싱 시도
+        if (businessElement && businessElement.dataset.currentValue) {
+            currentBusinessData = JSON.parse(businessElement.dataset.currentValue);
+        }
+    } catch (e) {
+        console.log('기존 개업 데이터 없음, 새로 생성');
+    }
+    
+    if (dataType === 'opening_date') {
+        // 개업일 입력 시 년전 입력 해제
+        currentBusinessData.opening_date = value;
+        currentBusinessData.years_ago = '';
+        
+        // 년전 입력 해제
+        const yearsAgoInput = document.querySelector(`input[onchange*="'${fieldName}'"][onchange*="years_ago"]`);
+        if (yearsAgoInput) yearsAgoInput.value = '';
+        
+    } else if (dataType === 'years_ago') {
+        // 년전 입력 시 개업일 입력 해제
+        currentBusinessData.years_ago = value;
+        currentBusinessData.opening_date = '';
+        
+        // 개업일 입력 해제
+        const openingDateInput = document.querySelector(`input[onchange*="'${fieldName}'"][onchange*="opening_date"]`);
+        if (openingDateInput) openingDateInput.value = '';
+    }
+    
+    // 현재 데이터를 element에 저장
+    if (businessElement) {
+        businessElement.dataset.currentValue = JSON.stringify(currentBusinessData);
+    }
+    
+    // 서버에 업데이트 요청
+    const businessDataToSend = JSON.stringify(currentBusinessData);
+    updateRowField(rowId, fieldName, businessDataToSend);
 }
 

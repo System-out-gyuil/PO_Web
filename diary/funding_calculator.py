@@ -19,6 +19,9 @@ class PolicyFundRecommendationEngineV2:
         """
         메인 추천 함수 (증액/중복 관리 강화)
         
+        필수 필드: credit_score, industry
+        나머지 필드는 기본값 사용
+        
         company_data 추가 필드:
         'existing_funds': {
             'kibo_general': 80_000_000,     # 기보 일반보증 사용액
@@ -38,15 +41,28 @@ class PolicyFundRecommendationEngineV2:
         print(f"입력 데이터: {company_data}")
         
         try:
+            # 필수 필드 검증
+            if 'credit_score' not in company_data or 'industry' not in company_data:
+                return {
+                    'error': '신용점수와 업종은 필수 입력 항목입니다.',
+                    'recommended_funds': [],
+                    'exclusion_notes': ['필수 데이터 누락'],
+                    'total_additional_amount': 0
+                }
+            
+            # 기본값 설정으로 안전한 데이터 구성
+            safe_company_data = self._prepare_safe_company_data(company_data)
+            print(f"안전한 데이터 구성 완료: {safe_company_data}")
+            
             results = []
             exclusion_notes = []
             
             # 기존 자금 사용 현황 파싱
-            existing_funds = company_data.get('existing_funds', {})
+            existing_funds = safe_company_data.get('existing_funds', {})
             print(f"기존 자금 현황: {existing_funds}")
             
             # 1. 기보 자금 분석 (증액/전환 가능성)
-            kibo_result = self._analyze_kibo_enhancement(company_data, existing_funds)
+            kibo_result = self._analyze_kibo_enhancement(safe_company_data, existing_funds)
             if kibo_result:
                 if kibo_result['fund']:
                     results.append(kibo_result['fund'])
@@ -56,7 +72,7 @@ class PolicyFundRecommendationEngineV2:
                     print(f"기보 제외 사유: {kibo_result['exclusion_note']}")
             
             # 2. 신보 자금 분석 (증액 가능성)
-            sinbo_result = self._analyze_sinbo_enhancement(company_data, existing_funds)
+            sinbo_result = self._analyze_sinbo_enhancement(safe_company_data, existing_funds)
             if sinbo_result:
                 if sinbo_result['fund']:
                     results.append(sinbo_result['fund'])
@@ -66,19 +82,19 @@ class PolicyFundRecommendationEngineV2:
                     print(f"신보 제외 사유: {sinbo_result['exclusion_note']}")
             
             # 3. 중진공 청년창업 (기존 사용 여부 확인)
-            jungjin_result = self._analyze_jungjin_youth(company_data, existing_funds)
+            jungjin_result = self._analyze_jungjin_youth(safe_company_data, existing_funds)
             if jungjin_result:
                 results.append(jungjin_result)
                 print(f"중진공 청년창업: {jungjin_result['limit']:,}원")
             
             # 4. 소진공 자금들 (기존 사용 여부 확인)
-            sojin_results = self._analyze_sojin_funds(company_data, existing_funds)
+            sojin_results = self._analyze_sojin_funds(safe_company_data, existing_funds)
             results.extend(sojin_results)
             for fund in sojin_results:
                 print(f"소진공 자금: {fund['fund_name']} - {fund['limit']:,}원")
             
             # 5. 신용보증재단 (추가 한도 확인)
-            jaedan_result = self._analyze_credit_foundation(company_data, existing_funds)
+            jaedan_result = self._analyze_credit_foundation(safe_company_data, existing_funds)
             if jaedan_result:
                 results.append(jaedan_result)
                 print(f"신용보증재단: {jaedan_result['fund_name']} - {jaedan_result['limit']:,}원")
@@ -118,18 +134,64 @@ class PolicyFundRecommendationEngineV2:
                 'total_additional_amount': 0
             }
     
+    def _prepare_safe_company_data(self, company_data: Dict) -> Dict:
+        """
+        안전한 회사 데이터 구성 - 필수 필드 외에는 기본값 사용
+        """
+        safe_data = company_data.copy()
+        
+        # 기본값 설정
+        defaults = {
+            'annual_revenue': 500_000_000,      # 5억원 (중간값)
+            'employees': 3,                     # 3명 (소상공인 기준)
+            'business_months': 24,              # 2년 (24개월)
+            'ceo_age': 35,                      # 35세 (청년창업 기준)
+            'experience_years': 5,              # 5년 경력
+            'is_startup': True,                 # 스타트업으로 가정
+            'existing_debt': 0,                 # 기존 부채 없음
+            'existing_funds': {
+                'kibo_general': 0,
+                'kibo_ip': 0,
+                'sinbo': 0,
+                'jungjin': 0,
+                'sojin_innovation': 0,
+                'sojin_lowcredit': 0,
+                'credit_foundation': 0
+            }
+        }
+        
+        # 기본값 적용 (값이 없거나 0인 경우)
+        for key, default_value in defaults.items():
+            if key not in safe_data or safe_data[key] is None or safe_data[key] == 0:
+                safe_data[key] = default_value
+                print(f"기본값 적용: {key} = {default_value}")
+        
+        # existing_funds가 딕셔너리가 아닌 경우 처리
+        if not isinstance(safe_data.get('existing_funds'), dict):
+            safe_data['existing_funds'] = defaults['existing_funds']
+        
+        # existing_funds 내부 필드들도 기본값 적용
+        for fund_key, default_amount in defaults['existing_funds'].items():
+            if fund_key not in safe_data['existing_funds'] or safe_data['existing_funds'][fund_key] is None:
+                safe_data['existing_funds'][fund_key] = default_amount
+        
+        return safe_data
+    
     def _analyze_kibo_enhancement(self, company_data: Dict, existing_funds: Dict) -> Optional[Dict]:
         """
         기보 자금 증액/전환 분석 (핵심 개선 로직)
         """
         print("--- 기보 자금 분석 시작 ---")
         
-        # 자격 요건 확인
+        # 자격 요건 확인 (안전한 데이터 접근)
+        industry = company_data.get('industry', '기타')
+        credit_score = company_data.get('credit_score', 0)
+        experience_years = company_data.get('experience_years', 0)  # 경력 (별도 속성)
+        
         if not (
-            company_data['industry'] in ['제조업', '정보통신업'] and
-            (company_data['credit_score'] >= 800 or 
-             company_data.get('experience_years', 0) >= 15) and
-            company_data.get('experience_years', 0) >= 3
+            industry in ['제조업', '정보통신업'] and
+            (credit_score >= 800 or experience_years >= 15) and  # 경력 15년 이상 또는 신용점수 800점 이상
+            experience_years >= 3  # 경력 3년 이상
         ):
             print("기보 자격 요건 미달")
             return None
@@ -147,7 +209,8 @@ class PolicyFundRecommendationEngineV2:
         print(f"기타 부채: {other_debt:,}원")
         
         # 현재 가능한 총 기보 한도 계산
-        ip_total_possible = (company_data['annual_revenue'] * 0.30) - other_debt
+        annual_revenue = company_data.get('annual_revenue', 500_000_000)
+        ip_total_possible = (annual_revenue * 0.30) - other_debt
         general_total_possible = 100_000_000 - other_debt
         
         print(f"IP보증 가능 총액: {ip_total_possible:,}원")
@@ -186,7 +249,7 @@ class PolicyFundRecommendationEngineV2:
             fund_name = f'기보_{optimal_type}'
             note = f'신규 {optimal_type} {max_possible//10000000}천만원 가능'
         
-        exclusion_note = '제조업 우선 원칙으로 신보 제외' if company_data['industry'] == '제조업' else None
+        exclusion_note = '제조업 우선 원칙으로 신보 제외' if industry == '제조업' else None
         
         print(f"기보 결과: {fund_name} - {note}")
         print("--- 기보 자금 분석 완료 ---")
@@ -212,11 +275,15 @@ class PolicyFundRecommendationEngineV2:
         """
         print("--- 신보 자금 분석 시작 ---")
         
-        # 자격 요건 확인
+        # 자격 요건 확인 (안전한 데이터 접근)
+        business_months = company_data.get('business_months', 24)
+        credit_score = company_data.get('credit_score', 0)
+        annual_revenue = company_data.get('annual_revenue', 500_000_000)
+        
         if not (
-            company_data['business_months'] >= 3 and
-            company_data['credit_score'] >= 850 and
-            company_data['annual_revenue'] > 500_000_000
+            business_months >= 3 and
+            credit_score >= 850 and
+            annual_revenue > 500_000_000
         ):
             print("신보 자격 요건 미달")
             return None
@@ -234,17 +301,17 @@ class PolicyFundRecommendationEngineV2:
         print(f"현재 신보 사용액: {current_sinbo:,}원")
         
         # 현재 가능한 총 신보 한도 계산
-        if company_data['annual_revenue'] >= 1_000_000_000:
+        if annual_revenue >= 1_000_000_000:
             rate = 0.15
             rate_note = '대규모 기업 우대 15%'
-        elif company_data['credit_score'] >= 900:
+        elif credit_score >= 900:
             rate = 0.15
             rate_note = '고신용 우대 15%'
         else:
             rate = 0.12
             rate_note = '일반 12%'
         
-        total_possible = self._round_up_to_50m_unit_always(company_data['annual_revenue'] * rate)
+        total_possible = self._round_up_to_50m_unit_always(annual_revenue * rate)
         additional_amount = total_possible - current_sinbo
         
         print(f"신보 적용 비율: {rate*100}% ({rate_note})")
@@ -289,13 +356,20 @@ class PolicyFundRecommendationEngineV2:
             print("중진공 이미 사용 중 - 추가 불가")
             return None
         
-        # 자격 요건 확인
+        # 자격 요건 확인 (안전한 데이터 접근)
+        industry = company_data.get('industry', '기타')
+        ceo_age = company_data.get('ceo_age', 35)
+        is_startup = company_data.get('is_startup', True)
+        business_months = company_data.get('business_months', 24)
+        credit_score = company_data.get('credit_score', 0)
+        experience_years = company_data.get('experience_years', 5)
+        
         if not (
-            company_data['industry'] in ['제조업', '정보통신업'] and
-            company_data['ceo_age'] < 40 and
-            (company_data.get('is_startup') or company_data['business_months'] <= 36) and
-            company_data['credit_score'] >= 800 and
-            company_data.get('experience_years', 0) >= 3
+            industry in ['제조업', '정보통신업'] and
+            ceo_age < 40 and
+            (is_startup or business_months <= 36) and
+            credit_score >= 800 and
+            experience_years >= 3
         ):
             print("중진공 청년창업 자격 요건 미달")
             return None
@@ -322,11 +396,17 @@ class PolicyFundRecommendationEngineV2:
         
         funds = []
         
-        # 직원수 기준 확인 - 업종에 따라 다른 기준 적용
-        employee_limit = 10 if company_data['industry'] in ['제조업', '건설업', '운수업', '광업'] else 5
-        print(f"직원수 기준: {employee_limit}명 미만 (업종: {company_data['industry']}, 현재: {company_data['employees']}명)")
+        # 안전한 데이터 접근
+        industry = company_data.get('industry', '기타')
+        employees = company_data.get('employees', 3)
+        annual_revenue = company_data.get('annual_revenue', 500_000_000)
+        credit_score = company_data.get('credit_score', 0)
         
-        if company_data['employees'] >= employee_limit:
+        # 직원수 기준 확인 - 업종에 따라 다른 기준 적용
+        employee_limit = 10 if industry in ['제조업', '건설업', '운수업', '광업'] else 5
+        print(f"직원수 기준: {employee_limit}명 미만 (업종: {industry}, 현재: {employees}명)")
+        
+        if employees >= employee_limit:
             print(f"직원수 {employee_limit}명 이상으로 소진공 자금 불가")
             return funds
         
@@ -334,11 +414,10 @@ class PolicyFundRecommendationEngineV2:
         current_innovation = existing_funds.get('sojin_innovation', 0)
         print(f"현재 소진공 혁신성장 사용액: {current_innovation:,}원")
         
-        if (company_data['annual_revenue'] >= 200_000_000 and 
-            company_data['credit_score'] >= 750):
+        if (annual_revenue >= 200_000_000 and credit_score >= 750):
             
             # 총 가능 한도 계산
-            if company_data['annual_revenue'] >= 300_000_000 and company_data['credit_score'] >= 800:
+            if annual_revenue >= 300_000_000 and credit_score >= 800:
                 max_possible = 70_000_000
                 criteria = '매출 3억 이상 + 신용 800점 이상'
             else:
@@ -369,7 +448,7 @@ class PolicyFundRecommendationEngineV2:
         current_lowcredit = existing_funds.get('sojin_lowcredit', 0)
         print(f"현재 소진공 저신용 사용액: {current_lowcredit:,}원")
         
-        if company_data['credit_score'] <= 839 and current_lowcredit == 0:
+        if credit_score <= 839 and current_lowcredit == 0:
             print("저신용자금 가능 - 3천만원")
             funds.append({
                 'fund_name': '소진공_저신용',
@@ -393,16 +472,18 @@ class PolicyFundRecommendationEngineV2:
         current_foundation = existing_funds.get('credit_foundation', 0)
         print(f"현재 신용보증재단 사용액: {current_foundation:,}원")
         
-        
+        # 안전한 데이터 접근
+        business_months = company_data.get('business_months', 24)
+        credit_score = company_data.get('credit_score', 0)
         
         # 업력 계산 (개월 수를 연도로 변환)
-        business_years = company_data['business_months'] / 12
-        print(f"사업 업력: {business_years:.1f}년 ({company_data['business_months']}개월)")
+        business_years = business_months / 12
+        print(f"사업 업력: {business_years:.1f}년 ({business_months}개월)")
         
         # 업력과 신용점수에 따른 한도 매트릭스
         def get_limit_by_matrix(years, credit_score):
             # 업력 구간 결정 (개월 기준으로 더 정확하게)
-            months = company_data['business_months']
+            months = business_months
             print(f"업력: {months}개월")
             
             if months <= 6:
@@ -442,7 +523,7 @@ class PolicyFundRecommendationEngineV2:
             
             # 한도 매트릭스 (만원 단위) - 이미지 기준 정확한 매트릭스
             limit_matrix = [
-                # 업력:      6개월이하  1년이하  2년이하  3년이하  4년이하  5년이하  5년초과
+# 업력: 6개월이하  1년이하  2년이하  3년이하  4년이하  5년이하  5년초과
                 [30, 35, 45, 50, 55, 60, 70],  # 920-1000점
                 [25, 30, 35, 40, 45, 50, 60],  # 880-919점
                 [20, 25, 30, 35, 40, 40, 50],  # 840-879점
@@ -452,40 +533,39 @@ class PolicyFundRecommendationEngineV2:
             
             return limit_matrix[credit_tier][year_tier] * 1000000  # 백만원을 원 단위로 변환
         
-        max_possible = get_limit_by_matrix(business_years, company_data['credit_score'])
+        max_possible = get_limit_by_matrix(business_years, credit_score)
         
         # 지원불가 체크
         if max_possible == 0:
-            if company_data['credit_score'] < 745:
-                print(f"신용점수 {company_data['credit_score']}점으로 신용보증재단 이용 불가 (745점 미만)")
+            if credit_score < 745:
+                print(f"신용점수 {credit_score}점으로 신용보증재단 이용 불가 (745점 미만)")
             else:
-                print(f"신용점수 {company_data['credit_score']}점으로 신용보증재단 이용 불가 (710-744점 지원불가)")
+                print(f"신용점수 {credit_score}점으로 신용보증재단 이용 불가 (710-744점 지원불가)")
             return None
         
         # 업력과 신용점수 기준 설명
-        months = company_data['business_months']
-        if months <= 6:
+        if business_months <= 6:
             year_desc = "6개월 이하"
-        elif months <= 12:
+        elif business_months <= 12:
             year_desc = "1년 이하"
-        elif months <= 24:
+        elif business_months <= 24:
             year_desc = "2년 이하"
-        elif months <= 36:
+        elif business_months <= 36:
             year_desc = "3년 이하"
-        elif months <= 48:
+        elif business_months <= 48:
             year_desc = "4년 이하"
-        elif months <= 60:
+        elif business_months <= 60:
             year_desc = "5년 이하"
         else:
             year_desc = "5년 초과"
         
-        if company_data['credit_score'] >= 920:
+        if credit_score >= 920:
             credit_desc = "920-1000점"
-        elif company_data['credit_score'] >= 880:
+        elif credit_score >= 880:
             credit_desc = "880-919점"
-        elif company_data['credit_score'] >= 840:
+        elif credit_score >= 840:
             credit_desc = "840-879점"
-        elif company_data['credit_score'] >= 780:
+        elif credit_score >= 780:
             credit_desc = "780-839점"
         else:
             credit_desc = "745-779점"
@@ -632,4 +712,4 @@ class FundingCalculator(PolicyFundRecommendationEngineV2):
                 'calculation_time': new_result['calculation_time'],
                 'exclusion_notes': new_result['exclusion_notes']
             }
-        } 
+        }

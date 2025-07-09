@@ -439,7 +439,7 @@ function initializeCalendarWithSettings() {
                         color:#222;
                     ">
                     <div style="display:flex;align-items:center;justify-content:space-between;">
-                        <div style="width:30%; font-size:1.05em;font-weight:bold;color:${dateFieldColor};margin-bottom:2px;">${dateFieldName}</div>
+                        ${dateFieldName !== '커스텀' ? `<div style="width:30%; font-size:1.05em;font-weight:bold;color:${dateFieldColor};margin-bottom:2px;">${dateFieldName}</div>` : ''}
                         <div style="width:70%; font-weight:bold; font-size:1.08em; margin-bottom:6px;">${name}</div>
                     </div>
                         ${fields}
@@ -454,7 +454,7 @@ function initializeCalendarWithSettings() {
                 return;
             }
             // 이벤트 클릭 시 기존 상세보기 모달 표시
-            const rowId = info.event.id;
+            const rowId = info.event.id.split('_')[0];
             fetch(`/600/get_row_details/${rowId}/`)
                 .then(r => r.json())
                 .then(function(data) {
@@ -477,9 +477,9 @@ function initializeCalendarWithSettings() {
                 while (current < end) {
                     const dateStr = current.toISOString().slice(0, 10);
                     const cell = document.querySelector(`.fc-daygrid-day[data-date='${dateStr}']`);
-                    if (cell) {
-                        cell.style.border = `2.5px solid ${color}`;
-                    }
+                    // if (cell) {
+                    //     cell.style.border = `2.5px solid ${color}`;
+                    // }
                     current.setDate(current.getDate() + 1);
                 }
             }

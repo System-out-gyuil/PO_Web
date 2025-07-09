@@ -15,6 +15,7 @@ urlpatterns = [
     path('update/', views.update_entry, name='update_entry'),
     path('create_new_row/', views.create_new_row, name='create_new_row'),
     path('update_row_field/', views.update_row_field, name='update_row_field'),
+    path('update_sales_field/', views.update_sales_field, name='update_sales_field'),
     path('dropdown_options/', views.dropdown_options, name='dropdown_options'),
     path('add_attribute/', views.add_attribute, name='add_attribute'),
     path('delete_attribute/', views.delete_attribute, name='delete_attribute'),
