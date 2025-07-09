@@ -144,7 +144,7 @@ function showCalendarSettingsModal(forceSettings) {
             });
             return `
                 <div style="margin-top:18px;">
-                    <div style="font-weight:bold;color:#333;margin-bottom:6px;">커스텀 일정 추가</div>
+                    <div style="font-weight:bold;color:#333;margin-bottom:6px;">일정 추가</div>
                     <div id="customEventsList">
                         ${events.map((ev, idx) => `
                             <div class="custom-event-row" data-idx="${idx}" style="display:flex;align-items:center;margin-bottom:6px;gap:4px;">
@@ -199,7 +199,7 @@ function showCalendarSettingsModal(forceSettings) {
                     </div>
                     <div style="margin-bottom:18px;">
                         <label style="display:block;margin-bottom:8px;font-weight:bold;color:#333;">카드 생성 기준 날짜 필드(복수 선택):</label>
-                        <div style="font-size:12px;color:#666;margin-bottom:8px;">각 필드 오른쪽의 드롭다운에서 카드에 표시할 내용을 선택하세요. Ctrl+클릭으로 여러 항목 선택 가능합니다.</div>
+                        <div style="font-size:12px;color:#666;margin-bottom:8px;">각 필드 오른쪽에서 카드의 색상과 카드에 표시할 내용을 선택하세요.</div>
                         <div id="dateFieldCheckboxes">${dateFieldOptions}</div>
                     </div>
                     ${renderCustomEventsSection()}

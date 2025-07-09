@@ -811,18 +811,34 @@ function sortTable(column, direction) {
         const aValue = getCellValue(a, column);
         const bValue = getCellValue(b, column);
         
-        // 숫자인지 확인
-        const aNum = parseFloat(aValue.replace(/[^0-9.-]/g, ''));
-        const bNum = parseFloat(bValue.replace(/[^0-9.-]/g, ''));
-        
         let comparison = 0;
         
-        if (!isNaN(aNum) && !isNaN(bNum)) {
-            // 숫자 비교
-            comparison = aNum - bNum;
+        // 매출 컬럼인 경우 특별 처리
+        if (column === '매출') {
+            // 숫자만 추출 (쉼표, 원, 공백 등 제거)
+            const aNum = parseFloat(aValue.replace(/[^0-9.-]/g, ''));
+            const bNum = parseFloat(bValue.replace(/[^0-9.-]/g, ''));
+            
+            if (!isNaN(aNum) && !isNaN(bNum)) {
+                // 숫자 크기로 비교
+                comparison = aNum - bNum;
+            } else {
+                // 숫자가 아닌 경우 문자열 비교
+                comparison = aValue.localeCompare(bValue, 'ko');
+            }
         } else {
-            // 문자열 비교
-            comparison = aValue.localeCompare(bValue, 'ko');
+            // 다른 컬럼들은 기존 로직 사용
+            // 숫자인지 확인
+            const aNum = parseFloat(aValue.replace(/[^0-9.-]/g, ''));
+            const bNum = parseFloat(bValue.replace(/[^0-9.-]/g, ''));
+            
+            if (!isNaN(aNum) && !isNaN(bNum)) {
+                // 숫자 비교
+                comparison = aNum - bNum;
+            } else {
+                // 문자열 비교
+                comparison = aValue.localeCompare(bValue, 'ko');
+            }
         }
         
         return direction === 'asc' ? comparison : -comparison;
@@ -837,29 +853,27 @@ function sortTable(column, direction) {
 function getCellValue(row, column) {
     const cells = row.querySelectorAll('td');
     const attributes = window.ATTR_FIELDS || [];
-    
     // 속성 인덱스 찾기 (드래그 셀 제외하고 시작)
     const columnIndex = attributes.findIndex(attr => attr.name === column) + 1;
-    
     if (columnIndex > 0 && columnIndex < cells.length) {
         const cell = cells[columnIndex];
-        
+        // 매출 컬럼이면 data-raw 사용
+        if (column === '매출' && cell.hasAttribute('data-raw')) {
+            return cell.getAttribute('data-raw');
+        }
         // 텍스트 입력 필드가 있는 경우
         const input = cell.querySelector('input[type="text"]');
         if (input) {
             return input.value || '';
         }
-        
         // 선택 필드가 있는 경우
         const select = cell.querySelector('select');
         if (select) {
             return select.selectedOptions[0]?.text || '';
         }
-        
         // 일반 텍스트인 경우
         return cell.textContent.trim();
     }
-    
     return '';
 }
 

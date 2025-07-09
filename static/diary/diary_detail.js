@@ -2897,27 +2897,22 @@ function updateRowField(rowId, fieldName, value) {
     .then(data => {
         if (data.success) {
             console.log('필드 업데이트 성공:', fieldName, value);
-            
-            // 테이블 실시간 업데이트
             if (typeof refreshTable === 'function') {
                 refreshTable();
             }
-            
-            // 칸반보드 실시간 업데이트 - 현재 칸반보드 속성과 일치하는 경우
             const currentKanbanAttr = document.getElementById('kanbanAttributeSelect') ? 
                 document.getElementById('kanbanAttributeSelect').value : 
                 window.SELECTED_KANBAN_ATTR || window.kanbanAttribute;
-                
             if (currentKanbanAttr && fieldName === currentKanbanAttr) {
                 if (typeof refreshKanban === 'function') {
                     refreshKanban();
                 }
             }
-            
-            // 캘린더 업데이트 (날짜 관련 필드인 경우)
-            if (fieldName.includes('일') || fieldName.includes('날짜') || fieldName.includes('시간')) {
-                if (window.calendar) {
-                    window.calendar.refetchEvents();
+            // 캘린더 비동기 새로고침 (datetime 타입 또는 날짜/일/시간 포함 필드)
+            if (window.ATTR_FIELDS) {
+                const attr = window.ATTR_FIELDS.find(a => a.name === fieldName);
+                if ((attr && attr.type === 'datetime') || fieldName.includes('일') || fieldName.includes('날짜') || fieldName.includes('시간')) {
+                    if (window.calendar) window.calendar.refetchEvents();
                 }
             }
         } else {

@@ -1322,12 +1322,13 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
               alert('수정 실패: ' + data.error);
               return;
           }
-          
-          // datetime 타입 속성이 수정된 경우 캘린더 설정 새로고침
-          if (typeof refreshCalendarSettings === 'function') {
-              refreshCalendarSettings();
+          // datetime 타입 속성이 수정된 경우 캘린더 새로고침
+          if (window.ATTR_FIELDS) {
+              const attr = window.ATTR_FIELDS.find(a => a.name === field);
+              if ((attr && attr.type === 'datetime') || field.includes('일') || field.includes('날짜') || field.includes('시간')) {
+                  if (window.calendar) window.calendar.refetchEvents();
+              }
           }
-          
           // 테이블과 칸반보드 실시간 업데이트
           if (typeof refreshTable === 'function') {
               refreshTable();
