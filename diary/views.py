@@ -59,6 +59,7 @@ import time
 from urllib.parse import quote
 import mimetypes
 from django.conf import settings
+from django.db import transaction
 
 logger = logging.getLogger(__name__)
 
@@ -3112,29 +3113,21 @@ def save_column_order(request):
     """컬럼 순서 저장"""
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'POST method required'})
-    
     try:
         data = json.loads(request.body)
         column_order = data.get('column_order', [])
-        
         if not column_order:
             return JsonResponse({'success': False, 'error': 'column_order is required'})
-        
-        # 현재 사용자 (임시로 id=1 사용)
         user = User.objects.get(id=1)
-        
-        # 각 속성의 순서 업데이트
-        for index, column_name in enumerate(column_order):
-            try:
-                attribute = Attribute.objects.get(name=column_name, user=user)
-                attribute.sort_order = index
-                attribute.save()
-            except Attribute.DoesNotExist:
-                # 속성이 없는 경우 무시
-                continue
-        
+        with transaction.atomic():
+            for index, column_name in enumerate(column_order):
+                try:
+                    attribute = Attribute.objects.get(name=column_name, user=user)
+                    attribute.sort_order = index
+                    attribute.save()
+                except Attribute.DoesNotExist:
+                    continue
         return JsonResponse({'success': True, 'message': '컬럼 순서가 저장되었습니다.'})
-        
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Invalid JSON'})
     except Exception as e:

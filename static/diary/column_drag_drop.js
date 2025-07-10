@@ -159,6 +159,12 @@ function reorderColumns(fromIndex, toIndex) {
             }
         }
     });
+    
+    // DOM 업데이트 완료 후 순서 저장
+    setTimeout(() => {
+        saveColumnOrder();
+    }, 50);
+    
     // 드래그앤드롭 재초기화는 강제(force)로 1회만
     setTimeout(() => {
         isColumnDragInitialized = false;
@@ -167,31 +173,63 @@ function reorderColumns(fromIndex, toIndex) {
             bindTableCellEvents();
         }
     }, 100);
-    saveColumnOrder();
 }
 
 // 컬럼 순서 서버에 저장
 function saveColumnOrder() {
+    console.log('=== saveColumnOrder 함수 호출됨 ===');
+    
+    // DOM에서 실제 순서를 다시 확인
     const headers = document.querySelectorAll('.attribute-header');
-    const columnOrder = Array.from(headers).map(header => header.getAttribute('data-column'));
+    console.log('찾은 헤더 개수:', headers.length);
+    
+    const columnOrder = Array.from(headers).map((header, index) => {
+        const columnName = header.getAttribute('data-column');
+        console.log(`[${index}] 헤더:`, header.textContent.trim(), '-> 컬럼명:', columnName);
+        return columnName;
+    });
+    
     console.log('저장할 컬럼 순서:', columnOrder);
+    
+    // CSRF 토큰 가져오기
+    const csrfToken = getCsrfToken();
+    console.log('CSRF 토큰:', csrfToken ? '있음' : '없음');
+    
+    const requestData = {column_order: columnOrder};
+    console.log('전송할 데이터:', requestData);
+    
     fetch('/600/save_column_order/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
         },
-        body: JSON.stringify({column_order: columnOrder})
+        body: JSON.stringify(requestData)
     })
-    .then(response => response.json())
+    .then(response => {
+        console.log('서버 응답 상태:', response.status);
+        return response.json();
+    })
     .then(data => {
+        console.log('서버 응답 데이터:', data);
         if (data.success) {
             console.log('컬럼 순서 저장 성공:', data.message);
+            // 성공 알림 추가
+            if (typeof showNotification === 'function') {
+                showNotification('컬럼 순서가 저장되었습니다.', 'success');
+            }
         } else {
             console.error('컬럼 순서 저장 실패:', data.error);
+            if (typeof showNotification === 'function') {
+                showNotification('컬럼 순서 저장 실패: ' + (data.error || '알 수 없는 오류'), 'error');
+            }
         }
     })
     .catch(error => {
         console.error('컬럼 순서 저장 중 오류:', error);
+        if (typeof showNotification === 'function') {
+            showNotification('컬럼 순서 저장 중 오류가 발생했습니다.', 'error');
+        }
     });
 }
 
