@@ -224,7 +224,7 @@ function showNoContentMessage(audioFilesList, noAudioFilesMessage) {
                     음성파일을 업로드하거나 텍스트 노트를 추가해보세요
                 </div>
                 <div style="font-size: 12px; color: #999; margin-bottom: 24px; padding: 15px; border: 2px dashed #ddd; border-radius: 8px; background: #fafafa;">
-                    💡 파일을 여기에 드래그 앤 드롭하여 업로드할 수도 있습니다
+                    💡 파일을 여기에 드래그 앤 드롭하거나 Ctrl+V로 붙여넣기하여 업로드할 수도 있습니다
                 </div>
                 <div style="display: flex; justify-content: center; gap: 12px;">
                     <button onclick="addTextCell()" style="padding: 10px 18px; background: #bfcfc2; color: #222; border: none; border-radius: 6px; font-size: 15px; font-weight: bold; cursor: pointer;">
@@ -261,7 +261,7 @@ function showNoContentMessage(audioFilesList, noAudioFilesMessage) {
                     음성파일을 업로드하거나 텍스트 노트를 추가해보세요
                 </div>
                 <div style="font-size: 12px; color: #999; margin-bottom: 24px; padding: 15px; border: 2px dashed #ddd; border-radius: 8px; background: #fafafa;">
-                    💡 파일을 여기에 드래그 앤 드롭하여 업로드할 수도 있습니다
+                    💡 파일을 여기에 드래그 앤 드롭하거나 Ctrl+V로 붙여넣기하여 업로드할 수도 있습니다
                 </div>
                 <div style="display: flex; justify-content: center; gap: 12px;">
                     <button onclick="addTextCell()" style="padding: 10px 18px; background: #bfcfc2; color: #222; border: none; border-radius: 6px; font-size: 15px; font-weight: bold; cursor: pointer;">
@@ -2121,6 +2121,40 @@ function setupDragAndDrop(container) {
             handleDroppedFiles(files);
         }
     });
+    
+    // 클립보드 붙여넣기 이벤트 추가
+    container.addEventListener('paste', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const items = e.clipboardData.items;
+        if (!items) return;
+        
+        const files = [];
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            if (item.kind === 'file') {
+                const file = item.getAsFile();
+                if (file) {
+                    files.push(file);
+                }
+            }
+        }
+        
+        if (files.length > 0) {
+            console.log('클립보드에서 파일 붙여넣기:', files);
+            handleDroppedFiles(files);
+        }
+    });
+    
+    // 키보드 이벤트 (Ctrl+V) 추가
+    container.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+            e.preventDefault();
+            // paste 이벤트가 자동으로 발생하므로 여기서는 추가 처리만
+            console.log('Ctrl+V 감지됨');
+        }
+    });
 }
 
 // 드롭된 파일 처리 함수
@@ -2235,4 +2269,68 @@ function showNotification(message, type = 'info') {
         `;
         document.head.appendChild(style);
     }
+}
+
+// 전역 클립보드 이벤트 리스너 설정
+function setupGlobalClipboardListener() {
+    // 이미 설정되어 있는지 확인
+    if (window.globalClipboardListenerSet) return;
+    
+    document.addEventListener('paste', function(e) {
+        // 현재 활성화된 요소가 입력 필드인 경우는 제외
+        const activeElement = document.activeElement;
+        if (activeElement && (
+            activeElement.tagName === 'INPUT' || 
+            activeElement.tagName === 'TEXTAREA' || 
+            activeElement.contentEditable === 'true'
+        )) {
+            return;
+        }
+        
+        const items = e.clipboardData.items;
+        if (!items) return;
+        
+        const files = [];
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            if (item.kind === 'file') {
+                const file = item.getAsFile();
+                if (file) {
+                    files.push(file);
+                }
+            }
+        }
+        
+        if (files.length > 0) {
+            console.log('전역 클립보드에서 파일 붙여넣기:', files);
+            handleDroppedFiles(files);
+        }
+    });
+    
+    // 키보드 이벤트 (Ctrl+V) 추가
+    document.addEventListener('keydown', function(e) {
+        // 현재 활성화된 요소가 입력 필드인 경우는 제외
+        const activeElement = document.activeElement;
+        if (activeElement && (
+            activeElement.tagName === 'INPUT' || 
+            activeElement.tagName === 'TEXTAREA' || 
+            activeElement.contentEditable === 'true'
+        )) {
+            return;
+        }
+        
+        if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+            console.log('전역 Ctrl+V 감지됨');
+            // paste 이벤트가 자동으로 발생하므로 추가 처리만
+        }
+    });
+    
+    window.globalClipboardListenerSet = true;
+}
+
+// 페이지 로드 시 전역 클립보드 리스너 설정
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupGlobalClipboardListener);
+} else {
+    setupGlobalClipboardListener();
 }
