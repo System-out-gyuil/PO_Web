@@ -682,12 +682,40 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                                                         // 삭제된 옵션이 포함된 경우
                                                         const newArr = parsed.filter(id => id !== Number(optionId));
                                                         cell.setAttribute('data-value', JSON.stringify(newArr));
+                                                        
+                                                        // UI도 업데이트 - 남은 옵션들로 다시 렌더링
+                                                        if (newArr.length > 0) {
+                                                            // 서버에서 최신 옵션 정보를 가져와서 UI 업데이트
+                                                            fetch('/600/dropdown_options/?field=' + encodeURIComponent(type))
+                                                                .then(response => response.json())
+                                                                .then(data => {
+                                                                    if (data.options) {
+                                                                        const selectedOptions = data.options.filter(opt => newArr.includes(Number(opt.id)));
+                                                                        let htmlContent = '';
+                                                                        selectedOptions.forEach(opt => {
+                                                                            const color = opt.color ? hexToRgba(opt.color, 0.18) : '#eee';
+                                                                            htmlContent += `<div class="dropdown-pill" style="background:${color}; color:#333; display:block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center; margin-bottom:2px;">${opt.option}</div>`;
+                                                                        });
+                                                                        cell.innerHTML = htmlContent;
+                                                                    }
+                                                                })
+                                                                .catch(error => {
+                                                                    console.error('옵션 정보 가져오기 실패:', error);
+                                                                });
+                                                        } else {
+                                                            // 모든 옵션이 삭제된 경우
+                                                            cell.innerHTML = '<div style="color: #999; font-style: italic;">선택 없음</div>';
+                                                        }
                                                     } else if (Number(val) === Number(optionId)) {
+                                                        // 단일 선택에서 삭제된 옵션인 경우
                                                         cell.setAttribute('data-value', '');
+                                                        cell.innerHTML = '<div style="color: #999; font-style: italic;">선택 없음</div>';
                                                     }
                                                 } catch (e) {
                                                     if (Number(val) === Number(optionId)) {
+                                                        // 단일 선택에서 삭제된 옵션인 경우
                                                         cell.setAttribute('data-value', '');
+                                                        cell.innerHTML = '<div style="color: #999; font-style: italic;">선택 없음</div>';
                                                     }
                                                 }
                                             }

@@ -8,7 +8,7 @@ from django.views.decorators.http import require_GET, require_http_methods
 import json
 import random
 from types import SimpleNamespace
-from datetime import datetime
+from datetime import datetime, timedelta
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET, require_http_methods
@@ -279,7 +279,7 @@ def diary_list(request):
             })
 
     # attributes를 list of dict로 json.dumps
-    attributes_list = list(attributes.values('name', 'attributeType__name', 'assential'))
+    attributes_list = list(attributes.values('id', 'name', 'attributeType__name', 'assential'))
     # dict -> SimpleNamespace, attributeType__name -> attributeType_name
     attributes_obj_list = [SimpleNamespace(**{k.replace('attributeType__name', 'attributeType_name'): v for k, v in d.items()}) for d in attributes_list]
     attributes_json = json.dumps(attributes_list, ensure_ascii=False)
@@ -910,7 +910,39 @@ def dropdown_options(request):
 
     elif request.method == 'DELETE':
         id = request.GET.get('id')
-        DropdownAttribute.objects.filter(id=id, attribute=attr).delete()
+        
+        # 삭제할 옵션 찾기
+        dropdown = DropdownAttribute.objects.filter(id=id, attribute=attr).first()
+        if not dropdown:
+            return JsonResponse({'error': 'Option not found'}, status=404)
+        
+        # 해당 옵션을 사용하는 모든 AttributeValue 찾기
+        affected_values = AttributeValue.objects.filter(attribute=attr)
+        
+        # 각 AttributeValue에서 삭제된 옵션 ID 제거
+        for attr_value in affected_values:
+            if attr_value.value:
+                try:
+                    # JSON 형태로 저장된 다중선택 값인지 확인
+                    parsed = json.loads(attr_value.value)
+                    if isinstance(parsed, list):
+                        # 다중선택 값에서 삭제된 옵션 ID 제거
+                        if int(id) in parsed:
+                            parsed.remove(int(id))
+                            attr_value.value = json.dumps(parsed) if parsed else ''
+                            attr_value.save()
+                    elif str(parsed) == str(id):
+                        # 단일 선택 값이 삭제된 옵션과 일치하는 경우
+                        attr_value.value = ''
+                        attr_value.save()
+                except (json.JSONDecodeError, ValueError):
+                    # JSON이 아닌 경우 단일 값으로 처리
+                    if str(attr_value.value) == str(id):
+                        attr_value.value = ''
+                        attr_value.save()
+        
+        # DropdownAttribute 삭제
+        dropdown.delete()
         return JsonResponse({'success': True})
 
     return JsonResponse({'error': 'Invalid method'}, status=405)
@@ -3119,7 +3151,7 @@ def _calculate_business_months(opening_date_str):
 def _calculate_age_from_data(age_data_str):
     """나이 데이터에서 실제 나이를 계산하는 헬퍼 함수"""
     import json
-    from datetime import datetime
+    from datetime import datetime, timedelta
     
     if not age_data_str:
         return 35  # 기본값
@@ -4218,9 +4250,8 @@ def calendar_events(request):
             'is_custom': True,
         }
         if end:
-            # FullCalendar는 end 날짜를 exclusive로 처리하므로 하루를 더해서 inclusive하게 만듦
+            # FullCalendar는 end 날짜가 exclusive이므로 하루를 더해서 보내줌
             try:
-                from datetime import datetime, timedelta
                 end_date = datetime.strptime(end, '%Y-%m-%d')
                 end_date += timedelta(days=1)
                 event['end'] = end_date.strftime('%Y-%m-%d')

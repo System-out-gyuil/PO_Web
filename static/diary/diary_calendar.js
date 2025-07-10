@@ -508,7 +508,30 @@ function initializeCalendarWithSettings() {
     console.log('initializeCalendarWithSettings 호출됨');
     const calendarEl = document.getElementById('calendar');
     if (!calendarEl) return;
-    if (!window.calendarSettings) window.calendarSettings = { date_fields: [], custom_events: [] };
+    
+    // 기존 설정이 있으면 그대로 사용하고, 없을 때만 기본 설정 생성
+    if (!window.calendarSettings) {
+        window.calendarSettings = { 
+            date_fields: [], 
+            custom_events: [] 
+        };
+        
+        // 기본 datetime 속성들을 자동으로 찾아서 설정 (기존 설정이 없을 때만)
+        if (window.ATTR_FIELDS) {
+            const datetimeAttrs = window.ATTR_FIELDS.filter(attr => 
+                attr.attributeType_name === 'datetime' && attr.name !== '개업년월'
+            );
+            
+            datetimeAttrs.forEach(attr => {
+                window.calendarSettings.date_fields.push({
+                    attribute: attr.id,
+                    content_fields: ['회사명'],
+                    color: randomColor(),
+                    view_check: true
+                });
+            });
+        }
+    }
 
     // 모든 기준 날짜 필드의 이벤트를 한 번에 불러옴
     const eventUrl = `/600/calendar_events/`;
