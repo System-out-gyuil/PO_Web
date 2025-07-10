@@ -183,6 +183,9 @@ function updateAudioFileManagement(audioFileValue) {
           
           audioFilesList.appendChild(sortableContainer);
           
+          // 드래그 앤 드롭 이벤트 추가
+          setupDragAndDrop(sortableContainer);
+          
           // Sortable.js 적용 (드래그 앤 드롭)
           if (typeof Sortable !== 'undefined') {
               new Sortable(sortableContainer, {
@@ -220,6 +223,9 @@ function showNoContentMessage(audioFilesList, noAudioFilesMessage) {
                 <div style="font-size: 14px; color: #888; margin-bottom: 24px;">
                     음성파일을 업로드하거나 텍스트 노트를 추가해보세요
                 </div>
+                <div style="font-size: 12px; color: #999; margin-bottom: 24px; padding: 15px; border: 2px dashed #ddd; border-radius: 8px; background: #fafafa;">
+                    💡 파일을 여기에 드래그 앤 드롭하여 업로드할 수도 있습니다
+                </div>
                 <div style="display: flex; justify-content: center; gap: 12px;">
                     <button onclick="addTextCell()" style="padding: 10px 18px; background: #bfcfc2; color: #222; border: none; border-radius: 6px; font-size: 15px; font-weight: bold; cursor: pointer;">
                         + 텍스트 추가
@@ -231,6 +237,9 @@ function showNoContentMessage(audioFilesList, noAudioFilesMessage) {
             </div>
         `;
         audioFilesList.appendChild(noAudioFilesMessage);
+        
+        // 빈 상태에서도 드래그 앤 드롭 설정
+        setupDragAndDrop(audioFilesList);
     } else {
       // noAudioFilesMessage가 없는 경우 새로 생성
       const messageDiv = document.createElement('div');
@@ -251,6 +260,9 @@ function showNoContentMessage(audioFilesList, noAudioFilesMessage) {
                 <div style="font-size: 14px; color: #888; margin-bottom: 24px;">
                     음성파일을 업로드하거나 텍스트 노트를 추가해보세요
                 </div>
+                <div style="font-size: 12px; color: #999; margin-bottom: 24px; padding: 15px; border: 2px dashed #ddd; border-radius: 8px; background: #fafafa;">
+                    💡 파일을 여기에 드래그 앤 드롭하여 업로드할 수도 있습니다
+                </div>
                 <div style="display: flex; justify-content: center; gap: 12px;">
                     <button onclick="addTextCell()" style="padding: 10px 18px; background: #bfcfc2; color: #222; border: none; border-radius: 6px; font-size: 15px; font-weight: bold; cursor: pointer;">
                         + 텍스트 추가
@@ -262,6 +274,9 @@ function showNoContentMessage(audioFilesList, noAudioFilesMessage) {
             </div>
       `;
       audioFilesList.appendChild(messageDiv);
+      
+      // 빈 상태에서도 드래그 앤 드롭 설정
+      setupDragAndDrop(audioFilesList);
   }
 }
 
@@ -2070,5 +2085,154 @@ function closeFilePreviewModal() {
     const modal = document.getElementById('filePreviewModal');
     if (modal) {
         modal.remove();
+    }
+}
+
+// 드래그 앤 드롭 설정 함수
+function setupDragAndDrop(container) {
+    if (!container) return;
+    
+    // 드래그 오버 이벤트
+    container.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.style.border = '2px dashed #22b573';
+        this.style.backgroundColor = '#f0f8f0';
+    });
+    
+    // 드래그 리브 이벤트
+    container.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.style.border = '';
+        this.style.backgroundColor = '';
+    });
+    
+    // 드롭 이벤트
+    container.addEventListener('drop', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.style.border = '';
+        this.style.backgroundColor = '';
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            console.log('드래그 앤 드롭으로 파일 받음:', files);
+            handleDroppedFiles(files);
+        }
+    });
+}
+
+// 드롭된 파일 처리 함수
+function handleDroppedFiles(files) {
+    console.log('드롭된 파일들 처리 시작:', files);
+    
+    // 파일 개수 제한 (최대 10개)
+    if (files.length > 10) {
+        showNotification('최대 10개까지 파일을 업로드할 수 있습니다.', 'warning');
+        return;
+    }
+    
+    let uploadedCount = 0;
+    let errorCount = 0;
+    
+    Array.from(files).forEach((file, index) => {
+        // 파일 크기 제한 (100MB)
+        if (file.size > 100 * 1024 * 1024) {
+            showNotification(`${file.name}은(는) 100MB를 초과하여 업로드할 수 없습니다.`, 'error');
+            errorCount++;
+            return;
+        }
+        
+        // 파일 타입 확인
+        if (file.type.startsWith('audio/')) {
+            // 오디오 파일 처리
+            handleAudioFileUpload(file, 0);
+            uploadedCount++;
+        } else {
+            // 일반 파일 처리
+            handleGeneralFileUpload(file, 0);
+            uploadedCount++;
+        }
+    });
+    
+    if (uploadedCount > 0) {
+        showNotification(`${uploadedCount}개 파일이 업로드되었습니다.`, 'success');
+    }
+    
+    if (errorCount > 0) {
+        showNotification(`${errorCount}개 파일 업로드에 실패했습니다.`, 'error');
+    }
+}
+
+// 알림 표시 함수 (기존에 없다면 추가)
+function showNotification(message, type = 'info') {
+    // 기존 알림 제거
+    const existingNotifications = document.querySelectorAll('.notification');
+    existingNotifications.forEach(notification => notification.remove());
+    
+    const notification = document.createElement('div');
+    notification.className = 'notification';
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 12px 20px;
+        border-radius: 6px;
+        color: white;
+        font-weight: bold;
+        z-index: 10000;
+        max-width: 300px;
+        word-wrap: break-word;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        animation: slideIn 0.3s ease;
+    `;
+    
+    // 타입별 스타일 설정
+    switch (type) {
+        case 'success':
+            notification.style.background = '#28a745';
+            break;
+        case 'error':
+            notification.style.background = '#dc3545';
+            break;
+        case 'warning':
+            notification.style.background = '#ffc107';
+            notification.style.color = '#333';
+            break;
+        default:
+            notification.style.background = '#17a2b8';
+    }
+    
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    // 3초 후 자동 제거
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.style.animation = 'slideOut 0.3s ease';
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 300);
+        }
+    }, 3000);
+    
+    // CSS 애니메이션 추가
+    if (!document.getElementById('notification-styles')) {
+        const style = document.createElement('style');
+        style.id = 'notification-styles';
+        style.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            @keyframes slideOut {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(100%); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
     }
 }
