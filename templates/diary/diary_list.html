@@ -212,11 +212,22 @@
                                 </div>
                             </td>
                         {% elif attr.attributeType_name == 'dropdown' %}
-                            <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" class="{% if attr.assential %}essential-column{% endif %}">
-                                <div class="dropdown-pill" style="background:{{ row.values|get_item:attr.name|get_item:'color'|default:''|to_rgba:'0.18' }}; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">
-                                    {{ row.values|get_item:attr.name|get_item:'label' }}
-                                </div>
+                            {% with dropdown_value=row.values|get_item:attr.name %}
+                            <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" class="{% if attr.assential %}essential-column{% endif %}" data-value="{{ dropdown_value.raw_value|default:'' }}">
+                                {% if dropdown_value.selected_options %}
+                                    <div style="display:flex; flex-direction:column; gap:2px;">
+                                        {% for option in dropdown_value.selected_options %}
+                                        
+                                            <div class="dropdown-pill" style="background:{{ option.color|default:''|to_rgba:'0.18' }}; color:#333; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">{{ option.label }}</div>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    <div class="dropdown-pill" style="background:{{ dropdown_value.color|default:''|to_rgba:'0.18' }}; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">
+                                        {{ dropdown_value.label|default:'선택 없음' }}
+                                    </div>
+                                {% endif %}
                             </td>
+                            {% endwith %}
                         {% elif attr.attributeType_name == 'datetime' %}
                             <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" class="{% if attr.assential %}essential-column{% endif %}">
                                 {{ row.values|get_item:attr.name|get_item:'label' }}

@@ -11,6 +11,7 @@ function randomColor() {
 
 // 캘린더 설정 모달 함수
 function showCalendarSettingsModal(forceSettings) {
+    console.log('showCalendarSettingsModal');
     Promise.all([
         fetch('/600/get_datetime_attributes/').then(r => r.json()),
         fetch('/600/get_user_attributes/').then(r => r.json()),
@@ -217,15 +218,13 @@ function showCalendarSettingsModal(forceSettings) {
         document.body.insertAdjacentHTML('beforeend', modalHTML);
 
         // 동적 이벤트 바인딩
-        // 1. 기준 날짜 필드 체크박스 → content_fields section show/hide (view_check 필드로 제어)
+        // 1. 기준 날짜 필드 체크박스 → settings.date_fields 업데이트 (view_check 필드로 제어)
         document.querySelectorAll('.date-field-checkbox').forEach(cb => {
             cb.addEventListener('change', function() {
                 const attrId = parseInt(this.value);
-                const section = document.querySelector(`.content-fields-section[data-date-attr="${attrId}"]`);
                 let df = settings.date_fields.find(df => df.attribute === attrId);
                 
                 if (this.checked) {
-                    section.style.display = '';
                     // 없으면 settings.date_fields에 추가 (랜덤 색상)
                     if (!df) {
                         df = { attribute: attrId, content_fields: ['회사명'], color: dateFieldColors[attrId] || randomColor(), view_check: true };
@@ -235,7 +234,6 @@ function showCalendarSettingsModal(forceSettings) {
                         df.view_check = true;
                     }
                 } else {
-                    section.style.display = 'none';
                     // settings.date_fields에서 제거하지 않고 view_check만 false로 설정
                     if (df) {
                         df.view_check = false;
@@ -627,9 +625,9 @@ function initializeCalendarWithSettings() {
             if (arg.event.extendedProps.is_custom) {
                 let color = arg.event.extendedProps.date_field_color || arg.event.extendedProps.color;
                 if (!color || color === 'undefined' || color === '') color = '#e5e7eb';
-                // 기간 처리
+                // 기간 처리 - 백엔드에서 이미 하루를 더해서 보내주므로 그대로 사용
                 let start = arg.event.start;
-                let end = arg.event.end ? arg.event.end : start; // end는 exclusive
+                let end = arg.event.end ? arg.event.end : start;
                 let current = new Date(start);
                 while (current < end) {
                     const dateStr = current.toISOString().slice(0, 10);

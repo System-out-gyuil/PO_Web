@@ -682,3 +682,8 @@ body { font-family: Arial, sans-serif; margin: 40px; background: #f8f9fa; }
     .fc-day-today, .calendar-today {
         background: rgb(255 0 0 / 5%) !important;
       }
+
+    .multi-select-pills {
+        display: flex        ;
+        flex-direction: column;
+    }

@@ -408,14 +408,20 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                             e.preventDefault();
                             e.stopPropagation();
                             
-                            console.log('드롭다운 옵션 클릭됨:', {optionId, option: this.querySelector('span').innerText});
+                            // span 요소 안전하게 가져오기
+                            const span = this.querySelector('span');
+                            if (!span) {
+                                console.error('span 요소를 찾을 수 없습니다.');
+                                return;
+                            }
+                            
+                            console.log('드롭다운 옵션 클릭됨:', {optionId, option: span.innerText});
                             
                             // UI 업데이트
-                            td.innerText = this.querySelector('span').innerText;
+                            const label = span.innerText;
+                            const color = (option && option.color) ? option.color : '';
+                            td.innerHTML = `<div class="dropdown-pill" style="background:${color ? hexToRgba(color, 0.18) : '#eee'}; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">${label}</div>`;
                             td.setAttribute('data-value', optionId);
-                            if (option && option.color) {
-                                td.style.background = hexToRgba(option.color, 0.18);
-                            }
                             
                             // 드롭다운 제거
                             if (window.dropdown && window.dropdown.parentNode) {

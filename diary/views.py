@@ -102,6 +102,10 @@ def diary_list(request):
             
             value = attr_value.value if attr_value else ''
             
+            # 진행사항 필드 디버깅
+            if attr.name == '진행사항':
+                print(f"진행사항 필드 - row_id: {row.id}, value: '{value}', type: {type(value)}")
+            
             if attr.name == '매출' or '매출' in attr.name:
                 numeric_value = parse_korean_currency(value)
                 row_values[attr.name] = {
@@ -118,9 +122,65 @@ def diary_list(request):
                         break
                 
                 if dropdown:
-                    row_values[attr.name] = {'label': dropdown.option, 'color': dropdown.color}
+                    row_values[attr.name] = {
+                        'label': dropdown.option, 
+                        'color': dropdown.color,
+                        'raw_value': value,
+                        'selected_options': [{'id': dropdown.id, 'label': dropdown.option, 'color': dropdown.color}]
+                    }
                 else:
-                    row_values[attr.name] = {'label': value, 'color': ''}
+                    row_values[attr.name] = {
+                        'label': value, 
+                        'color': '',
+                        'raw_value': value,
+                        'selected_options': []
+                    }
+            elif attr.attributeType and attr.attributeType.name == 'dropdown' and value.startswith('[') and value.endswith(']'):
+                # 다중선택(dropdown) 필드인 경우
+                print(f"다중선택 처리 - {attr.name}: value='{value}'")
+                try:
+                    selected_ids = json.loads(value)
+                    print(f"  JSON 파싱 성공: {selected_ids}")
+                    selected_options = []
+                    for dropdown_attr in attr.dropdown_attributes.all():
+                        if dropdown_attr.id in selected_ids:
+                            selected_options.append({
+                                'id': dropdown_attr.id,
+                                'label': dropdown_attr.option,
+                                'color': dropdown_attr.color
+                            })
+                    
+                    print(f"  선택된 옵션들: {selected_options}")
+                    
+                    if selected_options:
+                        # 첫 번째 옵션의 색상을 기본 색상으로 사용
+                        default_color = selected_options[0]['color']
+                        row_values[attr.name] = {
+                            'label': ', '.join([opt['label'] for opt in selected_options]),
+                            'color': default_color,
+                            'raw_value': value,
+                            'selected_options': selected_options,
+                            'multi_select': True
+                        }
+                        print(f"  최종 결과: {row_values[attr.name]}")
+                    else:
+                        row_values[attr.name] = {
+                            'label': '선택 없음',
+                            'color': '',
+                            'raw_value': value,
+                            'selected_options': [],
+                            'multi_select': True
+                        }
+                        print(f"  선택된 옵션 없음: {row_values[attr.name]}")
+                except json.JSONDecodeError as e:
+                    print(f"  JSON 파싱 실패: {e}")
+                    row_values[attr.name] = {
+                        'label': value,
+                        'color': '',
+                        'raw_value': value,
+                        'selected_options': [],
+                        'multi_select': True
+                    }
             elif attr.attributeType and attr.attributeType.name == 'file' and value:
                 # 파일 타입인 경우
                 file_info = json.loads(value)
@@ -763,17 +823,26 @@ def update_row_field(request):
             
             # 드롭다운 타입인 경우 특별 처리
             if attr.attributeType and attr.attributeType.name == 'dropdown':
-                try:
-                    # value가 숫자인 경우 dropdown ID로 처리
-                    if value and str(value).isdigit():
-                        dropdown = DropdownAttribute.objects.get(id=int(value), attribute=attr)
-                        value_to_save = str(dropdown.id)
-                    else:
-                        # 텍스트 값인 경우 그대로 저장
-                        value_to_save = str(value)
-                except (DropdownAttribute.DoesNotExist, ValueError):
-                    # 드롭다운을 찾을 수 없는 경우 텍스트 값으로 저장
-                    value_to_save = str(value)
+                print(f"Dropdown 필드 처리 - {attr.name}: value='{value}', isdigit: {value.isdigit() if value else False}")
+                
+                if value.isdigit():
+                    # 단일 선택
+                    print(f"  단일 선택 처리")
+                    value_to_save = value
+                elif value.startswith('[') and value.endswith(']'):
+                    # 다중선택(dropdown) 필드인 경우
+                    print(f"다중선택 처리 - {attr.name}: value='{value}'")
+                    try:
+                        selected_ids = json.loads(value)
+                        print(f"  JSON 파싱 성공: {selected_ids}")
+                        value_to_save = value  # JSON 배열 형태로 저장
+                    except json.JSONDecodeError as e:
+                        print(f"  JSON 파싱 실패: {e}")
+                        value_to_save = value
+                else:
+                    # 빈 값이거나 다른 형태
+                    print(f"  빈 값 또는 다른 형태: '{value}'")
+                    value_to_save = value
             else:
                 value_to_save = str(value)
             
@@ -3418,12 +3487,70 @@ def entry_table_partial(request):
                         break
                 
                 if dropdown:
-                    row_values[attr.name] = {'label': dropdown.option, 'color': dropdown.color}
+                    row_values[attr.name] = {
+                        'label': dropdown.option, 
+                        'color': dropdown.color,
+                        'raw_value': value,
+                        'selected_options': [{'id': dropdown.id, 'label': dropdown.option, 'color': dropdown.color}]
+                    }
                 else:
-                    row_values[attr.name] = {'label': value, 'color': ''}
+                    row_values[attr.name] = {
+                        'label': value, 
+                        'color': '',
+                        'raw_value': value,
+                        'selected_options': []
+                    }
+            elif attr.attributeType and attr.attributeType.name == 'dropdown' and value.startswith('[') and value.endswith(']'):
+                # 다중선택(dropdown) 필드인 경우
+                print(f"다중선택 처리 - {attr.name}: value='{value}'")
+                try:
+                    selected_ids = json.loads(value)
+                    print(f"  JSON 파싱 성공: {selected_ids}")
+                    selected_options = []
+                    for dropdown_attr in attr.dropdown_attributes.all():
+                        if dropdown_attr.id in selected_ids:
+                            selected_options.append({
+                                'id': dropdown_attr.id,
+                                'label': dropdown_attr.option,
+                                'color': dropdown_attr.color
+                            })
+                    
+                    print(f"  선택된 옵션들: {selected_options}")
+                    
+                    if selected_options:
+                        # 첫 번째 옵션의 색상을 기본 색상으로 사용
+                        default_color = selected_options[0]['color']
+                        row_values[attr.name] = {
+                            'label': ', '.join([opt['label'] for opt in selected_options]),
+                            'color': default_color,
+                            'raw_value': value,
+                            'selected_options': selected_options,
+                            'multi_select': True
+                        }
+                        print(f"  최종 결과: {row_values[attr.name]}")
+                    else:
+                        row_values[attr.name] = {
+                            'label': '선택 없음',
+                            'color': '',
+                            'raw_value': value,
+                            'selected_options': [],
+                            'multi_select': True
+                        }
+                        print(f"  선택된 옵션 없음: {row_values[attr.name]}")
+                except json.JSONDecodeError as e:
+                    print(f"  JSON 파싱 실패: {e}")
+                    row_values[attr.name] = {
+                        'label': value,
+                        'color': '',
+                        'raw_value': value,
+                        'selected_options': [],
+                        'multi_select': True
+                    }
             elif attr.attributeType and attr.attributeType.name == 'file' and value:
+                # 파일 타입인 경우
                 file_info = json.loads(value)
                 original_filename = file_info.get('original_filename', '파일')
+                
                 row_values[attr.name] = {
                     'type': 'file',
                     'label': original_filename,
@@ -3433,21 +3560,32 @@ def entry_table_partial(request):
                     'original_filename': original_filename
                 }
             elif attr.attributeType and attr.attributeType.name == 'datetime' and value:
+                # datetime 타입의 경우 날짜 포맷 적용
                 try:
+                    # 값이 이미 datetime 객체인지 확인
                     if isinstance(value, str):
+                        # 문자열인 경우 파싱 시도
                         if 'T' in value or ' ' in value:
+                            # datetime 형식
                             dt = datetime.fromisoformat(value.replace('T', ' ').split('.')[0])
                         else:
+                            # date 형식
                             dt = datetime.strptime(value, '%Y-%m-%d')
                         formatted_value = dt.strftime('%Y-%m-%d')
                     else:
+                        # datetime 객체인 경우
                         formatted_value = value.strftime('%Y-%m-%d')
                     row_values[attr.name] = {'label': formatted_value, 'color': ''}
                 except:
+                    # 파싱 실패 시 원본 값 사용
                     row_values[attr.name] = {'label': value, 'color': ''}
             else:
                 row_values[attr.name] = {'label': value, 'color': ''}
-        rows_data.append({'id': row.id, 'values': row_values})
+        
+        rows_data.append({
+            'id': row.id,
+            'values': row_values
+        })
     
     attributes_list = list(attributes.values('name', 'attributeType__name', 'assential'))
     attributes_obj_list = [SimpleNamespace(**{k.replace('attributeType__name', 'attributeType_name'): v for k, v in d.items()}) for d in attributes_list]
@@ -4080,7 +4218,15 @@ def calendar_events(request):
             'is_custom': True,
         }
         if end:
-            event['end'] = end
+            # FullCalendar는 end 날짜를 exclusive로 처리하므로 하루를 더해서 inclusive하게 만듦
+            try:
+                from datetime import datetime, timedelta
+                end_date = datetime.strptime(end, '%Y-%m-%d')
+                end_date += timedelta(days=1)
+                event['end'] = end_date.strftime('%Y-%m-%d')
+            except:
+                # 날짜 파싱 실패시 원본 값 사용
+                event['end'] = end
         if content:
             event['content'] = {'내용': content}
         events.append(event)
