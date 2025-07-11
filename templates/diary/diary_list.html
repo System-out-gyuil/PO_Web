@@ -222,6 +222,85 @@
             background: #0056b3;
             border-color: #0056b3;
         }
+        
+        /* 속성명 편집 관련 스타일 */
+        .attribute-name-editable {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+        }
+        
+        
+        
+        .edit-attribute-name-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 12px;
+            color: #6c757d;
+            padding: 2px;
+            border-radius: 3px;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        
+        .attribute-name-editable:hover .edit-attribute-name-btn {
+            opacity: 1;
+        }
+        
+        .edit-attribute-name-btn:hover {
+            background-color: #e9ecef;
+            color: #495057;
+        }
+        
+        .attribute-name-input {
+            border: 1px solid #007bff;
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #495057;
+            background: white;
+            min-width: 80px;
+            max-width: 200px;
+        }
+        
+        .attribute-name-input:focus {
+            outline: none;
+            border-color: #0056b3;
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        }
+        
+        .attribute-name-save-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            padding: 2px 6px;
+            font-size: 11px;
+            cursor: pointer;
+            margin-left: 3px;
+        }
+        
+        .attribute-name-save-btn:hover {
+            background: #218838;
+        }
+        
+        .attribute-name-cancel-btn {
+            background: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            padding: 2px 6px;
+            font-size: 11px;
+            cursor: pointer;
+            margin-left: 2px;
+        }
+        
+        .attribute-name-cancel-btn:hover {
+            background: #5a6268;
+        }
     </style>
     <script>
         window.ATTR_FIELDS = JSON.parse('{{ attributes_json|escapejs }}');
@@ -445,7 +524,14 @@
                     {% endif %}
                         <div class="sort-filter-container">
                             <div class="header-content">
-                                <span>{{ attr.name }}</span>
+                                {% if not attr.assential %}
+                                    <div class="attribute-name-editable" data-attribute-name="{{ attr.name }}">
+                                        <span class="attribute-name-text">{{ attr.name }}</span>
+                                        <button class="edit-attribute-name-btn" onclick="editAttributeName('{{ attr.name }}')" title="속성명 수정">✏️</button>
+                                    </div>
+                                {% else %}
+                                    <span>{{ attr.name }}</span>
+                                {% endif %}
                                 <div class="header-buttons">
                                     {% if not attr.assential %}
                                         <button class="delete-attribute-btn" onclick="deleteAttribute('{{ attr.name }}')" title="속성 삭제">
@@ -2435,6 +2521,132 @@ function duplicateRow(rowId) {
     });
 }
 
+// 속성명 편집 함수
+function editAttributeName(attributeName) {
+    const editableDiv = document.querySelector(`[data-attribute-name="${attributeName}"]`);
+    if (!editableDiv) return;
+    
+    const nameText = editableDiv.querySelector('.attribute-name-text');
+    const editBtn = editableDiv.querySelector('.edit-attribute-name-btn');
+    
+    // 기존 텍스트를 입력 필드로 교체
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'attribute-name-input';
+    input.value = attributeName;
+    input.style.width = nameText.offsetWidth + 'px';
+    
+    // 저장/취소 버튼 생성
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'attribute-name-save-btn';
+    saveBtn.textContent = '✓';
+    saveBtn.title = '저장';
+    
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'attribute-name-cancel-btn';
+    cancelBtn.textContent = '✗';
+    cancelBtn.title = '취소';
+    
+    // 기존 요소들 숨기기
+    nameText.style.display = 'none';
+    editBtn.style.display = 'none';
+    
+    // 새 요소들 추가
+    editableDiv.appendChild(input);
+    editableDiv.appendChild(saveBtn);
+    editableDiv.appendChild(cancelBtn);
+    
+    // 입력 필드에 포커스
+    input.focus();
+    input.select();
+    
+    // 저장 버튼 이벤트
+    saveBtn.onclick = function() {
+        saveAttributeName(attributeName, input.value.trim(), editableDiv, nameText, editBtn);
+    };
+    
+    // 취소 버튼 이벤트
+    cancelBtn.onclick = function() {
+        cancelAttributeName(editableDiv, nameText, editBtn, input, saveBtn, cancelBtn);
+    };
+    
+    // Enter 키 이벤트
+    input.onkeydown = function(e) {
+        if (e.key === 'Enter') {
+            saveAttributeName(attributeName, input.value.trim(), editableDiv, nameText, editBtn);
+        } else if (e.key === 'Escape') {
+            cancelAttributeName(editableDiv, nameText, editBtn, input, saveBtn, cancelBtn);
+        }
+    };
+    
+    // 입력 필드 외부 클릭 시 취소
+    setTimeout(() => {
+        document.addEventListener('click', function outsideClick(e) {
+            if (!editableDiv.contains(e.target)) {
+                cancelAttributeName(editableDiv, nameText, editBtn, input, saveBtn, cancelBtn);
+                document.removeEventListener('click', outsideClick);
+            }
+        });
+    }, 100);
+}
+
+// 속성명 저장 함수
+function saveAttributeName(oldName, newName, editableDiv, nameText, editBtn) {
+    if (!newName || newName === oldName) {
+        cancelAttributeName(editableDiv, nameText, editBtn, 
+            editableDiv.querySelector('.attribute-name-input'),
+            editableDiv.querySelector('.attribute-name-save-btn'),
+            editableDiv.querySelector('.attribute-name-cancel-btn'));
+        return;
+    }
+    
+    // 서버에 속성명 변경 요청
+    fetch('/600/update_attribute_name/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify({
+            old_name: oldName,
+            new_name: newName
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // 성공 시 페이지 새로고침으로 변경사항 반영
+            showNotification('속성명이 변경되었습니다.', 'success');
+            location.reload();
+        } else {
+            alert('속성명 변경 실패: ' + (data.error || '알 수 없는 오류'));
+            cancelAttributeName(editableDiv, nameText, editBtn,
+                editableDiv.querySelector('.attribute-name-input'),
+                editableDiv.querySelector('.attribute-name-save-btn'),
+                editableDiv.querySelector('.attribute-name-cancel-btn'));
+        }
+    })
+    .catch(error => {
+        console.error('속성명 변경 오류:', error);
+        alert('속성명 변경 중 오류가 발생했습니다.');
+        cancelAttributeName(editableDiv, nameText, editBtn,
+            editableDiv.querySelector('.attribute-name-input'),
+            editableDiv.querySelector('.attribute-name-save-btn'),
+            editableDiv.querySelector('.attribute-name-cancel-btn'));
+    });
+}
+
+// 속성명 편집 취소 함수
+function cancelAttributeName(editableDiv, nameText, editBtn, input, saveBtn, cancelBtn) {
+    // 편집 요소들 제거
+    if (input) input.remove();
+    if (saveBtn) saveBtn.remove();
+    if (cancelBtn) cancelBtn.remove();
+    
+    // 원래 요소들 복원
+    nameText.style.display = '';
+    editBtn.style.display = '';
+}
 </script>
 
 </body>

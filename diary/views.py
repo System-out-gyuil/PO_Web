@@ -4648,3 +4648,50 @@ def get_status_tabs(request):
             'success': False,
             'error': str(e)
         })
+
+@csrf_exempt
+def update_attribute_name(request):
+    """속성명 변경 API"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST 요청만 허용됩니다.'})
+    
+    try:
+        data = json.loads(request.body)
+        old_name = data.get('old_name')
+        new_name = data.get('new_name')
+        
+        if not old_name or not new_name:
+            return JsonResponse({'success': False, 'error': '기존 속성명과 새로운 속성명이 필요합니다.'})
+        
+        if old_name == new_name:
+            return JsonResponse({'success': False, 'error': '기존 속성명과 새로운 속성명이 동일합니다.'})
+        
+        user = User.objects.get(id=1)
+        
+        # 기존 속성 찾기
+        attribute = Attribute.objects.filter(user=user, name=old_name).first()
+        if not attribute:
+            return JsonResponse({'success': False, 'error': f'속성 "{old_name}"을 찾을 수 없습니다.'})
+        
+        # 필수 속성인지 확인
+        if attribute.assential:
+            return JsonResponse({'success': False, 'error': '필수 속성의 이름은 변경할 수 없습니다.'})
+        
+        # 새 이름이 이미 존재하는지 확인
+        existing_attribute = Attribute.objects.filter(user=user, name=new_name).first()
+        if existing_attribute:
+            return JsonResponse({'success': False, 'error': f'속성명 "{new_name}"이 이미 존재합니다.'})
+        
+        # 속성명 변경
+        attribute.name = new_name
+        attribute.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'속성명이 "{old_name}"에서 "{new_name}"으로 변경되었습니다.'
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': '잘못된 JSON 형식입니다.'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})

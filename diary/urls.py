@@ -49,6 +49,7 @@ urlpatterns = [
     path('get_hidden_attributes/', views.get_hidden_attributes, name='get_hidden_attributes'),
     path('get_all_attributes/', views.get_all_attributes, name='get_all_attributes'),
     path('get_dropdown_attributes/', views.get_dropdown_attributes, name='get_dropdown_attributes'),
+    path('update_attribute_name/', views.update_attribute_name, name='update_attribute_name'),
     path('get_status_tabs/', views.get_status_tabs, name='get_status_tabs'),
     path('upload_note_file/', upload_note_file, name='upload_note_file'),
     path('delete_note_file/', delete_note_file, name='delete_note_file'),
