@@ -4403,3 +4403,248 @@ def formatToKoreanCurrency(amount):
             result = f'{man}만'
     
     return result + '원'
+
+@csrf_exempt
+def duplicate_row(request):
+    """행을 복제하는 엔드포인트"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST 요청만 허용됩니다.'})
+    
+    try:
+        data = json.loads(request.body)
+        source_row_id = data.get('source_row_id')
+        
+        if not source_row_id:
+            return JsonResponse({'success': False, 'error': '복제할 행 ID가 필요합니다.'})
+        
+        # 사용자 가져오기 (diary_list와 동일한 방식)
+        user = User.objects.get(id=1)
+        
+        # 소스 행 조회
+        source_row = Row.objects.filter(id=source_row_id).first()
+        if not source_row:
+            return JsonResponse({'success': False, 'error': '복제할 행을 찾을 수 없습니다.'})
+        
+        # 현재 사용자의 모든 행 조회하여 order 조정
+        user_rows = Row.objects.filter(user=user).order_by('order')
+        
+        # 소스 행의 order 찾기
+        source_order = source_row.order
+        
+        # 소스 행 이후의 모든 행들의 order를 1씩 증가
+        rows_to_update = user_rows.filter(order__gt=source_order)
+        for row in rows_to_update:
+            row.order += 1
+            row.save()
+        
+        # 새 행 생성 (소스 행의 모든 데이터 복사)
+        new_row = Row.objects.create(
+            user=user,
+            order=source_order + 1,
+            created_at=timezone.now()
+        )
+        
+        # 소스 행의 모든 attribute value 복사
+        source_values = AttributeValue.objects.filter(row=source_row)
+        for source_value in source_values:
+            # 파일 타입인 경우 S3에서 파일 복사
+            if (source_value.attribute and 
+                source_value.attribute.attributeType and 
+                source_value.attribute.attributeType.name == 'file' and 
+                source_value.value):
+                
+                try:
+                    # 기존 파일 정보 파싱
+                    file_data = json.loads(source_value.value)
+                    original_filename = file_data.get('original_filename', '')
+                    stored_filename = file_data.get('stored_filename', '')
+                    s3_key = file_data.get('s3_key', '')
+                    
+                    if s3_key and stored_filename:
+                        # 새로운 파일명 생성 (UUID 사용)
+                        file_extension = os.path.splitext(original_filename)[1]
+                        new_filename = f"{uuid.uuid4()}{file_extension}"
+                        
+                        # S3에서 파일 복사
+                        copy_result = copy_s3_file(s3_key, new_filename)
+                        
+                        if copy_result['success']:
+                            # 새로운 파일 정보 생성
+                            new_file_data = {
+                                'original_filename': original_filename,
+                                'stored_filename': new_filename,
+                                's3_key': copy_result['new_s3_key'],
+                                'download_url': copy_result['new_download_url'],
+                                'preview_url': copy_result['new_preview_url'],
+                                'public_url': copy_result['new_public_url'],
+                                'file_size': file_data.get('file_size', 0),
+                                'content_type': file_data.get('content_type', ''),
+                                'type': file_data.get('type', 'file')
+                            }
+                            
+                            # 새로운 파일 정보로 AttributeValue 생성
+                            AttributeValue.objects.create(
+                                row=new_row,
+                                attribute=source_value.attribute,
+                                value=json.dumps(new_file_data, ensure_ascii=False)
+                            )
+                        else:
+                            # S3 복사 실패 시 원본 파일 정보 그대로 복사 (경고 로그)
+                            print(f"파일 복사 실패, 원본 정보 그대로 복사: {copy_result.get('error', '알 수 없는 오류')}")
+                            AttributeValue.objects.create(
+                                row=new_row,
+                                attribute=source_value.attribute,
+                                value=source_value.value
+                            )
+                    else:
+                        # 파일 정보가 없거나 불완전한 경우 원본 그대로 복사
+                        AttributeValue.objects.create(
+                            row=new_row,
+                            attribute=source_value.attribute,
+                            value=source_value.value
+                        )
+                        
+                except (json.JSONDecodeError, KeyError) as e:
+                    # JSON 파싱 실패 시 원본 그대로 복사
+                    print(f"파일 정보 파싱 실패, 원본 그대로 복사: {e}")
+                    AttributeValue.objects.create(
+                        row=new_row,
+                        attribute=source_value.attribute,
+                        value=source_value.value
+                    )
+            else:
+                # 파일이 아닌 경우 원본 그대로 복사
+                AttributeValue.objects.create(
+                    row=new_row,
+                    attribute=source_value.attribute,
+                    value=source_value.value
+                )
+        
+        return JsonResponse({
+            'success': True, 
+            'message': '행이 성공적으로 복제되었습니다.',
+            'new_row_id': new_row.id
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': '잘못된 JSON 형식입니다.'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': f'복제 중 오류가 발생했습니다: {str(e)}'})
+
+def copy_s3_file(source_s3_key, new_filename):
+    """S3에서 파일을 복사하는 함수"""
+    try:
+        # S3 클라이언트 생성
+        s3_client = boto3.client(
+            's3',
+            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+            region_name=settings.AWS_S3_REGION_NAME
+        )
+        
+        # 새로운 S3 키 생성
+        new_s3_key = f"{settings.AWS_LOCATION}/{new_filename}"
+        
+        # S3에서 파일 복사
+        s3_client.copy_object(
+            Bucket=settings.AWS_STORAGE_BUCKET_NAME,
+            CopySource={'Bucket': settings.AWS_STORAGE_BUCKET_NAME, 'Key': source_s3_key},
+            Key=new_s3_key
+        )
+        
+        # 새로운 다운로드 URL 생성
+        new_download_url = f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{new_s3_key}"
+        
+        # 새로운 서명된 다운로드 URL 생성
+        try:
+            new_signed_download_url = s3_client.generate_presigned_url(
+                'get_object',
+                Params={
+                    'Bucket': settings.AWS_STORAGE_BUCKET_NAME,
+                    'Key': new_s3_key
+                },
+                ExpiresIn=300  # 5분
+            )
+        except Exception as e:
+            print(f"새로운 서명된 다운로드 URL 생성 실패: {e}")
+            new_signed_download_url = new_download_url
+        
+        # 새로운 서명된 미리보기 URL 생성
+        try:
+            new_signed_preview_url = s3_client.generate_presigned_url(
+                'get_object',
+                Params={
+                    'Bucket': settings.AWS_STORAGE_BUCKET_NAME,
+                    'Key': new_s3_key,
+                    'ResponseContentDisposition': 'inline'
+                },
+                ExpiresIn=300  # 5분
+            )
+        except Exception as e:
+            print(f"새로운 서명된 미리보기 URL 생성 실패: {e}")
+            new_signed_preview_url = new_download_url
+        
+        return {
+            'success': True,
+            'new_s3_key': new_s3_key,
+            'new_download_url': new_signed_download_url,
+            'new_preview_url': new_signed_preview_url,
+            'new_public_url': new_download_url
+        }
+        
+    except Exception as e:
+        print(f"S3 파일 복사 실패: {e}")
+        return {
+            'success': False,
+            'error': str(e)
+        }
+
+@require_GET
+def get_status_tabs(request):
+    """상태 속성의 드롭다운 옵션들을 반환하는 API (탭 생성용)"""
+    try:
+        user = User.objects.get(id=1)
+        
+        # "상태" 속성 찾기 (없으면 "영업진행" 사용)
+        status_attr = Attribute.objects.filter(
+            user=user, 
+            name='상태', 
+            attributeType__name='dropdown'
+        ).first()
+        
+        if not status_attr:
+            # "상태" 속성이 없으면 "영업진행" 속성 사용
+            status_attr = Attribute.objects.filter(
+                user=user, 
+                name='영업진행', 
+                attributeType__name='dropdown'
+            ).first()
+        
+        if not status_attr:
+            return JsonResponse({
+                'success': False,
+                'error': '상태 또는 영업진행 속성을 찾을 수 없습니다.'
+            })
+        
+        # 드롭다운 옵션들 가져오기
+        dropdown_options = DropdownAttribute.objects.filter(attribute=status_attr).order_by('id')
+        
+        options_data = []
+        for option in dropdown_options:
+            options_data.append({
+                'id': option.id,
+                'name': option.option,
+                'color': option.color
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'attribute_name': status_attr.name,
+            'options': options_data
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })

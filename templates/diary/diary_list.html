@@ -81,11 +81,19 @@
         }
         
         .drag-handle {
-          font-size: 18px;
-          color: #888;
-          margin-right: 6px;
+          font-size: 16px;
+          color: #999;
           cursor: move;
           user-select: none;
+          padding: 2px;
+          border-radius: 3px;
+          transition: all 0.2s ease;
+          opacity: 0;
+        }
+        
+        .drag-handle:hover {
+          color: #666;
+          background-color: #f0f0f0;
         }
         
         .modal-drag-handle {
@@ -94,6 +102,125 @@
           margin-right: 6px;
           cursor: move;
           user-select: none;
+        }
+        
+        /* 복제 버튼 스타일 */
+        .duplicate-row-btn {
+          background: #28a745;
+          color: white;
+          border: none;
+          border-radius: 3px;
+          padding: 3px 6px;
+          font-size: 11px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          opacity: 0;
+          min-width: 20px;
+          height: 20px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        
+        .duplicate-row-btn:hover {
+          background: #218838;
+          transform: scale(1.05);
+        }
+        
+        .duplicate-row-btn:active {
+          background: #1e7e34;
+          transform: scale(0.95);
+        }
+        
+        /* 드래그 셀 스타일 */
+        .drag-cell {
+          width: 90px;
+          min-width: 90px;
+          max-width: 90px;
+          padding: 6px 8px;
+          text-align: center;
+          position: relative;
+          vertical-align: middle;
+        }
+        
+        /* 행에 마우스 오버 시 복제 버튼 표시 */
+        tr:hover .duplicate-row-btn {
+          opacity: 1;
+        }
+        
+        /* 삭제 버튼 스타일 조정 */
+        .delete-row-btn {
+          background: #dc3545;
+          color: white;
+          border: none;
+          border-radius: 3px;
+          padding: 3px 6px;
+          font-size: 11px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          min-width: 20px;
+          height: 20px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          opacity: 0;
+        }
+        
+        .delete-row-btn:hover {
+          background: #c82333;
+          transform: scale(1.05);
+        }
+        
+        .delete-row-btn:active {
+          background: #bd2130;
+          transform: scale(0.95);
+        }
+        
+        /* 버튼 컨테이너 스타일 */
+        .button-container {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          flex-wrap: nowrap;
+          height: 100%;
+        }
+        
+        /* 행에 마우스 오버 시 모든 버튼 표시 */
+        tr:hover .delete-row-btn,
+        tr:hover .duplicate-row-btn,
+        tr:hover .drag-handle {
+          opacity: 1;
+        }
+        
+        /* 상태 탭 스타일 */
+        .status-tab {
+            padding: 8px 16px;
+            border: 1px solid #dee2e6;
+            background: #f8f9fa;
+            color: #495057;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            margin: 2px;
+        }
+        
+        .status-tab:hover {
+            background: #e9ecef;
+            border-color: #adb5bd;
+        }
+        
+        .status-tab.active {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+        
+        .status-tab.active:hover {
+            background: #0056b3;
+            border-color: #0056b3;
         }
     </style>
     <script>
@@ -106,6 +233,140 @@
         window.currentSort = { column: null, direction: null };
         window.filters = {};
         window.originalRows = [];
+        
+        // 탭 상태 관리
+        window.currentStatusTab = null;
+        window.statusAttributeName = null;
+        
+        // 탭 초기화 함수
+        function initializeStatusTabs() {
+            console.log('탭 초기화 시작');
+            fetch('/600/get_status_tabs/')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('탭 데이터 응답:', data);
+                    if (data.success) {
+                        window.statusAttributeName = data.attribute_name;
+                        console.log('사용할 속성명:', window.statusAttributeName);
+                        createStatusTabs(data.options);
+                    } else {
+                        console.error('탭 데이터 로드 실패:', data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('탭 초기화 오류:', error);
+                });
+        }
+        
+        // 상태 탭 생성 함수
+        function createStatusTabs(options) {
+            const tabContainer = document.getElementById('tabContainer');
+            if (!tabContainer) return;
+            
+            // 전체 탭 추가
+            const allTab = document.createElement('button');
+            allTab.className = 'status-tab active';
+            allTab.textContent = '전체';
+            allTab.onclick = () => selectStatusTab(null);
+            tabContainer.appendChild(allTab);
+            
+            // 각 상태별 탭 추가
+            options.forEach(option => {
+                const tab = document.createElement('button');
+                tab.className = 'status-tab';
+                tab.textContent = option.name;
+                tab.style.backgroundColor = option.color ? hexToRgba(option.color, 0.18) : '#f8f9fa';
+                tab.style.color = '#333';
+                tab.onclick = () => selectStatusTab(option.id);
+                tabContainer.appendChild(tab);
+            });
+        }
+        
+        // 탭 선택 함수
+        function selectStatusTab(statusId) {
+            // 기존 활성 탭 비활성화
+            document.querySelectorAll('.status-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // 클릭된 탭 활성화
+            event.target.classList.add('active');
+            
+            // 상태 필터 적용
+            window.currentStatusTab = statusId;
+            applyStatusFilter();
+        }
+        
+        // 상태 필터 적용 함수
+        function applyStatusFilter() {
+            if (!window.statusAttributeName) return;
+            
+            const tbody = document.getElementById('entryTbody');
+            if (!tbody) return;
+            
+            const rows = tbody.querySelectorAll('tr[data-id]');
+            console.log('상태 필터 적용:', {
+                statusAttributeName: window.statusAttributeName,
+                currentStatusTab: window.currentStatusTab,
+                totalRows: rows.length
+            });
+            
+            rows.forEach(row => {
+                const statusCell = row.querySelector(`td[data-field="${window.statusAttributeName}"]`);
+                if (!statusCell) {
+                    console.log('상태 셀을 찾을 수 없음:', row);
+                    row.style.display = 'none';
+                    return;
+                }
+                
+                const statusValue = statusCell.getAttribute('data-value');
+                console.log('행 상태 값:', {
+                    rowId: row.getAttribute('data-id'),
+                    statusValue: statusValue,
+                    expectedValue: window.currentStatusTab
+                });
+                
+                if (window.currentStatusTab === null) {
+                    // 전체 탭 선택 시 모든 행 표시
+                    row.style.display = '';
+                } else {
+                    // 특정 상태 탭 선택 시 해당 상태의 행만 표시
+                    let shouldShow = false;
+                    
+                    if (statusValue) {
+                        try {
+                            // JSON 배열 형태인지 확인
+                            const parsedValue = JSON.parse(statusValue);
+                            if (Array.isArray(parsedValue)) {
+                                // 배열인 경우 해당 값이 포함되어 있는지 확인
+                                shouldShow = parsedValue.includes(window.currentStatusTab);
+                            } else {
+                                // 단일 값인 경우 직접 비교
+                                shouldShow = parsedValue === window.currentStatusTab;
+                            }
+                        } catch (e) {
+                            // JSON이 아닌 경우 문자열로 직접 비교
+                            shouldShow = statusValue === window.currentStatusTab.toString();
+                        }
+                    }
+                    
+                    row.style.display = shouldShow ? '' : 'none';
+                }
+            });
+            
+            // 필터 상태 업데이트
+            updateFilterStatus();
+        }
+        
+        // hexToRgba 함수 (이미 존재하는 경우 제외)
+        if (typeof hexToRgba === 'undefined') {
+            function hexToRgba(hex, alpha) {
+                const r = parseInt(hex.slice(1, 3), 16);
+                const g = parseInt(hex.slice(3, 5), 16);
+                const b = parseInt(hex.slice(5, 7), 16);
+                return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+            }
+        }
         
         // 속성 삭제 함수
         function deleteAttribute(attrName) {
@@ -147,6 +408,8 @@
 <div class="container">
     <h1>영업 관리표</h1>
     
+    
+    
     <!-- 필터 컨트롤 -->
     <div class="filter-controls">
         <span class="filter-status" id="filterStatus">전체 데이터 표시 중</span>
@@ -156,6 +419,14 @@
                 속성 관리
             </button>
             <button class="clear-filters-btn" onclick="clearAllFilters()">필터 초기화</button>
+        </div>
+    </div>
+
+    <!-- 상태 탭 -->
+    <div id="statusTabs" style="margin-bottom: 20px;">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+            <span style="font-weight: bold; color: #495057;">상태별 필터:</span>
+            <div id="tabContainer" style="display: flex; gap: 5px; flex-wrap: wrap;"></div>
         </div>
     </div>
     
@@ -200,8 +471,11 @@
                 {% for row in rows %}
                 <tr data-id="{{ row.id }}">
                     <td class="drag-cell">
-                        <button class="delete-row-btn" onclick="deleteRow('{{ row.id }}')" title="행 삭제">×</button>
-                        <span class="drag-handle">⋮⋮⋮</span>
+                        <div class="button-container">
+                            <button class="delete-row-btn" onclick="deleteRow('{{ row.id }}')" title="행 삭제">×</button>
+                            <button class="duplicate-row-btn" onclick="duplicateRow('{{ row.id }}')" title="행 복제">📋</button>
+                            <span class="drag-handle">⋮⋮⋮</span>
+                        </div>
                     </td>
                     {% for attr in attributes %}
                         {% if attr.name == '회사명' %}
@@ -273,7 +547,11 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td class="drag-cell"><span class="drag-handle">⋮⋮⋮</span></td>
+                    <td class="drag-cell">
+                        <div class="button-container">
+                            <span class="drag-handle">⋮⋮⋮</span>
+                        </div>
+                    </td>
                     {% for attr in attributes %}
                         {% if attr.name == '회사명' %}
                             <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" class="{% if attr.assential %}essential-column{% endif %}">
@@ -581,6 +859,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 컬럼 드래그앤드롭 초기화
     initializeColumnDragDrop();
+    
+    // 상태 탭 초기화
+    initializeStatusTabs();
     
     // 칸반보드 필터 이벤트 바인딩
     const kanbanSelect = document.getElementById('kanbanAttributeSelect');
@@ -942,6 +1223,15 @@ function clearAllFilters() {
     window.currentSort = { column: null, direction: null };
     updateSortButtonStates();
     
+    // 탭 상태 초기화
+    window.currentStatusTab = null;
+    document.querySelectorAll('.status-tab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    // 전체 탭 활성화
+    const allTab = document.querySelector('.status-tab');
+    if (allTab) allTab.classList.add('active');
+    
     updateFilterStatus();
 }
 
@@ -977,10 +1267,11 @@ function updateFilterStatus() {
 
     const activeFilters = Object.keys(window.filters).length;
     const sortActive = window.currentSort.column !== null;
+    const tabActive = window.currentStatusTab !== null;
 
     let statusText = '';
     
-    if (activeFilters === 0 && !sortActive) {
+    if (activeFilters === 0 && !sortActive && !tabActive) {
         statusText = `전체 데이터 표시 중 (${totalRows}건)`;
     } else {
         statusText = `${visibleRows}/${totalRows}건 표시`;
@@ -991,6 +1282,12 @@ function updateFilterStatus() {
         
         if (sortActive) {
             statusText += ` (${window.currentSort.column} ${window.currentSort.direction === 'asc' ? '오름차순' : '내림차순'} 정렬)`;
+        }
+        
+        if (tabActive) {
+            const activeTab = document.querySelector('.status-tab.active');
+            const tabName = activeTab ? activeTab.textContent : '상태';
+            statusText += ` (${tabName} 탭 선택)`;
         }
     }
 
@@ -1800,6 +2097,11 @@ function refreshTable() {
             document.getElementById('tableView').innerHTML = html;
             // 필요시 테이블 관련 이벤트 재바인딩
             if (typeof bindTableCellEvents === 'function') bindTableCellEvents();
+            
+            // 탭 상태 재적용
+            if (window.currentStatusTab !== null) {
+                applyStatusFilter();
+            }
         });
 }
 
@@ -2036,6 +2338,103 @@ function refreshCalendar() {
         window.calendar.refetchEvents();
     }
 }
+
+// 행 복제 함수
+function duplicateRow(rowId) {
+    if (!confirm('이 행을 복제하시겠습니까?\n복제된 행은 원본 행 바로 아래에 추가됩니다.')) {
+        return;
+    }
+    
+    // 로딩 표시
+    const loadingNotification = document.createElement('div');
+    loadingNotification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #007bff;
+        color: white;
+        padding: 15px 20px;
+        border-radius: 6px;
+        z-index: 1000;
+        font-size: 14px;
+    `;
+    loadingNotification.textContent = '행을 복제하는 중...';
+    document.body.appendChild(loadingNotification);
+    
+    // 서버에 복제 요청
+    fetch('/600/duplicate_row/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify({
+            source_row_id: rowId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        // 로딩 표시 제거
+        loadingNotification.remove();
+        
+        if (data.success) {
+            // 성공 알림
+            const successNotification = document.createElement('div');
+            successNotification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #28a745;
+                color: white;
+                padding: 15px 20px;
+                border-radius: 6px;
+                z-index: 1000;
+                font-size: 14px;
+            `;
+            successNotification.textContent = data.message;
+            document.body.appendChild(successNotification);
+            
+            setTimeout(() => successNotification.remove(), 3000);
+            
+            // 테이블 새로고침
+            refreshTable();
+            
+            // 칸반보드 새로고침
+            if (window.kanbanAttribute) {
+                refreshKanban();
+            }
+            
+            // 캘린더 업데이트
+            refreshCalendar();
+            
+        } else {
+            alert('복제 실패: ' + (data.error || '알 수 없는 오류'));
+        }
+    })
+    .catch(error => {
+        console.error('복제 오류:', error);
+        loadingNotification.remove();
+        
+        const errorNotification = document.createElement('div');
+        errorNotification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #dc3545;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 6px;
+            z-index: 1000;
+            font-size: 14px;
+        `;
+        errorNotification.textContent = '복제 중 오류가 발생했습니다.';
+        document.body.appendChild(errorNotification);
+        
+        setTimeout(() => errorNotification.remove(), 5000);
+        alert('복제 중 오류가 발생했습니다.');
+    });
+}
+
 </script>
 
 </body>
