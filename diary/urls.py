@@ -62,4 +62,13 @@ urlpatterns = [
     path('get_calendar_settings/', views.get_calendar_settings, name='get_calendar_settings'),
     path('save_calendar_settings/', views.save_calendar_settings, name='save_calendar_settings'),
     path('calendar_events/', views.calendar_events, name='calendar_events'),
+    
+    # Cascade 관련 API
+    path('toggle_cascade_attribute/', views.toggle_cascade_attribute, name='toggle_cascade_attribute'),
+    path('get_cascade_attributes_list/', views.get_cascade_attributes_list, name='get_cascade_attributes_list'),
+    
+    # 디버깅용 API
+    path('fix_existing_row_relationships/', views.fix_existing_row_relationships, name='fix_existing_row_relationships'),
+    path('debug_row_relationships/', views.debug_row_relationships, name='debug_row_relationships'),
+    path('setup_test_cascade_attributes/', views.setup_test_cascade_attributes, name='setup_test_cascade_attributes'),
 ] 

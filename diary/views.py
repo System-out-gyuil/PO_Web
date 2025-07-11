@@ -102,10 +102,6 @@ def diary_list(request):
             
             value = attr_value.value if attr_value else ''
             
-            # 진행사항 필드 디버깅
-            if attr.name == '진행사항':
-                print(f"진행사항 필드 - row_id: {row.id}, value: '{value}', type: {type(value)}")
-            
             if attr.name == '매출' or '매출' in attr.name:
                 numeric_value = parse_korean_currency(value)
                 row_values[attr.name] = {
@@ -137,10 +133,8 @@ def diary_list(request):
                     }
             elif attr.attributeType and attr.attributeType.name == 'dropdown' and value.startswith('[') and value.endswith(']'):
                 # 다중선택(dropdown) 필드인 경우
-                print(f"다중선택 처리 - {attr.name}: value='{value}'")
                 try:
                     selected_ids = json.loads(value)
-                    print(f"  JSON 파싱 성공: {selected_ids}")
                     selected_options = []
                     for dropdown_attr in attr.dropdown_attributes.all():
                         if dropdown_attr.id in selected_ids:
@@ -150,7 +144,6 @@ def diary_list(request):
                                 'color': dropdown_attr.color
                             })
                     
-                    print(f"  선택된 옵션들: {selected_options}")
                     
                     if selected_options:
                         # 첫 번째 옵션의 색상을 기본 색상으로 사용
@@ -162,7 +155,6 @@ def diary_list(request):
                             'selected_options': selected_options,
                             'multi_select': True
                         }
-                        print(f"  최종 결과: {row_values[attr.name]}")
                     else:
                         row_values[attr.name] = {
                             'label': '선택 없음',
@@ -171,7 +163,6 @@ def diary_list(request):
                             'selected_options': [],
                             'multi_select': True
                         }
-                        print(f"  선택된 옵션 없음: {row_values[attr.name]}")
                 except json.JSONDecodeError as e:
                     print(f"  JSON 파싱 실패: {e}")
                     row_values[attr.name] = {
@@ -714,6 +705,23 @@ def update_entry(request):
         if not created:
             attr_value.value = value_to_save
             attr_value.save()
+        
+        # Cascade 기능: cascade가 true인 속성이 수정되면 원본 행과 복제된 행들을 동기화
+        if attr.cascade:
+            print(f"=== Cascade 동기화 시작 (update_entry) ===")
+            print(f"속성 '{field}'의 cascade 값: {attr.cascade}")
+            print(f"수정된 행 ID: {row_id}")
+            print(f"새 값: {value_to_save}")
+            
+            synced_count = sync_cascade_attributes(row_id, field, value_to_save)
+            if synced_count > 0:
+                print(f"Cascade 동기화 완료: {field} 속성이 {synced_count}개 행에 동기화됨")
+            else:
+                print(f"Cascade 동기화 실패 또는 동기화할 행이 없음")
+            print(f"=== Cascade 동기화 종료 (update_entry) ===")
+        else:
+            print(f"속성 '{field}'의 cascade 값: {attr.cascade} - 동기화하지 않음")
+        
         return JsonResponse({'success': True})
     return JsonResponse({'success': False, 'error': 'Invalid request'})
 
@@ -773,8 +781,9 @@ def create_new_row(request):
 @csrf_exempt
 def update_row_field(request):
     if request.method == 'POST':
+        print("===========update_row_field")
         try:
-            # JSON 형식과 form-urlencoded 형식 모두 지원
+            # JSON 형 field식과 form-urlencoded 형식 모두 지원
             if request.content_type == 'application/json':
                 data = json.loads(request.body)
                 row_id = data.get('row_id')
@@ -856,6 +865,22 @@ def update_row_field(request):
             if not created:
                 attr_value.value = value_to_save
                 attr_value.save()
+            
+            # Cascade 기능: cascade가 true인 속성이 수정되면 원본 행과 복제된 행들을 동기화
+            if attr.cascade:
+                print(f"=== Cascade 동기화 시작 ===")
+                print(f"속성 '{field_name}'의 cascade 값: {attr.cascade}")
+                print(f"수정된 행 ID: {row_id}")
+                print(f"새 값: {value_to_save}")
+                
+                synced_count = sync_cascade_attributes(row_id, field_name, value_to_save)
+                if synced_count > 0:
+                    print(f"Cascade 동기화 완료: {field_name} 속성이 {synced_count}개 행에 동기화됨")
+                else:
+                    print(f"Cascade 동기화 실패 또는 동기화할 행이 없음")
+                print(f"=== Cascade 동기화 종료 ===")
+            else:
+                print(f"속성 '{field_name}'의 cascade 값: {attr.cascade} - 동기화하지 않음")
             
             return JsonResponse({'success': True})
             
@@ -1052,6 +1077,30 @@ def get_row_details(request, row_id):
                                     break
                             if dropdown:
                                 value = dropdown.option
+                            else:
+                                # dropdown 옵션을 찾지 못한 경우 원본 값 유지
+                                value = value
+                        elif value and value.startswith('[') and value.endswith(']'):
+                            # 리스트 형태의 값인 경우 (예: [27]) 첫 번째 값만 추출
+                            try:
+                                import ast
+                                list_value = ast.literal_eval(value)
+                                if isinstance(list_value, list) and len(list_value) > 0:
+                                    dropdown_id = list_value[0]
+                                    # prefetch된 dropdown 데이터에서 찾기
+                                    dropdown = None
+                                    for dropdown_attr in attr_value.attribute.dropdown_attributes.all():
+                                        if dropdown_attr.id == dropdown_id:
+                                            dropdown = dropdown_attr
+                                            break
+                                    if dropdown:
+                                        value = dropdown.option
+                                    else:
+                                        value = str(dropdown_id)  # 옵션을 찾지 못한 경우 ID 반환
+                                else:
+                                    value = value  # 빈 리스트인 경우 원본 값 유지
+                            except (ValueError, SyntaxError):
+                                value = value  # 파싱 실패 시 원본 값 유지
                     # 파일 타입인 경우 JSON 파싱하여 객체로 반환
                     elif attr_value.attribute.attributeType and attr_value.attribute.attributeType.name == 'file':
                         if value:
@@ -3633,7 +3682,6 @@ def entry_table_partial(request):
                     }
             elif attr.attributeType and attr.attributeType.name == 'dropdown' and value.startswith('[') and value.endswith(']'):
                 # 다중선택(dropdown) 필드인 경우
-                print(f"다중선택 처리 - {attr.name}: value='{value}'")
                 try:
                     selected_ids = json.loads(value)
                     print(f"  JSON 파싱 성공: {selected_ids}")
@@ -3646,7 +3694,6 @@ def entry_table_partial(request):
                                 'color': dropdown_attr.color
                             })
                     
-                    print(f"  선택된 옵션들: {selected_options}")
                     
                     if selected_options:
                         # 첫 번째 옵션의 색상을 기본 색상으로 사용
@@ -3804,6 +3851,7 @@ def get_all_attributes(request):
                 'attributeType_name': attr.attributeType.name if attr.attributeType else '',
                 'assential': attr.assential,
                 'view_select': attr.view_select,
+                'cascade': attr.cascade,  # cascade 필드 추가
                 'sort_order': attr.sort_order
             })
         return JsonResponse({'success': True, 'attributes': attributes_data})
@@ -4524,6 +4572,10 @@ def duplicate_row(request):
         if not source_row:
             return JsonResponse({'success': False, 'error': '복제할 행을 찾을 수 없습니다.'})
         
+        print(f"복제 시작: 소스 행 ID {source_row_id}")
+        print(f"소스 행의 original_row_ids: {source_row.original_row_ids}")
+        print(f"소스 행의 copied_row_ids: {source_row.copied_row_ids}")
+        
         # 현재 사용자의 모든 행 조회하여 order 조정
         user_rows = Row.objects.filter(user=user).order_by('order')
         
@@ -4543,81 +4595,201 @@ def duplicate_row(request):
             created_at=timezone.now()
         )
         
-        # 소스 행의 모든 attribute value 복사
+        print(f"새 행 생성됨: ID {new_row.id}")
+        
+        # === 개선된 양방향 관계 설정 ===
+        # 1. 새 행의 원본 행 ID들을 설정 (소스 행의 원본 행 ID들 + 소스 행 ID)
+        new_original_ids = source_row.original_row_ids.copy()
+        new_original_ids.append(source_row.id)
+        new_row.original_row_ids = new_original_ids
+        new_row.save()
+        
+        print(f"새 행의 original_row_ids 설정: {new_row.original_row_ids}")
+        
+        # 2. 소스 행의 복제된 행 목록에 새 행 추가
+        source_row.add_copied_row(new_row.id)
+        print(f"소스 행의 copied_row_ids 업데이트: {source_row.copied_row_ids}")
+        
+        # 3. 소스 행의 모든 원본 행들에도 새 행을 복제된 행으로 추가
+        for original_id in source_row.original_row_ids:
+            try:
+                original_row = Row.objects.get(id=original_id)
+                original_row.add_copied_row(new_row.id)
+                print(f"원본 행 {original_id}의 copied_row_ids 업데이트: {original_row.copied_row_ids}")
+            except Row.DoesNotExist:
+                print(f"원본 행 {original_id}를 찾을 수 없습니다.")
+                continue
+        
+        # 4. 소스 행의 모든 복제된 행들에도 새 행을 복제된 행으로 추가
+        for copied_id in source_row.copied_row_ids:
+            try:
+                copied_row = Row.objects.get(id=copied_id)
+                copied_row.add_copied_row(new_row.id)
+                print(f"복제된 행 {copied_id}의 copied_row_ids 업데이트: {copied_row.copied_row_ids}")
+            except Row.DoesNotExist:
+                print(f"복제된 행 {copied_id}를 찾을 수 없습니다.")
+                continue
+        
+        # 5. 새 행의 복제된 행 목록에 소스 행의 모든 복제된 행들 추가
+        new_copied_ids = source_row.copied_row_ids.copy()
+        new_row.copied_row_ids = new_copied_ids
+        new_row.save()
+        print(f"새 행의 copied_row_ids 설정: {new_row.copied_row_ids}")
+        
+        # 6. 새 행의 복제된 행 목록에 소스 행도 추가 (양방향 관계 완성)
+        if source_row.id not in new_row.copied_row_ids:
+            new_row.copied_row_ids.append(source_row.id)
+            new_row.save()
+            print(f"새 행의 copied_row_ids에 소스 행 추가: {new_row.copied_row_ids}")
+        
+        # 7. 소스 행의 원본 행 목록에 새 행 추가 (양방향 관계 완성)
+        if new_row.id not in source_row.original_row_ids:
+            source_row.original_row_ids.append(new_row.id)
+            source_row.save()
+            print(f"소스 행의 original_row_ids에 새 행 추가: {source_row.original_row_ids}")
+        
+        # 8. 소스 행을 다시 조회하여 최신 상태 확인 및 강제 업데이트
+        source_row.refresh_from_db()
+        if new_row.id not in source_row.copied_row_ids:
+            source_row.copied_row_ids.append(new_row.id)
+            source_row.save()
+            print(f"소스 행 강제 업데이트 후 copied_row_ids: {source_row.copied_row_ids}")
+        
+        # 9. 새 행도 다시 조회하여 최신 상태 확인 및 강제 업데이트
+        new_row.refresh_from_db()
+        if source_row.id not in new_row.copied_row_ids:
+            new_row.copied_row_ids.append(source_row.id)
+            new_row.save()
+            print(f"새 행 강제 업데이트 후 copied_row_ids: {new_row.copied_row_ids}")
+        
+        # === AttributeValue 복사 ===
         source_values = AttributeValue.objects.filter(row=source_row)
+        print(f"복사할 AttributeValue 개수: {source_values.count()}")
+        
         for source_value in source_values:
-            # 파일 타입인 경우 S3에서 파일 복사
-            if (source_value.attribute and 
-                source_value.attribute.attributeType and 
-                source_value.attribute.attributeType.name == 'file' and 
-                source_value.value):
+            try:
+                print(f"=== AttributeValue 복사 시작 ===")
+                print(f"속성명: {source_value.attribute.name if source_value.attribute else 'None'}")
+                print(f"속성 타입: {source_value.attribute.attributeType.name if source_value.attribute and source_value.attribute.attributeType else 'None'}")
+                print(f"값: {source_value.value[:100] if source_value.value else 'None'}...")
                 
-                try:
-                    # 기존 파일 정보 파싱
-                    file_data = json.loads(source_value.value)
-                    original_filename = file_data.get('original_filename', '')
-                    stored_filename = file_data.get('stored_filename', '')
-                    s3_key = file_data.get('s3_key', '')
+                # 파일 타입인 경우 S3에서 파일 복사
+                if (source_value.attribute and 
+                    source_value.attribute.attributeType and 
+                    source_value.attribute.attributeType.name == 'file' and 
+                    source_value.value):
                     
-                    if s3_key and stored_filename:
-                        # 새로운 파일명 생성 (UUID 사용)
-                        file_extension = os.path.splitext(original_filename)[1]
-                        new_filename = f"{uuid.uuid4()}{file_extension}"
+                    print(f"파일 타입 속성 발견: {source_value.attribute.name}")
+                    
+                    try:
+                        # 기존 파일 정보 파싱
+                        file_data = json.loads(source_value.value)
+                        print(f"파일 데이터 파싱 성공: {file_data}")
                         
-                        # S3에서 파일 복사
-                        copy_result = copy_s3_file(s3_key, new_filename)
+                        original_filename = file_data.get('original_filename', '')
+                        stored_filename = file_data.get('stored_filename', '')
+                        s3_key = file_data.get('s3_key', '')
                         
-                        if copy_result['success']:
-                            # 새로운 파일 정보 생성
-                            new_file_data = {
-                                'original_filename': original_filename,
-                                'stored_filename': new_filename,
-                                's3_key': copy_result['new_s3_key'],
-                                'download_url': copy_result['new_download_url'],
-                                'preview_url': copy_result['new_preview_url'],
-                                'public_url': copy_result['new_public_url'],
-                                'file_size': file_data.get('file_size', 0),
-                                'content_type': file_data.get('content_type', ''),
-                                'type': file_data.get('type', 'file')
-                            }
+                        print(f"파일 정보 - 원본명: {original_filename}, 저장명: {stored_filename}, S3키: {s3_key}")
+                        
+                        if s3_key and stored_filename:
+                            # 새로운 파일명 생성 (UUID 사용)
+                            file_extension = os.path.splitext(original_filename)[1] if original_filename else ''
+                            new_filename = f"{uuid.uuid4()}{file_extension}"
+                            print(f"새 파일명 생성: {new_filename}")
                             
-                            # 새로운 파일 정보로 AttributeValue 생성
-                            AttributeValue.objects.create(
-                                row=new_row,
-                                attribute=source_value.attribute,
-                                value=json.dumps(new_file_data, ensure_ascii=False)
-                            )
+                            # S3에서 파일 복사
+                            print(f"S3 파일 복사 시작: {s3_key} -> {new_filename}")
+                            copy_result = copy_s3_file(s3_key, new_filename)
+                            print(f"S3 복사 결과: {copy_result}")
+                            
+                            if copy_result and isinstance(copy_result, dict) and copy_result.get('success'):
+                                # 새로운 파일 정보 생성 (upload_time 추가)
+                                new_file_data = {
+                                    'original_filename': original_filename,
+                                    'stored_filename': new_filename,
+                                    's3_key': copy_result.get('new_s3_key', ''),
+                                    'download_url': copy_result.get('new_download_url', ''),
+                                    'preview_url': copy_result.get('new_preview_url', ''),
+                                    'public_url': copy_result.get('new_public_url', ''),
+                                    'file_size': file_data.get('file_size', 0),
+                                    'content_type': file_data.get('content_type', ''),
+                                    'type': file_data.get('type', 'file'),
+                                    'upload_time': copy_result.get('upload_time', timezone.now().isoformat())  # copy_s3_file에서 반환된 시간 사용
+                                }
+                                
+                                print(f"새 파일 데이터 생성: {new_file_data}")
+                                
+                                # 새로운 파일 정보로 AttributeValue 생성
+                                new_attr_value = AttributeValue.objects.create(
+                                    row=new_row,
+                                    attribute=source_value.attribute,
+                                    value=json.dumps(new_file_data, ensure_ascii=False),
+                                    copy_from=source_row.id  # 원본 행 ID 저장
+                                )
+                                print(f"새 AttributeValue 생성 완료: ID {new_attr_value.id}")
+                            else:
+                                # S3 복사 실패 시 새로운 파일명으로 원본 파일 정보 복사
+                                error_msg = '알 수 없는 오류'
+                                if isinstance(copy_result, dict):
+                                    error_msg = copy_result.get('error', '알 수 없는 오류')
+                                print(f"파일 복사 실패, 새로운 파일명으로 원본 정보 복사: {error_msg}")
+                                
+                                # 새로운 파일명으로 원본 파일 정보 복사
+                                new_file_data = {
+                                    'original_filename': original_filename,
+                                    'stored_filename': new_filename,  # 새로운 파일명 사용
+                                    's3_key': s3_key,  # 원본 S3 키 유지
+                                    'download_url': file_data.get('download_url', ''),
+                                    'preview_url': file_data.get('preview_url', ''),
+                                    'public_url': file_data.get('public_url', ''),
+                                    'file_size': file_data.get('file_size', 0),
+                                    'content_type': file_data.get('content_type', ''),
+                                    'type': file_data.get('type', 'file')
+                                }
+                                
+                                AttributeValue.objects.create(
+                                    row=new_row,
+                                    attribute=source_value.attribute,
+                                    value=json.dumps(new_file_data, ensure_ascii=False),
+                                    copy_from=source_row.id  # 원본 행 ID 저장
+                                )
+                                print(f"원본 파일 정보로 새 AttributeValue 생성 완료")
                         else:
-                            # S3 복사 실패 시 원본 파일 정보 그대로 복사 (경고 로그)
-                            print(f"파일 복사 실패, 원본 정보 그대로 복사: {copy_result.get('error', '알 수 없는 오류')}")
+                            # 파일 정보가 없거나 불완전한 경우 원본 그대로 복사
+                            print(f"파일 정보 불완전, 원본 그대로 복사")
                             AttributeValue.objects.create(
                                 row=new_row,
                                 attribute=source_value.attribute,
-                                value=source_value.value
+                                value=source_value.value,
+                                copy_from=source_row.id  # 원본 행 ID 저장
                             )
-                    else:
-                        # 파일 정보가 없거나 불완전한 경우 원본 그대로 복사
+                            
+                    except (json.JSONDecodeError, KeyError) as e:
+                        # JSON 파싱 실패 시 원본 그대로 복사
+                        print(f"파일 정보 파싱 실패, 원본 그대로 복사: {e}")
                         AttributeValue.objects.create(
                             row=new_row,
                             attribute=source_value.attribute,
-                            value=source_value.value
+                            value=source_value.value,
+                            copy_from=source_row.id  # 원본 행 ID 저장
                         )
-                        
-                except (json.JSONDecodeError, KeyError) as e:
-                    # JSON 파싱 실패 시 원본 그대로 복사
-                    print(f"파일 정보 파싱 실패, 원본 그대로 복사: {e}")
+                else:
+                    # 파일이 아닌 경우 원본 그대로 복사
+                    print(f"일반 속성 복사: {source_value.attribute.name if source_value.attribute else 'None'}")
                     AttributeValue.objects.create(
                         row=new_row,
                         attribute=source_value.attribute,
-                        value=source_value.value
+                        value=source_value.value,
+                        copy_from=source_row.id  # 원본 행 ID 저장
                     )
-            else:
-                # 파일이 아닌 경우 원본 그대로 복사
-                AttributeValue.objects.create(
-                    row=new_row,
-                    attribute=source_value.attribute,
-                    value=source_value.value
-                )
+                print(f"=== AttributeValue 복사 완료 ===")
+            except Exception as e:
+                # 개별 AttributeValue 복사 중 오류가 발생해도 계속 진행
+                print(f"AttributeValue 복사 중 오류 발생: {e}")
+                continue
+        
+        print(f"복제 완료: 새 행 ID {new_row.id}")
         
         return JsonResponse({
             'success': True, 
@@ -4632,30 +4804,41 @@ def duplicate_row(request):
 
 def copy_s3_file(source_s3_key, new_filename):
     """S3에서 파일을 복사하는 함수"""
+    print(f"=== S3 파일 복사 시작 ===")
+    print(f"소스 S3 키: {source_s3_key}")
+    print(f"새 파일명: {new_filename}")
+    
     try:
         # S3 클라이언트 생성
+        print("S3 클라이언트 생성 중...")
         s3_client = boto3.client(
             's3',
             aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
             aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
             region_name=settings.AWS_S3_REGION_NAME
         )
+        print("S3 클라이언트 생성 완료")
         
         # 새로운 S3 키 생성
         new_s3_key = f"{settings.AWS_LOCATION}/{new_filename}"
+        print(f"새 S3 키: {new_s3_key}")
         
         # S3에서 파일 복사
+        print("S3 파일 복사 실행 중...")
         s3_client.copy_object(
             Bucket=settings.AWS_STORAGE_BUCKET_NAME,
             CopySource={'Bucket': settings.AWS_STORAGE_BUCKET_NAME, 'Key': source_s3_key},
             Key=new_s3_key
         )
+        print("S3 파일 복사 완료")
         
         # 새로운 다운로드 URL 생성
         new_download_url = f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{new_s3_key}"
+        print(f"새 다운로드 URL: {new_download_url}")
         
         # 새로운 서명된 다운로드 URL 생성
         try:
+            print("서명된 다운로드 URL 생성 중...")
             new_signed_download_url = s3_client.generate_presigned_url(
                 'get_object',
                 Params={
@@ -4664,12 +4847,14 @@ def copy_s3_file(source_s3_key, new_filename):
                 },
                 ExpiresIn=300  # 5분
             )
+            print("서명된 다운로드 URL 생성 완료")
         except Exception as e:
             print(f"새로운 서명된 다운로드 URL 생성 실패: {e}")
             new_signed_download_url = new_download_url
         
         # 새로운 서명된 미리보기 URL 생성
         try:
+            print("서명된 미리보기 URL 생성 중...")
             new_signed_preview_url = s3_client.generate_presigned_url(
                 'get_object',
                 Params={
@@ -4679,17 +4864,24 @@ def copy_s3_file(source_s3_key, new_filename):
                 },
                 ExpiresIn=300  # 5분
             )
+            print("서명된 미리보기 URL 생성 완료")
         except Exception as e:
             print(f"새로운 서명된 미리보기 URL 생성 실패: {e}")
             new_signed_preview_url = new_download_url
         
-        return {
+        # 현재 시간을 ISO 형식으로 생성
+        current_time = timezone.now().isoformat()
+        
+        result = {
             'success': True,
             'new_s3_key': new_s3_key,
             'new_download_url': new_signed_download_url,
             'new_preview_url': new_signed_preview_url,
-            'new_public_url': new_download_url
+            'new_public_url': new_download_url,
+            'upload_time': current_time  # upload_time 필드 추가
         }
+        print(f"S3 파일 복사 성공: {result}")
+        return result
         
     except Exception as e:
         print(f"S3 파일 복사 실패: {e}")
@@ -4794,3 +4986,296 @@ def update_attribute_name(request):
         return JsonResponse({'success': False, 'error': '잘못된 JSON 형식입니다.'})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
+
+def sync_cascade_attributes(row_id, attribute_name, new_value):
+    """cascade가 true인 속성이 수정될 때 원본 행과 복제된 행들을 동기화"""
+    try:
+        # 사용자 가져오기
+        user = User.objects.get(id=1)
+        
+        # 수정된 행 조회
+        modified_row = Row.objects.get(id=row_id)
+        
+        print(f"=== Cascade 동기화 시작 ===")
+        print(f"수정된 행 ID: {row_id}")
+        print(f"수정된 행의 original_row_ids: {modified_row.original_row_ids}")
+        print(f"수정된 행의 copied_row_ids: {modified_row.copied_row_ids}")
+        
+        # cascade가 true인 속성 조회 (사용자 정보 포함)
+        try:
+            cascade_attribute = Attribute.objects.get(name=attribute_name, user=user, cascade=True)
+            print(f"Cascade 속성 찾음: {attribute_name}")
+        except Attribute.DoesNotExist:
+            print(f"Cascade 속성을 찾을 수 없습니다: {attribute_name}")
+            return 0  # cascade가 false인 속성이면 동기화하지 않음
+        
+        # === 개선된 관련 행 찾기 ===
+        # 1. 수정된 행의 원본 행들
+        original_rows = []
+        for original_id in modified_row.original_row_ids:
+            try:
+                original_row = Row.objects.get(id=original_id)
+                original_rows.append(original_row)
+            except Row.DoesNotExist:
+                print(f"원본 행 {original_id}를 찾을 수 없습니다.")
+                continue
+        
+        # 2. 수정된 행의 복제된 행들
+        copied_rows = []
+        for copied_id in modified_row.copied_row_ids:
+            try:
+                copied_row = Row.objects.get(id=copied_id)
+                copied_rows.append(copied_row)
+            except Row.DoesNotExist:
+                print(f"복제된 행 {copied_id}를 찾을 수 없습니다.")
+                continue
+        
+        # 3. 원본 행들의 복제된 행들도 포함
+        for original_row in original_rows:
+            for copied_id in original_row.copied_row_ids:
+                try:
+                    copied_row = Row.objects.get(id=copied_id)
+                    if copied_row not in copied_rows and copied_row.id != row_id:
+                        copied_rows.append(copied_row)
+                except Row.DoesNotExist:
+                    continue
+        
+        # 4. 복제된 행들의 원본 행들도 포함
+        for copied_row in copied_rows:
+            for original_id in copied_row.original_row_ids:
+                try:
+                    original_row = Row.objects.get(id=original_id)
+                    if original_row not in original_rows and original_row.id != row_id:
+                        original_rows.append(original_row)
+                except Row.DoesNotExist:
+                    continue
+        
+        # 모든 관련 행들을 하나의 리스트로 합치기
+        all_related_rows = original_rows + copied_rows
+        unique_related_rows = []
+        seen_ids = set()
+        
+        for row in all_related_rows:
+            if row.id not in seen_ids and row.id != row_id:
+                unique_related_rows.append(row)
+                seen_ids.add(row.id)
+        
+        print(f"동기화할 관련 행들: {[row.id for row in unique_related_rows]}")
+        
+        # === 동기화 실행 ===
+        synced_count = 0
+        for row in unique_related_rows:
+            print(f"행 {row.id}의 {attribute_name} 속성을 '{new_value}'로 업데이트 중...")
+            
+            # AttributeValue 조회 또는 생성
+            attr_value, created = AttributeValue.objects.get_or_create(
+                row=row,
+                attribute=cascade_attribute,
+                defaults={'value': new_value}
+            )
+            
+            if not created:
+                old_value = attr_value.value
+                attr_value.value = new_value
+                attr_value.save()
+                print(f"  - 기존 값 '{old_value}' → 새 값 '{new_value}'로 변경")
+            else:
+                print(f"  - 새 값 '{new_value}'로 생성")
+            
+            synced_count += 1
+        
+        print(f"실제 동기화된 행 수: {synced_count}")
+        print(f"=== Cascade 동기화 완료 ===")
+        return synced_count
+        
+    except Exception as e:
+        print(f"Cascade 동기화 중 오류: {e}")
+        import traceback
+        traceback.print_exc()
+        return 0
+
+def get_cascade_attributes():
+    """cascade가 true인 속성들의 목록을 반환"""
+    return Attribute.objects.filter(cascade=True).values_list('name', flat=True)
+
+@csrf_exempt
+def toggle_cascade_attribute(request):
+    """속성의 cascade 값을 토글하는 API"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST 요청만 허용됩니다.'})
+    
+    try:
+        data = json.loads(request.body)
+        attribute_name = data.get('attribute_name')
+        
+        if not attribute_name:
+            return JsonResponse({'success': False, 'error': '속성명이 필요합니다.'})
+        
+        # 사용자 가져오기
+        user = User.objects.get(id=1)
+        
+        # 속성 조회
+        try:
+            attribute = Attribute.objects.get(name=attribute_name, user=user)
+        except Attribute.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '속성을 찾을 수 없습니다.'})
+        
+        # cascade 값 토글
+        attribute.cascade = not attribute.cascade
+        attribute.save()
+        
+        return JsonResponse({
+            'success': True,
+            'cascade': attribute.cascade,
+            'message': f'{attribute_name} 속성의 cascade가 {attribute.cascade}로 변경되었습니다.'
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': '잘못된 JSON 형식입니다.'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': f'토글 중 오류가 발생했습니다: {str(e)}'})
+
+@require_GET
+def get_cascade_attributes_list(request):
+    """cascade가 true인 속성들의 목록을 반환하는 API"""
+    try:
+        # 사용자 가져오기
+        user = User.objects.get(id=1)
+        
+        # cascade가 true인 속성들 조회
+        cascade_attributes = Attribute.objects.filter(
+            user=user,
+            cascade=True
+        ).values('id', 'name', 'cascade')
+        
+        return JsonResponse({
+            'success': True,
+            'cascade_attributes': list(cascade_attributes)
+        })
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': f'목록 조회 중 오류가 발생했습니다: {str(e)}'})
+
+@require_GET
+def fix_existing_row_relationships(request):
+    """기존 행들의 복제 관계를 수정하는 함수 (디버깅용)"""
+    try:
+        user = User.objects.get(id=1)
+        
+        # 모든 행을 가져와서 복제 관계 확인
+        rows = Row.objects.filter(user=user).order_by('id')
+        
+        fixed_count = 0
+        for row in rows:
+            print(f"행 {row.id} 처리 중...")
+            print(f"  - original_row_ids: {row.original_row_ids}")
+            print(f"  - copied_row_ids: {row.copied_row_ids}")
+            
+            # copy_from이 있는 AttributeValue들을 찾아서 복제 관계 설정
+            attr_values = AttributeValue.objects.filter(row=row, copy_from__gt=0)
+            
+            for attr_value in attr_values:
+                original_row_id = attr_value.copy_from
+                print(f"  - copy_from: {original_row_id}")
+                
+                try:
+                    original_row = Row.objects.get(id=original_row_id)
+                    
+                    # 원본 행의 copied_row_ids에 현재 행 추가
+                    if row.id not in original_row.copied_row_ids:
+                        original_row.add_copied_row(row.id)
+                        print(f"    → 원본 행 {original_row_id}에 복제된 행 {row.id} 추가")
+                    
+                    # 현재 행의 original_row_ids에 원본 행 추가
+                    if original_row_id not in row.original_row_ids:
+                        row.add_original_row(original_row_id)
+                        print(f"    → 복제된 행 {row.id}에 원본 행 {original_row_id} 추가")
+                    
+                    fixed_count += 1
+                    
+                except Row.DoesNotExist:
+                    print(f"    → 원본 행 {original_row_id}를 찾을 수 없습니다.")
+                    continue
+        
+        print(f"총 {fixed_count}개의 복제 관계가 수정되었습니다.")
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'{fixed_count}개의 복제 관계가 수정되었습니다.'
+        })
+        
+    except Exception as e:
+        print(f"복제 관계 수정 중 오류: {e}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False,
+            'error': f'복제 관계 수정 중 오류가 발생했습니다: {str(e)}'
+        })
+
+@require_GET
+def debug_row_relationships(request):
+    """행들의 복제 관계를 디버깅하는 함수"""
+    try:
+        user = User.objects.get(id=1)
+        
+        # 모든 행을 가져와서 복제 관계 확인
+        rows = Row.objects.filter(user=user).order_by('id')
+        
+        debug_info = []
+        for row in rows:
+            # copy_from이 있는 AttributeValue 개수 확인
+            attr_values_with_copy = AttributeValue.objects.filter(row=row, copy_from__gt=0)
+            
+            debug_info.append({
+                'row_id': row.id,
+                'original_row_ids': row.original_row_ids,
+                'copied_row_ids': row.copied_row_ids,
+                'copy_from_count': attr_values_with_copy.count(),
+                'copy_from_values': list(attr_values_with_copy.values_list('copy_from', flat=True))
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'debug_info': debug_info
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'디버깅 중 오류가 발생했습니다: {str(e)}'
+        })
+
+@require_GET
+def setup_test_cascade_attributes(request):
+    """테스트용 cascade 속성을 설정하는 함수"""
+    try:
+        user = User.objects.get(id=1)
+        
+        # 테스트할 속성들
+        test_attributes = ['회사명', '매출', '업종', '직원수']
+        
+        updated_count = 0
+        for attr_name in test_attributes:
+            try:
+                attribute = Attribute.objects.get(name=attr_name, user=user)
+                if not attribute.cascade:
+                    attribute.cascade = True
+                    attribute.save()
+                    updated_count += 1
+                    print(f"'{attr_name}' 속성의 cascade를 활성화했습니다.")
+            except Attribute.DoesNotExist:
+                print(f"'{attr_name}' 속성을 찾을 수 없습니다.")
+                continue
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'{updated_count}개의 속성에 cascade가 활성화되었습니다.',
+            'updated_attributes': test_attributes[:updated_count]
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'Cascade 속성 설정 중 오류가 발생했습니다: {str(e)}'
+        })
