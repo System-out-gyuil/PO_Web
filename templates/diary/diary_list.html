@@ -1636,9 +1636,9 @@ function downloadFile(downloadUrl, filename) {
     document.body.removeChild(link);
 }
 
-// 파일 삭제 함수
-function deleteFile(rowId, fieldName) {
-    if (!confirm('파일을 삭제하시겠습니까?\n삭제된 파일은 복구할 수 없습니다.')) {
+// 파일 삭제 함수 (모든 파일 삭제)
+function deleteAllFiles(rowId, fieldName) {
+    if (!confirm('모든 파일을 삭제하시겠습니까?\n삭제된 파일은 복구할 수 없습니다.')) {
         return;
     }
     
@@ -1653,7 +1653,7 @@ function deleteFile(rowId, fieldName) {
         console.log('파일 삭제 응답:', data);
         
         if (data.success) {
-            alert('파일이 성공적으로 삭제되었습니다.');
+            alert('모든 파일이 성공적으로 삭제되었습니다.');
             
             // 모달 데이터 새로고침
             fetch('/600/get_row_details/' + rowId + '/')

@@ -1248,7 +1248,7 @@ def delete_attribute(request):
 
 @csrf_exempt
 def upload_file(request):
-    """파일 업로드 및 S3 저장"""
+    """파일 업로드 및 S3 저장 (여러 파일 지원)"""
     if request.method == 'POST':
         row_id = request.POST.get('row_id')
         field_name = request.POST.get('field_name')
@@ -1374,8 +1374,8 @@ def upload_file(request):
                 elif file_extension in ['.mp4', '.avi', '.mov', '.wmv']:
                     file_type = 'video'
                 
-                # 파일 정보를 JSON 형태로 저장
-                file_data = {
+                # 새 파일 정보
+                new_file_data = {
                     'original_filename': uploaded_file.name,
                     'stored_filename': unique_filename,
                     's3_key': s3_key,
@@ -1384,32 +1384,43 @@ def upload_file(request):
                     'public_url': download_url,
                     'file_size': uploaded_file.size,
                     'content_type': uploaded_file.content_type,
-                    'type': file_type  # 파일 타입 추가
+                    'type': file_type,  # 파일 타입 추가
+                    'upload_time': datetime.now().isoformat()  # 업로드 시간 추가
                 }
                 
-                # AttributeValue에 파일 정보 저장
+                # AttributeValue에서 기존 파일 정보 가져오기
                 attr_value, created = AttributeValue.objects.get_or_create(
                     row=row,
                     attribute=attribute,
-                    defaults={'value': json.dumps(file_data, ensure_ascii=False)}
+                    defaults={'value': '[]'}  # 빈 배열로 초기화
                 )
-                if not created:
-                    attr_value.value = json.dumps(file_data, ensure_ascii=False)
-                    attr_value.save()
                 
-                print(f"데이터베이스에 파일 정보 저장 완료")
+                # 기존 파일 목록 파싱
+                try:
+                    if attr_value.value and attr_value.value.strip():
+                        existing_files = json.loads(attr_value.value)
+                        if not isinstance(existing_files, list):
+                            # 기존이 단일 파일인 경우 배열로 변환
+                            existing_files = [existing_files] if existing_files else []
+                    else:
+                        existing_files = []
+                except (json.JSONDecodeError, TypeError):
+                    existing_files = []
+                
+                # 새 파일을 배열에 추가
+                existing_files.append(new_file_data)
+                
+                # 업데이트된 파일 목록을 데이터베이스에 저장
+                attr_value.value = json.dumps(existing_files, ensure_ascii=False)
+                attr_value.save()
+                
+                print(f"데이터베이스에 파일 정보 저장 완료 (총 {len(existing_files)}개 파일)")
                 
                 return JsonResponse({
                     'success': True,
                     'message': f'파일 "{uploaded_file.name}"이 성공적으로 업로드되었습니다.',
-                    'file_info': {
-                        'original_filename': uploaded_file.name,
-                        'download_url': signed_download_url,
-                        'preview_url': signed_preview_url,
-                        'file_size': uploaded_file.size,
-                        'content_type': uploaded_file.content_type,
-                        'type': file_type  # 파일 타입 추가
-                    }
+                    'file_info': new_file_data,
+                    'total_files': len(existing_files)
                 })
                 
             except Row.DoesNotExist:
@@ -1448,17 +1459,25 @@ def upload_file(request):
                 'success': False,
                 'error': '업로드된 파일이 없습니다.'
             })
-    
-    return JsonResponse({'error': 'Invalid method'}, status=405)
+    else:
+        return JsonResponse({
+            'success': False,
+            'error': 'POST 요청만 허용됩니다.'
+        })
 
 @csrf_exempt
 def delete_file(request):
+    """파일 삭제 (여러 파일 지원)"""
     if request.method == 'POST':
         row_id = request.POST.get('row_id')
         field_name = request.POST.get('field_name')
+        file_index = request.POST.get('file_index')  # 삭제할 파일의 인덱스
         
         print(f"Received Row ID: {row_id}")
         print(f"Received Field Name: {field_name}")
+        print(f"Received File Index: {file_index}")
+        print(f"File Index Type: {type(file_index)}")
+        print(f"All POST data: {dict(request.POST)}")
         
         # 필수 파라미터 검증
         if not row_id or not field_name:
@@ -1489,41 +1508,121 @@ def delete_file(request):
                 # 파일 정보 파싱
                 if attribute_value.value:
                     try:
-                        file_info = json.loads(attribute_value.value)
-                        s3_key = file_info.get('s3_key')
-                        original_filename = file_info.get('original_filename', 'unknown')
-                        existing_download_url = file_info.get('download_url')
+                        files_data = json.loads(attribute_value.value)
+                        print(f"Original files_data: {files_data}")
                         
-                        if s3_key:
-                            # S3에서 파일 삭제 시도
+                        # 단일 파일인 경우 배열로 변환
+                        if not isinstance(files_data, list):
+                            files_data = [files_data] if files_data else []
+                        
+                        print(f"Processed files_data: {files_data}")
+                        print(f"Number of files: {len(files_data)}")
+                        
+                        if not files_data:
+                            return JsonResponse({
+                                'success': False,
+                                'error': '삭제할 파일이 없습니다.'
+                            })
+                        
+                        # file_index가 제공된 경우 특정 파일 삭제
+                        if file_index is not None:
                             try:
-                                s3_client = boto3.client(
-                                    's3',
-                                    aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-                                    aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-                                    region_name=settings.AWS_S3_REGION_NAME
-                                )
+                                file_index = int(file_index)
+                                print(f"Converted file_index: {file_index}")
                                 
-                                s3_client.delete_object(
-                                    Bucket=settings.AWS_STORAGE_BUCKET_NAME,
-                                    Key=s3_key
-                                )
-                                print(f"S3에서 파일 삭제 성공: {s3_key}")
+                                if file_index < 0 or file_index >= len(files_data):
+                                    return JsonResponse({
+                                        'success': False,
+                                        'error': f'유효하지 않은 파일 인덱스입니다. (인덱스: {file_index}, 파일 수: {len(files_data)})'
+                                    })
                                 
-                            except ClientError as e:
-                                print(f"S3 파일 삭제 실패: {e}")
-                                # S3 삭제 실패해도 계속 진행
+                                # 삭제할 파일 정보
+                                file_to_delete = files_data[file_index]
+                                print(f"File to delete: {file_to_delete}")
+                                s3_key = file_to_delete.get('s3_key')
+                                original_filename = file_to_delete.get('original_filename', 'unknown')
+                                
+                                # S3에서 파일 삭제
+                                if s3_key:
+                                    try:
+                                        s3_client = boto3.client(
+                                            's3',
+                                            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+                                            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+                                            region_name=settings.AWS_S3_REGION_NAME
+                                        )
+                                        
+                                        s3_client.delete_object(
+                                            Bucket=settings.AWS_STORAGE_BUCKET_NAME,
+                                            Key=s3_key
+                                        )
+                                        print(f"S3에서 파일 삭제 성공: {s3_key}")
+                                        
+                                    except ClientError as e:
+                                        print(f"S3 파일 삭제 실패: {e}")
+                                        # S3 삭제 실패해도 계속 진행
+                                
+                                # 배열에서 해당 파일 제거
+                                files_data.pop(file_index)
+                                print(f"Files after deletion: {files_data}")
+                                
+                                # 남은 파일이 있으면 업데이트, 없으면 삭제
+                                if files_data:
+                                    attribute_value.value = json.dumps(files_data, ensure_ascii=False)
+                                    attribute_value.save()
+                                    print(f"Updated attribute_value: {attribute_value.value}")
+                                else:
+                                    attribute_value.delete()
+                                    print("AttributeValue deleted")
+                                
+                                print(f"파일 삭제 성공: {original_filename}")
+                                
+                                return JsonResponse({
+                                    'success': True,
+                                    'message': f'파일 "{original_filename}"이(가) 성공적으로 삭제되었습니다.',
+                                    'remaining_files': len(files_data)
+                                })
+                                
+                            except ValueError as e:
+                                print(f"ValueError converting file_index: {e}")
+                                return JsonResponse({
+                                    'success': False,
+                                    'error': '유효하지 않은 파일 인덱스입니다.'
+                                })
+                        else:
+                            print("No file_index provided, deleting all files")
+                            # file_index가 없으면 모든 파일 삭제 (기존 동작)
+                            for file_data in files_data:
+                                s3_key = file_data.get('s3_key')
+                                if s3_key:
+                                    try:
+                                        s3_client = boto3.client(
+                                            's3',
+                                            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+                                            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+                                            region_name=settings.AWS_S3_REGION_NAME
+                                        )
+                                        
+                                        s3_client.delete_object(
+                                            Bucket=settings.AWS_STORAGE_BUCKET_NAME,
+                                            Key=s3_key
+                                        )
+                                        print(f"S3에서 파일 삭제 성공: {s3_key}")
+                                        
+                                    except ClientError as e:
+                                        print(f"S3 파일 삭제 실패: {e}")
+                            
+                            # AttributeValue 삭제
+                            attribute_value.delete()
+                            print(f"모든 파일 삭제 성공")
+                            
+                            return JsonResponse({
+                                'success': True,
+                                'message': '모든 파일이 성공적으로 삭제되었습니다.'
+                            })
                         
-                        # 데이터베이스에서 AttributeValue 삭제
-                        attribute_value.delete()
-                        print(f"데이터베이스에서 AttributeValue 삭제 성공")
-                        
-                        return JsonResponse({
-                            'success': True,
-                            'message': f'파일 "{original_filename}"이(가) 성공적으로 삭제되었습니다.'
-                        })
-                        
-                    except json.JSONDecodeError:
+                    except json.JSONDecodeError as e:
+                        print(f"JSON decode error: {e}")
                         return JsonResponse({
                             'success': False,
                             'error': '파일 정보를 파싱할 수 없습니다.'
@@ -1550,12 +1649,12 @@ def delete_file(request):
                 'success': False,
                 'error': '해당 속성을 찾을 수 없습니다.'
             })
-    # except Exception as e:
-    #     print(f"파일 삭제 중 오류: {e}")
-    #     return JsonResponse({
-    #         'success': False,
-    #         'error': f'파일 삭제 중 오류가 발생했습니다: {str(e)}'
-    #     })
+        except Exception as e:
+            print(f"파일 삭제 중 오류: {e}")
+            return JsonResponse({
+                'success': False,
+                'error': f'파일 삭제 중 오류가 발생했습니다: {str(e)}'
+            })
     
     return JsonResponse({
         'success': False,

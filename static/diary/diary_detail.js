@@ -365,133 +365,156 @@ function showDetailModal(rowData, rowId) {
                         </select>
                     `;
                 } else if (attr.type === 'file') {
-                    // 파일 타입 속성 처리
-                    let fileInfo = null;
-                    let displayFileName = '';
-                    let hasFile = false;
+                    // 파일 타입 속성 처리 (여러 파일 지원)
+                    let filesData = [];
+                    let hasFiles = false;
+                    
                     // 파일 정보 파싱
                     try {
                         if (value && value !== null && value !== undefined) {
                             if (typeof value === 'object') {
-                                fileInfo = value;
-                                displayFileName = fileInfo.original_filename || fileInfo.stored_filename || fileInfo.filename || 'unknown';
-                                hasFile = true;
-                            } else if (typeof value === 'string' && value.trim() !== '') {
-                                if (value.trim().startsWith('{')) {
-                                    fileInfo = JSON.parse(value);
-                                    displayFileName = fileInfo.original_filename || fileInfo.stored_filename || fileInfo.filename || 'unknown';
-                                    hasFile = true;
+                                // 단일 파일인 경우 배열로 변환
+                                if (Array.isArray(value)) {
+                                    filesData = value;
                                 } else {
-                                    displayFileName = value.trim();
-                                    hasFile = true;
+                                    filesData = [value];
                                 }
+                                hasFiles = true;
+                            } else if (typeof value === 'string' && value.trim() !== '') {
+                                if (value.trim().startsWith('[')) {
+                                    // JSON 배열
+                                    filesData = JSON.parse(value);
+                                } else if (value.trim().startsWith('{')) {
+                                    // JSON 객체 (단일 파일)
+                                    filesData = [JSON.parse(value)];
+                                } else {
+                                    // 문자열 (단일 파일명)
+                                    filesData = [{
+                                        original_filename: value.trim(),
+                                        type: 'file'
+                                    }];
+                                }
+                                hasFiles = true;
                             }
                         }
                     } catch (e) {
                         console.error('파일 정보 파싱 오류:', e, 'value:', value);
                         if (value) {
-                            displayFileName = String(value);
-                            hasFile = true;
+                            filesData = [{
+                                original_filename: String(value),
+                                type: 'file'
+                            }];
+                            hasFiles = true;
                         }
                     }
-                    if (hasFile && fileInfo) {
-                        // 파일 키 추출 - 실제 저장된 키를 찾기 위해 여러 방법 시도
-                        let fileKey = '';
-                        if (fileInfo.id) {
-                            fileKey = fileInfo.id;
-                        } else if (fileInfo.stored_filename) {
-                            // stored_filename에서 UUID 부분만 추출
-                            const filename = fileInfo.stored_filename;
-                            if (filename.includes('-')) {
-                                // UUID 형태인 경우 그대로 사용
-                                fileKey = filename;
-                            } else {
-                                // 숫자 키인 경우 그대로 사용
-                                fileKey = filename;
-                            }
-                        } else if (fileInfo.filename) {
-                            fileKey = fileInfo.filename;
-                        }
+                    
+                    if (hasFiles && filesData.length > 0) {
+                        // 여러 파일을 세로로 정렬하여 표시
+                        let filesHtml = '';
                         
-                        console.log('파일 미리보기용 키:', fileKey, 'fileInfo:', fileInfo);
-                        
-                        // 타입 분기
-                        if (fileInfo.type === 'img') {
-                            inputHtml = `
-                                <div style="display:flex;align-items:center;gap:8px;">
-                                    <span style="width:60%;">📄 ${displayFileName}</span>
-                                    <button onclick="showFilePreviewModal(${JSON.stringify({...fileInfo, field_name: attr.name}).replace(/\"/g, '&quot;')})"
-                                            style="padding: 6px 12px; background: #ffc107; color: #333; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500; margin-right: 5px;">
-                                        미리보기
-                                    </button>
-                                    <button onclick="window.open('${fileInfo.download_url}', '_blank')"
-                                            style="padding: 6px 12px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500; margin-right: 5px;">
-                                        다운로드
-                                    </button>
-                                    <button onclick="deleteFile('${rowId}', '${attr.name}')"
-                                            style="padding: 6px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;">
-                                        삭제
-                                    </button>
-                                </div>
-                            `;
-                        } else if (fileInfo.type === 'audio') {
-                            inputHtml = `
-                                <div>
-                                    <audio controls src="${fileInfo.download_url || fileInfo.url}"></audio>
-                                    <div style="margin-top:8px;">
+                        filesData.forEach((fileInfo, index) => {
+                            const displayFileName = fileInfo.original_filename || fileInfo.stored_filename || fileInfo.filename || 'unknown';
+                            
+                            // 파일 타입별 처리
+                            if (fileInfo.type === 'img' || fileInfo.content_type?.startsWith('image/')) {
+                                filesHtml += `
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding: 8px; border: 1px solid #e9ecef; border-radius: 4px; background: #f8f9fa;">
+                                        <span style="flex: 1; font-size: 14px;">📄 ${displayFileName}</span>
+                                        <button onclick="showFilePreviewModal(${JSON.stringify({...fileInfo, field_name: attr.name}).replace(/\"/g, '&quot;')})"
+                                                style="padding: 4px 8px; background: #ffc107; color: #333; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                            미리보기
+                                        </button>
                                         <button onclick="window.open('${fileInfo.download_url}', '_blank')"
-                                                style="padding: 6px 12px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500; margin-right: 5px;">
+                                                style="padding: 4px 8px; background: #17a2b8; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
                                             다운로드
                                         </button>
-                                        <button onclick="deleteFile('${rowId}', '${attr.name}')"
-                                                style="padding: 6px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;">
+                                        <button class="delete-file-btn" 
+                                                data-row-id="${rowId}" 
+                                                data-field-name="${attr.name}" 
+                                                data-file-index="${index}"
+                                                style="padding: 4px 8px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
                                             삭제
                                         </button>
                                     </div>
-                                </div>
-                            `;
-                        } else {
-                            // 일반 파일
-                            inputHtml = `
-                                <div style="display:flex;align-items:center;gap:8px;">
-                                    <span style="width:60%;">📄 ${displayFileName}</span>
-                                    <button onclick="showFilePreviewModal(${JSON.stringify({...fileInfo, field_name: attr.name}).replace(/\"/g, '&quot;')})"
-                                            style="padding: 6px 12px; background: #ffc107; color: #333; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500; margin-right: 5px;">
-                                        미리보기
-                                    </button>
-                                    <button onclick="window.open('${fileInfo.download_url}', '_blank')"
-                                            style="padding: 6px 12px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500; margin-right: 5px;">
-                                        다운로드
-                                    </button>
-                                    <button onclick="deleteFile('${rowId}', '${attr.name}')"
-                                            style="padding: 6px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;">
-                                        삭제
-                                    </button>
-                                </div>
-                            `;
-                        }
+                                `;
+                            } else if (fileInfo.type === 'audio') {
+                                filesHtml += `
+                                    <div style="margin-bottom: 12px; padding: 8px; border: 1px solid #e9ecef; border-radius: 4px; background: #f8f9fa;">
+                                        <div style="margin-bottom: 8px;">
+                                            <audio controls src="${fileInfo.download_url || fileInfo.url}" style="width: 100%;"></audio>
+                                        </div>
+                                        <div style="display: flex; gap: 6px;">
+                                            <button onclick="window.open('${fileInfo.download_url}', '_blank')"
+                                                    style="padding: 4px 8px; background: #17a2b8; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                                다운로드
+                                            </button>
+                                            <button class="delete-file-btn" 
+                                                    data-row-id="${rowId}" 
+                                                    data-field-name="${attr.name}" 
+                                                    data-file-index="${index}"
+                                                    style="padding: 4px 8px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                                삭제
+                                            </button>
+                                        </div>
+                                    </div>
+                                `;
+                            } else {
+                                // 일반 파일
+                                filesHtml += `
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding: 8px; border: 1px solid #e9ecef; border-radius: 4px; background: #f8f9fa;">
+                                        <span style="flex: 1; font-size: 14px;">📄 ${displayFileName}</span>
+                                        <button onclick="showFilePreviewModal(${JSON.stringify({...fileInfo, field_name: attr.name}).replace(/\"/g, '&quot;')})"
+                                                style="padding: 4px 8px; background: #ffc107; color: #333; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                            미리보기
+                                        </button>
+                                        <button onclick="window.open('${fileInfo.download_url}', '_blank')"
+                                                style="padding: 4px 8px; background: #17a2b8; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                            다운로드
+                                        </button>
+                                        <button class="delete-file-btn" 
+                                                data-row-id="${rowId}" 
+                                                data-field-name="${attr.name}" 
+                                                data-file-index="${index}"
+                                                style="padding: 4px 8px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                            삭제
+                                        </button>
+                                    </div>
+                                `;
+                            }
+                        });
+                        
+                        // 파일 추가 버튼
+                        filesHtml += `
+                            <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px; padding: 8px; border: 1px solid #dee2e6; border-radius: 4px; background: #fff;">
+                                <span style="flex: 1; color: #6c757d; font-size: 14px;">파일 추가</span>
+                                <button type="button" 
+                                        onclick="document.getElementById('file_${attr.name}_${rowId}').click()" 
+                                        style="padding: 6px 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;">
+                                    + 파일 추가
+                                </button>
+                                <input type="file" 
+                                       id="file_${attr.name}_${rowId}" 
+                                       style="display: none;"
+                                       multiple
+                                       onchange="uploadFile('${rowId}', '${attr.name}', this)">
+                            </div>
+                        `;
+                        
+                        inputHtml = filesHtml;
                     } else {
-                        // 파일이 없는 경우: 파일 선택 버튼
+                        // 파일이 없는 경우: 파일 선택 버튼 (다중 선택 지원)
                         inputHtml = `
                             <div style="display: flex; align-items: center;">
                                 <span style="flex: 1; color: #6c757d; font-size: 14px; padding: 8px 0;">파일이 선택되지 않았습니다</span>
                                 <button type="button" 
                                         onclick="document.getElementById('file_${attr.name}_${rowId}').click()" 
-                                        style="
-                                            padding: 6px 12px; 
-                                            background: #007bff; 
-                                            color: white; 
-                                            border: none; 
-                                            border-radius: 4px; 
-                                            cursor: pointer; 
-                                            font-size: 12px;
-                                            font-weight: 500;
-                                        ">
+                                        style="padding: 6px 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;">
                                     파일 선택
                                 </button>
                                 <input type="file" 
                                        id="file_${attr.name}_${rowId}" 
                                        style="display: none;"
+                                       multiple
                                        onchange="uploadFile('${rowId}', '${attr.name}', this)">
                             </div>
                         `;
@@ -641,6 +664,42 @@ function showDetailModal(rowData, rowId) {
             
             // 모달 표시
             document.getElementById('detailModal').style.display = 'flex';
+            
+            // 파일 삭제 버튼 이벤트 리스너 추가 (setTimeout으로 지연)
+            setTimeout(() => {
+                const deleteButtons = document.querySelectorAll('.delete-file-btn');
+                console.log('찾은 삭제 버튼 개수:', deleteButtons.length);
+                
+                deleteButtons.forEach((btn, index) => {
+                    console.log(`버튼 ${index}:`, btn);
+                    console.log(`버튼 ${index}의 data 속성:`, {
+                        rowId: btn.getAttribute('data-row-id'),
+                        fieldName: btn.getAttribute('data-field-name'),
+                        fileIndex: btn.getAttribute('data-file-index')
+                    });
+                    
+                    btn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        const rowId = this.getAttribute('data-row-id');
+                        const fieldName = this.getAttribute('data-field-name');
+                        const fileIndex = this.getAttribute('data-file-index');
+                        
+                        console.log('파일 삭제 버튼 클릭됨:', rowId, fieldName, fileIndex);
+                        console.log('fileIndex 타입:', typeof fileIndex);
+                        console.log('fileIndex 값:', fileIndex);
+                        
+                        // fileIndex를 숫자로 변환
+                        const numericFileIndex = parseInt(fileIndex, 10);
+                        console.log('변환된 fileIndex:', numericFileIndex);
+                        
+                        console.log('deleteFile 함수 호출 전');
+                        deleteFile(rowId, fieldName, numericFileIndex);
+                        console.log('deleteFile 함수 호출 후');
+                    });
+                });
+            }, 100);
         })
         .catch(error => {
             console.error('속성 목록 가져오기 오류:', error);
@@ -3055,41 +3114,61 @@ function downloadFile(rowId, fieldName) {
 }
 
 // 파일 삭제 함수
-function deleteFile(rowId, fieldName) {
-    console.log('deleteFile 호출됨:', rowId, fieldName);
+function deleteFile(rowId, fieldName, fileIndex = null) {
+    console.log('deleteFile 호출됨:', rowId, fieldName, fileIndex);
+    console.log('fileIndex 타입:', typeof fileIndex);
+    console.log('fileIndex 값:', fileIndex);
     
-    if (!confirm('파일을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+    // fileIndex가 문자열로 전달된 경우 숫자로 변환
+    if (fileIndex !== null && typeof fileIndex === 'string') {
+        fileIndex = parseInt(fileIndex, 10);
+        console.log('변환된 fileIndex:', fileIndex);
+    }
+    
+    const confirmMessage = fileIndex !== null 
+        ? '이 파일을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.'
+        : '모든 파일을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.';
+    
+    if (!confirm(confirmMessage)) {
         return;
     }
+    
+    const requestData = {
+        row_id: rowId,
+        field_name: fieldName
+    };
+    
+    // 특정 파일 인덱스가 제공된 경우 추가
+    if (fileIndex !== null) {
+        requestData.file_index = fileIndex;
+    }
+    
+    console.log('서버로 전송할 데이터:', requestData);
     
     fetch('/600/delete_file/', {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded',
             'X-CSRFToken': getCsrfToken()
         },
-        body: JSON.stringify({
-            row_id: rowId,
-            field_name: fieldName
-        })
+        body: new URLSearchParams(requestData).toString()
     })
     .then(response => response.json())
     .then(data => {
         console.log('파일 삭제 응답:', data);
         
         if (data.success) {
-            showNotification('파일이 성공적으로 삭제되었습니다.', 'success');
+            const message = fileIndex !== null 
+                ? '파일이 성공적으로 삭제되었습니다.'
+                : '모든 파일이 성공적으로 삭제되었습니다.';
+            showNotification(message, 'success');
             
             // 테이블 새로고침
             refreshTable();
             
-            // 상세보기 모달이 열려있으면 해당 파일 필드를 "파일 없음" 상태로 업데이트
+            // 상세보기 모달이 열려있으면 해당 파일 필드 업데이트
             updateFileFieldInModalAfterDelete(rowId, fieldName);
             
-            // 모달 닫기 (주석 처리)
-            // if (document.getElementById('detailModal')) {
-            //     document.getElementById('detailModal').style.display = 'none';
-            // }
         } else {
             alert('파일 삭제 실패: ' + (data.error || '알 수 없는 오류'));
         }
@@ -3100,66 +3179,117 @@ function deleteFile(rowId, fieldName) {
     });
 }
 
-// 파일 업로드 함수
+// 파일 업로드 함수 (여러 파일 지원)
 function uploadFile(rowId, fieldName, fileInput) {
     console.log('uploadFile 호출됨:', rowId, fieldName, fileInput);
     
-    const file = fileInput.files[0];
-    if (!file) {
+    const files = fileInput.files;
+    if (!files || files.length === 0) {
         alert('파일을 선택해주세요.');
         return;
     }
     
-    // 파일 크기 체크 (10MB 제한)
-    if (file.size > 10 * 1024 * 1024) {
-        alert('파일 크기는 10MB 이하여야 합니다.');
+    // 파일 개수 제한 (최대 10개)
+    if (files.length > 10) {
+        alert('한 번에 최대 10개 파일까지 업로드할 수 있습니다.');
         return;
     }
     
-    console.log('업로드할 파일:', file.name, file.size);
-    
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('row_id', rowId);
-    formData.append('field_name', fieldName);
-    
-    fetch('/600/upload_file/', {
-        method: 'POST',
-        body: formData,
-        headers: {
-            'X-CSRFToken': getCsrfToken()
+    // 각 파일에 대해 크기 체크
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file.size > 10 * 1024 * 1024) {
+            alert(`파일 "${file.name}"의 크기가 10MB를 초과합니다.`);
+            return;
         }
-    })
-    .then(response => response.json())
-    .then(data => {
-        console.log('파일 업로드 응답:', data);
-        
-        if (data.success) {
-            // 성공 알림
-            showNotification('파일이 성공적으로 업로드되었습니다.', 'success');
+    }
+    
+    console.log('업로드할 파일들:', Array.from(files).map(f => f.name));
+    
+    // 업로드 진행 상황 표시
+    const uploadNotification = document.createElement('div');
+    uploadNotification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #007bff;
+        color: white;
+        padding: 15px 20px;
+        border-radius: 6px;
+        z-index: 1000;
+        font-size: 14px;
+    `;
+    uploadNotification.textContent = `${files.length}개 파일 업로드 중...`;
+    document.body.appendChild(uploadNotification);
+    
+    // 파일들을 순차적으로 업로드
+    let uploadedCount = 0;
+    let failedCount = 0;
+    
+    function uploadNextFile(index) {
+        if (index >= files.length) {
+            // 모든 파일 업로드 완료
+            uploadNotification.remove();
+            
+            if (failedCount === 0) {
+                showNotification(`${uploadedCount}개 파일이 성공적으로 업로드되었습니다.`, 'success');
+            } else if (uploadedCount === 0) {
+                showNotification('모든 파일 업로드에 실패했습니다.', 'error');
+            } else {
+                showNotification(`${uploadedCount}개 파일 업로드 성공, ${failedCount}개 파일 업로드 실패`, 'warning');
+            }
             
             // 테이블 새로고침
             refreshTable();
             
-            // 상세보기 모달이 열려있으면 해당 파일 필드 실시간 업데이트
-            updateFileFieldInModal(rowId, fieldName, data.file_info);
+            // 상세보기 모달이 열려있으면 파일 필드 새로고침
+            updateFileFieldInModalAfterUpload(rowId, fieldName);
             
-            // 모달 닫기 (주석 처리됨)
-            // if (document.getElementById('detailModal')) {
-            //     document.getElementById('detailModal').style.display = 'none';
-            // }
-        } else {
-            alert('파일 업로드 실패: ' + (data.error || '알 수 없는 오류'));
+            // 파일 입력 초기화
+            fileInput.value = '';
+            return;
         }
-    })
-    .catch(error => {
-        console.error('파일 업로드 오류:', error);
-        alert('파일 업로드 중 오류가 발생했습니다.');
-    })
-    .finally(() => {
-        // 파일 입력 초기화
-        fileInput.value = '';
-    });
+        
+        const file = files[index];
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('row_id', rowId);
+        formData.append('field_name', fieldName);
+        
+        // 진행 상황 업데이트
+        uploadNotification.textContent = `${index + 1}/${files.length}개 파일 업로드 중... (${file.name})`;
+        
+        fetch('/600/upload_file/', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': getCsrfToken()
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log(`파일 "${file.name}" 업로드 응답:`, data);
+            
+            if (data.success) {
+                uploadedCount++;
+                console.log(`파일 "${file.name}" 업로드 성공`);
+            } else {
+                failedCount++;
+                console.error(`파일 "${file.name}" 업로드 실패:`, data.error);
+            }
+        })
+        .catch(error => {
+            console.error(`파일 "${file.name}" 업로드 오류:`, error);
+            failedCount++;
+        })
+        .finally(() => {
+            // 다음 파일 업로드
+            uploadNextFile(index + 1);
+        });
+    }
+    
+    // 첫 번째 파일부터 업로드 시작
+    uploadNextFile(0);
 }
 
 // 상세보기 모달의 파일 필드 실시간 업데이트 함수
@@ -3303,37 +3433,227 @@ function updateFileFieldInModalAfterDelete(rowId, fieldName) {
     
     console.log('필드 div 찾음:', targetFieldDiv);
     
-    // 파일 정보 영역을 "파일 없음" 상태로 업데이트
-    const fileContainer = targetFieldDiv.querySelector('div[style*="flex:1"]');
-    if (fileContainer) {
-        fileContainer.innerHTML = `
-            <div style="display: flex; align-items: center;">
-                <span style="flex: 1; color: #6c757d; font-size: 14px; padding: 8px 0;">파일이 선택되지 않았습니다</span>
-                <button type="button" 
-                        onclick="document.getElementById('file_${fieldName}_${rowId}').click()" 
-                        style="
-                            padding: 6px 12px; 
-                            background: #007bff; 
-                            color: white; 
-                            border: none; 
-                            border-radius: 4px; 
-                            cursor: pointer; 
-                            font-size: 12px;
-                            font-weight: 500;
-                        ">
-                    파일 선택
-                </button>
-                <input type="file" 
-                       id="file_${fieldName}_${rowId}" 
-                       style="display: none;"
-                       onchange="uploadFile('${rowId}', '${fieldName}', this)">
-            </div>
-        `;
-        
-        console.log('파일 표시 영역을 "파일 없음"으로 업데이트 완료');
-    } else {
-        console.log('파일 컨테이너를 찾을 수 없음');
-    }
+    // 서버에서 최신 파일 정보를 가져와서 업데이트
+    fetch(`/600/get_row_details/${rowId}/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.row_data) {
+                const fileValue = data.row_data[fieldName];
+                console.log('서버에서 받은 파일 값:', fileValue);
+                
+                if (fileValue) {
+                    try {
+                        let filesData;
+                        
+                        // fileValue가 이미 객체인지 문자열인지 확인
+                        if (typeof fileValue === 'string') {
+                            filesData = JSON.parse(fileValue);
+                        } else if (typeof fileValue === 'object') {
+                            filesData = fileValue;
+                        } else {
+                            console.error('예상치 못한 파일 값 타입:', typeof fileValue);
+                            filesData = [];
+                        }
+                        
+                        const files = Array.isArray(filesData) ? filesData : [filesData];
+                        console.log('파싱된 파일 데이터:', files);
+                        
+                        if (files.length > 0) {
+                            // 파일이 남아있는 경우: 파일 목록 표시
+                            let filesHtml = '';
+                            files.forEach((fileInfo, index) => {
+                                const displayFileName = fileInfo.original_filename || fileInfo.filename || 'Unknown';
+                                
+                                if (fileInfo.type === 'img' || fileInfo.content_type?.startsWith('image/')) {
+                                    filesHtml += `
+                                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding: 8px; border: 1px solid #e9ecef; border-radius: 4px; background: #f8f9fa;">
+                                            <span style="flex: 1; font-size: 14px;">📄 ${displayFileName}</span>
+                                            <button onclick="showFilePreviewModal(${JSON.stringify({...fileInfo, field_name: fieldName}).replace(/\"/g, '&quot;')})"
+                                                    style="padding: 4px 8px; background: #ffc107; color: #333; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                                미리보기
+                                            </button>
+                                            <button onclick="window.open('${fileInfo.download_url}', '_blank')"
+                                                    style="padding: 4px 8px; background: #17a2b8; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                                다운로드
+                                            </button>
+                                            <button onclick="deleteFile('${rowId}', '${fieldName}', '${index}')"
+                                                    style="padding: 4px 8px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                                삭제
+                                            </button>
+                                        </div>
+                                    `;
+                                } else if (fileInfo.type === 'audio') {
+                                    filesHtml += `
+                                        <div style="margin-bottom: 12px; padding: 8px; border: 1px solid #e9ecef; border-radius: 4px; background: #f8f9fa;">
+                                            <div style="margin-bottom: 8px;">
+                                                <audio controls src="${fileInfo.download_url || fileInfo.url}" style="width: 100%;"></audio>
+                                            </div>
+                                            <div style="display: flex; gap: 6px;">
+                                                <button onclick="window.open('${fileInfo.download_url}', '_blank')"
+                                                        style="padding: 4px 8px; background: #17a2b8; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                                    다운로드
+                                                </button>
+                                                <button onclick="deleteFile('${rowId}', '${fieldName}', '${index}')"
+                                                        style="padding: 4px 8px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                                    삭제
+                                                </button>
+                                            </div>
+                                        </div>
+                                    `;
+                                } else {
+                                    // 일반 파일
+                                    filesHtml += `
+                                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding: 8px; border: 1px solid #e9ecef; border-radius: 4px; background: #f8f9fa;">
+                                            <span style="flex: 1; font-size: 14px;">📄 ${displayFileName}</span>
+                                            <button onclick="showFilePreviewModal(${JSON.stringify({...fileInfo, field_name: fieldName}).replace(/\"/g, '&quot;')})"
+                                                    style="padding: 4px 8px; background: #ffc107; color: #333; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                                미리보기
+                                            </button>
+                                            <button onclick="window.open('${fileInfo.download_url}', '_blank')"
+                                                    style="padding: 4px 8px; background: #17a2b8; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                                다운로드
+                                            </button>
+                                            <button onclick="deleteFile('${rowId}', '${fieldName}', '${index}')"
+                                                    style="padding: 4px 8px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                                삭제
+                                            </button>
+                                        </div>
+                                    `;
+                                }
+                            });
+                            
+                            // 파일 추가 버튼
+                            filesHtml += `
+                                <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px; padding: 8px; border: 1px solid #dee2e6; border-radius: 4px; background: #fff;">
+                                    <span style="flex: 1; color: #6c757d; font-size: 14px;">파일 추가</span>
+                                    <button type="button" 
+                                            onclick="document.getElementById('file_${fieldName}_${rowId}').click()" 
+                                            style="padding: 6px 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;">
+                                        + 파일 추가
+                                    </button>
+                                    <input type="file" 
+                                           id="file_${fieldName}_${rowId}" 
+                                           style="display: none;"
+                                           multiple
+                                           onchange="uploadFile('${rowId}', '${fieldName}', this)">
+                                </div>
+                            `;
+                            
+                            // 파일 컨테이너 업데이트
+                            const fileContainer = targetFieldDiv.querySelector('div[style*="flex:1"]');
+                            if (fileContainer) {
+                                fileContainer.innerHTML = filesHtml;
+                                console.log('파일 목록 업데이트 완료');
+                                
+                                // 새로운 삭제 버튼에 이벤트 리스너 추가
+                                setTimeout(() => {
+                                    const deleteButtons = fileContainer.querySelectorAll('.delete-file-btn');
+                                    console.log('새로 찾은 삭제 버튼 개수:', deleteButtons.length);
+                                    
+                                    deleteButtons.forEach((btn, index) => {
+                                        console.log(`새 버튼 ${index}:`, btn);
+                                        console.log(`새 버튼 ${index}의 data 속성:`, {
+                                            rowId: btn.getAttribute('data-row-id'),
+                                            fieldName: btn.getAttribute('data-field-name'),
+                                            fileIndex: btn.getAttribute('data-file-index')
+                                        });
+                                        
+                                        btn.addEventListener('click', function(e) {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            
+                                            const rowId = this.getAttribute('data-row-id');
+                                            const fieldName = this.getAttribute('data-field-name');
+                                            const fileIndex = this.getAttribute('data-file-index');
+                                            
+                                            console.log('새 파일 삭제 버튼 클릭됨:', rowId, fieldName, fileIndex);
+                                            console.log('fileIndex 타입:', typeof fileIndex);
+                                            console.log('fileIndex 값:', fileIndex);
+                                            
+                                            // fileIndex를 숫자로 변환
+                                            const numericFileIndex = parseInt(fileIndex, 10);
+                                            console.log('변환된 fileIndex:', numericFileIndex);
+                                            
+                                            console.log('deleteFile 함수 호출 전');
+                                            deleteFile(rowId, fieldName, numericFileIndex);
+                                            console.log('deleteFile 함수 호출 후');
+                                        });
+                                    });
+                                }, 100);
+                            }
+                        } else {
+                            // 파일이 없는 경우: 파일 선택 버튼
+                            const fileContainer = targetFieldDiv.querySelector('div[style*="flex:1"]');
+                            if (fileContainer) {
+                                fileContainer.innerHTML = `
+                                    <div style="display: flex; align-items: center;">
+                                        <span style="flex: 1; color: #6c757d; font-size: 14px; padding: 8px 0;">파일이 선택되지 않았습니다</span>
+                                        <button type="button" 
+                                                onclick="document.getElementById('file_${fieldName}_${rowId}').click()" 
+                                                style="padding: 6px 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;">
+                                            파일 선택
+                                        </button>
+                                        <input type="file" 
+                                               id="file_${fieldName}_${rowId}" 
+                                               style="display: none;"
+                                               multiple
+                                               onchange="uploadFile('${rowId}', '${fieldName}', this)">
+                                    </div>
+                                `;
+                                console.log('파일 표시 영역을 "파일 없음"으로 업데이트 완료');
+                            }
+                        }
+                    } catch (e) {
+                        console.error('파일 정보 파싱 오류:', e, 'fileValue:', fileValue);
+                        // 파싱 오류 시 "파일 없음" 상태로 설정
+                        const fileContainer = targetFieldDiv.querySelector('div[style*="flex:1"]');
+                        if (fileContainer) {
+                            fileContainer.innerHTML = `
+                                <div style="display: flex; align-items: center;">
+                                    <span style="flex: 1; color: #6c757d; font-size: 14px; padding: 8px 0;">파일이 선택되지 않았습니다</span>
+                                    <button type="button" 
+                                            onclick="document.getElementById('file_${fieldName}_${rowId}').click()" 
+                                            style="padding: 6px 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;">
+                                        파일 선택
+                                    </button>
+                                    <input type="file" 
+                                           id="file_${fieldName}_${rowId}" 
+                                           style="display: none;"
+                                           multiple
+                                           onchange="uploadFile('${rowId}', '${fieldName}', this)">
+                                </div>
+                            `;
+                        }
+                    }
+                } else {
+                    // 파일 값이 없는 경우: 파일 선택 버튼
+                    const fileContainer = targetFieldDiv.querySelector('div[style*="flex:1"]');
+                    if (fileContainer) {
+                        fileContainer.innerHTML = `
+                            <div style="display: flex; align-items: center;">
+                                <span style="flex: 1; color: #6c757d; font-size: 14px; padding: 8px 0;">파일이 선택되지 않았습니다</span>
+                                <button type="button" 
+                                        onclick="document.getElementById('file_${fieldName}_${rowId}').click()" 
+                                        style="padding: 6px 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;">
+                                    파일 선택
+                                </button>
+                                <input type="file" 
+                                       id="file_${fieldName}_${rowId}" 
+                                       style="display: none;"
+                                       multiple
+                                       onchange="uploadFile('${rowId}', '${fieldName}', this)">
+                            </div>
+                        `;
+                        console.log('파일 표시 영역을 "파일 없음"으로 업데이트 완료');
+                    }
+                }
+            } else {
+                console.error('행 정보 가져오기 실패:', data.error);
+            }
+        })
+        .catch(error => {
+            console.error('파일 정보 업데이트 오류:', error);
+        });
 }
 
 // 한글 금액 → 숫자(콤마)로 변환하여 입력모드로 전환
@@ -3629,5 +3949,28 @@ function updateRowField(rowId, field, value) {
         alert('수정 실패: 네트워크 오류');
         console.error(err);
     });
+}
+
+// 파일 업로드 후 모달 필드 새로고침 함수
+function updateFileFieldInModalAfterUpload(rowId, fieldName) {
+    console.log('updateFileFieldInModalAfterUpload 호출됨:', rowId, fieldName);
+    
+    const detailModal = document.getElementById('detailModal');
+    if (!detailModal) {
+        console.log('상세보기 모달이 열려있지 않음');
+        return;
+    }
+    
+    // 모달이 열려있으면 상세 정보를 다시 로드하여 파일 필드 업데이트
+    fetch('/600/get_row_details/' + rowId + '/')
+        .then(r => r.json())
+        .then(function(data) {
+            if (data.success) {
+                showDetailModal(data.row_data, data.row_id);
+            }
+        })
+        .catch(error => {
+            console.error('파일 필드 새로고침 오류:', error);
+        });
 }
 
