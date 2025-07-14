@@ -1264,9 +1264,9 @@ function sortTable(column, direction) {
         
         let comparison = 0;
         
-        // 빈 값 체크 (공백, null, undefined, 빈 문자열)
-        const aIsEmpty = !aValue || aValue.trim() === '';
-        const bIsEmpty = !bValue || bValue.trim() === '';
+        // 빈 값 체크 (공백, null, undefined, 빈 문자열, 한 칸 공백 등)
+        const aIsEmpty = !aValue || aValue.trim() === '' || aValue === ' ';
+        const bIsEmpty = !bValue || bValue.trim() === '' || bValue === ' ';
         
         // 둘 다 빈 값이거나 둘 다 값이 있는 경우
         if (aIsEmpty && bIsEmpty) {
@@ -1329,7 +1329,14 @@ function sortTable(column, direction) {
             }
         }
         
-        return direction === 'asc' ? comparison : -comparison;
+        // 빈 값은 항상 아래로, 나머지는 방향에 따라 정렬
+        if (aIsEmpty || bIsEmpty) {
+            // 빈 값이 포함된 경우는 comparison 그대로 사용 (이미 빈 값이 뒤로 가도록 설정됨)
+            return comparison;
+        } else {
+            // 빈 값이 없는 경우만 방향 적용
+            return direction === 'asc' ? comparison : -comparison;
+        }
     });
 
     // 정렬된 행들을 다시 DOM에 추가

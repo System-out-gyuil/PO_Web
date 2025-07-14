@@ -253,7 +253,6 @@ def diary_list(request):
                 entry_data = {
                     'id': row.id,
                     'name': row_values.get('회사명', ''),
-                    'amount': row_values.get('매출', ''),
                 }
                 entries.append(entry_data)
             
@@ -640,7 +639,6 @@ def board_view(request):
             entry_data = {
                 'id': row.id,
                 'name': row_values.get('회사명', ''),
-                'amount': row_values.get('매출', ''),
             }
             entries.append(entry_data)
         
@@ -1265,7 +1263,6 @@ def get_kanban_data(request):
                 entry_data = {
                     'id': row.id,
                     'name': row_values.get('회사명', ''),
-                    'amount': row_values.get('매출', ''),
                 }
                 entries.append(entry_data)
             
@@ -5531,7 +5528,6 @@ def get_kanban_data(request):
                 entry_data = {
                     'id': row.id,
                     'name': row_values.get('회사명', ''),
-                    'amount': row_values.get('매출', ''),
                 }
                 entries.append(entry_data)
             
