@@ -71,4 +71,8 @@ urlpatterns = [
     path('fix_existing_row_relationships/', views.fix_existing_row_relationships, name='fix_existing_row_relationships'),
     path('debug_row_relationships/', views.debug_row_relationships, name='debug_row_relationships'),
     path('setup_test_cascade_attributes/', views.setup_test_cascade_attributes, name='setup_test_cascade_attributes'),
+    
+    # 엑셀 파일 처리 관련 API
+    path('preview_excel/', views.preview_excel, name='preview_excel'),
+    path('upload_excel/', views.upload_excel, name='upload_excel'),
 ] 

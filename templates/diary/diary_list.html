@@ -671,7 +671,10 @@
         </table>
     </div>
     <div style="margin:10px 0 20px 0;">
-        <button id="addRowBtn" class="add-btn" style="width:180px;">+ 새로 만들기</button>
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <button id="addRowBtn" class="add-btn" style="width:180px;">+ 새로 만들기</button>
+            <button id="addExcelBtn" class="add-btn" style="width:180px; background: #28a745;">📊 엑셀 추가</button>
+        </div>
     </div>
     
     <!-- 칸반보드 필터 UI -->
@@ -959,6 +962,46 @@
       </div>
     </div>
 
+    <!-- 엑셀 파일 업로드 모달 -->
+    <div id="excelUploadModal" style="display:none;position:fixed;left:0;top:0;width:100vw;height:100vh;background:rgba(0,0,0,0.4);z-index:5000;align-items:center;justify-content:center;">
+      <div style="background:#fff;padding:30px;border-radius:10px;min-width:500px;max-width:90vw;max-height:80vh;overflow:auto;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+          <h3 style="margin:0;">엑셀 파일 업로드</h3>
+          <button onclick="closeExcelUploadModal()" style="background:none;border:none;font-size:20px;cursor:pointer;">&times;</button>
+        </div>
+        
+        <div style="margin-bottom:20px;">
+          <p style="color:#6c757d;font-size:14px;margin:0;">
+            📊 엑셀 파일(.xlsx)을 업로드하여 데이터를 일괄 추가할 수 있습니다.<br>
+            엑셀의 열 이름이 속성명과 일치하면 해당 필드에 값이 추가됩니다.
+          </p>
+        </div>
+        
+        <div style="margin-bottom:20px;">
+          <label style="display:block;margin-bottom:10px;font-weight:bold;">엑셀 파일 선택:</label>
+          <input type="file" id="excelFileInput" accept=".xlsx" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;">
+        </div>
+        
+        <div id="excelPreview" style="margin-bottom:20px;display:none;">
+          <h4 style="margin-bottom:10px;">파일 미리보기</h4>
+          <div id="excelPreviewContent" style="max-height:300px;overflow-y:auto;border:1px solid #ddd;border-radius:4px;padding:10px;background:#f8f9fa;">
+            <!-- 미리보기 내용이 여기에 표시됩니다 -->
+          </div>
+        </div>
+        
+        <div id="excelMapping" style="margin-bottom:20px;display:none;">
+          <h4 style="margin-bottom:10px;">필드 매핑</h4>
+          <div id="excelMappingContent">
+            <!-- 필드 매핑 내용이 여기에 표시됩니다 -->
+          </div>
+        </div>
+        
+        <div style="text-align:right;margin-top:20px;">
+          <button onclick="closeExcelUploadModal()" style="margin-right:10px;padding:8px 16px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer;">취소</button>
+          <button id="uploadExcelBtn" onclick="uploadExcelFile()" style="padding:8px 16px;background:#28a745;color:#fff;border:none;border-radius:4px;cursor:pointer;display:none;">업로드</button>
+        </div>
+      </div>
+    </div>
 </div>
 <script src="{% static 'diary/diary_util.js' %}"></script>
 <script src="{% static 'diary/diary_table.js' %}"></script>
@@ -2805,6 +2848,188 @@ function cancelAttributeName(editableDiv, nameText, editBtn, input, saveBtn, can
     // 원래 요소들 복원
     nameText.style.display = '';
     editBtn.style.display = '';
+}
+
+// 엑셀 파일 업로드 관련 함수들
+function openExcelUploadModal() {
+    document.getElementById('excelUploadModal').style.display = 'flex';
+    document.getElementById('excelFileInput').value = '';
+    document.getElementById('excelPreview').style.display = 'none';
+    document.getElementById('excelMapping').style.display = 'none';
+    document.getElementById('uploadExcelBtn').style.display = 'none';
+}
+
+function closeExcelUploadModal() {
+    document.getElementById('excelUploadModal').style.display = 'none';
+}
+
+// 엑셀 파일 선택 시 미리보기 및 매핑 표시
+document.addEventListener('DOMContentLoaded', function() {
+    const excelFileInput = document.getElementById('excelFileInput');
+    const addExcelBtn = document.getElementById('addExcelBtn');
+    
+    if (addExcelBtn) {
+        addExcelBtn.onclick = function() {
+            openExcelUploadModal();
+        };
+    }
+    
+    if (excelFileInput) {
+        excelFileInput.onchange = function() {
+            const file = this.files[0];
+            if (file) {
+                handleExcelFileSelect(file);
+            }
+        };
+    }
+    
+    // 모달 외부 클릭 시 닫기
+    const excelUploadModal = document.getElementById('excelUploadModal');
+    if (excelUploadModal) {
+        excelUploadModal.onclick = function(e) {
+            if (e.target === this) {
+                closeExcelUploadModal();
+            }
+        };
+    }
+});
+
+function handleExcelFileSelect(file) {
+    if (!file.name.endsWith('.xlsx')) {
+        alert('엑셀 파일(.xlsx)만 업로드 가능합니다.');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    // 파일 미리보기 요청
+    fetch('/600/preview_excel/', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showExcelPreview(data.preview_data, data.mapping);
+        } else {
+            alert('파일 처리 실패: ' + (data.error || '알 수 없는 오류'));
+        }
+    })
+    .catch(error => {
+        console.error('파일 처리 오류:', error);
+        alert('파일 처리 중 오류가 발생했습니다.');
+    });
+}
+
+function showExcelPreview(previewData, mapping) {
+    const previewDiv = document.getElementById('excelPreview');
+    const previewContent = document.getElementById('excelPreviewContent');
+    const mappingDiv = document.getElementById('excelMapping');
+    const mappingContent = document.getElementById('excelMappingContent');
+    const uploadBtn = document.getElementById('uploadExcelBtn');
+    
+    // 미리보기 표시
+    let previewHtml = '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
+    previewHtml += '<thead><tr>';
+    
+    // 헤더 행
+    Object.keys(previewData[0] || {}).forEach(header => {
+        const isMapped = mapping[header] ? 'background:#e8f5e8;' : 'background:#ffe8e8;';
+        previewHtml += `<th style="border:1px solid #ddd;padding:4px;text-align:left;${isMapped}">${header}</th>`;
+    });
+    previewHtml += '</tr></thead><tbody>';
+    
+    // 데이터 행 (최대 5행만 표시)
+    previewData.slice(0, 5).forEach(row => {
+        previewHtml += '<tr>';
+        Object.values(row).forEach(cell => {
+            previewHtml += `<td style="border:1px solid #ddd;padding:4px;">${cell || ''}</td>`;
+        });
+        previewHtml += '</tr>';
+    });
+    
+    if (previewData.length > 5) {
+        previewHtml += '<tr><td colspan="' + Object.keys(previewData[0] || {}).length + '" style="text-align:center;color:#666;padding:4px;">... (총 ' + previewData.length + '행)</td></tr>';
+    }
+    
+    previewHtml += '</tbody></table>';
+    previewContent.innerHTML = previewHtml;
+    previewDiv.style.display = 'block';
+    
+    // 매핑 표시
+    let mappingHtml = '<div style="margin-bottom:10px;color:#666;font-size:12px;">';
+    mappingHtml += '🟢 매핑됨 | 🔴 매핑 안됨';
+    mappingHtml += '</div>';
+    
+    Object.keys(previewData[0] || {}).forEach(header => {
+        const mappedField = mapping[header];
+        const status = mappedField ? '🟢' : '🔴';
+        const fieldName = mappedField || '매핑 안됨';
+        mappingHtml += `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px;border-bottom:1px solid #eee;">`;
+        mappingHtml += `<span>${status} ${header}</span>`;
+        mappingHtml += `<span style="color:#666;">→ ${fieldName}</span>`;
+        mappingHtml += '</div>';
+    });
+    
+    mappingContent.innerHTML = mappingHtml;
+    mappingDiv.style.display = 'block';
+    
+    // 업로드 버튼 표시
+    uploadBtn.style.display = 'inline-block';
+}
+
+function uploadExcelFile() {
+    const fileInput = document.getElementById('excelFileInput');
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        alert('파일을 선택해주세요.');
+        return;
+    }
+    
+    // 로딩 표시
+    const uploadBtn = document.getElementById('uploadExcelBtn');
+    const originalText = uploadBtn.textContent;
+    uploadBtn.textContent = '업로드 중...';
+    uploadBtn.disabled = true;
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    // 파일 업로드 요청
+    fetch('/600/upload_excel/', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(`엑셀 파일 업로드 완료! ${data.added_count}개 행이 추가되었습니다.`, 'success');
+            closeExcelUploadModal();
+            
+            // 테이블 새로고침
+            refreshTable();
+            
+            // 칸반보드 새로고침
+            if (window.kanbanAttribute) {
+                refreshKanban();
+            }
+            
+            // 캘린더 업데이트
+            refreshCalendar();
+        } else {
+            alert('업로드 실패: ' + (data.error || '알 수 없는 오류'));
+        }
+    })
+    .catch(error => {
+        console.error('업로드 오류:', error);
+        alert('업로드 중 오류가 발생했습니다.');
+    })
+    .finally(() => {
+        uploadBtn.textContent = originalText;
+        uploadBtn.disabled = false;
+    });
 }
 </script>
 

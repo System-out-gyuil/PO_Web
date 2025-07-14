@@ -60,6 +60,8 @@ from urllib.parse import quote
 import mimetypes
 from django.conf import settings
 from django.db import transaction
+import pandas as pd
+from openpyxl import load_workbook
 
 logger = logging.getLogger(__name__)
 
@@ -5290,3 +5292,168 @@ def setup_test_cascade_attributes(request):
             'success': False,
             'error': f'Cascade 속성 설정 중 오류가 발생했습니다: {str(e)}'
         })
+
+@csrf_exempt
+def preview_excel(request):
+    """엑셀 파일 미리보기 및 필드 매핑"""
+    if request.method == 'POST':
+        try:
+            excel_file = request.FILES.get('file')
+            if not excel_file:
+                return JsonResponse({'success': False, 'error': '파일이 없습니다.'})
+            
+            if not excel_file.name.endswith('.xlsx'):
+                return JsonResponse({'success': False, 'error': '엑셀 파일(.xlsx)만 지원합니다.'})
+            
+            # 엑셀 파일 읽기
+            df = pd.read_excel(excel_file, engine='openpyxl')
+            
+            # NaN 값을 빈 문자열로 변환
+            df = df.fillna('')
+            
+            # 첫 10행만 미리보기용으로 사용
+            preview_data = []
+            for index, row in df.head(10).iterrows():
+                row_dict = {}
+                for column in df.columns:
+                    value = row[column]
+                    # NaN, None, 빈 값 처리
+                    if pd.isna(value) or value is None or value == '':
+                        row_dict[column] = ''
+                    else:
+                        # 숫자형 데이터를 문자열로 변환
+                        row_dict[column] = str(value)
+                preview_data.append(row_dict)
+            
+            # 사용자의 속성 목록 가져오기
+            user = User.objects.get(id=1)  # 임시로 고정
+            attributes = Attribute.objects.filter(user=user).values_list('name', flat=True)
+            attribute_names = list(attributes)
+            
+            # 필드 매핑 생성 (엑셀 열 이름과 속성명 비교)
+            mapping = {}
+            for column in df.columns:
+                if column in attribute_names:
+                    mapping[column] = column
+                else:
+                    # 부분 일치 검색
+                    for attr_name in attribute_names:
+                        if column.lower() in attr_name.lower() or attr_name.lower() in column.lower():
+                            mapping[column] = attr_name
+                            break
+            
+            return JsonResponse({
+                'success': True,
+                'preview_data': preview_data,
+                'mapping': mapping,
+                'total_rows': len(df)
+            })
+            
+        except Exception as e:
+            print(f"엑셀 미리보기 오류: {str(e)}")
+            return JsonResponse({'success': False, 'error': f'파일 처리 중 오류가 발생했습니다: {str(e)}'})
+    
+    return JsonResponse({'success': False, 'error': '잘못된 요청입니다.'})
+
+@csrf_exempt
+def upload_excel(request):
+    """엑셀 파일 업로드 및 데이터 처리"""
+    if request.method == 'POST':
+        try:
+            excel_file = request.FILES.get('file')
+            if not excel_file:
+                return JsonResponse({'success': False, 'error': '파일이 없습니다.'})
+            
+            if not excel_file.name.endswith('.xlsx'):
+                return JsonResponse({'success': False, 'error': '엑셀 파일(.xlsx)만 지원합니다.'})
+            
+            # 엑셀 파일 읽기
+            df = pd.read_excel(excel_file, engine='openpyxl')
+            
+            # 사용자 정보
+            user = User.objects.get(id=1)  # 임시로 고정
+            
+            # 사용자의 속성 목록 가져오기
+            attributes = Attribute.objects.filter(user=user)
+            attribute_dict = {attr.name: attr for attr in attributes}
+            
+            # 필드 매핑 생성
+            mapping = {}
+            for column in df.columns:
+                if column in attribute_dict:
+                    mapping[column] = column
+                else:
+                    # 부분 일치 검색
+                    for attr_name in attribute_dict.keys():
+                        if column.lower() in attr_name.lower() or attr_name.lower() in column.lower():
+                            mapping[column] = attr_name
+                            break
+            
+            added_count = 0
+            
+            # 각 행을 처리
+            with transaction.atomic():
+                for index, row in df.iterrows():
+                    try:
+                        # 새 Row 생성
+                        max_order = Row.objects.aggregate(max_order=models.Max('order'))['max_order']
+                        new_order = (max_order + 1) if max_order is not None else 0
+                        
+                        new_row = Row.objects.create(order=new_order, user=user)
+                        
+                        # 매핑된 필드에 대해 AttributeValue 생성
+                        for excel_column, value in row.items():
+                            if pd.isna(value):  # NaN 값 건너뛰기
+                                continue
+                                
+                            mapped_attr_name = mapping.get(excel_column)
+                            if mapped_attr_name and mapped_attr_name in attribute_dict:
+                                attr = attribute_dict[mapped_attr_name]
+                                
+                                # 값 처리
+                                if attr.attributeType and attr.attributeType.name == 'dropdown':
+                                    # 드롭다운의 경우 옵션 ID로 변환
+                                    try:
+                                        dropdown_option = DropdownAttribute.objects.filter(
+                                            attribute=attr, 
+                                            option__icontains=str(value)
+                                        ).first()
+                                        if dropdown_option:
+                                            value_to_save = str(dropdown_option.id)
+                                        else:
+                                            # 옵션이 없으면 새로 생성 (color는 모델의 default=random_color 사용)
+                                            dropdown_option = DropdownAttribute.objects.create(
+                                                attribute=attr,
+                                                option=str(value)
+                                            )
+                                            value_to_save = str(dropdown_option.id)
+                                    except Exception as e:
+                                        print(f"드롭다운 처리 오류: {str(e)}")
+                                        continue
+                                else:
+                                    value_to_save = str(value)
+                                
+                                # AttributeValue 생성
+                                AttributeValue.objects.create(
+                                    row=new_row,
+                                    attribute=attr,
+                                    value=value_to_save
+                                )
+                        
+                        added_count += 1
+                        
+                    except Exception as e:
+                        print(f"행 {index + 1} 처리 오류: {str(e)}")
+                        continue
+            
+            return JsonResponse({
+                'success': True,
+                'added_count': added_count,
+                'message': f'{added_count}개 행이 성공적으로 추가되었습니다.'
+            })
+            
+        except Exception as e:
+            print(f"엑셀 업로드 오류: {str(e)}")
+            return JsonResponse({'success': False, 'error': f'파일 처리 중 오류가 발생했습니다: {str(e)}'})
+    
+    return JsonResponse({'success': False, 'error': '잘못된 요청입니다.'})
