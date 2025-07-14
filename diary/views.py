@@ -895,7 +895,8 @@ def update_row_field(request):
 
 @csrf_exempt
 def dropdown_options(request):
-    field = request.GET.get('field')
+    # GET과 POST 모두에서 field 파라미터 확인
+    field = request.GET.get('field') or request.POST.get('field')
     print(field)
     if not field:
         return JsonResponse({'error': 'No field'}, status=400)
@@ -909,20 +910,26 @@ def dropdown_options(request):
         return JsonResponse({'options': options})
 
     elif request.method == 'POST':
-        option = request.POST.get('name', '').strip()
-        color = request.POST.get('color', '').strip() or None
+        # POST body에서 먼저 확인, 없으면 URL 파라미터에서 확인
+        option = request.POST.get('name', '').strip() or request.GET.get('name', '').strip()
+        color = request.POST.get('color', '').strip() or request.GET.get('color', '').strip() or None
         if option:
             if color:
                 dropdown, created = DropdownAttribute.objects.get_or_create(attribute=attr, option=option, defaults={'color': color})
             else:
                 dropdown, created = DropdownAttribute.objects.get_or_create(attribute=attr, option=option)
-            return JsonResponse({'id': dropdown.id, 'option': dropdown.option, 'color': dropdown.color, 'created': created})
+            return JsonResponse({'success': True, 'id': dropdown.id, 'option': dropdown.option, 'color': dropdown.color, 'created': created})
         return JsonResponse({'error': 'No option'}, status=400)
 
     elif request.method == 'PUT':
-        id = request.GET.get('id')
-        name = request.GET.get('name', '').strip()
-        color = request.GET.get('color', '').strip()
+        # PUT 요청의 body 파싱
+        import urllib.parse
+        body_data = urllib.parse.parse_qs(request.body.decode('utf-8'))
+        
+        id = request.GET.get('id') or body_data.get('id', [None])[0]
+        name = request.GET.get('name', '').strip() or body_data.get('name', [''])[0].strip()
+        color = request.GET.get('color', '').strip() or body_data.get('color', [''])[0].strip()
+        
         dropdown = DropdownAttribute.objects.filter(id=id, attribute=attr).first()
         if dropdown:
             if name:
@@ -934,7 +941,11 @@ def dropdown_options(request):
         return JsonResponse({'error': 'Invalid'}, status=400)
 
     elif request.method == 'DELETE':
-        id = request.GET.get('id')
+        # DELETE 요청의 body 파싱
+        import urllib.parse
+        body_data = urllib.parse.parse_qs(request.body.decode('utf-8'))
+        
+        id = request.GET.get('id') or body_data.get('id', [None])[0]
         
         # 삭제할 옵션 찾기
         dropdown = DropdownAttribute.objects.filter(id=id, attribute=attr).first()

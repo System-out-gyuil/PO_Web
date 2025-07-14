@@ -7,6 +7,16 @@ function getCsrfToken() {
     return cookieValue || '';
 }
 
+// 드롭다운 닫기 함수
+function closeDropdown() {
+    if (window.dropdown && window.dropdown.parentNode) {
+        window.dropdown.parentNode.removeChild(window.dropdown);
+        window.dropdown = null;
+    }
+    // 모든 기존 드롭다운 요소들 제거
+    document.querySelectorAll('.dropdown-edit').forEach(el => el.remove());
+}
+
 // hex 색상을 rgba로 변환하는 함수
 function hexToRgba(hex, alpha) {
     // # 제거
@@ -398,17 +408,24 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                                         transition: all 0.2s;
                                         display: flex;
                                         align-items: center;
-                                        justify-content: space-between;">
-                              <div style="display: flex; align-items: center; flex: 1;">
-                                <span style="flex: 1;">${opt.option}</span>
+                                        justify-content: space-between;
+                                        position: relative;">
+                              <div style="display: flex; align-items: center; flex: 1; min-width: 0;">
+                                <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${opt.option}</span>
                               </div>
-                              <div class="option-controls" style="display: flex; gap: 4px; align-items: center;">
+                              <div class="option-controls" style="display: flex; gap: 4px; align-items: center; margin-left: 8px;">
                                 <input type="color" value="${opt.color||'#eeeeee'}" data-color-edit="${opt.id}" 
-                                       style="padding: 0; width: 20px; height: 20px; border: none; cursor: pointer; border-radius: 2px;" title="색상 변경">
+                                       style="padding: 0; width: 20px; height: 20px; border: none; cursor: pointer; border-radius: 2px; background: transparent; position: relative;" title="색상 변경">
                                 <button data-edit="${opt.id}" 
-                                        style="background: none; border: none; cursor: pointer; font-size: 12px; padding: 2px;" title="수정">✏️</button>
+                                        style="background: none; border: none; cursor: pointer; font-size: 12px; padding: 2px; color: #666; transition: color 0.2s;" 
+                                        title="수정"
+                                        onmouseover="this.style.color='#007bff'"
+                                        onmouseout="this.style.color='#666'">✏️</button>
                                 <button data-del="${opt.id}" 
-                                        style="background: none; border: none; cursor: pointer; font-size: 12px; padding: 2px;" title="삭제">🗑️</button>
+                                        style="background: none; border: none; cursor: pointer; font-size: 12px; padding: 2px; color: #666; transition: color 0.2s;" 
+                                        title="삭제"
+                                        onmouseover="this.style.color='#dc3545'"
+                                        onmouseout="this.style.color='#666'">🗑️</button>
                               </div>
                             </div>
                           </div>
@@ -421,11 +438,17 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                         <input type="text" placeholder="새 옵션 추가" 
                                style="flex: 1; padding: 4px 8px; border: 1px solid #ddd; border-radius: 3px; font-size: 12px;">
                         <button class="add-btn" 
-                                style="padding: 4px 12px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 12px;">추가</button>
+                                style="padding: 4px 12px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 12px; transition: background-color 0.2s;"
+                                onmouseover="this.style.background='#0056b3'"
+                                onmouseout="this.style.background='#007bff'">추가</button>
                       </div>
                     </div>`;
                     window.dropdown.innerHTML = html;
                     document.body.appendChild(window.dropdown);
+                    
+                    // === 드롭다운 모달 이벤트 바인딩 추가 ===
+                    bindDropdownModalEvents(window.dropdown, type, options);
+                    
                     // 단일선택: 옵션 클릭 시 바로 선택
                     window.dropdown.querySelectorAll('.dropdown-item[data-option-id]').forEach(function(item) {
                         item.addEventListener('click', function(e) {
@@ -1464,17 +1487,24 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                                           transition: all 0.2s;
                                           display: flex;
                                           align-items: center;
-                                          justify-content: space-between;">
-                                <div style="display: flex; align-items: center; flex: 1;">
-                                  <span style="flex: 1;">${opt.option}</span>
+                                          justify-content: space-between;
+                                          position: relative;">
+                                <div style="display: flex; align-items: center; flex: 1; min-width: 0;">
+                                  <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${opt.option}</span>
                                 </div>
-                                <div class="option-controls" style="display: flex; gap: 4px; align-items: center;">
+                                <div class="option-controls" style="display: flex; gap: 4px; align-items: center; margin-left: 8px;">
                                   <input type="color" value="${opt.color||'#eeeeee'}" data-color-edit="${opt.id}" 
-                                         style="padding: 0; width: 20px; height: 20px; border: none; cursor: pointer; border-radius: 2px;" title="색상 변경">
+                                         style="padding: 0; width: 20px; height: 20px; border: none; cursor: pointer; border-radius: 2px; background: transparent; position: relative;" title="색상 변경">
                                   <button data-edit="${opt.id}" 
-                                          style="background: none; border: none; cursor: pointer; font-size: 12px; padding: 2px;" title="수정">✏️</button>
+                                          style="background: none; border: none; cursor: pointer; font-size: 12px; padding: 2px; color: #666; transition: color 0.2s;" 
+                                          title="수정"
+                                          onmouseover="this.style.color='#007bff'"
+                                          onmouseout="this.style.color='#666'">✏️</button>
                                   <button data-del="${opt.id}" 
-                                          style="background: none; border: none; cursor: pointer; font-size: 12px; padding: 2px;" title="삭제">🗑️</button>
+                                          style="background: none; border: none; cursor: pointer; font-size: 12px; padding: 2px; color: #666; transition: color 0.2s;" 
+                                          title="삭제"
+                                          onmouseover="this.style.color='#dc3545'"
+                                          onmouseout="this.style.color='#666'">🗑️</button>
                                 </div>
                               </div>
                             </div>
@@ -1487,49 +1517,34 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                           <input type="text" placeholder="새 옵션 추가" 
                                  style="flex: 1; padding: 4px 8px; border: 1px solid #ddd; border-radius: 3px; font-size: 12px;">
                           <button class="add-btn" 
-                                  style="padding: 4px 12px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 12px;">추가</button>
+                                  style="padding: 4px 12px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 12px; transition: background-color 0.2s;"
+                                  onmouseover="this.style.background='#0056b3'"
+                                  onmouseout="this.style.background='#007bff'">추가</button>
                         </div>
                       </div>`;
                       window.dropdown.innerHTML = html;
                       document.body.appendChild(window.dropdown);
-                      // 단일선택: 옵션 클릭 시 바로 선택
-                      window.dropdown.querySelectorAll('.dropdown-item[data-option-id]').forEach(function(item) {
-                          item.addEventListener('click', function(e) {
-                              e.stopPropagation();
-                              const optionId = this.getAttribute('data-option-id');
-                              const option = options.find(o => String(o.id) === String(optionId));
-                              // UI 업데이트
-                              const color = option.color ? hexToRgba(option.color, 0.18) : '#eee';
-                              td.innerHTML = `<div class=\"dropdown-pill\" style=\"background:${color}; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;\">${option.option}</div>`;
-                              td.setAttribute('data-value', optionId);
-                              // 서버 업데이트 - 단일 값으로 저장
-                              if (id && id.startsWith('temp_')) {
-                                  saveNewRowField(td.parentElement, type, optionId);
-                              } else {
-                                  fetch('/600/update_row_field/', {
-                                      method: 'POST',
-                                      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                                      body: 'id='+id+'&field='+encodeURIComponent(type)+'&value='+encodeURIComponent(optionId)
-                                  })
-                                  .then(response => response.json())
-                                  .then(data => {
-                                      if (data.success) {
-                                          syncTableAndKanban(type);
-                                      } else {
-                                          throw new Error(data.error || '업데이트 실패');
-                                      }
-                                  })
-                                  .catch(error => {
-                                      console.error('업데이트 실패:', error);
-                                      alert('업데이트 중 오류가 발생했습니다: ' + error.message);
-                                  });
-                              }
-                              // 드롭다운 닫기
-                              if (window.dropdown && window.dropdown.parentNode) {
-                                  window.dropdown.parentNode.removeChild(window.dropdown);
-                                  window.dropdown = null;
-                              }
-                          });
+                      
+                      // === 드롭다운 모달 이벤트 바인딩 추가 ===
+                      bindDropdownModalEvents(window.dropdown, type, options);
+                      
+                      // 컬러피커 미리보기 클릭 시 input[type=color]을 해당 위치에 띄우기
+                      window.dropdown.querySelectorAll('.color-preview').forEach(function(preview) {
+                        preview.addEventListener('click', function(e) {
+                          e.stopPropagation();
+                          const colorInput = this.parentNode.querySelector('input[type=color][data-color-edit]');
+                          const rect = this.getBoundingClientRect();
+                          colorInput.style.display = 'block';
+                          colorInput.style.position = 'fixed';
+                          colorInput.style.left = rect.left + 'px';
+                          colorInput.style.top = rect.top + 'px';
+                          colorInput.focus();
+                        });
+                      });
+                      window.dropdown.querySelectorAll('input[type=color][data-color-edit]').forEach(function(input) {
+                        input.addEventListener('blur', function() {
+                          setTimeout(() => { input.style.display = 'none'; }, 200);
+                        });
                       });
                   }
               })
@@ -1596,63 +1611,99 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
       // 수정 버튼 이벤트
       const editBtn = li.querySelector('button[data-edit]');
       if(editBtn) {
-          editBtn.onclick = function(e){
+          editBtn.addEventListener('click', function(e) {
               e.stopPropagation();
-              const span = li.querySelector('span[data-option-id]');
-              const old = span.innerText;
+              const optionId = this.getAttribute('data-edit');
+              const optionContainer = this.closest('.dropdown-option-container');
+              const optionText = optionContainer.querySelector('span');
+              const oldText = optionText.textContent;
+              
+              // 입력 필드 생성
               const input = document.createElement('input');
-              input.type = 'text'; input.value = old;
+              input.type = 'text';
+              input.value = oldText;
               input.className = 'table-edit-input';
-              span.replaceWith(input);
-              input.focus();
-              input.onkeydown = function(ev){
-                  if(ev.key==='Enter'){
-                      fetch('/600/dropdown_options/?field=' + encodeURIComponent(type) + '&id=' + editBtn.getAttribute('data-edit') + '&name=' + encodeURIComponent(input.value), {
-                          method: 'PUT'
-                      }).then(r => r.json()).then(data => {
-                          if(data.success) {
-                              // 수정된 내용 즉시 반영
-                              const newSpan = document.createElement('span');
-                              newSpan.setAttribute('data-option-id', editBtn.getAttribute('data-edit'));
-                              newSpan.style.cssText = span.style.cssText;
-                              newSpan.innerText = input.value;
-                              
-                              // 클릭 이벤트 재바인딩
-                              newSpan.addEventListener('click', function(){
-                                  const td = tr.querySelector('td[data-field="' + type + '"]');
-                                  if(td) {
-                                      td.innerHTML = `<div class="dropdown-pill" style="background:${this.style.background}; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">${this.innerText}</div>`;
-                                      td.setAttribute('data-value', this.getAttribute('data-option-id'));
-                                      closeDropdown();
-                                      // 드롭다운 값 저장
-                                      saveNewRowField(tr, type, this.getAttribute('data-option-id'));
-                                  }
-                              });
-                              
-                              input.replaceWith(newSpan);
-                              
-                              // 실시간 동기화 - 드롭다운 옵션 수정도 테이블과 칸반보드에 반영
-                              syncTableAndKanban(type);
-                          }
-                      }).catch(error => {
-                          console.error('수정 실패:', error);
-                          // 실패시 원래 값으로 복원
-                          const restoredSpan = document.createElement('span');
-                          restoredSpan.setAttribute('data-option-id', editBtn.getAttribute('data-edit'));
-                          restoredSpan.style.cssText = input.previousElementSibling ? input.previousElementSibling.style.cssText : 'cursor:pointer;background:#eee;border-radius:4px;padding:2px 8px;min-width:60px;display:inline-block;';
-                          restoredSpan.innerText = old;
-                          input.replaceWith(restoredSpan);
-                      });
-                  } else if(ev.key==='Escape') {
-                      // ESC 키로 취소
-                      const cancelSpan = document.createElement('span');
-                      cancelSpan.setAttribute('data-option-id', editBtn.getAttribute('data-edit'));
-                      cancelSpan.style.cssText = input.previousElementSibling ? input.previousElementSibling.style.cssText : 'cursor:pointer;background:#eee;border-radius:4px;padding:2px 8px;min-width:60px;display:inline-block;';
-                      cancelSpan.innerText = old;
-                      input.replaceWith(cancelSpan);
+              input.style.cssText = `
+                  flex: 1;
+                  padding: 4px 8px;
+                  border: 1px solid #007bff;
+                  border-radius: 3px;
+                  font-size: 12px;
+                  margin-right: 4px;
+                  background: white;
+                  outline: none;
+              `;
+              
+              // 기존 텍스트를 입력 필드로 교체
+              optionText.style.display = 'none';
+              optionText.parentNode.insertBefore(input, optionText);
+              
+              // 포커스와 선택을 지연시켜 DOM 업데이트 완료 후 실행
+              setTimeout(() => {
+                  input.focus();
+                  input.select();
+              }, 10);
+              
+              // 수정 완료 처리 함수
+              function saveEdit() {
+                  const newText = input.value.trim();
+                  if (!newText) {
+                      alert('옵션명을 입력해주세요.');
+                      return;
+                  }
+                  
+                  fetch(`/600/dropdown_options/?field=${encodeURIComponent(type)}&id=${optionId}&name=${encodeURIComponent(newText)}`, {
+                      method: 'PUT',
+                      headers: {
+                          'X-CSRFToken': getCsrfToken()
+                      }
+                  })
+                  .then(response => response.json())
+                  .then(data => {
+                      if (data.success) {
+                          console.log('옵션 수정 성공:', data);
+                          optionText.textContent = newText;
+                          optionText.style.display = '';
+                          input.remove();
+                          
+                          // 실시간 동기화
+                          syncTableAndKanban(type);
+                      } else {
+                          alert('옵션 수정 실패: ' + (data.error || ''));
+                          optionText.style.display = '';
+                          input.remove();
+                      }
+                  })
+                  .catch(error => {
+                      console.error('옵션 수정 실패:', error);
+                      alert('옵션 수정 중 오류가 발생했습니다: ' + error.message);
+                      optionText.style.display = '';
+                      input.remove();
+                  });
+              }
+              
+              // 취소 처리 함수
+              function cancelEdit() {
+                  optionText.style.display = '';
+                  input.remove();
+              }
+              
+              input.onblur = function() {
+                  setTimeout(() => {
+                      if (input.parentNode) {
+                          saveEdit();
+                      }
+                  }, 100);
+              };
+              
+              input.onkeydown = function(e) {
+                  if (e.key === 'Enter') {
+                      saveEdit();
+                  } else if (e.key === 'Escape') {
+                      cancelEdit();
                   }
               };
-          };
+          });
       }
   }
   
@@ -1668,6 +1719,13 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
           if (!isDropdownButton) {
               closeDropdown();
           }
+      }
+  });
+  
+  // ESC 키로 드롭다운 닫기
+  document.addEventListener('keydown', function(event) {
+      if (event.key === 'Escape' && window.dropdown) {
+          closeDropdown();
       }
   });
   
@@ -2082,6 +2140,227 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                       }
                       cell.innerHTML = htmlContent || '<div style="color: #999; font-style: italic;">선택 없음</div>';
                   });
+          });
+      });
+  }
+
+  // === 드롭다운 모달 이벤트 바인딩 함수 추가 ===
+  function bindDropdownModalEvents(dropdown, fieldType, options) {
+      console.log('드롭다운 모달 이벤트 바인딩 시작:', fieldType);
+      
+      // 새 옵션 추가 기능
+      const addBtn = dropdown.querySelector('.add-btn');
+      const addInput = dropdown.querySelector('input[placeholder="새 옵션 추가"]');
+      
+      if (addBtn && addInput) {
+          addBtn.addEventListener('click', function(e) {
+              e.stopPropagation();
+              const newOptionName = addInput.value.trim();
+              if (!newOptionName) {
+                  alert('옵션명을 입력해주세요.');
+                  return;
+              }
+              
+              // 새 옵션 추가 API 호출
+              fetch('/600/dropdown_options/', {
+                  method: 'POST',
+                  headers: {
+                      'Content-Type': 'application/x-www-form-urlencoded',
+                      'X-CSRFToken': getCsrfToken()
+                  },
+                  body: `field=${encodeURIComponent(fieldType)}&name=${encodeURIComponent(newOptionName)}&color=${encodeURIComponent('#007bff')}`
+              })
+              .then(response => response.json())
+              .then(data => {
+                  if (data.success) {
+                      console.log('새 옵션 추가 성공:', data);
+                      addInput.value = '';
+                      
+                      // 드롭다운 새로고침
+                      const td = document.querySelector(`td[data-field="${fieldType}"]`);
+                      if (td) {
+                          openDropdown(td, fieldType, td.parentElement.getAttribute('data-id'), td.getAttribute('data-value'));
+                      }
+                      
+                      // 실시간 동기화
+                      syncTableAndKanban(fieldType);
+                  } else {
+                      alert('옵션 추가 실패: ' + (data.error || ''));
+                  }
+              })
+              .catch(error => {
+                  console.error('옵션 추가 실패:', error);
+                  alert('옵션 추가 중 오류가 발생했습니다: ' + error.message);
+              });
+          });
+          
+          // Enter 키로 추가
+          addInput.addEventListener('keydown', function(e) {
+              if (e.key === 'Enter') {
+                  addBtn.click();
+              }
+          });
+      }
+      
+      // 색상 변경 기능
+      dropdown.querySelectorAll('input[data-color-edit]').forEach(function(colorInput) {
+          colorInput.addEventListener('change', function(e) {
+              e.stopPropagation();
+              const optionId = this.getAttribute('data-color-edit');
+              const newColor = this.value;
+              fetch(`/600/dropdown_options/?field=${encodeURIComponent(fieldType)}&id=${optionId}&color=${encodeURIComponent(newColor)}`, {
+                  method: 'PUT',
+                  headers: {
+                      'X-CSRFToken': getCsrfToken()
+                  }
+              })
+              .then(response => response.json())
+              .then(data => {
+                  if (data.success) {
+                      console.log('색상 변경 성공:', data);
+                      const optionContainer = this.closest('.dropdown-option-container');
+                      const dropdownItem = optionContainer.querySelector('.dropdown-item');
+                      if (dropdownItem) {
+                          dropdownItem.style.background = hexToRgba(newColor, 0.18);
+                      }
+                      syncTableAndKanban(fieldType);
+                  } else {
+                      alert('색상 변경 실패: ' + (data.error || ''));
+                  }
+              })
+              .catch(error => {
+                  console.error('색상 변경 실패:', error);
+                  alert('색상 변경 중 오류가 발생했습니다: ' + error.message);
+              });
+          });
+      });
+      
+      // 수정 기능
+      dropdown.querySelectorAll('button[data-edit]').forEach(function(editBtn) {
+          editBtn.addEventListener('click', function(e) {
+              e.stopPropagation();
+              const optionId = this.getAttribute('data-edit');
+              const optionContainer = this.closest('.dropdown-option-container');
+              const optionText = optionContainer.querySelector('span');
+              const oldText = optionText.textContent;
+              
+              // 입력 필드 생성
+              const input = document.createElement('input');
+              input.type = 'text';
+              input.value = oldText;
+              input.className = 'table-edit-input';
+              input.style.cssText = `
+                  flex: 1;
+                  padding: 4px 8px;
+                  border: 1px solid #007bff;
+                  border-radius: 3px;
+                  font-size: 12px;
+                  margin-right: 4px;
+                  background: white;
+                  outline: none;
+              `;
+              
+              // 기존 텍스트를 입력 필드로 교체
+              optionText.style.display = 'none';
+              optionText.parentNode.insertBefore(input, optionText);
+              
+              // 포커스와 선택을 지연시켜 DOM 업데이트 완료 후 실행
+              setTimeout(() => {
+                  input.focus();
+                  input.select();
+              }, 10);
+              
+              // 수정 완료 처리 함수
+              function saveEdit() {
+                  const newText = input.value.trim();
+                  if (!newText) {
+                      alert('옵션명을 입력해주세요.');
+                      return;
+                  }
+                  
+                  fetch(`/600/dropdown_options/?field=${encodeURIComponent(fieldType)}&id=${optionId}&name=${encodeURIComponent(newText)}`, {
+                      method: 'PUT',
+                      headers: {
+                          'X-CSRFToken': getCsrfToken()
+                      }
+                  })
+                  .then(response => response.json())
+                  .then(data => {
+                      if (data.success) {
+                          console.log('옵션 수정 성공:', data);
+                          optionText.textContent = newText;
+                          optionText.style.display = '';
+                          input.remove();
+                          
+                          // 실시간 동기화
+                          syncTableAndKanban(fieldType);
+                      } else {
+                          alert('옵션 수정 실패: ' + (data.error || ''));
+                          optionText.style.display = '';
+                          input.remove();
+                      }
+                  })
+                  .catch(error => {
+                      console.error('옵션 수정 실패:', error);
+                      alert('옵션 수정 중 오류가 발생했습니다: ' + error.message);
+                      optionText.style.display = '';
+                      input.remove();
+                  });
+              }
+              
+              // 취소 처리 함수
+              function cancelEdit() {
+                  optionText.style.display = '';
+                  input.remove();
+              }
+              
+              input.onblur = function() {
+                  setTimeout(() => {
+                      if (input.parentNode) {
+                          saveEdit();
+                      }
+                  }, 100);
+              };
+              
+              input.onkeydown = function(e) {
+                  if (e.key === 'Enter') {
+                      saveEdit();
+                  } else if (e.key === 'Escape') {
+                      cancelEdit();
+                  }
+              };
+          });
+      });
+      
+      // 삭제 기능
+      dropdown.querySelectorAll('button[data-del]').forEach(function(delBtn) {
+          delBtn.addEventListener('click', function(e) {
+              e.stopPropagation();
+              const optionId = this.getAttribute('data-del');
+              const optionContainer = this.closest('.dropdown-option-container');
+              const optionText = optionContainer.querySelector('span').textContent;
+              if (confirm(`"${optionText}" 옵션을 삭제하시겠습니까?\n\n이 옵션을 사용하는 모든 데이터가 초기화됩니다.`)) {
+                  fetch(`/600/dropdown_options/?field=${encodeURIComponent(fieldType)}&id=${optionId}`, {
+                      method: 'DELETE',
+                      headers: {
+                          'X-CSRFToken': getCsrfToken()
+                      }
+                  })
+                  .then(response => response.json())
+                  .then(data => {
+                      if (data.success) {
+                          console.log('옵션 삭제 성공:', data);
+                          optionContainer.remove();
+                          syncTableAndKanban(fieldType);
+                      } else {
+                          alert('옵션 삭제 실패: ' + (data.error || ''));
+                      }
+                  })
+                  .catch(error => {
+                      console.error('옵션 삭제 실패:', error);
+                      alert('옵션 삭제 중 오류가 발생했습니다: ' + error.message);
+                  });
+              }
           });
       });
   }

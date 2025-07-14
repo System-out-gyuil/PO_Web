@@ -551,11 +551,11 @@
                 <th class="add-attribute-th" style="background:#f8f9fa;border:2px dashed #dee2e6;cursor:pointer;text-align:center;color:#6c757d;font-weight:normal;min-width:120px;" onclick="openAddAttributeModal()">
                     + 속성 추가
                 </th>
-                <th style="background:#f8f9fa;border:2px solid #dee2e6;text-align:center;color:#6c757d;font-weight:normal;min-width:120px;">
+                {% comment %} <th style="background:#f8f9fa;border:2px solid #dee2e6;text-align:center;color:#6c757d;font-weight:normal;min-width:120px;">
                     <button onclick="openAttributeManagementModal()" style="background:none;border:none;color:#6c757d;cursor:pointer;font-size:12px;padding:4px 8px;">
                         ⚙️ 속성 관리
                     </button>
-                </th>
+                </th> {% endcomment %}
             </tr>
             </thead>
             <tbody id="entryTbody">
@@ -1477,6 +1477,7 @@ function showModalDropdownOptions(rowId, fieldName, btn) {
             
             // 새 옵션 추가 버튼
             const addBtn = dropdown.querySelector('.add-btn');
+            console.log('addBtn', addBtn);
             if (addBtn) {
                 addBtn.onclick = function() {
                     const input = dropdown.querySelector('input[type="text"]');
