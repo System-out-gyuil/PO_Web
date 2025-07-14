@@ -194,6 +194,26 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                             // 부분 업데이트로 변경
                             updateTableCell(id, '지역', selectedRegion);
                             
+                            // 상태 필터가 활성화되어 있고, 변경된 필드가 상태 속성인 경우
+                            if (window.currentStatusTab !== null && '지역' === window.statusAttributeName) {
+                                // 해당 행의 상태 셀 업데이트
+                                const row = document.querySelector(`tr[data-id="${id}"]`);
+                                if (row) {
+                                    const statusCell = row.querySelector(`td[data-field="지역"]`);
+                                    if (statusCell) {
+                                        // 새로운 값으로 data-value 업데이트
+                                        statusCell.setAttribute('data-value', selectedRegion);
+                                        
+                                        // 상태 필터 즉시 재적용
+                                        setTimeout(() => {
+                                            if (typeof applyStatusFilter === 'function') {
+                                                applyStatusFilter();
+                                            }
+                                        }, 50);
+                                    }
+                                }
+                            }
+                            
                             // 모달 업데이트 콜백이 있는 경우 실행
                             if (typeof window._modalAfterUpdateAll === 'function') {
                                 window._modalAfterUpdateAll(id); 
@@ -330,6 +350,26 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                             // 실시간 동기화
                             syncTableAndKanban('상세지역');
                             
+                            // 상태 필터가 활성화되어 있고, 변경된 필드가 상태 속성인 경우
+                            if (window.currentStatusTab !== null && '상세지역' === window.statusAttributeName) {
+                                // 해당 행의 상태 셀 업데이트
+                                const row = document.querySelector(`tr[data-id="${id}"]`);
+                                if (row) {
+                                    const statusCell = row.querySelector(`td[data-field="상세지역"]`);
+                                    if (statusCell) {
+                                        // 새로운 값으로 data-value 업데이트
+                                        statusCell.setAttribute('data-value', selectedSubregion);
+                                        
+                                        // 상태 필터 즉시 재적용
+                                        setTimeout(() => {
+                                            if (typeof applyStatusFilter === 'function') {
+                                                applyStatusFilter();
+                                            }
+                                        }, 50);
+                                    }
+                                }
+                            }
+                            
                             // 모달 업데이트 콜백이 있는 경우 실행
                             if (typeof window._modalAfterUpdateAll === 'function') {
                                 window._modalAfterUpdateAll(id); 
@@ -457,7 +497,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                             const option = options.find(o => String(o.id) === String(optionId));
                             // UI 업데이트
                             const color = option.color ? hexToRgba(option.color, 0.18) : '#eee';
-                            td.innerHTML = `<div class=\"dropdown-pill\" style=\"background:${color}; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;\">${option.option}</div>`;
+                            td.innerHTML = `<div class="dropdown-pill" style="background:${color}; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">${option.option}</div>`;
                             td.setAttribute('data-value', optionId);
                             // 서버 업데이트 - 단일 값으로 저장
                             if (id && id.startsWith('temp_')) {
@@ -471,6 +511,20 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                                 .then(response => response.json())
                                 .then(data => {
                                     if (data.success) {
+                                        // 상태 필터가 활성화되어 있고, 변경된 필드가 상태 속성인 경우
+                                        if (window.currentStatusTab !== null && type === window.statusAttributeName) {
+                                            const row = document.querySelector(`tr[data-id="${id}"]`);
+                                            if (row) {
+                                                const statusCell = row.querySelector(`td[data-field="${type}"]`);
+                                                if (statusCell) {
+                                                    statusCell.setAttribute('data-value', optionId);
+                                                    // 눈속임: 현재 탭과 다르면 바로 숨김
+                                                    if (String(optionId) !== String(window.currentStatusTab)) {
+                                                        row.style.display = 'none';
+                                                    }
+                                                }
+                                            }
+                                        }
                                         syncTableAndKanban(type);
                                     } else {
                                         throw new Error(data.error || '업데이트 실패');
@@ -1795,82 +1849,80 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
   
   // 숫자 필드 업데이트 시 콤마 포맷팅 적용
   function updateCellValue(id, fieldName, value, element) {
-      console.log('updateCellValue 호출:', {id, fieldName, value, element});
-      let processedValue = value;
-      if (fieldName === '매출' || fieldName.includes('매출')) {
-          let raw = (value || '').toString().replace(/[^\d]/g, '');
-          if (raw) {
-              processedValue = parseInt(raw).toString();
-          } else {
-              processedValue = '';
+      console.log('updateCellValue 호출:', {id, fieldName, value});
+      
+      // 새 행인 경우
+      if (id && id.startsWith('temp_')) {
+          saveNewRowField(element.parentElement, fieldName, value);
+          return;
+      }
+      
+      // 기존 행인 경우
+      fetch('/600/update/', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+          body: 'id=' + id + '&field=' + encodeURIComponent(fieldName) + '&value=' + encodeURIComponent(value)
+      })
+      .then(function(response) {
+          return response.json();
+      })
+      .then(function(data) {
+          if (!data.success) {
+              alert('수정 실패: ' + (data.error || ''));
+              return;
           }
-      }
-      
-      // 숫자인지 확인 (콤마 제거 후 숫자 변환 가능한지 체크)
-      const numericValue = processedValue.replace(/,/g, '');
-      const isNumeric = !isNaN(numericValue) && !isNaN(parseFloat(numericValue));
-      
-      if (isNumeric && fieldName !== '연락처' && fieldName !== '사업자번호') {
-          // 숫자 필드인 경우 콤마 제거 후 서버에 저장
-          const cleanValue = removeCommaFromNumber(processedValue);
           
-          fetch('/600/update_row_field/', {
-              method: 'POST',
-              headers: {
-                  'Content-Type': 'application/x-www-form-urlencoded',
-                  'X-CSRFToken': getCsrfToken()
-              },
-              body: `id=${id}&field=${encodeURIComponent(fieldName)}&value=${encodeURIComponent(cleanValue)}`
-          })
-          .then(response => response.json())
-          .then(data => {
-              if (data.success) {
-                  // 성공 시 화면에는 콤마가 포함된 값으로 표시
-                  // 매출 필드는 한국어 단위로 표시
-                  if (fieldName === '매출' || fieldName.includes('매출')) {
-                      element.textContent = formatToKoreanCurrency(cleanValue);
-                  } else {
-                      element.textContent = formatNumberWithComma(cleanValue);
+          // 상태 필터가 활성화되어 있고, 변경된 필드가 상태 속성인 경우에만 즉시 필터 적용
+          if (window.currentStatusTab !== null && fieldName === window.statusAttributeName) {
+              // 해당 행의 상태 셀 업데이트
+              const row = document.querySelector(`tr[data-id="${id}"]`);
+              if (row) {
+                  const statusCell = row.querySelector(`td[data-field="${fieldName}"]`);
+                  if (statusCell) {
+                      // 새로운 값으로 data-value 업데이트
+                      statusCell.setAttribute('data-value', value);
+                      
+                      // 상태 필터 즉시 재적용
+                      setTimeout(() => {
+                          if (typeof applyStatusFilter === 'function') {
+                              applyStatusFilter();
+                          }
+                      }, 50);
                   }
-                  
-                  // 실시간 동기화
-                  syncTableAndKanban(fieldName);
-              } else {
-                  console.error('셀 업데이트 실패:', data.error);
-                  showNotification('셀 업데이트에 실패했습니다: ' + (data.error || ''), 'error');
               }
-          })
-          .catch(error => {
-              console.error('네트워크 오류:', error);
-              showNotification('네트워크 오류가 발생했습니다: ' + error.message, 'error');
-          });
-      } else {
-          // 일반 텍스트 필드인 경우 기존 로직 사용
-          fetch('/600/update_row_field/', {
-              method: 'POST',
-              headers: {
-                  'Content-Type': 'application/x-www-form-urlencoded',
-                  'X-CSRFToken': getCsrfToken()
-              },
-              body: `id=${id}&field=${encodeURIComponent(fieldName)}&value=${encodeURIComponent(value)}`
-          })
-          .then(response => response.json())
-          .then(data => {
-              if (data.success) {
-                  element.textContent = value;
-                  
-                  // 실시간 동기화
-                  syncTableAndKanban(fieldName);
-              } else {
-                  console.error('셀 업데이트 실패:', data.error);
-                  showNotification('셀 업데이트에 실패했습니다: ' + (data.error || ''), 'error');
+          }
+          
+          // 테이블과 칸반보드 새로고침
+          if (typeof refreshTable === 'function') {
+              refreshTable();
+          }
+          
+          // 칸반보드가 활성화되어 있고 업데이트된 필드가 현재 칸반보드 속성과 일치하는 경우에만 새로고침
+          if (window.kanbanAttribute && fieldName === window.kanbanAttribute) {
+              if (typeof refreshKanban === 'function') {
+                  refreshKanban();
               }
-          })
-          .catch(error => {
-              console.error('네트워크 오류:', error);
-              showNotification('네트워크 오류가 발생했습니다: ' + error.message, 'error');
-          });
-      }
+          }
+          
+          // F/U 일정 필드인 경우 캘린더도 새로고침
+          if (fieldName === 'F/U 일정' && window.calendar) {
+              window.calendar.refetchEvents();
+          }
+          
+          // 모든 필드 변경 시 캘린더 업데이트
+          if (typeof refreshCalendar === 'function') {
+              refreshCalendar();
+          }
+          
+          // 드롭다운 옵션 동기화
+          if (typeof syncTableAndKanban === 'function') {
+              syncTableAndKanban(fieldName);
+          }
+      })
+      .catch(function(error) {
+          console.error('업데이트 중 오류:', error);
+          alert('업데이트 중 오류가 발생했습니다.');
+      });
   }
   
   // 테이블과 칸반보드 실시간 동기화 함수

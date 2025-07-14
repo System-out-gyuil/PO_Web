@@ -425,7 +425,9 @@
                             }
                         } catch (e) {
                             // JSON이 아닌 경우 문자열로 직접 비교
-                            shouldShow = statusValue === window.currentStatusTab.toString();
+                            // 숫자와 문자열 모두 비교 시도
+                            shouldShow = statusValue === window.currentStatusTab.toString() || 
+                                       statusValue === window.currentStatusTab;
                         }
                     }
                     
@@ -1661,6 +1663,24 @@ function selectModalDropdownOption(rowId, fieldName, optionId, optionText, eleme
             // 드롭다운 닫기
             closeDropdown();
             
+            // 상태 필터가 활성화되어 있고, 변경된 필드가 상태 속성인 경우에만 즉시 필터 적용
+            if (window.currentStatusTab !== null && fieldName === window.statusAttributeName) {
+                // 해당 행의 상태 셀 업데이트
+                const row = document.querySelector(`tr[data-id="${rowId}"]`);
+                if (row) {
+                    const statusCell = row.querySelector(`td[data-field="${fieldName}"]`);
+                    if (statusCell) {
+                        // 새로운 값으로 data-value 업데이트
+                        statusCell.setAttribute('data-value', optionId);
+                        
+                        // 상태 필터 즉시 재적용
+                        setTimeout(() => {
+                            applyStatusFilter();
+                        }, 50);
+                    }
+                }
+            }
+            
             // 모달 새로고침
             fetch('/600/get_row_details/' + rowId + '/')
                 .then(r => r.json())
@@ -2466,9 +2486,12 @@ function refreshTable() {
             // 필요시 테이블 관련 이벤트 재바인딩
             if (typeof bindTableCellEvents === 'function') bindTableCellEvents();
             
-            // 탭 상태 재적용
+            // 탭 상태 재적용 - 상태 필터가 활성화되어 있으면 즉시 적용
             if (window.currentStatusTab !== null) {
-                applyStatusFilter();
+                // 약간의 지연 후 상태 필터 적용 (DOM 렌더링 완료 보장)
+                setTimeout(() => {
+                    applyStatusFilter();
+                }, 100);
             }
         });
 }
@@ -3109,6 +3132,52 @@ function uploadExcelFile() {
     .finally(() => {
         uploadBtn.textContent = originalText;
         uploadBtn.disabled = false;
+    });
+}
+
+// 상태 필터가 활성화된 상태에서 셀 값 변경 시 즉시 필터 재적용
+function updateCellValueWithStatusFilter(rowId, fieldName, value) {
+    fetch('/600/update_row_field/', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'id=' + encodeURIComponent(rowId) + '&field=' + encodeURIComponent(fieldName) + '&value=' + encodeURIComponent(value)
+    })
+    .then(r => r.json())
+    .then(function(data) {
+        if (data.success) {
+            // 상태 필터가 활성화되어 있고, 변경된 필드가 상태 속성인 경우에만 즉시 필터 적용
+            if (window.currentStatusTab !== null && fieldName === window.statusAttributeName) {
+                // 해당 행의 상태 셀 업데이트
+                const row = document.querySelector(`tr[data-id="${rowId}"]`);
+                if (row) {
+                    const statusCell = row.querySelector(`td[data-field="${fieldName}"]`);
+                    if (statusCell) {
+                        // 새로운 값으로 data-value 업데이트
+                        statusCell.setAttribute('data-value', value);
+                        
+                        // 상태 필터 즉시 재적용
+                        setTimeout(() => {
+                            applyStatusFilter();
+                        }, 50);
+                    }
+                }
+            }
+            
+            // 테이블과 칸반보드 새로고침
+            refreshTable();
+            if (window.kanbanAttribute && fieldName === window.kanbanAttribute) {
+                refreshKanban();
+            }
+            
+            // 캘린더 업데이트
+            refreshCalendar();
+        } else {
+            alert('수정 실패: ' + (data.error || ''));
+        }
+    })
+    .catch(error => {
+        console.error('셀 값 수정 오류:', error);
+        alert('수정 중 오류가 발생했습니다.');
     });
 }
 </script>
