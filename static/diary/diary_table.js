@@ -511,20 +511,6 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                                 .then(response => response.json())
                                 .then(data => {
                                     if (data.success) {
-                                        // 상태 필터가 활성화되어 있고, 변경된 필드가 상태 속성인 경우
-                                        if (window.currentStatusTab !== null && type === window.statusAttributeName) {
-                                            const row = document.querySelector(`tr[data-id="${id}"]`);
-                                            if (row) {
-                                                const statusCell = row.querySelector(`td[data-field="${type}"]`);
-                                                if (statusCell) {
-                                                    statusCell.setAttribute('data-value', optionId);
-                                                    // 눈속임: 현재 탭과 다르면 바로 숨김
-                                                    if (String(optionId) !== String(window.currentStatusTab)) {
-                                                        row.style.display = 'none';
-                                                    }
-                                                }
-                                            }
-                                        }
                                         syncTableAndKanban(type);
                                     } else {
                                         throw new Error(data.error || '업데이트 실패');
@@ -987,6 +973,30 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                       td.appendChild(input);
                       input.focus();
                       if(inputType === 'text') input.select();
+                      
+                      // input 높이 자동 조정 함수
+                      function adjustInputHeight() {
+                          if (inputType === 'text' && !(type === '매출' || type.includes('매출'))) {
+                              // 텍스트 길이에 따라 높이 조정
+                              const textLength = input.value.length;
+                              if (textLength > 50) {
+                                  const lines = Math.ceil(textLength / 50);
+                                  const newHeight = Math.min(36 + (lines - 1) * 20, 200);
+                                  input.style.height = newHeight + 'px';
+                              } else {
+                                  input.style.height = '36px';
+                              }
+                          }
+                      }
+                      
+                      // 초기 높이 조정
+                      adjustInputHeight();
+                      
+                      // 입력 시 높이 조정
+                      if (inputType === 'text' && !(type === '매출' || type.includes('매출'))) {
+                          input.addEventListener('input', adjustInputHeight);
+                      }
+                      
                       input.onkeydown = function(e) {
                           if (e.key === 'Enter') input.blur();
                           if (e.key === 'Escape') {
