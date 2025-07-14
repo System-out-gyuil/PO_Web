@@ -30,8 +30,8 @@ function showDetailModal(rowData, rowId) {
             // 속성을 순서대로 정렬 (sort_order 기준)
             const sortedAttributes = attributes.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
             
-            // 읽기 전용 필드 목록
-            const readonlyFields = ['회사명', '생성일', '수정일'];
+            // 읽기 전용 필드 목록 - 모든 필드를 수정 가능하게 하기 위해 비움
+            const readonlyFields = [];
             
             // 숨김 필드 목록 (표시하지 않을 속성들)
             const hiddenFields = ['음성파일', '변환된 텍스트'];
@@ -255,12 +255,81 @@ function showDetailModal(rowData, rowId) {
                         </div>
                     `;
                 } else if (attr.name === '매출' || attr.name.includes('매출')) {
-                    // 매출 필드는 한국어 단위로 표시
+                    // 매출 필드는 억과 천만 단위로 분리된 입력칸 항상 표시, 저장/취소 버튼 없이 blur로 저장
                     const numericValue = parseFloat(value) || 0;
-                    const displayValue = numericValue ? formatToKoreanCurrency(numericValue) : '';
-                    inputHtml = `<input type="text" value="${displayValue}" data-field="${attr.name}" 
-                                       oninput="formatSalesInputRealtime(this, '${rowId}', '${attr.name}')"
-                                       onblur="updateRowFieldWithKoreanCurrency('${rowId}', '${attr.name}', this.value)">`;
+                    const eok = Math.floor(numericValue / 100000000);
+                    const cheonman = Math.floor((numericValue % 100000000) / 10000000);
+                    inputHtml = `
+                        <div class="sales-field-container" data-field="${attr.name}" data-raw="${numericValue}" style="display: flex; align-items: center; gap: 10px; width: 100%; background: white; border: 1px solid #ced4da; border-radius: 4px; padding: 8px; min-height: 20px;">
+                            <div style="display: flex; align-items: center; gap: 5px; flex: 1;">
+                                <input class="input-field" type="number" id="sales_eok_${rowId}" value="${eok}" placeholder="0" min="0"
+                                    style="width: 80px; padding: 8px; border: 1px solid #ced4da; border-radius: 4px; font-size: inherit; font-family: inherit; box-sizing: border-box;"
+                                    onblur="saveSalesInput('${rowId}', '${attr.name}')">
+                                <span style="font-size: 14px; color: #495057;">억</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 5px; flex: 1;">
+                                <input class="input-field" type="number" id="sales_cheonman_${rowId}" value="${cheonman}" placeholder="0" min="0" max="99"
+                                    style="width: 80px; padding: 8px; border: 1px solid #ced4da; border-radius: 4px; font-size: inherit; font-family: inherit; box-sizing: border-box;"
+                                    onblur="saveSalesInput('${rowId}', '${attr.name}')">
+                                <span style="font-size: 14px; color: #495057;">천만</span>
+                            </div>
+                        </div>
+                    `;
+                } else if (attr.name === '개업년월') {
+                    // 개업년월 필드 처리 - 달력과 년전 입력 옵션
+                    let businessData = {};
+                    let displayText = '';
+                    
+                    try {
+                        if (value && typeof value === 'string') {
+                            businessData = JSON.parse(value);
+                        } else if (value && typeof value === 'object') {
+                            businessData = value;
+                        }
+                    } catch (e) {
+                        console.error('개업년월 데이터 파싱 오류:', e);
+                        businessData = {};
+                    }
+                    
+                    // 현재 값에 따른 표시
+                    if (businessData.opening_date) {
+                        displayText = `개업일: ${businessData.opening_date}`;
+                    } else if (businessData.years_ago) {
+                        displayText = `${businessData.years_ago}년 전`;
+                    } else {
+                        displayText = '개업 정보 없음';
+                    }
+                    
+                    inputHtml = `
+                        <div style="border: 1px solid #e9ecef; border-radius: 6px; padding: 12px; background: #fff;" data-field="${attr.name}" data-current-value='${JSON.stringify(businessData)}'>
+                            <div style="display: flex; flex-direction: column; gap: 12px;">
+                                <!-- 개업일 입력 -->
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <label style="width: 80px; font-weight: bold; color: #495057;">개업일:</label>
+                                    <input type="date" 
+                                           id="opening_date_${rowId}" 
+                                           value="${businessData.opening_date || ''}"
+                                           style="flex: 1; padding: 8px; border: 1px solid #ced4da; border-radius: 4px;"
+                                           onchange="updateBusinessField('${rowId}', '${attr.name}', 'opening_date', this.value)">
+                                    
+                                    <!-- 년전 입력 -->
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <label style="display: flex; align-items: center; gap: 3px; cursor: pointer;">
+                                            <input class="input-field" type="number" 
+                                                   id="years_ago_${rowId}"
+                                                   value="${businessData.years_ago || ''}"
+                                                   placeholder="년수"
+                                                   min="0"
+                                                   max="100"
+                                                   style="width: 60px; padding: 4px; border: 1px solid #ced4da; border-radius: 4px; margin: 0 5px;"
+                                                   onchange="updateBusinessField('${rowId}', '${attr.name}', 'years_ago', this.value)">
+                                            <span style="font-size: 12px;">년 전</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
                 } else if (attr.name === '업종') {
                     // 업종 드롭다운 처리
                     const industryOptions = [
@@ -296,133 +365,178 @@ function showDetailModal(rowData, rowId) {
                         </select>
                     `;
                 } else if (attr.type === 'file') {
-                    // 파일 타입 속성 처리
-                    let fileInfo = null;
-                    let displayFileName = '';
-                    let hasFile = false;
+                    // 파일 타입 속성 처리 (여러 파일 지원)
+                    let filesData = [];
+                    let hasFiles = false;
                     
                     // 파일 정보 파싱
                     try {
                         if (value && value !== null && value !== undefined) {
                             if (typeof value === 'object') {
-                                // 이미 객체인 경우
-                                fileInfo = value;
-                                displayFileName = fileInfo.original_filename || fileInfo.stored_filename || fileInfo.filename || 'unknown';
-                                hasFile = true;
-                            } else if (typeof value === 'string' && value.trim() !== '') {
-                                if (value.trim().startsWith('{')) {
-                                    // JSON 형태의 파일 정보
-                                    fileInfo = JSON.parse(value);
-                                    displayFileName = fileInfo.original_filename || fileInfo.stored_filename || fileInfo.filename || 'unknown';
-                                    hasFile = true;
+                                // 단일 파일인 경우 배열로 변환
+                                if (Array.isArray(value)) {
+                                    filesData = value;
                                 } else {
-                                    // 단순 문자열 파일명
-                                    displayFileName = value.trim();
-                                    hasFile = true;
+                                    filesData = [value];
                                 }
+                                hasFiles = true;
+                            } else if (typeof value === 'string' && value.trim() !== '') {
+                                if (value.trim().startsWith('[')) {
+                                    // JSON 배열
+                                    filesData = JSON.parse(value);
+                                } else if (value.trim().startsWith('{')) {
+                                    // JSON 객체 (단일 파일)
+                                    filesData = [JSON.parse(value)];
+                                } else {
+                                    // 문자열 (단일 파일명)
+                                    filesData = [{
+                                        original_filename: value.trim(),
+                                        type: 'file'
+                                    }];
+                                }
+                                hasFiles = true;
                             }
                         }
                     } catch (e) {
                         console.error('파일 정보 파싱 오류:', e, 'value:', value);
-                        // 파싱 실패 시 기본값 설정
                         if (value) {
-                            displayFileName = String(value);
-                            hasFile = true;
+                            filesData = [{
+                                original_filename: String(value),
+                                type: 'file'
+                            }];
+                            hasFiles = true;
                         }
                     }
                     
-                    if (hasFile) {
-                        console.log('파일이 있는 경우:', displayFileName);
-                        // 파일이 있는 경우: 파일명 + 수정 버튼 + 삭제 버튼
-                        const downloadUrl = fileInfo.download_url || `/600/download_file/${rowId}/${fieldName}/`;
-                        inputHtml = `
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <span onclick="window.open('${downloadUrl}', '_blank')"  
-                                      style="
-                                          flex: 1; 
-                                          color: #333; 
-                                          font-size: 14px; 
-                                          padding: 8px 0;
-                                          cursor: pointer;
-                                          text-decoration: underline;
-                                      ">📎 ${displayFileName}</span>
-                                      <button type="button" 
-                        onclick="window.open('${downloadUrl}', '_blank')" 
-                        style="
-                            padding: 6px 12px; 
-                            background: #17a2b8; 
-                            color: white; 
-                            border: none; 
-                            border-radius: 4px; 
-                            cursor: pointer; 
-                            font-size: 12px;
-                            font-weight: 500;
-                            margin-right: 5px;
-                        ">
-                    다운로드
-                </button>
+                    if (hasFiles && filesData.length > 0) {
+                        // 여러 파일을 세로로 정렬하여 표시
+                        let filesHtml = '';
+                        
+                        filesData.forEach((fileInfo, index) => {
+                            const displayFileName = fileInfo.original_filename || fileInfo.stored_filename || fileInfo.filename || 'unknown';
+                            
+                            // 파일 타입별 처리
+                            if (fileInfo.type === 'img' || fileInfo.content_type?.startsWith('image/')) {
+                                filesHtml += `
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding: 8px; border: 1px solid #e9ecef; border-radius: 4px; background: #f8f9fa;">
+                                        <span style="flex: 1; font-size: 14px;">📄 ${displayFileName}</span>
+                                        <button onclick="showFilePreviewModal(${JSON.stringify({...fileInfo, field_name: attr.name}).replace(/\"/g, '&quot;')})"
+                                                style="padding: 4px 8px; background: #ffc107; color: #333; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                            미리보기
+                                        </button>
+                                        <button onclick="window.open('${fileInfo.download_url}', '_blank')"
+                                                style="padding: 4px 8px; background: #17a2b8; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                            다운로드
+                                        </button>
+                                        <button class="delete-file-btn" 
+                                                data-row-id="${rowId}" 
+                                                data-field-name="${attr.name}" 
+                                                data-file-index="${index}"
+                                                style="padding: 4px 8px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                            삭제
+                                        </button>
+                                    </div>
+                                `;
+                            } else if (fileInfo.type === 'audio') {
+                                filesHtml += `
+                                    <div style="margin-bottom: 12px; padding: 8px; border: 1px solid #e9ecef; border-radius: 4px; background: #f8f9fa;">
+                                        <div style="margin-bottom: 8px;">
+                                            <audio controls src="${fileInfo.download_url || fileInfo.url}" style="width: 100%;"></audio>
+                                        </div>
+                                        <div style="display: flex; gap: 6px;">
+                                            <button onclick="window.open('${fileInfo.download_url}', '_blank')"
+                                                    style="padding: 4px 8px; background: #17a2b8; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                                다운로드
+                                            </button>
+                                            <button class="delete-file-btn" 
+                                                    data-row-id="${rowId}" 
+                                                    data-field-name="${attr.name}" 
+                                                    data-file-index="${index}"
+                                                    style="padding: 4px 8px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                                삭제
+                                            </button>
+                                        </div>
+                                    </div>
+                                `;
+                            } else {
+                                // 일반 파일
+                                filesHtml += `
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding: 8px; border: 1px solid #e9ecef; border-radius: 4px; background: #f8f9fa;">
+                                        <span style="flex: 1; font-size: 14px;">📄 ${displayFileName}</span>
+                                        <button onclick="showFilePreviewModal(${JSON.stringify({...fileInfo, field_name: attr.name}).replace(/\"/g, '&quot;')})"
+                                                style="padding: 4px 8px; background: #ffc107; color: #333; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                            미리보기
+                                        </button>
+                                        <button onclick="window.open('${fileInfo.download_url}', '_blank')"
+                                                style="padding: 4px 8px; background: #17a2b8; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                            다운로드
+                                        </button>
+                                        <button class="delete-file-btn" 
+                                                data-row-id="${rowId}" 
+                                                data-field-name="${attr.name}" 
+                                                data-file-index="${index}"
+                                                style="padding: 4px 8px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                            삭제
+                                        </button>
+                                    </div>
+                                `;
+                            }
+                        });
+                        
+                        // 파일 추가 버튼
+                        filesHtml += `
+                            <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px; padding: 8px; border: 1px solid #dee2e6; border-radius: 4px; background: #fff;">
+                                <span style="flex: 1; color: #6c757d; font-size: 14px;">파일 추가</span>
                                 <button type="button" 
                                         onclick="document.getElementById('file_${attr.name}_${rowId}').click()" 
-                                        style="
-                                            padding: 6px 12px; 
-                                            background: #28a745; 
-                                            color: white; 
-                                            border: none; 
-                                            border-radius: 4px; 
-                                            cursor: pointer; 
-                                            font-size: 12px;
-                                            font-weight: 500;
-                                        ">
-                                    수정
-                                </button>
-                                <button type="button" 
-                                        onclick="deleteFile('${rowId}', '${attr.name}')" 
-                                        style="
-                                            padding: 6px 12px; 
-                                            background: #dc3545; 
-                                            color: white; 
-                                            border: none; 
-                                            border-radius: 4px; 
-                                            cursor: pointer; 
-                                            font-size: 12px;
-                                            font-weight: 500;
-                                        ">
-                                    삭제
+                                        style="padding: 6px 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;">
+                                    + 파일 추가
                                 </button>
                                 <input type="file" 
                                        id="file_${attr.name}_${rowId}" 
                                        style="display: none;"
+                                       multiple
                                        onchange="uploadFile('${rowId}', '${attr.name}', this)">
                             </div>
                         `;
+                        
+                        inputHtml = filesHtml;
                     } else {
-                        // 파일이 없는 경우: 파일 선택 버튼
+                        // 파일이 없는 경우: 파일 선택 버튼 (다중 선택 지원)
                         inputHtml = `
                             <div style="display: flex; align-items: center;">
                                 <span style="flex: 1; color: #6c757d; font-size: 14px; padding: 8px 0;">파일이 선택되지 않았습니다</span>
                                 <button type="button" 
                                         onclick="document.getElementById('file_${attr.name}_${rowId}').click()" 
-                                        style="
-                                            padding: 6px 12px; 
-                                            background: #007bff; 
-                                            color: white; 
-                                            border: none; 
-                                            border-radius: 4px; 
-                                            cursor: pointer; 
-                                            font-size: 12px;
-                                            font-weight: 500;
-                                        ">
+                                        style="padding: 6px 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;">
                                     파일 선택
                                 </button>
                                 <input type="file" 
                                        id="file_${attr.name}_${rowId}" 
                                        style="display: none;"
+                                       multiple
                                        onchange="uploadFile('${rowId}', '${attr.name}', this)">
                             </div>
                         `;
                     }
                 } else if (attr.type === 'dropdown') {
-                    inputHtml = `<button type="button" class="add-btn" style="width:100%;background:#f8f9fa;color:#333;border:1px solid #eee;" onclick="openDetailDropdown('${rowId}','${attr.name}',this)">${value||'선택'}</button>`;
+                    // value가 있을 때 색상 정보도 가져오기 위해 options를 fetch
+                    inputHtml = `<button type="button" class="add-btn" id="modal-dropdown-btn-${rowId}-${attr.name}" style="width:100%;background:#f8f9fa;color:#333;border:1px solid #eee;" onclick="openDetailDropdown('${rowId}','${attr.name}',this)">${value||'선택'}</button>`;
+                    // 옵션 색상 fetch 후 버튼 배경색 적용
+                    setTimeout(() => {
+                        fetch('/600/dropdown_options/?field=' + encodeURIComponent(attr.name))
+                            .then(r => r.json())
+                            .then(data => {
+                                if (data.options) {
+                                    const opt = data.options.find(o => o.option === value);
+                                    const btn = document.getElementById(`modal-dropdown-btn-${rowId}-${attr.name}`);
+                                    if (btn && opt && opt.color) {
+                                        btn.style.background = hexToRgba(opt.color, 0.18);
+                                        btn.style.color = '#333';
+                                    }
+                                }
+                            });
+                    }, 0);
                 } else if (attr.type === 'datetime') {
                     // 날짜 형식 변환
                     let dateValue = '';
@@ -434,9 +548,9 @@ function showDetailModal(rowData, rowId) {
                             dateValue = value;
                         }
                     }
-                    inputHtml = `<input type="date" value="${dateValue}" data-field="${attr.name}" onchange="updateRowField('${rowId}', '${attr.name}', this.value)">`;
+                    inputHtml = `<input class="input-field" type="date" value="${dateValue}" data-field="${attr.name}" onchange="updateRowField('${rowId}', '${attr.name}', this.value)">`;
                 } else if (attr.type === 'number') {
-                    inputHtml = `<input type="number" value="${value}" data-field="${attr.name}" onchange="updateRowField('${rowId}', '${attr.name}', this.value)">`;
+                    inputHtml = `<input class="input-field" type="number" value="${value}" data-field="${attr.name}" onchange="updateRowField('${rowId}', '${attr.name}', this.value)">`;
                 } else if (attr.type === 'age') {
                     // 나이 필드 처리 - 달력과 체크박스 포함
                     let ageData = {};
@@ -509,14 +623,33 @@ function showDetailModal(rowData, rowId) {
                     inputHtml = `<button type="button" class="add-btn" style="width:100%;background:#f8f9fa;color:#333;border:1px solid #eee;" onclick="openDetailDropdown('${rowId}','${attr.name}',this)">${displayText}</button>`;
                 } else {
                     // 기본 텍스트 필드
-                    inputHtml = `<input type="text" value="${value}" data-field="${attr.name}" onchange="updateRowField('${rowId}', '${attr.name}', this.value)">`;
+                    if (attr.name === '신용점수') {
+                        // 신용점수 필드는 실시간 검증 추가
+                        inputHtml = `<input type="text" value="${value}" data-field="${attr.name}" 
+                                   onchange="updateRowField('${rowId}', '${attr.name}', this.value); highlightRequiredField(this, this.value && this.value !== '0' ? false : true);" 
+                                   oninput="highlightRequiredField(this, this.value && this.value !== '0' ? false : true);">`;
+                    } else {
+                        inputHtml = `<input class="input-field" type="text" value="${value}" data-field="${attr.name}" onchange="updateRowField('${rowId}', '${attr.name}', this.value)">`;
+                    }
                 }
                 
                 // 지역 관련 필드가 아닌 경우에만 HTML에 추가
                 if (attr.name !== '지역' && attr.name !== '상세지역') {
+                    // 라벨 색상 설정
+                    let labelColor = '#333'; // 기본 색상
+                    
+                    // 파란색 라벨 (지역, 기대출, 개업년월, 나이, 경력, 직원수)
+                    if (['기대출', '개업년월', '나이', '경력', '직원수'].includes(attr.name)) {
+                        labelColor = '#007bff';
+                    }
+                    // 붉은색 라벨 (매출, 신용점수, 업종)
+                    else if (['매출', '신용점수', '업종'].includes(attr.name)) {
+                        labelColor = '#dc3545';
+                    }
+                    
                     html += `
                         <div style="display:flex;align-items:center;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #eee;">
-                            <label style="width:120px;font-weight:bold;color:#333;">${attr.name}:</label>
+                            <label style="width:120px;font-weight:bold;color:${labelColor};">${attr.name}:</label>
                             <div style="flex:1;">${inputHtml}</div>
                         </div>
                     `;
@@ -531,6 +664,50 @@ function showDetailModal(rowData, rowId) {
             
             // 모달 표시
             document.getElementById('detailModal').style.display = 'flex';
+            
+            // 행 복제 버튼 재생성
+            if (typeof recreateDuplicateButtons === 'function') {
+                setTimeout(() => {
+                    recreateDuplicateButtons();
+                    console.log('상세보기 모달에서 행 복제 버튼 재생성 완료');
+                }, 100);
+            }
+            
+            // 파일 삭제 버튼 이벤트 리스너 추가 (setTimeout으로 지연)
+            setTimeout(() => {
+                const deleteButtons = document.querySelectorAll('.delete-file-btn');
+                console.log('찾은 삭제 버튼 개수:', deleteButtons.length);
+                
+                deleteButtons.forEach((btn, index) => {
+                    console.log(`버튼 ${index}:`, btn);
+                    console.log(`버튼 ${index}의 data 속성:`, {
+                        rowId: btn.getAttribute('data-row-id'),
+                        fieldName: btn.getAttribute('data-field-name'),
+                        fileIndex: btn.getAttribute('data-file-index')
+                    });
+                    
+                    btn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        const rowId = this.getAttribute('data-row-id');
+                        const fieldName = this.getAttribute('data-field-name');
+                        const fileIndex = this.getAttribute('data-file-index');
+                        
+                        console.log('파일 삭제 버튼 클릭됨:', rowId, fieldName, fileIndex);
+                        console.log('fileIndex 타입:', typeof fileIndex);
+                        console.log('fileIndex 값:', fileIndex);
+                        
+                        // fileIndex를 숫자로 변환
+                        const numericFileIndex = parseInt(fileIndex, 10);
+                        console.log('변환된 fileIndex:', numericFileIndex);
+                        
+                        console.log('deleteFile 함수 호출 전');
+                        deleteFile(rowId, fieldName, numericFileIndex);
+                        console.log('deleteFile 함수 호출 후');
+                    });
+                });
+            }, 100);
         })
         .catch(error => {
             console.error('속성 목록 가져오기 오류:', error);
@@ -788,14 +965,14 @@ function showModalDropdownOptions(rowId, fieldName, btn) {
               const isSelected = option.option === currentValue;
               const backgroundColor = option.color ? hexToRgba(option.color, 0.18) : 'white';
               html += `
-                <div class="dropdown-item" data-option-id="${option.id}" data-option-text="${option.option}"
-                     style="padding: 8px 12px !important; 
-                            cursor: pointer !important; 
-                            border-bottom: 1px solid #f0f0f0 !important;
-                            background: ${backgroundColor} !important;
-                            color: #333 !important;
-                            ${isSelected ? 'border-left: 3px solid #007bff !important; font-weight: bold !important;' : ''}
-                            transition: background-color 0.2s !important;">
+                <div class="dropdown-item" data-option-id="${option.id}" data-option-text="${option.option}" data-color="${option.color||''}"
+                     style="padding: 8px 12px; 
+                            cursor: pointer; 
+                            border-bottom: 1px solid #f0f0f0;
+                            background: ${backgroundColor};
+                            color: #333;
+                            ${isSelected ? 'border-left: 3px solid #007bff; font-weight: bold;' : ''}
+                            transition: background-color 0.2s;">
                   ${option.option}
                 </div>
               `;
@@ -823,22 +1000,22 @@ function showModalDropdownOptions(rowId, fieldName, btn) {
               // 호버 효과
               item.addEventListener('mouseenter', function() {
                   if (!this.style.borderLeft.includes('#007bff')) {
-                      const currentBg = this.style.background;
-                      if (currentBg.includes('rgba')) {
-                          this.style.background = currentBg.replace('0.18', '0.3');
+                      const color = this.getAttribute('data-color');
+                      if (color && color !== 'null' && color !== 'undefined') {
+                          this.style.background = hexToRgba(color, 0.3);
                       } else {
-                          this.style.background = '#f8f9fa !important';
+                          this.style.background = '#f8f9fa';
                       }
                   }
               });
-              
-              item.addEventListener('mouseleave', function() {
+              // mouseleave → mouseout
+              item.addEventListener('mouseout', function() {
                   if (!this.style.borderLeft.includes('#007bff')) {
-                      const currentBg = this.style.background;
-                      if (currentBg.includes('rgba')) {
-                          this.style.background = currentBg.replace('0.3', '0.18');
+                      const color = this.getAttribute('data-color');
+                      if (color && color !== 'null' && color !== 'undefined') {
+                          this.style.background = hexToRgba(color, 0.18);
                       } else {
-                          this.style.background = 'white !important';
+                          this.style.background = '#f8f9fa';
                       }
                   }
               });
@@ -850,16 +1027,17 @@ function showModalDropdownOptions(rowId, fieldName, btn) {
                   
                   const selectedOptionId = this.getAttribute('data-option-id');
                   const selectedOptionText = this.getAttribute('data-option-text');
-                  console.log('모달에서 드롭다운 옵션 선택됨:', selectedOptionId, selectedOptionText);
-                  
-                  // 드롭다운 제거
+                  const selectedColor = this.getAttribute('data-color');
                   if (dropdown && dropdown.parentNode) {
                       dropdown.parentNode.removeChild(dropdown);
                       window.dropdown = null;
                   }
-                  
+                  // 버튼 배경색 변경
+                  btn.textContent = selectedOptionText;
+                  btn.style.background = selectedColor ? hexToRgba(selectedColor, 0.18) : '#f8f9fa';
+                  btn.style.color = '#333';
                   // 드롭다운 옵션 선택 처리
-                  selectModalDropdownOption(rowId, fieldName, selectedOptionId, selectedOptionText, btn);
+                  selectModalDropdownOption(rowId, fieldName, selectedOptionId, selectedOptionText, btn, selectedColor);
               });
           });
           
@@ -883,11 +1061,18 @@ function showModalDropdownOptions(rowId, fieldName, btn) {
 }
 
 // 모달용 드롭다운 옵션 선택 함수
-function selectModalDropdownOption(rowId, fieldName, optionId, optionText, btn) {
+function selectModalDropdownOption(rowId, fieldName, optionId, optionText, btn, color) {
   console.log('selectModalDropdownOption 호출됨:', rowId, fieldName, optionId, optionText);
   
   // 버튼 텍스트 즉시 업데이트
   btn.textContent = optionText;
+  btn.style.background = color ? hexToRgba(color, 0.18) : '#f8f9fa';
+  btn.style.color = '#333';
+  
+  // 업종이 선택되면 빨간 테두리 제거
+  if (fieldName === '업종') {
+    highlightRequiredField(btn, false);
+  }
   
   // 서버에 업데이트 요청
   fetch('/600/update_row_field/', {
@@ -960,7 +1145,7 @@ function hexToRgba(hex, alpha) {
 function showModalRegionDropdown(rowId, fieldName, btn) {
   console.log('showModalRegionDropdown 호출됨:', rowId, fieldName, btn);
   
-  const regionNames = ['서울','경기','인천','대구','부산','광주','대전','울산','세종','강원','충북','충남','전북','전남'];
+  const regionNames = ['서울','경기','인천', '경북', '경남', '대구','부산','광주','대전','울산','세종','강원','충북','충남','전북','전남'];
   
   // 기존 드롭다운이 있으면 닫기 - 완전한 정리
   if (typeof closeDropdown === 'function') {
@@ -1107,7 +1292,9 @@ function getSubregions(region) {
   const regionMap = {
     '서울': ['관악구','금천구','강남구','강서구','강동구','강북구','광진구','구로구','노원구','도봉구','동대문구','동작구','마포구','서대문구','서초구','성동구','성북구','송파구','양천구','영등포구','용산구','은평구','종로구','중구','중랑구'],
     '경기': ['수원시','고양시','성남시','용인시','부천시','안산시','안양시','남양주시','화성시','평택시','의정부시','시흥시','파주시','광명시','김포시','군포시','광주시','오산시','이천시','안성시','의왕시','하남시','여주시','양평군','동두천시','과천시','가평군','연천군'],
-    '인천': ['계양구','남동구','동구','미추홀구','부평구','서구','연수구','중구','강화군','옹진군'],
+    '인천': ['계양구', '남동구', '동구', '미추홀구', '부평구', '서구', '연수구', '중구', '강화군', '옹진군'],
+    '경북': ['경주시', '포항시', '김천시', '안동시', '구미시', '영주시', '영천시', '상주시', '문경시', '경산시', '군위군', '의성군', '청송군', '영양군', '영덕군', '청도군', '고령군', '성주군', '칠곡군', '예천군', '봉화군', '울진군', '울릉군'],
+    '경남': ['창원시','진주시','통영시','사천시','김해시','밀양시','거제시','양산시','의령군','함안군','창녕군','고성군','남해군','하동군','산청군','함양군','거창군','합천군'],
     '대구': ['중구','동구','서구','남구','북구','수성구','달서구','달성군'],
     '부산': ['중구','서구','동구','영도구','부산진구','동래구','남구','북구','해운대구','사하구','금정구','강서구','연제구','수영구','사상구','기장군'],
     '광주': ['동구','서구','남구','북구','광산구'],
@@ -1119,8 +1306,6 @@ function getSubregions(region) {
     '충남': ['천안시','공주시','보령시','아산시','서산시','논산시','계룡시','당진시','금산군','부여군','서천군','청양군','홍성군','예산군','태안군'],
     '전북': ['전주시','군산시','익산시','정읍시','남원시','김제시','완주군','진안군','무주군','장수군','임실군','순창군','고창군','부안군'],
     '전남': ['목포시','여수시','순천시','나주시','광양시','담양군','곡성군','구례군','고흥군','보성군','화순군','장흥군','강진군','해남군','영암군','무안군','함평군','영광군','장성군','완도군','진도군','신안군'],
-    '경북': ['포항시','경주시','김천시','안동시','구미시','영주시','영천시','상주시','문경시','경산시','군위군','의성군','청송군','영양군','영덕군','청도군','고령군','성주군','칠곡군','예천군','봉화군','울진군','울릉군'],
-    '경남': ['창원시','진주시','통영시','사천시','김해시','밀양시','거제시','양산시','의령군','함안군','창녕군','고성군','남해군','하동군','산청군','함양군','거창군','합천군']
   };
   
   return regionMap[region] || [];
@@ -1454,6 +1639,9 @@ function selectModalSubregionOption(rowId, subregionText, element) {
   });
 }
 
+// 모달에서 변경사항이 있었는지 추적하는 전역 변수
+window.modalHasChanges = false;
+
 function closeDetailModal() {
   document.getElementById('detailModal').style.display = 'none';
   
@@ -1462,11 +1650,66 @@ function closeDetailModal() {
   window.currentTextAttributeName = null;
   window.currentAudioFileInfo = null;
   
-  // 모달 닫을 때 테이블, 칸반보드, 캘린더 새로고침
-  refreshTable();
-  refreshKanban();
-  if (window.calendar) {
-      window.calendar.refetchEvents();
+  // 변경사항이 있었을 때만 새로고침 실행
+  if (window.modalHasChanges) {
+    setTimeout(() => {
+      // 테이블 새로고침 (필요한 경우에만)
+      if (typeof refreshTable === 'function') {
+        refreshTable();
+      }
+      
+      // 칸반보드 새로고침 (필요한 경우에만)
+      if (typeof refreshKanban === 'function') {
+        refreshKanban();
+      }
+      
+      // 캘린더 새로고침 (필요한 경우에만)
+      if (window.calendar && typeof window.calendar.refetchEvents === 'function') {
+        window.calendar.refetchEvents();
+      }
+      
+      // 테이블 새로고침 후 추가 초기화 작업
+      setTimeout(() => {
+        // Sticky 헤더 재초기화
+        if (typeof initializeStickyHeader === 'function') {
+          initializeStickyHeader();
+          console.log('상세 모달 닫기 후 Sticky 헤더 재초기화 완료');
+          
+          // 추가로 약간의 지연 후 한 번 더 시도 (DOM 완전 렌더링 보장)
+          setTimeout(() => {
+            initializeStickyHeader();
+            console.log('상세 모달 닫기 후 Sticky 헤더 재초기화 재시도 완료');
+          }, 150);
+        }
+        
+        // 컬럼 드래그앤드롭 재초기화
+        if (typeof initializeColumnDragDrop === 'function') {
+          initializeColumnDragDrop(true); // force=true로 강제 재초기화
+          console.log('상세 모달 닫기 후 컬럼 드래그앤드롭 재초기화 완료');
+        }
+        
+        // 테이블 셀 이벤트 재바인딩
+        if (typeof bindTableCellEvents === 'function') {
+          bindTableCellEvents();
+          console.log('상세 모달 닫기 후 테이블 셀 이벤트 재바인딩 완료');
+        }
+        
+        // 드롭다운 pill 렌더링
+        if (typeof renderDropdownPills === 'function') {
+          renderDropdownPills();
+          console.log('상세 모달 닫기 후 드롭다운 pill 렌더링 완료');
+        }
+        
+        // 행 복제 버튼과 상세보기 버튼 재생성
+        if (typeof recreateDuplicateButtons === 'function') {
+          recreateDuplicateButtons();
+          console.log('상세 모달 닫기 후 행 복제 버튼과 상세보기 버튼 재생성 완료');
+        }
+      }, 200); // 테이블 새로고침 완료 후 200ms 지연
+      
+      // 변경사항 플래그 리셋
+      window.modalHasChanges = false;
+    }, 100); // 100ms 지연으로 사용자가 즉시 다른 모달을 열 수 있도록 함
   }
 }
 
@@ -1597,6 +1840,311 @@ function showNotification(message, type = 'info') {
 
 // 추천자금 요청 함수
 function requestFundingRecommendation(rowId) {
+    console.log('=== 추천자금 요청 시작 ===');
+    console.log('Row ID:', rowId);
+    
+    // 필수값 검증
+    const requiredFields = ['신용점수', '업종', '매출'];
+    const missingFields = [];
+    
+    console.log('필수 필드 목록:', requiredFields);
+    
+    // 현재 열린 상세 모달에서 필수값 확인
+    const detailModal = document.getElementById('detailModal');
+    console.log('상세 모달 상태:', {
+        exists: !!detailModal,
+        display: detailModal ? detailModal.style.display : 'N/A'
+    });
+    
+    if (detailModal && detailModal.style.display !== 'none') {
+        console.log('모달이 열려있음 - 모달 내 검증 시작');
+        
+        // 모달이 열려있는 경우 모달 내의 값들을 확인
+        for (const fieldName of requiredFields) {
+            console.log(`\n--- ${fieldName} 필드 검증 시작 ---`);
+            
+            const fieldElement = detailModal.querySelector(`[data-field="${fieldName}"]`);
+            console.log(`${fieldName} 필드 요소:`, {
+                found: !!fieldElement,
+                element: fieldElement
+            });
+            
+            if (fieldElement) {
+                const value = fieldElement.value;
+                console.log(`${fieldName} 값:`, value);
+                
+                // 매출 필드는 특별한 필드로 처리해야 함
+                if (fieldName === '매출' && fieldElement.classList.contains('sales-field-container')) {
+                    console.log(`${fieldName} - 특별한 필드로 재분류`);
+                    // 특별한 필드 처리로 넘어가기 위해 continue
+                    continue;
+                }
+                
+                if (!value || value.trim() === '' || value === '0' || value === '선택' || value === '클릭하여 입력') {
+                    console.log(`${fieldName} - 누락됨 (일반 필드)`);
+                    missingFields.push(fieldName);
+                    // 빨간 테두리 표시
+                    highlightRequiredField(fieldElement, true);
+                } else {
+                    console.log(`${fieldName} - 정상 (일반 필드)`);
+                    // 정상인 경우 원래 스타일로 복원
+                    highlightRequiredField(fieldElement, false);
+                }
+            } else {
+                console.log(`${fieldName} - 특별한 필드 처리 시작`);
+                
+                // 특별한 필드들 처리
+                if (fieldName === '매출') {
+                    console.log('매출 필드 특별 처리 시작');
+                    
+                    // sales-field-container를 직접 찾기
+                    const salesContainer = detailModal.querySelector('.sales-field-container[data-field="매출"]');
+                    const salesInput = detailModal.querySelector('input[data-field="매출"]');
+                    
+                    console.log('매출 필드 검색 결과:', {
+                        salesContainer: !!salesContainer,
+                        salesInput: !!salesInput
+                    });
+                    
+                    if (salesContainer) {
+                        const rawValue = salesContainer.getAttribute('data-raw');
+                        const displayText = salesContainer.textContent.trim();
+                        
+                        console.log('매출 컨테이너 검증 디버깅:', {
+                            rawValue: rawValue,
+                            displayText: displayText,
+                            hasDataRaw: salesContainer.hasAttribute('data-raw'),
+                            containerHTML: salesContainer.innerHTML
+                        });
+                        
+                        // 더 정확한 검증 로직
+                        const hasValidValue = (
+                            rawValue && 
+                            rawValue !== '' && 
+                            !isNaN(parseInt(rawValue, 10)) && 
+                            parseInt(rawValue, 10) >= 0 &&
+                            !displayText.includes('클릭하여 입력') &&
+                            displayText !== ''
+                        );
+                        
+                        console.log('매출 컨테이너 유효성 검사 결과:', hasValidValue);
+                        
+                        if (!hasValidValue) {
+                            console.log('매출 - 누락됨 (컨테이너)');
+                            missingFields.push(fieldName);
+                            // 빨간 테두리 표시
+                            highlightRequiredField(salesContainer, true);
+                        } else {
+                            console.log('매출 - 정상 (컨테이너)');
+                            // 정상인 경우 원래 스타일로 복원
+                            highlightRequiredField(salesContainer, false);
+                        }
+                    } else if (salesInput) {
+                        // input 형태의 매출 필드 처리
+                        const inputValue = salesInput.value.trim();
+                        console.log('매출 input 검증 디버깅:', {
+                            inputValue: inputValue,
+                            inputType: salesInput.type
+                        });
+                        
+                        const hasValidInputValue = (
+                            inputValue && 
+                            inputValue !== '0' && 
+                            inputValue !== '' && 
+                            !isNaN(parseInt(inputValue.replace(/[^\d]/g, ''), 10)) && 
+                            parseInt(inputValue.replace(/[^\d]/g, ''), 10) > 0
+                        );
+                        
+                        console.log('매출 input 유효성 검사 결과:', hasValidInputValue);
+                        
+                        if (!hasValidInputValue) {
+                            console.log('매출 - 누락됨 (input)');
+                            missingFields.push(fieldName);
+                            // 빨간 테두리 표시
+                            highlightRequiredField(salesInput, true);
+                        } else {
+                            console.log('매출 - 정상 (input)');
+                            // 정상인 경우 원래 스타일로 복원
+                            highlightRequiredField(salesInput, false);
+                        }
+                    } else {
+                        console.log('매출 필드를 찾을 수 없음');
+                        missingFields.push(fieldName);
+                    }
+                } else if (fieldName === '업종') {
+                    console.log('업종 필드 특별 처리 시작');
+                    
+                    const industrySelect = detailModal.querySelector('select[onchange*="업종"]');
+                    console.log('업종 select 요소:', {
+                        found: !!industrySelect,
+                        value: industrySelect ? industrySelect.value : 'N/A'
+                    });
+                    
+                    if (industrySelect && (!industrySelect.value || industrySelect.value === '')) {
+                        console.log('업종 - 누락됨');
+                        missingFields.push(fieldName);
+                        // 빨간 테두리 표시
+                        highlightRequiredField(industrySelect, true);
+                    } else if (industrySelect) {
+                        console.log('업종 - 정상');
+                        // 정상인 경우 원래 스타일로 복원
+                        highlightRequiredField(industrySelect, false);
+                    } else {
+                        console.log('업종 select를 찾을 수 없음');
+                        missingFields.push(fieldName);
+                    }
+                } else if (fieldName === '신용점수') {
+                    console.log('신용점수 필드 특별 처리 시작');
+                    
+                    const creditScoreInput = detailModal.querySelector('input[data-field="신용점수"]');
+                    console.log('신용점수 input 요소:', {
+                        found: !!creditScoreInput,
+                        value: creditScoreInput ? creditScoreInput.value : 'N/A'
+                    });
+                    
+                    if (creditScoreInput && (!creditScoreInput.value || creditScoreInput.value === '0' || creditScoreInput.value.trim() === '')) {
+                        console.log('신용점수 - 누락됨');
+                        missingFields.push(fieldName);
+                        // 빨간 테두리 표시
+                        highlightRequiredField(creditScoreInput, true);
+                    } else if (creditScoreInput) {
+                        console.log('신용점수 - 정상');
+                        // 정상인 경우 원래 스타일로 복원
+                        highlightRequiredField(creditScoreInput, false);
+                    } else {
+                        console.log('신용점수 input을 찾을 수 없음');
+                        missingFields.push(fieldName);
+                    }
+                } else {
+                    console.log(`${fieldName} - 특별 처리 없음, 누락으로 처리`);
+                    missingFields.push(fieldName);
+                }
+            }
+        }
+        
+        console.log('\n=== 모달 내 검증 완료 ===');
+        console.log('누락된 필드들:', missingFields);
+        
+    } else {
+        console.log('모달이 닫혀있음 - 서버에서 데이터 가져와서 검증');
+        
+        // 모달이 닫혀있는 경우 서버에서 데이터를 가져와서 확인
+        fetch(`/600/get_row_details/${rowId}/`)
+            .then(response => response.json())
+            .then(data => {
+                console.log('서버 응답:', data);
+                
+                if (data.success) {
+                    const rowData = data.row_data;
+                    console.log('행 데이터:', rowData);
+                    
+                    // 필수값 확인
+                    if (!rowData['신용점수'] || rowData['신용점수'] === '0' || rowData['신용점수'] === '') {
+                        missingFields.push('신용점수');
+                    }
+                    if (!rowData['업종'] || rowData['업종'] === '') {
+                        missingFields.push('업종');
+                    }
+                    
+                    // 매출 검증 로직 개선
+                    const revenueValue = rowData['매출'];
+                    const hasValidRevenue = (
+                        revenueValue && 
+                        revenueValue !== '' && 
+                        !isNaN(parseInt(revenueValue, 10)) && 
+                        parseInt(revenueValue, 10) >= 0
+                    );
+                    
+                    if (!hasValidRevenue) {
+                        missingFields.push('매출');
+                    }
+                    
+                    console.log('서버 검증 결과 - 누락된 필드들:', missingFields);
+                    
+                    // 필수값이 누락된 경우 알림 표시
+                    if (missingFields.length > 0) {
+                        showNotification(`다음 필수 항목을 입력해주세요: ${missingFields.join(', ')}`, 'error');
+                        return;
+                    }
+                    
+                    // 모든 필수값이 있으면 추천 요청 진행
+                    proceedWithFundingRecommendation(rowId);
+                } else {
+                    showNotification('데이터를 가져올 수 없습니다.', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('필수값 검증 중 오류:', error);
+                showNotification('필수값 검증 중 오류가 발생했습니다.', 'error');
+            });
+        return;
+    }
+    
+    // 모달이 열려있는 경우 즉시 검증
+    console.log('\n=== 최종 검증 결과 ===');
+    console.log('누락된 필드들:', missingFields);
+    
+    if (missingFields.length > 0) {
+        console.log('필수값 누락 - 알림 표시');
+        showNotification(`다음 필수 항목을 입력해주세요: ${missingFields.join(', ')}`, 'error');
+        return;
+    }
+    
+    console.log('모든 필수값 확인됨 - 추천 요청 진행');
+    // 모든 필수값이 있으면 추천 요청 진행
+    proceedWithFundingRecommendation(rowId);
+}
+
+// 필수 필드 하이라이트 함수
+function highlightRequiredField(element, isError) {
+    if (!element) return;
+    
+    if (isError) {
+        // 빨간 테두리와 배경색 적용
+        element.style.border = '2px solid #dc3545';
+        element.style.boxShadow = '0 0 5px rgba(220, 53, 69, 0.3)';
+        element.style.backgroundColor = '#fff5f5';
+        
+        // 애니메이션 효과 추가
+        element.style.animation = 'shake 0.5s ease-in-out';
+        
+        // 3초 후 자동으로 스타일 제거
+        setTimeout(() => {
+            if (element.style.border === '2px solid #dc3545') {
+                element.style.border = '';
+                element.style.boxShadow = '';
+                element.style.backgroundColor = '';
+                element.style.animation = '';
+            }
+        }, 3000);
+    } else {
+        // 정상 상태로 복원
+        element.style.border = '';
+        element.style.boxShadow = '';
+        element.style.backgroundColor = '';
+        element.style.animation = '';
+    }
+}
+
+// CSS 애니메이션 추가 (페이지 로드 시)
+document.addEventListener('DOMContentLoaded', function() {
+    // shake 애니메이션 CSS 추가
+    if (!document.getElementById('required-field-animation')) {
+        const style = document.createElement('style');
+        style.id = 'required-field-animation';
+        style.textContent = `
+            @keyframes shake {
+                0%, 100% { transform: translateX(0); }
+                10%, 30%, 50%, 70%, 90% { transform: translateX(-2px); }
+                20%, 40%, 60%, 80% { transform: translateX(2px); }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+});
+
+// 실제 추천자금 요청을 처리하는 함수
+function proceedWithFundingRecommendation(rowId) {
     // 로딩 상태 표시
     showNotification('추천자금을 분석 중입니다...', 'info');
     
@@ -2455,27 +3003,22 @@ function updateRowField(rowId, fieldName, value) {
     .then(data => {
         if (data.success) {
             console.log('필드 업데이트 성공:', fieldName, value);
-            
-            // 테이블 실시간 업데이트
             if (typeof refreshTable === 'function') {
                 refreshTable();
             }
-            
-            // 칸반보드 실시간 업데이트 - 현재 칸반보드 속성과 일치하는 경우
             const currentKanbanAttr = document.getElementById('kanbanAttributeSelect') ? 
                 document.getElementById('kanbanAttributeSelect').value : 
                 window.SELECTED_KANBAN_ATTR || window.kanbanAttribute;
-                
             if (currentKanbanAttr && fieldName === currentKanbanAttr) {
                 if (typeof refreshKanban === 'function') {
                     refreshKanban();
                 }
             }
-            
-            // 캘린더 업데이트 (날짜 관련 필드인 경우)
-            if (fieldName.includes('일') || fieldName.includes('날짜') || fieldName.includes('시간')) {
-                if (window.calendar) {
-                    window.calendar.refetchEvents();
+            // 캘린더 비동기 새로고침 (datetime 타입 또는 날짜/일/시간 포함 필드)
+            if (window.ATTR_FIELDS) {
+                const attr = window.ATTR_FIELDS.find(a => a.name === fieldName);
+                if ((attr && attr.type === 'datetime') || fieldName.includes('일') || fieldName.includes('날짜') || fieldName.includes('시간')) {
+                    if (window.calendar) window.calendar.refetchEvents();
                 }
             }
         } else {
@@ -2591,6 +3134,8 @@ function formatSalesInputRealtime(input, rowId, fieldName) {
     // 콤마 형태로 표시
     if (numericValue > 0) {
         input.value = numericValue.toLocaleString();
+        // 매출이 입력되면 빨간 테두리 제거
+        highlightRequiredField(input, false);
     } else {
         input.value = '';
     }
@@ -2616,41 +3161,61 @@ function downloadFile(rowId, fieldName) {
 }
 
 // 파일 삭제 함수
-function deleteFile(rowId, fieldName) {
-    console.log('deleteFile 호출됨:', rowId, fieldName);
+function deleteFile(rowId, fieldName, fileIndex = null) {
+    console.log('deleteFile 호출됨:', rowId, fieldName, fileIndex);
+    console.log('fileIndex 타입:', typeof fileIndex);
+    console.log('fileIndex 값:', fileIndex);
     
-    if (!confirm('파일을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+    // fileIndex가 문자열로 전달된 경우 숫자로 변환
+    if (fileIndex !== null && typeof fileIndex === 'string') {
+        fileIndex = parseInt(fileIndex, 10);
+        console.log('변환된 fileIndex:', fileIndex);
+    }
+    
+    const confirmMessage = fileIndex !== null 
+        ? '이 파일을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.'
+        : '모든 파일을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.';
+    
+    if (!confirm(confirmMessage)) {
         return;
     }
+    
+    const requestData = {
+        row_id: rowId,
+        field_name: fieldName
+    };
+    
+    // 특정 파일 인덱스가 제공된 경우 추가
+    if (fileIndex !== null) {
+        requestData.file_index = fileIndex;
+    }
+    
+    console.log('서버로 전송할 데이터:', requestData);
     
     fetch('/600/delete_file/', {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded',
             'X-CSRFToken': getCsrfToken()
         },
-        body: JSON.stringify({
-            row_id: rowId,
-            field_name: fieldName
-        })
+        body: new URLSearchParams(requestData).toString()
     })
     .then(response => response.json())
     .then(data => {
         console.log('파일 삭제 응답:', data);
         
         if (data.success) {
-            showNotification('파일이 성공적으로 삭제되었습니다.', 'success');
+            const message = fileIndex !== null 
+                ? '파일이 성공적으로 삭제되었습니다.'
+                : '모든 파일이 성공적으로 삭제되었습니다.';
+            showNotification(message, 'success');
             
             // 테이블 새로고침
             refreshTable();
             
-            // 상세보기 모달이 열려있으면 해당 파일 필드를 "파일 없음" 상태로 업데이트
+            // 상세보기 모달이 열려있으면 해당 파일 필드 업데이트
             updateFileFieldInModalAfterDelete(rowId, fieldName);
             
-            // 모달 닫기 (주석 처리)
-            // if (document.getElementById('detailModal')) {
-            //     document.getElementById('detailModal').style.display = 'none';
-            // }
         } else {
             alert('파일 삭제 실패: ' + (data.error || '알 수 없는 오류'));
         }
@@ -2661,66 +3226,117 @@ function deleteFile(rowId, fieldName) {
     });
 }
 
-// 파일 업로드 함수
+// 파일 업로드 함수 (여러 파일 지원)
 function uploadFile(rowId, fieldName, fileInput) {
     console.log('uploadFile 호출됨:', rowId, fieldName, fileInput);
     
-    const file = fileInput.files[0];
-    if (!file) {
+    const files = fileInput.files;
+    if (!files || files.length === 0) {
         alert('파일을 선택해주세요.');
         return;
     }
     
-    // 파일 크기 체크 (10MB 제한)
-    if (file.size > 10 * 1024 * 1024) {
-        alert('파일 크기는 10MB 이하여야 합니다.');
+    // 파일 개수 제한 (최대 10개)
+    if (files.length > 10) {
+        alert('한 번에 최대 10개 파일까지 업로드할 수 있습니다.');
         return;
     }
     
-    console.log('업로드할 파일:', file.name, file.size);
-    
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('row_id', rowId);
-    formData.append('field_name', fieldName);
-    
-    fetch('/600/upload_file/', {
-        method: 'POST',
-        body: formData,
-        headers: {
-            'X-CSRFToken': getCsrfToken()
+    // 각 파일에 대해 크기 체크
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file.size > 10 * 1024 * 1024) {
+            alert(`파일 "${file.name}"의 크기가 10MB를 초과합니다.`);
+            return;
         }
-    })
-    .then(response => response.json())
-    .then(data => {
-        console.log('파일 업로드 응답:', data);
-        
-        if (data.success) {
-            // 성공 알림
-            showNotification('파일이 성공적으로 업로드되었습니다.', 'success');
+    }
+    
+    console.log('업로드할 파일들:', Array.from(files).map(f => f.name));
+    
+    // 업로드 진행 상황 표시
+    const uploadNotification = document.createElement('div');
+    uploadNotification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #007bff;
+        color: white;
+        padding: 15px 20px;
+        border-radius: 6px;
+        z-index: 1000;
+        font-size: 14px;
+    `;
+    uploadNotification.textContent = `${files.length}개 파일 업로드 중...`;
+    document.body.appendChild(uploadNotification);
+    
+    // 파일들을 순차적으로 업로드
+    let uploadedCount = 0;
+    let failedCount = 0;
+    
+    function uploadNextFile(index) {
+        if (index >= files.length) {
+            // 모든 파일 업로드 완료
+            uploadNotification.remove();
+            
+            if (failedCount === 0) {
+                showNotification(`${uploadedCount}개 파일이 성공적으로 업로드되었습니다.`, 'success');
+            } else if (uploadedCount === 0) {
+                showNotification('모든 파일 업로드에 실패했습니다.', 'error');
+            } else {
+                showNotification(`${uploadedCount}개 파일 업로드 성공, ${failedCount}개 파일 업로드 실패`, 'warning');
+            }
             
             // 테이블 새로고침
             refreshTable();
             
-            // 상세보기 모달이 열려있으면 해당 파일 필드 실시간 업데이트
-            updateFileFieldInModal(rowId, fieldName, data.file_info);
+            // 상세보기 모달이 열려있으면 파일 필드 새로고침
+            updateFileFieldInModalAfterUpload(rowId, fieldName);
             
-            // 모달 닫기 (주석 처리됨)
-            // if (document.getElementById('detailModal')) {
-            //     document.getElementById('detailModal').style.display = 'none';
-            // }
-        } else {
-            alert('파일 업로드 실패: ' + (data.error || '알 수 없는 오류'));
+            // 파일 입력 초기화
+            fileInput.value = '';
+            return;
         }
-    })
-    .catch(error => {
-        console.error('파일 업로드 오류:', error);
-        alert('파일 업로드 중 오류가 발생했습니다.');
-    })
-    .finally(() => {
-        // 파일 입력 초기화
-        fileInput.value = '';
-    });
+        
+        const file = files[index];
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('row_id', rowId);
+        formData.append('field_name', fieldName);
+        
+        // 진행 상황 업데이트
+        uploadNotification.textContent = `${index + 1}/${files.length}개 파일 업로드 중... (${file.name})`;
+        
+        fetch('/600/upload_file/', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': getCsrfToken()
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log(`파일 "${file.name}" 업로드 응답:`, data);
+            
+            if (data.success) {
+                uploadedCount++;
+                console.log(`파일 "${file.name}" 업로드 성공`);
+            } else {
+                failedCount++;
+                console.error(`파일 "${file.name}" 업로드 실패:`, data.error);
+            }
+        })
+        .catch(error => {
+            console.error(`파일 "${file.name}" 업로드 오류:`, error);
+            failedCount++;
+        })
+        .finally(() => {
+            // 다음 파일 업로드
+            uploadNextFile(index + 1);
+        });
+    }
+    
+    // 첫 번째 파일부터 업로드 시작
+    uploadNextFile(0);
 }
 
 // 상세보기 모달의 파일 필드 실시간 업데이트 함수
@@ -2764,53 +3380,68 @@ function updateFileFieldInModal(rowId, fieldName, fileInfo) {
             <div style="display: flex; align-items: center;">
                 <span style="flex: 1; color: #28a745; font-size: 14px; padding: 8px 0;">📎 ${fileName} (업로드 완료)</span>
                 <button type="button" 
-                        onclick="window.open('${downloadUrl}', '_blank')" 
-                        style="
-                            padding: 6px 12px; 
-                            background: #17a2b8; 
-                            color: white; 
-                            border: none; 
-                            border-radius: 4px; 
-                            cursor: pointer; 
-                            font-size: 12px;
-                            font-weight: 500;
-                            margin-right: 5px;
-                        ">
+                    onclick="showFilePreviewModal(${JSON.stringify({...fileInfo, field_name: fieldName}).replace(/\"/g, '&quot;')})" 
+                    style="
+                        padding: 6px 12px; 
+                        background: #ffc107; 
+                        color: #333; 
+                        border: none; 
+                        border-radius: 4px; 
+                        cursor: pointer; 
+                        font-size: 12px;
+                        font-weight: 500;
+                        margin-right: 5px;
+                    ">
+                    미리보기
+                </button>
+                <button type="button" 
+                    onclick="window.open('${downloadUrl}', '_blank')" 
+                    style="
+                        padding: 6px 12px; 
+                        background: #17a2b8; 
+                        color: white; 
+                        border: none; 
+                        border-radius: 4px; 
+                        cursor: pointer; 
+                        font-size: 12px;
+                        font-weight: 500;
+                        margin-right: 5px;
+                    ">
                     다운로드
                 </button>
                 <button type="button" 
-                        onclick="document.getElementById('file_${fieldName}_${rowId}').click()" 
-                        style="
-                            padding: 6px 12px; 
-                            background: #28a745; 
-                            color: white; 
-                            border: none; 
-                            border-radius: 4px; 
-                            cursor: pointer; 
-                            font-size: 12px;
-                            font-weight: 500;
-                            margin-right: 5px;
-                        ">
+                    onclick="document.getElementById('file_${fieldName}_${rowId}').click()" 
+                    style="
+                        padding: 6px 12px; 
+                        background: #28a745; 
+                        color: white; 
+                        border: none; 
+                        border-radius: 4px; 
+                        cursor: pointer; 
+                        font-size: 12px;
+                        font-weight: 500;
+                        margin-right: 5px;
+                    ">
                     수정
                 </button>
                 <button type="button" 
-                        onclick="deleteFile('${rowId}', '${fieldName}')" 
-                        style="
-                            padding: 6px 12px; 
-                            background: #dc3545; 
-                            color: white; 
-                            border: none; 
-                            border-radius: 4px; 
-                            cursor: pointer; 
-                            font-size: 12px;
-                            font-weight: 500;
-                        ">
+                    onclick="deleteFile('${rowId}', '${fieldName}')" 
+                    style="
+                        padding: 6px 12px; 
+                        background: #dc3545; 
+                        color: white; 
+                        border: none; 
+                        border-radius: 4px; 
+                        cursor: pointer; 
+                        font-size: 12px;
+                        font-weight: 500;
+                    ">
                     삭제
                 </button>
                 <input type="file" 
-                       id="file_${fieldName}_${rowId}" 
-                       style="display: none;"
-                       onchange="uploadFile('${rowId}', '${fieldName}', this)">
+                    id="file_${fieldName}_${rowId}" 
+                    style="display: none;"
+                    onchange="uploadFile('${rowId}', '${fieldName}', this)">
             </div>
         `;
         
@@ -2849,36 +3480,759 @@ function updateFileFieldInModalAfterDelete(rowId, fieldName) {
     
     console.log('필드 div 찾음:', targetFieldDiv);
     
-    // 파일 정보 영역을 "파일 없음" 상태로 업데이트
-    const fileContainer = targetFieldDiv.querySelector('div[style*="flex:1"]');
-    if (fileContainer) {
-        fileContainer.innerHTML = `
-            <div style="display: flex; align-items: center;">
-                <span style="flex: 1; color: #6c757d; font-size: 14px; padding: 8px 0;">파일이 선택되지 않았습니다</span>
-                <button type="button" 
-                        onclick="document.getElementById('file_${fieldName}_${rowId}').click()" 
-                        style="
-                            padding: 6px 12px; 
-                            background: #007bff; 
-                            color: white; 
-                            border: none; 
-                            border-radius: 4px; 
-                            cursor: pointer; 
-                            font-size: 12px;
-                            font-weight: 500;
-                        ">
-                    파일 선택
-                </button>
-                <input type="file" 
-                       id="file_${fieldName}_${rowId}" 
-                       style="display: none;"
-                       onchange="uploadFile('${rowId}', '${fieldName}', this)">
-            </div>
-        `;
+    // 서버에서 최신 파일 정보를 가져와서 업데이트
+    fetch(`/600/get_row_details/${rowId}/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.row_data) {
+                const fileValue = data.row_data[fieldName];
+                console.log('서버에서 받은 파일 값:', fileValue);
+                
+                if (fileValue) {
+                    try {
+                        let filesData;
+                        
+                        // fileValue가 이미 객체인지 문자열인지 확인
+                        if (typeof fileValue === 'string') {
+                            filesData = JSON.parse(fileValue);
+                        } else if (typeof fileValue === 'object') {
+                            filesData = fileValue;
+                        } else {
+                            console.error('예상치 못한 파일 값 타입:', typeof fileValue);
+                            filesData = [];
+                        }
+                        
+                        const files = Array.isArray(filesData) ? filesData : [filesData];
+                        console.log('파싱된 파일 데이터:', files);
+                        
+                        if (files.length > 0) {
+                            // 파일이 남아있는 경우: 파일 목록 표시
+                            let filesHtml = '';
+                            files.forEach((fileInfo, index) => {
+                                const displayFileName = fileInfo.original_filename || fileInfo.filename || 'Unknown';
+                                
+                                if (fileInfo.type === 'img' || fileInfo.content_type?.startsWith('image/')) {
+                                    filesHtml += `
+                                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding: 8px; border: 1px solid #e9ecef; border-radius: 4px; background: #f8f9fa;">
+                                            <span style="flex: 1; font-size: 14px;">📄 ${displayFileName}</span>
+                                            <button onclick="showFilePreviewModal(${JSON.stringify({...fileInfo, field_name: fieldName}).replace(/\"/g, '&quot;')})"
+                                                    style="padding: 4px 8px; background: #ffc107; color: #333; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                                미리보기
+                                            </button>
+                                            <button onclick="window.open('${fileInfo.download_url}', '_blank')"
+                                                    style="padding: 4px 8px; background: #17a2b8; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                                다운로드
+                                            </button>
+                                            <button onclick="deleteFile('${rowId}', '${fieldName}', '${index}')"
+                                                    style="padding: 4px 8px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                                삭제
+                                            </button>
+                                        </div>
+                                    `;
+                                } else if (fileInfo.type === 'audio') {
+                                    filesHtml += `
+                                        <div style="margin-bottom: 12px; padding: 8px; border: 1px solid #e9ecef; border-radius: 4px; background: #f8f9fa;">
+                                            <div style="margin-bottom: 8px;">
+                                                <audio controls src="${fileInfo.download_url || fileInfo.url}" style="width: 100%;"></audio>
+                                            </div>
+                                            <div style="display: flex; gap: 6px;">
+                                                <button onclick="window.open('${fileInfo.download_url}', '_blank')"
+                                                        style="padding: 4px 8px; background: #17a2b8; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                                    다운로드
+                                                </button>
+                                                <button onclick="deleteFile('${rowId}', '${fieldName}', '${index}')"
+                                                        style="padding: 4px 8px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                                    삭제
+                                                </button>
+                                            </div>
+                                        </div>
+                                    `;
+                                } else {
+                                    // 일반 파일
+                                    filesHtml += `
+                                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding: 8px; border: 1px solid #e9ecef; border-radius: 4px; background: #f8f9fa;">
+                                            <span style="flex: 1; font-size: 14px;">📄 ${displayFileName}</span>
+                                            <button onclick="showFilePreviewModal(${JSON.stringify({...fileInfo, field_name: fieldName}).replace(/\"/g, '&quot;')})"
+                                                    style="padding: 4px 8px; background: #ffc107; color: #333; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                                미리보기
+                                            </button>
+                                            <button onclick="window.open('${fileInfo.download_url}', '_blank')"
+                                                    style="padding: 4px 8px; background: #17a2b8; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                                다운로드
+                                            </button>
+                                            <button onclick="deleteFile('${rowId}', '${fieldName}', '${index}')"
+                                                    style="padding: 4px 8px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                                삭제
+                                            </button>
+                                        </div>
+                                    `;
+                                }
+                            });
+                            
+                            // 파일 추가 버튼
+                            filesHtml += `
+                                <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px; padding: 8px; border: 1px solid #dee2e6; border-radius: 4px; background: #fff;">
+                                    <span style="flex: 1; color: #6c757d; font-size: 14px;">파일 추가</span>
+                                    <button type="button" 
+                                            onclick="document.getElementById('file_${fieldName}_${rowId}').click()" 
+                                            style="padding: 6px 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;">
+                                        + 파일 추가
+                                    </button>
+                                    <input type="file" 
+                                           id="file_${fieldName}_${rowId}" 
+                                           style="display: none;"
+                                           multiple
+                                           onchange="uploadFile('${rowId}', '${fieldName}', this)">
+                                </div>
+                            `;
+                            
+                            // 파일 컨테이너 업데이트
+                            const fileContainer = targetFieldDiv.querySelector('div[style*="flex:1"]');
+                            if (fileContainer) {
+                                fileContainer.innerHTML = filesHtml;
+                                console.log('파일 목록 업데이트 완료');
+                                
+                                // 새로운 삭제 버튼에 이벤트 리스너 추가
+                                setTimeout(() => {
+                                    const deleteButtons = fileContainer.querySelectorAll('.delete-file-btn');
+                                    console.log('새로 찾은 삭제 버튼 개수:', deleteButtons.length);
+                                    
+                                    deleteButtons.forEach((btn, index) => {
+                                        console.log(`새 버튼 ${index}:`, btn);
+                                        console.log(`새 버튼 ${index}의 data 속성:`, {
+                                            rowId: btn.getAttribute('data-row-id'),
+                                            fieldName: btn.getAttribute('data-field-name'),
+                                            fileIndex: btn.getAttribute('data-file-index')
+                                        });
+                                        
+                                        btn.addEventListener('click', function(e) {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            
+                                            const rowId = this.getAttribute('data-row-id');
+                                            const fieldName = this.getAttribute('data-field-name');
+                                            const fileIndex = this.getAttribute('data-file-index');
+                                            
+                                            console.log('새 파일 삭제 버튼 클릭됨:', rowId, fieldName, fileIndex);
+                                            console.log('fileIndex 타입:', typeof fileIndex);
+                                            console.log('fileIndex 값:', fileIndex);
+                                            
+                                            // fileIndex를 숫자로 변환
+                                            const numericFileIndex = parseInt(fileIndex, 10);
+                                            console.log('변환된 fileIndex:', numericFileIndex);
+                                            
+                                            console.log('deleteFile 함수 호출 전');
+                                            deleteFile(rowId, fieldName, numericFileIndex);
+                                            console.log('deleteFile 함수 호출 후');
+                                        });
+                                    });
+                                }, 100);
+                            }
+                        } else {
+                            // 파일이 없는 경우: 파일 선택 버튼
+                            const fileContainer = targetFieldDiv.querySelector('div[style*="flex:1"]');
+                            if (fileContainer) {
+                                fileContainer.innerHTML = `
+                                    <div style="display: flex; align-items: center;">
+                                        <span style="flex: 1; color: #6c757d; font-size: 14px; padding: 8px 0;">파일이 선택되지 않았습니다</span>
+                                        <button type="button" 
+                                                onclick="document.getElementById('file_${fieldName}_${rowId}').click()" 
+                                                style="padding: 6px 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;">
+                                            파일 선택
+                                        </button>
+                                        <input type="file" 
+                                               id="file_${fieldName}_${rowId}" 
+                                               style="display: none;"
+                                               multiple
+                                               onchange="uploadFile('${rowId}', '${fieldName}', this)">
+                                    </div>
+                                `;
+                                console.log('파일 표시 영역을 "파일 없음"으로 업데이트 완료');
+                            }
+                        }
+                    } catch (e) {
+                        console.error('파일 정보 파싱 오류:', e, 'fileValue:', fileValue);
+                        // 파싱 오류 시 "파일 없음" 상태로 설정
+                        const fileContainer = targetFieldDiv.querySelector('div[style*="flex:1"]');
+                        if (fileContainer) {
+                            fileContainer.innerHTML = `
+                                <div style="display: flex; align-items: center;">
+                                    <span style="flex: 1; color: #6c757d; font-size: 14px; padding: 8px 0;">파일이 선택되지 않았습니다</span>
+                                    <button type="button" 
+                                            onclick="document.getElementById('file_${fieldName}_${rowId}').click()" 
+                                            style="padding: 6px 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;">
+                                        파일 선택
+                                    </button>
+                                    <input type="file" 
+                                           id="file_${fieldName}_${rowId}" 
+                                           style="display: none;"
+                                           multiple
+                                           onchange="uploadFile('${rowId}', '${fieldName}', this)">
+                                </div>
+                            `;
+                        }
+                    }
+                } else {
+                    // 파일 값이 없는 경우: 파일 선택 버튼
+                    const fileContainer = targetFieldDiv.querySelector('div[style*="flex:1"]');
+                    if (fileContainer) {
+                        fileContainer.innerHTML = `
+                            <div style="display: flex; align-items: center;">
+                                <span style="flex: 1; color: #6c757d; font-size: 14px; padding: 8px 0;">파일이 선택되지 않았습니다</span>
+                                <button type="button" 
+                                        onclick="document.getElementById('file_${fieldName}_${rowId}').click()" 
+                                        style="padding: 6px 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;">
+                                    파일 선택
+                                </button>
+                                <input type="file" 
+                                       id="file_${fieldName}_${rowId}" 
+                                       style="display: none;"
+                                       multiple
+                                       onchange="uploadFile('${rowId}', '${fieldName}', this)">
+                            </div>
+                        `;
+                        console.log('파일 표시 영역을 "파일 없음"으로 업데이트 완료');
+                    }
+                }
+            } else {
+                console.error('행 정보 가져오기 실패:', data.error);
+            }
+        })
+        .catch(error => {
+            console.error('파일 정보 업데이트 오류:', error);
+        });
+}
+
+// 한글 금액 → 숫자(콤마)로 변환하여 입력모드로 전환
+function showNumberForEdit(input, rowId, fieldName) {
+    const value = input.value;
+    const number = parseKoreanCurrency(value);
+    input.value = formatNumberWithComma(number);
+    input.select();
+}
+
+// 매출 입력값 실시간 업데이트
+function updateSalesFromInputs(rowId, fieldName) {
+    const eokInput = document.getElementById('sales_eok_' + rowId);
+    const cheonmanInput = document.getElementById('sales_cheonman_' + rowId);
+    
+    if (!eokInput || !cheonmanInput) return;
+    
+    const eok = parseInt(eokInput.value) || 0;
+    const cheonman = parseInt(cheonmanInput.value) || 0;
+    
+    // 총 금액 계산 (억 * 100000000 + 천만 * 10000000)
+    const totalAmount = eok * 100000000 + cheonman * 10000000;
+    
+    // 전역 변수에 임시 저장
+    window.tempSalesAmount = totalAmount;
+}
+
+// 매출 입력 저장
+function saveSalesInput(rowId, fieldName) {
+    const eokInput = document.getElementById('sales_eok_' + rowId);
+    const cheonmanInput = document.getElementById('sales_cheonman_' + rowId);
+    
+    if (!eokInput || !cheonmanInput) return;
+    
+    const eok = parseInt(eokInput.value) || 0;
+    const cheonman = parseInt(cheonmanInput.value) || 0;
+    
+    // 새로운 API 사용
+    fetch('/600/update_sales_field/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify({
+            row_id: rowId,
+            field_name: fieldName,
+            eok: eok,
+            cheonman: cheonman
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            console.log('매출 정보가 업데이트되었습니다.');
+            
+            // 컨테이너 복원
+            const container = document.querySelector(`[data-field="${fieldName}"]`);
+            if (container) {
+                container.innerHTML = data.formatted_amount || '0원';
+                container.setAttribute('data-raw', data.total_amount);
+                
+                // 값이 있으면 빨간 테두리 제거
+                if (data.total_amount > 0) {
+                    highlightRequiredField(container, false);
+                }
+            }
+            
+            // 테이블과 칸반보드 새로고침
+            if (typeof refreshTable === 'function') {
+                refreshTable();
+            }
+        } else {
+            console.error('매출 업데이트 실패:', data.error);
+            showNotification('매출 정보 업데이트에 실패했습니다.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('매출 업데이트 오류:', error);
+        showNotification('매출 정보 업데이트 중 오류가 발생했습니다.', 'error');
+    });
+}
+
+// 매출 입력 취소
+function cancelSalesInput(rowId, fieldName) {
+    const container = document.querySelector(`[data-field="${fieldName}"]`);
+    if (container) {
+        const originalValue = container.getAttribute('data-raw');
+        const displayValue = originalValue && !isNaN(parseInt(originalValue, 10)) ? 
+            formatToKoreanCurrency(parseInt(originalValue, 10)) : '0원';
+        container.innerHTML = displayValue;
+    }
+    
+    // 전역 변수 정리
+    delete window.tempSalesAmount;
+}
+
+function showFilePreview(fileId, fileInfo, rowId, fieldName) {
+    // fileId가 없거나 숫자가 아니면 fileInfo에서 최대한 추출
+    if (!fileId || fileId === 'undefined' || fileId === 'null') {
+        fileId = (fileInfo && (fileInfo.id || fileInfo.stored_filename || fileInfo.filename)) || '';
+    }
+    // rowId도 없으면 fileInfo에서 추출 시도
+    if (!rowId && fileInfo && fileInfo.row_id) {
+        rowId = fileInfo.row_id;
+    }
+    if (!fileId) {
+        showNotification('파일 정보가 올바르지 않습니다.', 'error');
+        return;
+    }
+    if (!rowId) {
+        showNotification('행 정보가 올바르지 않습니다.', 'error');
+        return;
+    }
+    
+    const fileName = fileInfo.original_filename || fileInfo.filename || fileInfo.stored_filename || 'Unknown';
+    const contentType = fileInfo.content_type || '';
+    const fileExt = fileName.split('.').pop()?.toLowerCase() || '';
+    
+    // 서버에 row_id도 함께 전달
+    fetch(`/600/get_file_preview_url/${fileId}/${fieldName}/?row_id=${rowId}`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.success && data.preview_url) {
+                // 파일 타입에 따라 미리보기 모달 표시
+                let contentHtml = '';
+                const fileUrl = data.preview_url;
+                
+                if (contentType.startsWith('image/') || fileInfo.type === 'img') {
+                    // 이미지 파일
+                    contentHtml = `<img src="${fileUrl}" alt="미리보기" style="max-width:100%;max-height:70vh;display:block;margin:0 auto;">`;
+                } else if (contentType === 'application/pdf' || fileExt === 'pdf' || fileInfo.type === 'pdf') {
+                    // PDF 파일
+                    contentHtml = `<iframe src="${fileUrl}" style="width:90vw;height:70vh;border:none;"></iframe>`;
+                } else if (contentType.includes('audio/') || fileInfo.type === 'audio') {
+                    // 오디오 파일
+                    contentHtml = `<audio controls src="${fileUrl}" style="width:100%;"></audio>`;
+                } else if (contentType.includes('video/') || fileInfo.type === 'video') {
+                    // 비디오 파일
+                    contentHtml = `<video controls src="${fileUrl}" style="max-width:100%;max-height:70vh;"></video>`;
+                } else if (['docx', 'doc', 'pptx', 'ppt', 'xlsx', 'xls'].includes(fileExt) || 
+                           contentType.includes('wordprocessingml') || 
+                           contentType.includes('presentationml') || 
+                           contentType.includes('spreadsheetml') ||
+                           contentType.includes('msword')) {
+                    // Office 문서 파일들 - Google Docs Viewer 사용
+                    const encodedUrl = encodeURIComponent(fileUrl);
+                    contentHtml = `
+                        <div style="width: 90vw; height: 70vh; display: flex; flex-direction: column;">
+                            <iframe src="https://docs.google.com/viewer?url=${encodedUrl}&embedded=true"
+                                    style="flex: 1; border: none;"
+                                    title="${fileName}">
+                            </iframe>
+                            <div style="text-align: center; margin-top: 15px; padding: 10px;">
+                                <button onclick="window.open('${fileUrl}', '_blank')" 
+                                        style="padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">
+                                    새 창에서 열기
+                                </button>
+                                <button onclick="window.open('${fileInfo.download_url || fileUrl}', '_blank')" 
+                                        style="padding: 8px 16px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                    다운로드
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                } else if (contentType.includes('text/') || contentType.includes('application/json') || contentType.includes('application/xml')) {
+                    // 텍스트 파일
+                    contentHtml = `<iframe src="${fileUrl}" style="width:90vw;height:70vh;border:none;"></iframe>`;
+                } else {
+                    // 지원하지 않는 파일 타입
+                    contentHtml = `
+                        <div style="text-align:center;padding:40px 0;">
+                            <div style="font-size:48px;color:#dc3545;">📄</div>
+                            <div style="margin-top:16px;font-size:18px;font-weight:500;">${fileName}</div>
+                            <div style="margin-top:8px;color:#888;">이 파일 타입은 미리보기를 지원하지 않습니다.</div>
+                            <button onclick="window.open('${fileUrl}','_blank')" 
+                                    style="margin-top:20px;padding:10px 24px;background:#007bff;color:white;border:none;border-radius:6px;font-size:16px;cursor:pointer;margin-right:10px;">
+                                새 창에서 열기
+                            </button>
+                            <button onclick="window.open('${fileInfo.download_url || fileUrl}','_blank')" 
+                                    style="margin-top:20px;padding:10px 24px;background:#28a745;color:white;border:none;border-radius:6px;font-size:16px;cursor:pointer;">
+                                다운로드
+                            </button>
+                        </div>
+                    `;
+                }
+                
+                showModal({
+                    title: fileName,
+                    content: contentHtml
+                });
+            } else {
+                showModal({
+                    title: fileName,
+                    content: `<div style="text-align:center;padding:40px 0;"><div style="font-size:48px;color:#dc3545;">✗</div><div style="margin-top:16px;font-size:18px;font-weight:500;">미리보기 로드 실패</div><div style="margin-top:8px;color:#888;">${data.error || '파일을 찾을 수 없습니다.'}</div><button onclick="window.open('${fileInfo && fileInfo.download_url ? fileInfo.download_url : '#'}','_blank')" style="margin-top:20px;padding:10px 24px;background:#007bff;color:white;border:none;border-radius:6px;font-size:16px;cursor:pointer;">새 창에서 열기</button></div>`
+                });
+            }
+        })
+        .catch(err => {
+            showModal({
+                title: fileName,
+                content: `<div style="text-align:center;padding:40px 0;"><div style="font-size:48px;color:#dc3545;">✗</div><div style="margin-top:16px;font-size:18px;font-weight:500;">미리보기 로드 실패</div><div style="margin-top:8px;color:#888;">${err.message || '알 수 없는 오류'}</div></div>`
+            });
+        });
+}
+
+// 개업년월 필드 업데이트 함수
+function updateBusinessField(rowId, fieldName, dataType, value) {
+    // 현재 저장된 개업 데이터 가져오기
+    let currentBusinessData = {};
+    const businessElement = document.querySelector(`[data-field="${fieldName}"]`);
+    
+    try {
+        // 기존 데이터 파싱 시도
+        if (businessElement && businessElement.dataset.currentValue) {
+            currentBusinessData = JSON.parse(businessElement.dataset.currentValue);
+        }
+    } catch (e) {
+        console.log('기존 개업 데이터 없음, 새로 생성');
+    }
+    
+    if (dataType === 'opening_date') {
+        // 개업일 입력 시 년전 입력 해제
+        currentBusinessData.opening_date = value;
+        currentBusinessData.years_ago = '';
         
-        console.log('파일 표시 영역을 "파일 없음"으로 업데이트 완료');
-    } else {
-        console.log('파일 컨테이너를 찾을 수 없음');
+        // 년전 입력 해제
+        const yearsAgoInput = document.querySelector(`input[onchange*="'${fieldName}'"][onchange*="years_ago"]`);
+        if (yearsAgoInput) yearsAgoInput.value = '';
+        
+    } else if (dataType === 'years_ago') {
+        // 년전 입력 시 개업일 입력 해제
+        currentBusinessData.years_ago = value;
+        currentBusinessData.opening_date = '';
+        
+        // 개업일 입력 해제
+        const openingDateInput = document.querySelector(`input[onchange*="'${fieldName}'"][onchange*="opening_date"]`);
+        if (openingDateInput) openingDateInput.value = '';
+    }
+    
+    // 현재 데이터를 element에 저장
+    if (businessElement) {
+        businessElement.dataset.currentValue = JSON.stringify(currentBusinessData);
+    }
+    
+    // 서버에 업데이트 요청
+    const businessDataToSend = JSON.stringify(currentBusinessData);
+    updateRowField(rowId, fieldName, businessDataToSend);
+}
+
+// 모달에서 필드 업데이트 함수
+function updateRowField(rowId, field, value) {
+    fetch('/600/update_row_field/', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'id='+encodeURIComponent(rowId)+'&field='+encodeURIComponent(field)+'&value='+encodeURIComponent(value)
+    })
+    .then(r=>r.json())
+    .then(function(data){
+        if(!data.success) {
+            alert('수정 실패: '+(data.error||''));
+            return;
+        }
+        
+        // 모달에서 변경사항이 있었음을 표시
+        window.modalHasChanges = true;
+        
+        // 부분 업데이트로 변경 (전체 테이블 새로고침 대신)
+        if (typeof updateTableCell === 'function') {
+            updateTableCell(rowId, field, value);
+        }
+        
+        // F/U 일정 필드인 경우 캘린더도 새로고침
+        if(field === 'F/U 일정' && window.calendar) {
+            window.calendar.refetchEvents();
+        }
+        
+        // datetime 타입 속성이 수정된 경우 캘린더 설정 새로고침
+        if (typeof refreshCalendarSettings === 'function') {
+            refreshCalendarSettings();
+        }
+        
+        // 모달 리랜더링 제거 - 모달은 그대로 유지
+        // if (document.getElementById('detailModal') && document.getElementById('detailModal').style.display !== 'none') {
+        //     fetch('/600/get_row_details/'+rowId+'/')
+        //       .then(r => r.json())
+        //       .then(function(data){
+        //           if(data.success) showDetailModal(data.row_data, data.row_id);
+        //       });
+        // }
+    })
+    .catch(function(err){
+        alert('수정 실패: 네트워크 오류');
+        console.error(err);
+    });
+}
+
+// 파일 업로드 후 모달 필드 새로고침 함수
+function updateFileFieldInModalAfterUpload(rowId, fieldName) {
+    // 서버에서 최신 파일 정보를 가져와서 모달 업데이트
+    fetch(`/600/get_row_details/${rowId}/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.row_data) {
+                const fileValue = data.row_data[fieldName];
+                updateFileFieldInModal(rowId, fieldName, fileValue);
+            }
+        })
+        .catch(error => {
+            console.error('파일 업로드 후 모달 업데이트 오류:', error);
+        });
+}
+
+// 행 복제 버튼 재생성 함수
+function recreateDuplicateButtons() {
+    const table = document.querySelector('#entryTable');
+    if (!table) {
+        console.log('테이블을 찾을 수 없습니다.');
+        return;
+    }
+    
+    const rows = table.querySelectorAll('tbody tr');
+    console.log(`총 ${rows.length}개의 행을 찾았습니다.`);
+    
+    rows.forEach((row, index) => {
+        const rowId = row.getAttribute('data-row-id') || row.getAttribute('data-id');
+        if (!rowId) {
+            console.log(`행 ${index}: ID를 찾을 수 없습니다.`);
+            return;
+        }
+        
+        console.log(`행 ${index}: ID = ${rowId}`);
+        
+        // drag-cell 찾기
+        const dragCell = row.querySelector('.drag-cell');
+        if (!dragCell) {
+            console.log(`행 ${index}: drag-cell을 찾을 수 없습니다.`);
+            return;
+        }
+        
+        // button-container 찾기 또는 생성
+        let buttonContainer = dragCell.querySelector('.button-container');
+        if (!buttonContainer) {
+            buttonContainer = document.createElement('div');
+            buttonContainer.className = 'button-container';
+            buttonContainer.style.cssText = `
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+                flex-wrap: nowrap;
+                height: 100%;
+            `;
+            dragCell.appendChild(buttonContainer);
+        }
+        
+        // 기존 버튼들 제거
+        buttonContainer.innerHTML = '';
+        
+        // 삭제 버튼 생성
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'delete-row-btn';
+        deleteBtn.setAttribute('onclick', `deleteRow('${rowId}')`);
+        deleteBtn.setAttribute('title', '행 삭제');
+        deleteBtn.innerHTML = '×';
+        deleteBtn.style.cssText = `
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            padding: 3px 6px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            min-width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+        `;
+        buttonContainer.appendChild(deleteBtn);
+        
+        // 복제 버튼 생성
+        const duplicateBtn = document.createElement('button');
+        duplicateBtn.className = 'duplicate-row-btn';
+        duplicateBtn.setAttribute('onclick', `duplicateRow('${rowId}')`);
+        duplicateBtn.setAttribute('title', '행 복제');
+        duplicateBtn.innerHTML = '📋';
+        duplicateBtn.style.cssText = `
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            padding: 3px 6px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            min-width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+        `;
+        buttonContainer.appendChild(duplicateBtn);
+        
+        // 드래그 핸들 생성
+        const dragHandle = document.createElement('span');
+        dragHandle.className = 'drag-handle';
+        dragHandle.innerHTML = '⋮⋮⋮';
+        dragHandle.style.cssText = `
+            font-size: 16px;
+            color: #999;
+            cursor: move;
+            user-select: none;
+            padding: 2px;
+            border-radius: 3px;
+            transition: all 0.2s ease;
+            opacity: 0;
+        `;
+        buttonContainer.appendChild(dragHandle);
+        
+        console.log(`행 ${index}: 버튼들 생성 완료`);
+        
+        // 상세보기 버튼 이벤트 재바인딩
+        const moreBtn = row.querySelector('.more-btn');
+        if (moreBtn) {
+            console.log(`행 ${index}: 상세보기 버튼 발견`);
+            if (!moreBtn.hasAttribute('data-event-bound')) {
+                moreBtn.setAttribute('data-event-bound', 'true');
+                moreBtn.onclick = function(e) {
+                    e.stopPropagation();
+                    const tr = this.closest('tr');
+                    const id = tr.getAttribute('data-id') || tr.getAttribute('data-row-id');
+                    if (!id) { 
+                        alert('ID 정보가 없습니다.'); 
+                        return; 
+                    }
+                    console.log(`상세보기 버튼 클릭: ID = ${id}`);
+                    fetch('/600/get_row_details/' + id + '/')
+                        .then(r => r.json())
+                        .then(function(data) {
+                            if (data.success) showDetailModal(data.row_data, data.row_id);
+                            else alert('상세정보 불러오기 실패: ' + (data.error || ''));
+                        })
+                        .catch(function(err) {
+                            alert('상세정보 불러오기 실패: 네트워크 오류\n' + err);
+                            console.error(err);
+                        });
+                };
+                console.log(`행 ${index}: 상세보기 버튼 이벤트 바인딩 완료`);
+            } else {
+                console.log(`행 ${index}: 상세보기 버튼 이벤트가 이미 바인딩되어 있습니다.`);
+            }
+        } else {
+            console.log(`행 ${index}: 상세보기 버튼을 찾을 수 없습니다.`);
+            // name-container 구조 확인
+            const nameContainer = row.querySelector('.name-container');
+            if (nameContainer) {
+                console.log(`행 ${index}: name-container 발견`);
+                const moreBtnWrapper = nameContainer.querySelector('.more-btn-wrapper');
+                if (moreBtnWrapper) {
+                    console.log(`행 ${index}: more-btn-wrapper 발견`);
+                    const existingMoreBtn = moreBtnWrapper.querySelector('.more-btn');
+                    if (existingMoreBtn) {
+                        console.log(`행 ${index}: 기존 상세보기 버튼 발견`);
+                        if (!existingMoreBtn.hasAttribute('data-event-bound')) {
+                            existingMoreBtn.setAttribute('data-event-bound', 'true');
+                            existingMoreBtn.onclick = function(e) {
+                                e.stopPropagation();
+                                const tr = this.closest('tr');
+                                const id = tr.getAttribute('data-id') || tr.getAttribute('data-row-id');
+                                if (!id) { 
+                                    alert('ID 정보가 없습니다.'); 
+                                    return; 
+                                }
+                                console.log(`상세보기 버튼 클릭: ID = ${id}`);
+                                fetch('/600/get_row_details/' + id + '/')
+                                    .then(r => r.json())
+                                    .then(function(data) {
+                                        if (data.success) showDetailModal(data.row_data, data.row_id);
+                                        else alert('상세정보 불러오기 실패: ' + (data.error || ''));
+                                    })
+                                    .catch(function(err) {
+                                        alert('상세정보 불러오기 실패: 네트워크 오류\n' + err);
+                                        console.error(err);
+                                    });
+                            };
+                            console.log(`행 ${index}: 상세보기 버튼 이벤트 바인딩 완료`);
+                        }
+                    } else {
+                        console.log(`행 ${index}: 상세보기 버튼이 없습니다.`);
+                    }
+                } else {
+                    console.log(`행 ${index}: more-btn-wrapper가 없습니다.`);
+                }
+            } else {
+                console.log(`행 ${index}: name-container가 없습니다.`);
+            }
+        }
+    });
+    
+    console.log('recreateDuplicateButtons 함수 완료');
+    
+    // 드래그 기능 다시 초기화
+    if (typeof Sortable !== 'undefined') {
+        const tbody = document.getElementById('entryTbody');
+        if (tbody) {
+            // 기존 Sortable 인스턴스가 있다면 제거
+            if (window.tableSortable) {
+                window.tableSortable.destroy();
+            }
+            
+            // 새로운 Sortable 인스턴스 생성
+            window.tableSortable = new Sortable(tbody, {
+                handle: '.drag-handle',
+                animation: 150,
+                onEnd: function (evt) {
+                    // 순서 변경 시 서버에 반영
+                    const ids = Array.from(document.querySelectorAll('#entryTbody tr[data-id]')).map(tr => tr.getAttribute('data-id'));
+                    fetch('/600/reorder/', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({order: ids})
+                    }).then(res => res.json()).then(data => {
+                        if(!data.success) alert('순서 저장 실패: '+data.error);
+                    }).catch(() => alert('순서 저장 중 오류 발생'));
+                }
+            });
+            console.log('드래그 기능 재초기화 완료');
+        }
     }
 }
 

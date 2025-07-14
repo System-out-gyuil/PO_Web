@@ -333,3 +333,145 @@ function formatKoreanCurrency(value) {
         return String(value);
     }
 }
+
+// 칸반보드 컬럼 드래그앤드롭(순서변경) 기능
+function enableKanbanColumnDragDrop() {
+    const boardContainer = document.querySelector('.board-container');
+    if (!boardContainer || typeof Sortable === 'undefined') return;
+
+    // 이미 초기화된 경우 중복 방지
+    if (window.kanbanColSortable) {
+        window.kanbanColSortable.destroy();
+    }
+
+    window.kanbanColSortable = new Sortable(boardContainer, {
+        animation: 180,
+        handle: '.board-col-title',
+        draggable: '.board-col',
+        onEnd: function (evt) {
+            // 순서 변경 후 서버에 저장
+            const attrName = window.SELECTED_KANBAN_ATTR;
+            const optionOrders = Array.from(boardContainer.querySelectorAll('.board-col')).map((col, idx) => ({
+                id: col.getAttribute('data-status-id'),
+                order: idx
+            }));
+
+            fetch('/600/update_kanban_option_order/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken ? getCsrfToken() : ''
+                },
+                body: JSON.stringify({
+                    attr_name: attrName,
+                    option_orders: optionOrders
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('칸반보드 옵션 순서가 저장되었습니다.', 'success');
+                    // 칸반보드 새로고침
+                    updateKanbanBoard(attrName);
+                } else {
+                    showNotification('순서 저장 실패: ' + (data.error || '알 수 없는 오류'), 'error');
+                }
+            })
+            .catch(err => {
+                showNotification('순서 저장 중 오류가 발생했습니다.', 'error');
+            });
+        }
+    });
+}
+
+// 칸반보드 렌더 후 호출 및 select change 이벤트 바인딩
+// 중복 정의 방지, DOMContentLoaded에서 한 번만 바인딩
+
+document.addEventListener('DOMContentLoaded', function() {
+    // select 태그에서 옵션 변경 시 칸반보드 갱신
+    const kanbanSelect = document.getElementById('kanbanAttributeSelect');
+    if (kanbanSelect) {
+        kanbanSelect.addEventListener('change', function() {
+            updateKanbanBoard(this.value);
+        });
+    }
+    enableKanbanColumnDragDrop();
+});
+
+// 칸반보드 필터 기능 추가 및 컬럼 드래그앤드롭 재바인딩
+function updateKanbanBoard(attrName) {
+    const loadingIndicator = document.getElementById('kanbanLoadingIndicator');
+    const boardView = document.getElementById('boardView');
+    
+    // 로딩 표시
+    loadingIndicator.style.display = 'block';
+    
+    fetch('/600/get_kanban_data/?attr_name=' + encodeURIComponent(attrName))
+        .then(response => response.json())
+        .then(data => {
+            loadingIndicator.style.display = 'none';
+            
+            if (data.success) {
+                // 칸반보드 HTML 생성
+                let boardHTML = '<div class="board-container">';
+                
+                data.board.forEach(function(col) {
+                    let colStyle = '';
+                    if (col.status.color) {
+                        colStyle = `background:${hexToRgba(col.status.color, 0.10)};`;
+                    }
+                    
+                    let titleStyle = '';
+                    if (col.status.color) {
+                        titleStyle = `background:${hexToRgba(col.status.color, 0.18)};border-left:6px solid ${col.status.color};padding-left:10px;`;
+                    } else {
+                        titleStyle = 'border-left:6px solid #007bff;padding-left:10px;';
+                    }
+                    
+                    boardHTML += `
+                        <div class="board-col" data-status-id="${col.status.id}" data-attr-name="${attrName}" style="${colStyle}">
+                            <div class="board-col-title" style="${titleStyle}">${col.status.name}</div>
+                            <div class="board-cards">
+                    `;
+                    
+                    col.entries.forEach(function(entry) {
+                        const entryName = entry.name || '(이름 없음)';
+                        const entryAmount = entry.amount;
+                        
+                        boardHTML += `
+                            <div class="board-card" data-entry-id="${entry.id}">
+                              <div class="board-card-title">${entryName || '(회사명 없음)'}</div>
+                              <div class="board-card-amount">${entryAmount ? formatKoreanCurrency(entryAmount) : ''}</div>
+                            </div>
+                        `;
+                    });
+                    
+                    boardHTML += `
+                            </div>
+                            <button class="add-card-btn" style="display:none;"></button>
+                        </div>
+                    `;
+                });
+                
+                boardHTML += '</div>';
+                
+                // 기존 보드 교체
+                boardView.innerHTML = boardHTML;
+                
+                // 이벤트 바인딩 재설정
+                bindKanbanSortable();
+                setTimeout(enableKanbanColumnDragDrop, 100);
+                
+                // 전역 변수 업데이트
+                window.SELECTED_KANBAN_ATTR = attrName;
+                
+            } else {
+                alert('칸반보드 데이터를 불러오는데 실패했습니다: ' + (data.error || ''));
+            }
+        })
+        .catch(error => {
+            loadingIndicator.style.display = 'none';
+            console.error('칸반보드 업데이트 오류:', error);
+            alert('칸반보드 업데이트 중 오류가 발생했습니다: ' + error.message);
+        });
+}
