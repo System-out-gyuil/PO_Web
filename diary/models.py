@@ -219,6 +219,10 @@ class DropdownAttribute(models.Model):
     attribute = models.ForeignKey(Attribute, on_delete=models.SET_NULL, null=True, blank=True, related_name='dropdown_attributes')
     option = models.CharField(max_length=50)
     color = models.CharField(max_length=7, default=random_color)
+    order = models.IntegerField(default=0, db_index=True)
+
+    class Meta:
+        ordering = ['attribute', 'order', 'id']  # attribute별로 그룹화하고 order로 정렬
 
     def __str__(self):
         return self.option

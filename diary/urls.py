@@ -75,4 +75,7 @@ urlpatterns = [
     # 엑셀 파일 처리 관련 API
     path('preview_excel/', views.preview_excel, name='preview_excel'),
     path('upload_excel/', views.upload_excel, name='upload_excel'),
+
+    # 칸반보드 관련 처리
+    path('update_kanban_option_order/', views.update_kanban_option_order, name='update_kanban_option_order'),
 ] 
