@@ -509,30 +509,74 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
           return;
       }
       
-      // 테이블 컨테이너에 스크롤 이벤트 리스너 추가
-      tableView.addEventListener('scroll', function() {
-          const thead = table.querySelector('thead');
-          if (!thead) return;
+      console.log('테이블 요소 찾음:', { tableView: !!tableView, table: !!table });
+      
+      // 기존 스크롤 이벤트 리스너 제거
+      const newTableView = tableView.cloneNode(true);
+      tableView.parentNode.replaceChild(newTableView, tableView);
+      
+      // 새로운 tableView 참조 가져오기
+      const updatedTableView = document.getElementById('tableView');
+      const updatedTable = document.getElementById('entryTable');
+      
+      if (!updatedTableView || !updatedTable) {
+          console.error('업데이트된 테이블 요소를 찾을 수 없습니다.');
+          return;
+      }
+      
+      // 현재 스크롤 위치 확인 및 sticky 클래스 강제 적용
+      const thead = updatedTable.querySelector('thead');
+      if (thead) {
+          const scrollTop = updatedTableView.scrollTop;
+          console.log('현재 스크롤 위치:', scrollTop);
           
-          const scrollTop = tableView.scrollTop;
+          // 스크롤이 있을 때 sticky 클래스 강제 적용
+          if (scrollTop > 0) {
+              console.log('thead 요소:', thead);
+              console.log('sticky 클래스 추가');
+              thead.classList.add('sticky');
+              thead.classList.remove('out-of-view');
+              console.log('스크롤 위치에 따라 sticky 클래스 강제 적용');
+          } else {
+              thead.classList.remove('sticky');
+              thead.classList.remove('out-of-view');
+              console.log('스크롤 위치에 따라 sticky 클래스 제거');
+          }
+      }
+      
+      // 테이블 컨테이너에 스크롤 이벤트 리스너 추가
+      updatedTableView.addEventListener('scroll', function() {
+          const thead = updatedTable.querySelector('thead');
+          if (!thead) {
+              console.log('thead 요소를 찾을 수 없습니다.');
+              return;
+          }
+          
+          const scrollTop = updatedTableView.scrollTop;
+          console.log('스크롤 이벤트:', { scrollTop, theadClasses: thead.className });
           
           // 스크롤이 있을 때 sticky 적용
           if (scrollTop > 0) {
+              console.log('thead 요소:', thead);
+              console.log('sticky 클래스 추가');
               thead.classList.add('sticky');
               thead.classList.remove('out-of-view');
+              console.log('sticky 클래스 추가 후:', thead.className);
           } else {
+              console.log('sticky 클래스 제거');
               // 스크롤이 없을 때는 기본 상태로 복원
               thead.classList.remove('sticky');
               thead.classList.remove('out-of-view');
+              console.log('sticky 클래스 제거 후:', thead.className);
           }
       });
       
       // 윈도우 스크롤 이벤트도 추가하여 테이블이 뷰포트를 벗어날 때 처리
       window.addEventListener('scroll', function() {
-          const thead = table.querySelector('thead');
+          const thead = updatedTable.querySelector('thead');
           if (!thead) return;
           
-          const tableViewRect = tableView.getBoundingClientRect();
+          const tableViewRect = updatedTableView.getBoundingClientRect();
           
           // 테이블이 뷰포트를 벗어났는지 확인
           const isTableOutOfView = (
@@ -551,10 +595,10 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
       
       // 윈도우 리사이즈 시 헤더 위치 재조정
       window.addEventListener('resize', function() {
-          const thead = table.querySelector('thead');
+          const thead = updatedTable.querySelector('thead');
           if (thead && thead.classList.contains('sticky')) {
               // sticky 상태 유지하되 위치 재조정
-              const tableViewRect = tableView.getBoundingClientRect();
+              const tableViewRect = updatedTableView.getBoundingClientRect();
               
               const isTableOutOfView = (
                   tableViewRect.bottom < 0 ||
@@ -980,6 +1024,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                   console.log('테이블 내용 교체 완료');
                   
                   // 스크롤 위치 복원
+                  const tableView = document.getElementById('tableView');
                   if (tableView) {
                       tableView.scrollTop = scrollTop;
                       tableView.scrollLeft = scrollLeft;
@@ -1042,10 +1087,29 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                       console.log('필터 상태 업데이트 완료');
                   }
                   
-                  // Sticky 헤더 재초기화
+                  // Sticky 헤더 재초기화 - 여러 번 시도
                   if (typeof initializeStickyHeader === 'function') {
+                      // 즉시 실행
                       initializeStickyHeader();
                       console.log('Sticky 헤더 재초기화 완료');
+                      
+                      // 50ms 후 재시도
+                      setTimeout(() => {
+                          initializeStickyHeader();
+                          console.log('Sticky 헤더 재초기화 1차 재시도 완료');
+                      }, 50);
+                      
+                      // 150ms 후 재시도
+                      setTimeout(() => {
+                          initializeStickyHeader();
+                          console.log('Sticky 헤더 재초기화 2차 재시도 완료');
+                      }, 150);
+                      
+                      // 300ms 후 재시도
+                      setTimeout(() => {
+                          initializeStickyHeader();
+                          console.log('Sticky 헤더 재초기화 3차 재시도 완료');
+                      }, 300);
                   }
                   
                   // === pill 렌더링 추가 ===
@@ -1993,11 +2057,28 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
               if(isAdding) return;
               isAdding = true;
 
-              // 서버에 새 행 생성 요청 (회사명: '새 항목')
+              // 현재 선택된 상태 탭 확인
+              let statusField = null;
+              let statusValue = null;
+              
+              if (window.currentStatusTab !== null && window.statusAttributeName) {
+                  statusField = window.statusAttributeName;
+                  statusValue = window.currentStatusTab;
+                  console.log('상태 탭이 선택됨:', { field: statusField, value: statusValue });
+              }
+
+              // 서버에 새 행 생성 요청
+              let requestBody = 'field=' + encodeURIComponent('회사명') + '&value=' + encodeURIComponent('새 항목');
+              
+              // 상태 필드가 있으면 추가
+              if (statusField && statusValue) {
+                  requestBody += '&status_field=' + encodeURIComponent(statusField) + '&status_value=' + encodeURIComponent(statusValue);
+              }
+
               fetch('/600/create_new_row/', {
                   method: 'POST',
                   headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                  body: 'field=' + encodeURIComponent('회사명') + '&value=' + encodeURIComponent('새 항목')
+                  body: requestBody
               })
               .then(function(response) { 
                   if (!response.ok) {

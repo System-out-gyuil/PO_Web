@@ -37,14 +37,41 @@ body { font-family: Arial, sans-serif; margin: 40px; background: #f8f9fa; }
         position: sticky !important;
         top: 0 !important;
         z-index: 998 !important;
-        background: #fff !important;
+        background: #f1f3f6 !important;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
-        transition: all 0.3s ease;
+        transition: all 0.3s ease !important;
+        transform: none !important;
+        opacity: 1 !important;
+        display: table-header-group !important;
+        visibility: visible !important;
     }
     
     thead.sticky th {
-        background: #fff !important;
+        background: #f1f3f6 !important;
         border-bottom: 2px solid #e9ecef !important;
+        position: relative !important;
+        z-index: 999 !important;
+    }
+    
+    /* sticky 헤더가 적용된 테이블의 스타일 강화 */
+    #tableView thead.sticky {
+        position: sticky !important;
+        top: 0 !important;
+        z-index: 998 !important;
+        background: #f1f3f6 !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+        transition: all 0.3s ease !important;
+        transform: none !important;
+        opacity: 1 !important;
+        display: table-header-group !important;
+        visibility: visible !important;
+    }
+    
+    #tableView thead.sticky th {
+        background: #f1f3f6 !important;
+        border-bottom: 2px solid #e9ecef !important;
+        position: relative !important;
+        z-index: 999 !important;
     }
     
     thead::after {

@@ -733,6 +733,8 @@ def create_new_row(request):
     if request.method == 'POST':
         field = request.POST.get('field')
         value = request.POST.get('value', '')
+        status_field = request.POST.get('status_field')
+        status_value = request.POST.get('status_value')
         
         if not field:
             return JsonResponse({'success': False, 'error': 'Missing field'})
@@ -775,6 +777,28 @@ def create_new_row(request):
             attribute=attribute,
             value=value_to_save
         )
+        
+        # 상태 필드가 있으면 추가로 생성
+        if status_field and status_value:
+            try:
+                status_attr = Attribute.objects.get(name=status_field, user=user)
+                status_attr_type = status_attr.attributeType.name if status_attr.attributeType else ''
+                if status_attr_type == 'dropdown':
+                    # status_value가 id인지 option명인지 구분
+                    if status_value.isdigit():
+                        status_value_to_save = status_value
+                    else:
+                        dropdown_option = DropdownAttribute.objects.get(attribute=status_attr, option=status_value)
+                        status_value_to_save = str(dropdown_option.id)
+                else:
+                    status_value_to_save = status_value
+                AttributeValue.objects.create(
+                    row=new_row,
+                    attribute=status_attr,
+                    value=status_value_to_save
+                )
+            except Exception as e:
+                print(f"상태 필드 생성 오류: {e}")
         
         return JsonResponse({'success': True, 'id': new_row.id})
         

@@ -1660,6 +1660,39 @@ function closeDetailModal() {
         window.calendar.refetchEvents();
       }
       
+      // 테이블 새로고침 후 추가 초기화 작업
+      setTimeout(() => {
+        // Sticky 헤더 재초기화
+        if (typeof initializeStickyHeader === 'function') {
+          initializeStickyHeader();
+          console.log('상세 모달 닫기 후 Sticky 헤더 재초기화 완료');
+          
+          // 추가로 약간의 지연 후 한 번 더 시도 (DOM 완전 렌더링 보장)
+          setTimeout(() => {
+            initializeStickyHeader();
+            console.log('상세 모달 닫기 후 Sticky 헤더 재초기화 재시도 완료');
+          }, 150);
+        }
+        
+        // 컬럼 드래그앤드롭 재초기화
+        if (typeof initializeColumnDragDrop === 'function') {
+          initializeColumnDragDrop(true); // force=true로 강제 재초기화
+          console.log('상세 모달 닫기 후 컬럼 드래그앤드롭 재초기화 완료');
+        }
+        
+        // 테이블 셀 이벤트 재바인딩
+        if (typeof bindTableCellEvents === 'function') {
+          bindTableCellEvents();
+          console.log('상세 모달 닫기 후 테이블 셀 이벤트 재바인딩 완료');
+        }
+        
+        // 드롭다운 pill 렌더링
+        if (typeof renderDropdownPills === 'function') {
+          renderDropdownPills();
+          console.log('상세 모달 닫기 후 드롭다운 pill 렌더링 완료');
+        }
+      }, 200); // 테이블 새로고침 완료 후 200ms 지연
+      
       // 변경사항 플래그 리셋
       window.modalHasChanges = false;
     }, 100); // 100ms 지연으로 사용자가 즉시 다른 모달을 열 수 있도록 함
