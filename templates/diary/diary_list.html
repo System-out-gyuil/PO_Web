@@ -1264,31 +1264,68 @@ function sortTable(column, direction) {
         
         let comparison = 0;
         
-        // 매출 컬럼인 경우 특별 처리
-        if (column === '매출') {
-            // 숫자만 추출 (쉼표, 원, 공백 등 제거)
-            const aNum = parseFloat(aValue.replace(/[^0-9.-]/g, ''));
-            const bNum = parseFloat(bValue.replace(/[^0-9.-]/g, ''));
-            
-            if (!isNaN(aNum) && !isNaN(bNum)) {
-                // 숫자 크기로 비교
-                comparison = aNum - bNum;
-            } else {
-                // 숫자가 아닌 경우 문자열 비교
-                comparison = aValue.localeCompare(bValue, 'ko');
-            }
+        // 빈 값 체크 (공백, null, undefined, 빈 문자열)
+        const aIsEmpty = !aValue || aValue.trim() === '';
+        const bIsEmpty = !bValue || bValue.trim() === '';
+        
+        // 둘 다 빈 값이거나 둘 다 값이 있는 경우
+        if (aIsEmpty && bIsEmpty) {
+            comparison = 0; // 빈 값끼리는 순서 유지
+        } else if (aIsEmpty && !bIsEmpty) {
+            comparison = 1; // a가 빈 값이면 뒤로
+        } else if (!aIsEmpty && bIsEmpty) {
+            comparison = -1; // b가 빈 값이면 뒤로
         } else {
-            // 다른 컬럼들은 기존 로직 사용
-            // 숫자인지 확인
-            const aNum = parseFloat(aValue.replace(/[^0-9.-]/g, ''));
-            const bNum = parseFloat(bValue.replace(/[^0-9.-]/g, ''));
+            // 둘 다 값이 있는 경우 기존 로직 사용
+            // datetime 타입인지 확인
+            const aCell = getCellByColumn(a, column);
+            const bCell = getCellByColumn(b, column);
+            const isDateTime = aCell && aCell.getAttribute('data-type') === 'datetime';
             
-            if (!isNaN(aNum) && !isNaN(bNum)) {
-                // 숫자 비교
-                comparison = aNum - bNum;
+            // 매출 컬럼인 경우 특별 처리
+            if (column === '매출') {
+                // 숫자만 추출 (쉼표, 원, 공백 등 제거)
+                const aNum = parseFloat(aValue.replace(/[^0-9.-]/g, ''));
+                const bNum = parseFloat(bValue.replace(/[^0-9.-]/g, ''));
+                
+                if (!isNaN(aNum) && !isNaN(bNum)) {
+                    // 숫자 크기로 비교
+                    comparison = aNum - bNum;
+                } else {
+                    // 숫자가 아닌 경우 문자열 비교
+                    comparison = aValue.localeCompare(bValue, 'ko');
+                }
+            } else if (isDateTime) {
+                // datetime 타입인 경우 날짜 비교
+                const aDate = parseDate(aValue);
+                const bDate = parseDate(bValue);
+                
+                if (aDate && bDate) {
+                    // 날짜 객체로 비교
+                    comparison = aDate.getTime() - bDate.getTime();
+                } else if (aDate && !bDate) {
+                    // a만 유효한 날짜인 경우 a를 앞으로
+                    comparison = -1;
+                } else if (!aDate && bDate) {
+                    // b만 유효한 날짜인 경우 b를 앞으로
+                    comparison = 1;
+                } else {
+                    // 둘 다 유효하지 않은 경우 문자열 비교
+                    comparison = aValue.localeCompare(bValue, 'ko');
+                }
             } else {
-                // 문자열 비교
-                comparison = aValue.localeCompare(bValue, 'ko');
+                // 다른 컬럼들은 기존 로직 사용
+                // 숫자인지 확인
+                const aNum = parseFloat(aValue.replace(/[^0-9.-]/g, ''));
+                const bNum = parseFloat(bValue.replace(/[^0-9.-]/g, ''));
+                
+                if (!isNaN(aNum) && !isNaN(bNum)) {
+                    // 숫자 비교
+                    comparison = aNum - bNum;
+                } else {
+                    // 문자열 비교
+                    comparison = aValue.localeCompare(bValue, 'ko');
+                }
             }
         }
         
@@ -1299,6 +1336,42 @@ function sortTable(column, direction) {
     rows.forEach(row => tbody.appendChild(row));
     
     updateFilterStatus();
+}
+
+// 날짜 파싱 함수 추가
+function parseDate(dateString) {
+    if (!dateString || dateString.trim() === '') {
+        return null;
+    }
+    
+    // YYYY-MM-DD 형식 파싱
+    const dateMatch = dateString.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if (dateMatch) {
+        const year = parseInt(dateMatch[1]);
+        const month = parseInt(dateMatch[2]) - 1; // JavaScript Date는 0부터 시작
+        const day = parseInt(dateMatch[3]);
+        return new Date(year, month, day);
+    }
+    
+    // 다른 날짜 형식들도 시도
+    const date = new Date(dateString);
+    if (!isNaN(date.getTime())) {
+        return date;
+    }
+    
+    return null;
+}
+
+// 컬럼명으로 셀을 찾는 함수 추가
+function getCellByColumn(row, column) {
+    const cells = row.querySelectorAll('td');
+    const attributes = window.ATTR_FIELDS || [];
+    // 속성 인덱스 찾기 (드래그 셀 제외하고 시작)
+    const columnIndex = attributes.findIndex(attr => attr.name === column) + 1;
+    if (columnIndex > 0 && columnIndex < cells.length) {
+        return cells[columnIndex];
+    }
+    return null;
 }
 
 function getCellValue(row, column) {
