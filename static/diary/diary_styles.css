@@ -162,7 +162,7 @@ body { font-family: Arial, sans-serif; margin: 40px; background: #f8f9fa; }
         display: flex;
         gap: 16px;
         margin: 30px 0 30px 0;
-        overflow-x: auto;
+        overflow-y: auto;
     }
     .board-col {
         background: #f8f9fa;
@@ -175,6 +175,8 @@ body { font-family: Arial, sans-serif; margin: 40px; background: #f8f9fa; }
         max-height: 600px;
     }
     .board-col-title {
+        position: sticky;
+        top: 0px;
         font-weight: bold;
         font-size: 1.1em;
         margin-bottom: 10px;
@@ -185,6 +187,15 @@ body { font-family: Arial, sans-serif; margin: 40px; background: #f8f9fa; }
     .board-cards {
         flex: 1 1 auto;
         min-height: 40px;
+        overflow-x: auto;
+        /* 스크롤바 숨기기 */
+        scrollbar-width: none; /* Firefox */
+        -ms-overflow-style: none; /* Internet Explorer 10+ */
+    }
+    
+    /* Webkit 브라우저(Chrome, Safari, Edge)에서 스크롤바 숨기기 */
+    .board-cards::-webkit-scrollbar {
+        display: none;
     }
     .board-card {
         background: #fff;

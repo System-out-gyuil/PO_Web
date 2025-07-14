@@ -52,8 +52,11 @@
         {% for row in rows %}
         <tr data-id="{{ row.id }}">
             <td class="drag-cell">
-                <button class="delete-row-btn" onclick="deleteRow('{{ row.id }}')" title="행 삭제">×</button>
-                <span class="drag-handle">⋮⋮⋮</span>
+                <div class="button-container">
+                    <button class="delete-row-btn" onclick="deleteRow('{{ row.id }}')" title="행 삭제">×</button>
+                    <button class="duplicate-row-btn" onclick="duplicateRow('{{ row.id }}')" title="행 복제">📋</button>
+                    <span class="drag-handle">⋮⋮⋮</span>
+                </div>
             </td>
             {% for attr in attributes %}
                 {% if attr.name == '회사명' %}
@@ -122,7 +125,11 @@
         </tr>
         {% empty %}
         <tr>
-            <td class="drag-cell"><span class="drag-handle">⋮⋮⋮</span></td>
+            <td class="drag-cell">
+                <div class="button-container">
+                    <span class="drag-handle">⋮⋮⋮</span>
+                </div>
+            </td>
             {% for attr in attributes %}
                 {% if attr.name == '회사명' %}
                     <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" class="{% if attr.assential %}essential-column{% endif %}">

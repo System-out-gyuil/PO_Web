@@ -665,6 +665,14 @@ function showDetailModal(rowData, rowId) {
             // 모달 표시
             document.getElementById('detailModal').style.display = 'flex';
             
+            // 행 복제 버튼 재생성
+            if (typeof recreateDuplicateButtons === 'function') {
+                setTimeout(() => {
+                    recreateDuplicateButtons();
+                    console.log('상세보기 모달에서 행 복제 버튼 재생성 완료');
+                }, 100);
+            }
+            
             // 파일 삭제 버튼 이벤트 리스너 추가 (setTimeout으로 지연)
             setTimeout(() => {
                 const deleteButtons = document.querySelectorAll('.delete-file-btn');
@@ -1690,6 +1698,12 @@ function closeDetailModal() {
         if (typeof renderDropdownPills === 'function') {
           renderDropdownPills();
           console.log('상세 모달 닫기 후 드롭다운 pill 렌더링 완료');
+        }
+        
+        // 행 복제 버튼과 상세보기 버튼 재생성
+        if (typeof recreateDuplicateButtons === 'function') {
+          recreateDuplicateButtons();
+          console.log('상세 모달 닫기 후 행 복제 버튼과 상세보기 버튼 재생성 완료');
         }
       }, 200); // 테이블 새로고침 완료 후 200ms 지연
       
@@ -3986,24 +4000,239 @@ function updateRowField(rowId, field, value) {
 
 // 파일 업로드 후 모달 필드 새로고침 함수
 function updateFileFieldInModalAfterUpload(rowId, fieldName) {
-    console.log('updateFileFieldInModalAfterUpload 호출됨:', rowId, fieldName);
-    
-    const detailModal = document.getElementById('detailModal');
-    if (!detailModal) {
-        console.log('상세보기 모달이 열려있지 않음');
-        return;
-    }
-    
-    // 모달이 열려있으면 상세 정보를 다시 로드하여 파일 필드 업데이트
-    fetch('/600/get_row_details/' + rowId + '/')
-        .then(r => r.json())
-        .then(function(data) {
-            if (data.success) {
-                showDetailModal(data.row_data, data.row_id);
+    // 서버에서 최신 파일 정보를 가져와서 모달 업데이트
+    fetch(`/600/get_row_details/${rowId}/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.row_data) {
+                const fileValue = data.row_data[fieldName];
+                updateFileFieldInModal(rowId, fieldName, fileValue);
             }
         })
         .catch(error => {
-            console.error('파일 필드 새로고침 오류:', error);
+            console.error('파일 업로드 후 모달 업데이트 오류:', error);
         });
+}
+
+// 행 복제 버튼 재생성 함수
+function recreateDuplicateButtons() {
+    const table = document.querySelector('#entryTable');
+    if (!table) {
+        console.log('테이블을 찾을 수 없습니다.');
+        return;
+    }
+    
+    const rows = table.querySelectorAll('tbody tr');
+    console.log(`총 ${rows.length}개의 행을 찾았습니다.`);
+    
+    rows.forEach((row, index) => {
+        const rowId = row.getAttribute('data-row-id') || row.getAttribute('data-id');
+        if (!rowId) {
+            console.log(`행 ${index}: ID를 찾을 수 없습니다.`);
+            return;
+        }
+        
+        console.log(`행 ${index}: ID = ${rowId}`);
+        
+        // drag-cell 찾기
+        const dragCell = row.querySelector('.drag-cell');
+        if (!dragCell) {
+            console.log(`행 ${index}: drag-cell을 찾을 수 없습니다.`);
+            return;
+        }
+        
+        // button-container 찾기 또는 생성
+        let buttonContainer = dragCell.querySelector('.button-container');
+        if (!buttonContainer) {
+            buttonContainer = document.createElement('div');
+            buttonContainer.className = 'button-container';
+            buttonContainer.style.cssText = `
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+                flex-wrap: nowrap;
+                height: 100%;
+            `;
+            dragCell.appendChild(buttonContainer);
+        }
+        
+        // 기존 버튼들 제거
+        buttonContainer.innerHTML = '';
+        
+        // 삭제 버튼 생성
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'delete-row-btn';
+        deleteBtn.setAttribute('onclick', `deleteRow('${rowId}')`);
+        deleteBtn.setAttribute('title', '행 삭제');
+        deleteBtn.innerHTML = '×';
+        deleteBtn.style.cssText = `
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            padding: 3px 6px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            min-width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+        `;
+        buttonContainer.appendChild(deleteBtn);
+        
+        // 복제 버튼 생성
+        const duplicateBtn = document.createElement('button');
+        duplicateBtn.className = 'duplicate-row-btn';
+        duplicateBtn.setAttribute('onclick', `duplicateRow('${rowId}')`);
+        duplicateBtn.setAttribute('title', '행 복제');
+        duplicateBtn.innerHTML = '📋';
+        duplicateBtn.style.cssText = `
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            padding: 3px 6px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            min-width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+        `;
+        buttonContainer.appendChild(duplicateBtn);
+        
+        // 드래그 핸들 생성
+        const dragHandle = document.createElement('span');
+        dragHandle.className = 'drag-handle';
+        dragHandle.innerHTML = '⋮⋮⋮';
+        dragHandle.style.cssText = `
+            font-size: 16px;
+            color: #999;
+            cursor: move;
+            user-select: none;
+            padding: 2px;
+            border-radius: 3px;
+            transition: all 0.2s ease;
+            opacity: 0;
+        `;
+        buttonContainer.appendChild(dragHandle);
+        
+        console.log(`행 ${index}: 버튼들 생성 완료`);
+        
+        // 상세보기 버튼 이벤트 재바인딩
+        const moreBtn = row.querySelector('.more-btn');
+        if (moreBtn) {
+            console.log(`행 ${index}: 상세보기 버튼 발견`);
+            if (!moreBtn.hasAttribute('data-event-bound')) {
+                moreBtn.setAttribute('data-event-bound', 'true');
+                moreBtn.onclick = function(e) {
+                    e.stopPropagation();
+                    const tr = this.closest('tr');
+                    const id = tr.getAttribute('data-id') || tr.getAttribute('data-row-id');
+                    if (!id) { 
+                        alert('ID 정보가 없습니다.'); 
+                        return; 
+                    }
+                    console.log(`상세보기 버튼 클릭: ID = ${id}`);
+                    fetch('/600/get_row_details/' + id + '/')
+                        .then(r => r.json())
+                        .then(function(data) {
+                            if (data.success) showDetailModal(data.row_data, data.row_id);
+                            else alert('상세정보 불러오기 실패: ' + (data.error || ''));
+                        })
+                        .catch(function(err) {
+                            alert('상세정보 불러오기 실패: 네트워크 오류\n' + err);
+                            console.error(err);
+                        });
+                };
+                console.log(`행 ${index}: 상세보기 버튼 이벤트 바인딩 완료`);
+            } else {
+                console.log(`행 ${index}: 상세보기 버튼 이벤트가 이미 바인딩되어 있습니다.`);
+            }
+        } else {
+            console.log(`행 ${index}: 상세보기 버튼을 찾을 수 없습니다.`);
+            // name-container 구조 확인
+            const nameContainer = row.querySelector('.name-container');
+            if (nameContainer) {
+                console.log(`행 ${index}: name-container 발견`);
+                const moreBtnWrapper = nameContainer.querySelector('.more-btn-wrapper');
+                if (moreBtnWrapper) {
+                    console.log(`행 ${index}: more-btn-wrapper 발견`);
+                    const existingMoreBtn = moreBtnWrapper.querySelector('.more-btn');
+                    if (existingMoreBtn) {
+                        console.log(`행 ${index}: 기존 상세보기 버튼 발견`);
+                        if (!existingMoreBtn.hasAttribute('data-event-bound')) {
+                            existingMoreBtn.setAttribute('data-event-bound', 'true');
+                            existingMoreBtn.onclick = function(e) {
+                                e.stopPropagation();
+                                const tr = this.closest('tr');
+                                const id = tr.getAttribute('data-id') || tr.getAttribute('data-row-id');
+                                if (!id) { 
+                                    alert('ID 정보가 없습니다.'); 
+                                    return; 
+                                }
+                                console.log(`상세보기 버튼 클릭: ID = ${id}`);
+                                fetch('/600/get_row_details/' + id + '/')
+                                    .then(r => r.json())
+                                    .then(function(data) {
+                                        if (data.success) showDetailModal(data.row_data, data.row_id);
+                                        else alert('상세정보 불러오기 실패: ' + (data.error || ''));
+                                    })
+                                    .catch(function(err) {
+                                        alert('상세정보 불러오기 실패: 네트워크 오류\n' + err);
+                                        console.error(err);
+                                    });
+                            };
+                            console.log(`행 ${index}: 상세보기 버튼 이벤트 바인딩 완료`);
+                        }
+                    } else {
+                        console.log(`행 ${index}: 상세보기 버튼이 없습니다.`);
+                    }
+                } else {
+                    console.log(`행 ${index}: more-btn-wrapper가 없습니다.`);
+                }
+            } else {
+                console.log(`행 ${index}: name-container가 없습니다.`);
+            }
+        }
+    });
+    
+    console.log('recreateDuplicateButtons 함수 완료');
+    
+    // 드래그 기능 다시 초기화
+    if (typeof Sortable !== 'undefined') {
+        const tbody = document.getElementById('entryTbody');
+        if (tbody) {
+            // 기존 Sortable 인스턴스가 있다면 제거
+            if (window.tableSortable) {
+                window.tableSortable.destroy();
+            }
+            
+            // 새로운 Sortable 인스턴스 생성
+            window.tableSortable = new Sortable(tbody, {
+                handle: '.drag-handle',
+                animation: 150,
+                onEnd: function (evt) {
+                    // 순서 변경 시 서버에 반영
+                    const ids = Array.from(document.querySelectorAll('#entryTbody tr[data-id]')).map(tr => tr.getAttribute('data-id'));
+                    fetch('/600/reorder/', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({order: ids})
+                    }).then(res => res.json()).then(data => {
+                        if(!data.success) alert('순서 저장 실패: '+data.error);
+                    }).catch(() => alert('순서 저장 중 오류 발생'));
+                }
+            });
+            console.log('드래그 기능 재초기화 완료');
+        }
+    }
 }
 
