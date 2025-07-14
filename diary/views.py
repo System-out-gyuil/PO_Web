@@ -3578,7 +3578,7 @@ def update_audio_file_order_and_notes(request):
         notes = json.loads(notes_json or "[]")
         print(f"파싱된 notes: {notes}")
 
-        user = request.user if request.user.is_authenticated else User.objects.get(id=1)
+        user = User.objects.get(id=1)
         row = Row.objects.get(id=row_id, user=user)
         attr = Attribute.objects.get(name="음성파일", user=user)
         attr_value = AttributeValue.objects.filter(row=row, attribute=attr).first()
