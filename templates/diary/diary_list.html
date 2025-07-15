@@ -193,35 +193,6 @@
           opacity: 1;
         }
         
-        /* 상태 탭 스타일 */
-        .status-tab {
-            padding: 8px 16px;
-            border: 1px solid #dee2e6;
-            background: #f8f9fa;
-            color: #495057;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            transition: all 0.2s ease;
-            margin: 2px;
-        }
-        
-        .status-tab:hover {
-            background: #e9ecef;
-            border-color: #adb5bd;
-        }
-        
-        .status-tab.active {
-            background: #007bff;
-            color: white;
-            border-color: #007bff;
-        }
-        
-        .status-tab.active:hover {
-            background: #0056b3;
-            border-color: #0056b3;
-        }
         
         /* 속성명 편집 관련 스타일 */
         .attribute-name-editable {
@@ -302,27 +273,6 @@
             background: #5a6268;
         }
         
-        /* 모달 상태 탭 스타일 */
-        .modal-status-tab {
-            padding: 8px 16px;
-            border: 1px solid #dee2e6;
-            background: #f8f9fa;
-            color: #495057;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.2s;
-        }
-        
-        .modal-status-tab:hover {
-            background: #e9ecef;
-        }
-        
-        .modal-status-tab.active {
-            background: #007bff;
-            color: white;
-            border-color: #007bff;
-        }
         
         /* 속성 관리 모달 체크박스 스타일 */
         .attribute-visibility-checkbox {
@@ -410,14 +360,9 @@
             // 서버에 요청하여 필터링된 데이터 가져오기
             loadFilteredData(statusId);
             
-            // URL 업데이트 (페이지 새로고침 없이)
-            const currentUrl = new URL(window.location);
-            if (statusId === null) {
-                currentUrl.searchParams.delete('status_id');
-            } else {
-                currentUrl.searchParams.set('status_id', statusId);
-            }
-            window.history.pushState({}, '', currentUrl.toString());
+            // URL을 기본 URL로 변경 (쿼리스트링 제거)
+            const baseUrl = window.location.origin + '/sales/diary/';
+            window.history.pushState({}, '', baseUrl);
         }
         
         // 테이블 로딩 표시

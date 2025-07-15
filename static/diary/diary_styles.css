@@ -780,3 +780,96 @@ body { font-family: Arial, sans-serif; margin: 40px; background: #f8f9fa; }
         min-height: 650px;
         max-height: 650px;
     }
+
+    /* 상태 필터 탭 스타일 */
+    .status-tab {
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        padding: 8px 16px;
+        margin: 0 4px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        box-shadow: 5px 5px 5px rgba(0,0,0,0.1);
+        position: relative;
+        font-weight: 500;
+        background-color: rgba(230, 230, 230, 0.18);
+        color: rgb(51, 51, 51);
+    }
+
+    .status-tab:hover {
+        box-shadow: 6px 6px 6px rgba(0,0,0,0.15);
+        transform: translateY(-1px);
+    }
+
+    .status-tab.active {
+        box-shadow: 1px 1px 1px rgba(0,0,0,0.2);
+        transform: translateY(1px);
+        border: 1px solid #343434;
+    }
+
+    .status-tab.active:hover {
+        box-shadow: 6px 6px 6px rgba(0,0,0,0.25);
+        transform: translateY(0px);
+    }
+
+    /* 모달 내 상태 탭 스타일 */
+    .modal-status-tab {
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        padding: 8px 16px;
+        margin: 0 4px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        box-shadow: 5px 5px 5px rgba(0,0,0,0.1);
+        position: relative;
+        font-weight: 500;
+        background-color: rgba(230, 230, 230, 0.18);
+        color: rgb(51, 51, 51);
+    }
+
+    .modal-status-tab:hover {
+        box-shadow: 6px 6px 6px rgba(0,0,0,0.15);
+        transform: translateY(-1px);
+    }
+
+    .modal-status-tab.active {
+        box-shadow: 1px 1px 1px rgba(0,0,0,0.2);
+        transform: translateY(1px);
+        border: 1px solid #343434;
+    }
+
+    .modal-status-tab.active:hover {
+        box-shadow: 6px 6px 6px rgba(0,0,0,0.25);
+        transform: translateY(0px);
+    }
+
+    /* 모달 내 일반 탭 버튼 스타일 */
+    .modal-tab-btn {
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        padding: 8px 16px;
+        margin: 0 4px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        box-shadow: 5px 5px 5px rgba(0,0,0,0.1);
+        position: relative;
+        font-weight: 500;
+        background-color: rgba(230, 230, 230, 0.18);
+        color: rgb(51, 51, 51);
+    }
+
+    .modal-tab-btn:hover {
+        box-shadow: 6px 6px 6px rgba(0,0,0,0.15);
+        transform: translateY(-1px);
+    }
+
+    .modal-tab-btn.active {
+        box-shadow: 1px 1px 1px rgba(0,0,0,0.2);
+        transform: translateY(1px);
+        border: 1px solid #343434;
+    }
+
+    .modal-tab-btn.active:hover {
+        box-shadow: 6px 6px 6px rgba(0,0,0,0.25);
+        transform: translateY(0px);
+    }
