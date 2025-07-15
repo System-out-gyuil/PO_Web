@@ -301,6 +301,36 @@
         .attribute-name-cancel-btn:hover {
             background: #5a6268;
         }
+        
+        /* 모달 상태 탭 스타일 */
+        .modal-status-tab {
+            padding: 8px 16px;
+            border: 1px solid #dee2e6;
+            background: #f8f9fa;
+            color: #495057;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        
+        .modal-status-tab:hover {
+            background: #e9ecef;
+        }
+        
+        .modal-status-tab.active {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+        
+        /* 속성 관리 모달 체크박스 스타일 */
+        .attribute-visibility-checkbox {
+            margin-right: 10px;
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
     </style>
     <script>
         window.ATTR_FIELDS = JSON.parse('{{ attributes_json|escapejs }}');
@@ -373,7 +403,51 @@
             
             // 상태 필터 적용
             window.currentStatusTab = statusId;
-            applyStatusFilter();
+            
+            // 서버에 요청하여 필터링된 데이터 가져오기
+            loadFilteredData(statusId);
+            
+            // URL 업데이트 (페이지 새로고침 없이)
+            const currentUrl = new URL(window.location);
+            if (statusId === null) {
+                currentUrl.searchParams.delete('status_id');
+            } else {
+                currentUrl.searchParams.set('status_id', statusId);
+            }
+            window.history.pushState({}, '', currentUrl.toString());
+        }
+        
+        // 필터링된 데이터 로드
+        function loadFilteredData(statusId) {
+            const url = new URL('/sales/diary', window.location.origin);
+            if (statusId !== null) {
+                url.searchParams.set('status_id', statusId);
+            }
+            
+            fetch(url)
+                .then(response => response.text())
+                .then(html => {
+                    // HTML에서 테이블 부분만 추출
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const newTable = doc.querySelector('#tableView');
+                    const currentTable = document.querySelector('#tableView');
+                    
+                    if (newTable && currentTable) {
+                        currentTable.innerHTML = newTable.innerHTML;
+                        
+                        // 테이블 이벤트 재바인딩
+                        if (typeof bindTableCellEvents === 'function') {
+                            bindTableCellEvents();
+                        }
+                        
+                        // 필터 상태 업데이트
+                        updateFilterStatus();
+                    }
+                })
+                .catch(error => {
+                    console.error('데이터 로드 오류:', error);
+                });
         }
         
         // 상태 필터 적용 함수
@@ -482,6 +556,310 @@
                 console.error('Error:', error);
                 alert('속성 삭제 중 오류가 발생했습니다.');
             });
+        }
+        
+        // 속성 관리 모달 관련 변수들
+        window.currentModalStatusId = 'all';
+        window.statusOptions = [];
+        window.allAttributes = [];
+        
+        
+        // 속성 관리 모달 닫기
+        function closeAttributeVisibilityModal() {
+            console.log('속성 관리 모달 닫기');
+            const modal = document.getElementById('attributeVisibilityModal');
+            modal.style.display = 'none';
+        }
+        
+        // 모달용 상태 탭 로드
+        function loadStatusTabsForModal() {
+            console.log('모달용 상태 탭 로드 시작');
+            fetch('/sales/get_status_tabs/')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('상태 탭 데이터 응답:', data);
+                    if (data.success) {
+                        window.statusOptions = data.options;
+                        createStatusTabsForModal(data.options);
+                        loadAttributesForModal();
+                    } else {
+                        console.error('상태 탭 데이터 로드 실패:', data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('상태 탭 로드 오류:', error);
+                });
+        }
+        
+        // 모달용 상태 탭 생성
+        function createStatusTabsForModal(options) {
+            console.log('모달용 상태 탭 생성:', options);
+            const container = document.getElementById('statusTabsContainer');
+            if (!container) {
+                console.error('statusTabsContainer를 찾을 수 없습니다.');
+                return;
+            }
+            
+            container.innerHTML = '';
+            
+            // 전체 탭 추가
+            const allTab = document.createElement('button');
+            allTab.className = 'modal-status-tab active';
+            allTab.textContent = '전체';
+            allTab.onclick = () => selectModalStatusTab('all');
+            container.appendChild(allTab);
+            
+            // 각 상태별 탭 추가
+            options.forEach(option => {
+                const tab = document.createElement('button');
+                tab.className = 'modal-status-tab';
+                tab.textContent = option.name;
+                tab.style.backgroundColor = option.color ? hexToRgba(option.color, 0.18) : '#f8f9fa';
+                tab.style.color = '#333';
+                tab.onclick = () => selectModalStatusTab(option.id);
+                container.appendChild(tab);
+            });
+        }
+        
+        // 모달에서 상태 탭 선택
+        function selectModalStatusTab(statusId) {
+            console.log('모달에서 상태 탭 선택:', statusId);
+            // 기존 활성 탭 비활성화
+            document.querySelectorAll('.modal-status-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // 클릭된 탭 활성화
+            event.target.classList.add('active');
+            
+            // 현재 상태 ID 업데이트
+            window.currentModalStatusId = statusId;
+            
+            console.log('현재 모달 상태 ID 업데이트:', window.currentModalStatusId);
+            
+            // 속성 데이터 다시 로드하여 최신 상태 반영
+            loadAttributesForModal();
+        }
+        
+        // 모달용 속성 데이터 로드
+        function loadAttributesForModal() {
+            console.log('모달용 속성 데이터 로드 시작');
+            fetch('/sales/get_all_attributes/')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('속성 데이터 응답:', data);
+                    if (data.success) {
+                        window.allAttributes = data.attributes;
+                        updateAttributesListForModal();
+                    } else {
+                        console.error('속성 데이터 로드 실패:', data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('속성 로드 오류:', error);
+                });
+        }
+        
+        // 모달용 속성 목록 업데이트
+        function updateAttributesListForModal() {
+            console.log('모달용 속성 목록 업데이트 시작');
+            const container = document.getElementById('attributesListContainer');
+            if (!container) {
+                console.error('attributesListContainer를 찾을 수 없습니다.');
+                return;
+            }
+            
+            console.log('현재 속성들:', window.allAttributes);
+            console.log('현재 상태 ID:', window.currentModalStatusId);
+            
+            container.innerHTML = '';
+            
+            if (!window.allAttributes || window.allAttributes.length === 0) {
+                container.innerHTML = '<div style="text-align:center;color:#6c757d;padding:20px;">속성을 불러오는 중...</div>';
+                return;
+            }
+            
+            window.allAttributes.forEach(attr => {
+                const attrDiv = document.createElement('div');
+                attrDiv.style.cssText = 'display:flex;align-items:center;padding:10px;border-bottom:1px solid #eee;';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = `attr_${attr.id}_${window.currentModalStatusId}`; // 상태별로 고유한 ID
+                checkbox.className = 'attribute-visibility-checkbox';
+                
+                // 현재 상태에서의 표시 여부 설정
+                let isChecked = false;
+                if (window.currentModalStatusId === 'all') {
+                    // 전체 탭은 "0" 키로 관리되는 독립적인 상태
+                    isChecked = attr.view_select && attr.view_select['0'] === true;
+                } else {
+                    // 특정 상태 탭에서는 해당 상태만 확인
+                    isChecked = attr.view_select && attr.view_select[window.currentModalStatusId] === true;
+                }
+                checkbox.checked = isChecked;
+                
+                // 체크박스 변경 이벤트 추가
+                checkbox.addEventListener('change', function() {
+                    saveSingleAttributeSetting(attr.id, window.currentModalStatusId, this.checked);
+                });
+                
+                console.log(`속성 ${attr.name}: view_select=${JSON.stringify(attr.view_select)}, checked=${isChecked}`);
+                
+                const label = document.createElement('label');
+                label.htmlFor = `attr_${attr.id}_${window.currentModalStatusId}`;
+                label.textContent = attr.name;
+                label.style.flex = '1';
+                
+                attrDiv.appendChild(checkbox);
+                attrDiv.appendChild(label);
+                container.appendChild(attrDiv);
+            });
+        }
+        
+        // 단일 속성 설정 저장
+        function saveSingleAttributeSetting(attrId, statusId, isVisible) {
+            console.log(`단일 속성 설정 저장: 속성 ID=${attrId}, 상태 ID=${statusId}, 표시=${isVisible}`);
+            
+            // 해당 속성 찾기
+            const attr = window.allAttributes.find(a => a.id === attrId);
+            if (!attr) {
+                console.error('속성을 찾을 수 없습니다:', attrId);
+                return;
+            }
+            
+            const settings = {};
+            settings[attrId] = { ...attr.view_select };
+            
+            if (statusId === 'all') {
+                settings[attrId]['0'] = isVisible;
+            } else {
+                settings[attrId][statusId] = isVisible;
+            }
+            
+            console.log('저장할 설정:', settings);
+            
+            // 서버에 저장
+            fetch('/sales/update_attribute_visibility/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: JSON.stringify({ settings: settings })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log(`속성 설정 저장 성공: ${attr.name} (${statusId})`);
+                    
+                    // 속성 데이터 업데이트
+                    if (attr.view_select) {
+                        if (statusId === 'all') {
+                            attr.view_select['0'] = isVisible;
+                        } else {
+                            attr.view_select[statusId] = isVisible;
+                        }
+                    } else {
+                        attr.view_select = {};
+                        if (statusId === 'all') {
+                            attr.view_select['0'] = isVisible;
+                        } else {
+                            attr.view_select[statusId] = isVisible;
+                        }
+                    }
+                    
+                    // 테이블 즉시 새로고침
+                    refreshTableWithStatusFilter();
+                    
+                } else {
+                    console.error('설정 저장 실패:', data.error);
+                    alert('설정 저장 실패: ' + data.error);
+                    
+                    // 실패 시 체크박스 상태 되돌리기
+                    const checkbox = document.getElementById(`attr_${attrId}_${statusId}`);
+                    if (checkbox) {
+                        checkbox.checked = !isVisible;
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('설정 저장 중 오류가 발생했습니다.');
+                
+                // 실패 시 체크박스 상태 되돌리기
+                const checkbox = document.getElementById(`attr_${attrId}_${statusId}`);
+                if (checkbox) {
+                    checkbox.checked = !isVisible;
+                }
+            });
+        }
+        
+        // 상태 필터를 고려한 테이블 새로고침
+        function refreshTableWithStatusFilter() {
+            // 현재 상태 ID를 URL 파라미터로 전달
+            const url = new URL('/sales/entry_table_partial/', window.location.origin);
+            if (window.currentStatusTab !== null) {
+                url.searchParams.set('status_id', window.currentStatusTab);
+            }
+            
+            fetch(url)
+                .then(response => response.text())
+                .then(html => {
+                    document.getElementById('tableView').innerHTML = html;
+                    // 필요시 테이블 관련 이벤트 재바인딩
+                    if (typeof bindTableCellEvents === 'function') bindTableCellEvents();
+                    
+                    // 상태 필터가 활성화되어 있으면 즉시 적용
+                    if (window.currentStatusTab !== null) {
+                        setTimeout(() => {
+                            applyStatusFilter();
+                        }, 100);
+                    }
+                    
+                    // 필터 상태 업데이트
+                    updateFilterStatus();
+                })
+                .catch(error => {
+                    console.error('테이블 새로고침 오류:', error);
+                });
+        }
+        
+        // 탭 전환 함수
+        function switchTab(tabName) {
+            // 모든 탭 콘텐츠 숨기기
+            document.getElementById('visibilityTabContent').style.display = 'none';
+            document.getElementById('cascadeTabContent').style.display = 'none';
+            
+            // 모든 탭 버튼 비활성화
+            document.getElementById('visibilityTab').style.background = '#6c757d';
+            document.getElementById('cascadeTab').style.background = '#6c757d';
+            
+            // 선택된 탭 콘텐츠 표시
+            document.getElementById(tabName + 'TabContent').style.display = 'block';
+            document.getElementById(tabName + 'Tab').style.background = '#007bff';
+            
+            // 상태별 표시 관리 탭이 선택된 경우 초기화
+            if (tabName === 'visibility') {
+                loadStatusTabsForModal();
+            }
+        }
+        
+        // CSRF 토큰 가져오기
+        function getCsrfToken() {
+            const name = 'csrftoken';
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
         }
     </script>
 </head>
@@ -916,7 +1294,7 @@
 
     <!-- 속성 표시/숨김 관리 모달 -->
     <div id="attributeVisibilityModal" style="display:none;position:fixed;left:0;top:0;width:100vw;height:100vh;background:rgba(0,0,0,0.4);z-index:4000;align-items:center;justify-content:center;">
-      <div style="background:#fff;padding:30px;border-radius:10px;min-width:600px;max-width:90vw;max-height:80vh;overflow:auto;">
+      <div style="background:#fff;padding:30px;border-radius:10px;min-width:800px;max-width:90vw;max-height:80vh;overflow:auto;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
           <h3 style="margin:0;">속성 관리</h3>
           <button onclick="closeAttributeVisibilityModal()" style="background:none;border:none;font-size:20px;cursor:pointer;">&times;</button>
@@ -925,23 +1303,38 @@
         <!-- 탭 네비게이션 -->
         <div style="display:flex;margin-bottom:20px;border-bottom:1px solid #dee2e6;">
           <button id="visibilityTab" onclick="switchTab('visibility')" style="padding:10px 20px;border:none;background:#007bff;color:white;border-radius:4px 4px 0 0;cursor:pointer;margin-right:5px;">
-            표시/숨김 관리
+            상태별 표시 관리
           </button>
           <button id="cascadeTab" onclick="switchTab('cascade')" style="padding:10px 20px;border:none;background:#6c757d;color:white;border-radius:4px 4px 0 0;cursor:pointer;">
             Cascade 관리
           </button>
         </div>
         
-        <!-- 표시/숨김 관리 탭 -->
+        <!-- 상태별 표시 관리 탭 -->
         <div id="visibilityTabContent">
           <div style="margin-bottom:20px;">
             <p style="color:#6c757d;font-size:14px;margin:0;">
-              👁️ 표시된 속성은 테이블에서 보입니다.<br>
-              👁️‍🗨️ 숨겨진 속성은 테이블에서 보이지 않습니다.
+              👁️ 각 상태별로 속성 표시 여부를 설정할 수 있습니다.<br>
+              👁️‍🗨️ 체크된 속성은 해당 상태 탭에서 표시됩니다.
             </p>
           </div>
-          <div id="hiddenAttributesList" style="max-height:400px;overflow-y:auto;">
-            <!-- 숨겨진 속성들이 여기에 동적으로 로드됩니다 -->
+          
+          <!-- 상태 탭 선택 -->
+          <div style="margin-bottom:20px;">
+            <label style="display:block;margin-bottom:10px;font-weight:bold;">상태 선택:</label>
+            <div id="statusTabsContainer" style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:15px;">
+              <!-- 상태 탭들이 여기에 동적으로 로드됩니다 -->
+            </div>
+          </div>
+          
+          <!-- 속성 목록 -->
+          <div id="attributesListContainer" style="max-height:400px;overflow-y:auto;">
+            <!-- 속성들이 여기에 동적으로 로드됩니다 -->
+          </div>
+          
+          <!-- 안내 메시지 -->
+          <div style="margin-top:20px;text-align:center;color:#6c757d;font-size:14px;">
+            <p>체크박스를 변경하면 즉시 저장됩니다.</p>
           </div>
         </div>
         
@@ -1171,6 +1564,23 @@ document.addEventListener('DOMContentLoaded', function() {
               });
         };
     });
+
+    // 페이지 로드 시 현재 상태 탭 활성화
+    const currentStatusId = '{{ current_status_id|escapejs }}';
+    if (currentStatusId && currentStatusId !== 'all') {
+        window.currentStatusTab = currentStatusId;
+        const statusTabs = document.querySelectorAll('.status-tab');
+        statusTabs.forEach(tab => {
+            tab.classList.remove('active');
+            if (tab.onclick && tab.onclick.toString().includes(currentStatusId)) {
+                tab.classList.add('active');
+            }
+        });
+        // 상태 필터 적용
+        setTimeout(() => {
+            applyStatusFilter();
+        }, 100);
+    }
 });
 
 
@@ -1210,7 +1620,6 @@ function saveNewAttribute() {
         if (data.success) {
             // 성공 시 테이블만 비동기 갱신, 속성관리 모달 리스트도 갱신
             refreshTable();
-            loadHiddenAttributes();
             closeAddAttributeModal();
             
             // 칸반보드 필터 업데이트
@@ -2265,16 +2674,21 @@ document.addEventListener('DOMContentLoaded', function() {
     audioFilesList.appendChild(textAreaContainer);
 } {% endcomment %}
 
-// 속성 표시/숨김 관리 모달 열기
+// 속성 관리 모달 열기
 function openAttributeVisibilityModal() {
-    document.getElementById('attributeVisibilityModal').style.display = 'flex';
-    switchTab('visibility'); // 기본 탭으로 설정
-    loadHiddenAttributes();
+    console.log('속성 관리 모달 열기');
+    const modal = document.getElementById('attributeVisibilityModal');
+    modal.style.display = 'flex';
+    
+    // 상태 탭 데이터 로드
+    loadStatusTabsForModal();
 }
 
 // 속성 표시/숨김 관리 모달 닫기
 function closeAttributeVisibilityModal() {
-    document.getElementById('attributeVisibilityModal').style.display = 'none';
+    console.log('속성 관리 모달 닫기');
+    const modal = document.getElementById('attributeVisibilityModal');
+    modal.style.display = 'none';
 }
 
 // 탭 전환 함수
@@ -2289,7 +2703,6 @@ function switchTab(tabName) {
     
     // 해당 탭의 데이터 로드
     if (tabName === 'visibility') {
-        loadHiddenAttributes();
     } else if (tabName === 'cascade') {
         loadCascadeAttributes();
     }
@@ -2510,7 +2923,13 @@ function toggleAttributeVisibility(attributeName, btn) {
 
 // 테이블 비동기 갱신 함수
 function refreshTable() {
-    fetch('/sales/entry_table_partial/')
+    // 현재 상태 ID를 URL 파라미터로 전달
+    const url = new URL('/sales/entry_table_partial/', window.location.origin);
+    if (window.currentStatusTab !== null) {
+        url.searchParams.set('status_id', window.currentStatusTab);
+    }
+    
+    fetch(url)
         .then(response => response.text())
         .then(html => {
             document.getElementById('tableView').innerHTML = html;
@@ -2524,6 +2943,12 @@ function refreshTable() {
                     applyStatusFilter();
                 }, 100);
             }
+            
+            // 필터 상태 업데이트
+            updateFilterStatus();
+        })
+        .catch(error => {
+            console.error('테이블 새로고침 오류:', error);
         });
 }
 
@@ -2554,7 +2979,6 @@ function deleteAttributeFromModal(attrName) {
         if (data.success) {
             showNotification(data.message, 'success');
             refreshTable();
-            loadHiddenAttributes();
             
             // 칸반보드 필터 업데이트
             refreshKanbanFilter();

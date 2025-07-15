@@ -68,6 +68,37 @@ logger = logging.getLogger(__name__)
 
 # 다이어리 목록 및 작성 폼
 
+def filter_attributes_by_status(queryset, status_id='all'):
+    """상태 ID에 따라 속성들을 필터링하는 함수"""
+    filtered_attrs = []
+    print(f"필터링 시작 - status_id: {status_id}, 총 속성 수: {queryset.count()}")
+    
+    for attr in queryset:
+        print(f"속성 '{attr.name}'의 view_select: {attr.view_select}")
+        
+        if isinstance(attr.view_select, dict):
+            if status_id == 'all':
+                # 전체 탭에서는 "0" 키가 True인 속성들만 표시
+                is_visible = attr.view_select.get('0', False)
+                print(f"  전체 탭에서 표시 여부: {is_visible}")
+                if is_visible:
+                    filtered_attrs.append(attr)
+            else:
+                # 특정 상태 탭에서는 해당 상태 ID가 True인 속성들만 표시
+                is_visible = attr.view_select.get(str(status_id), False)
+                print(f"  상태 {status_id}에서 표시 여부: {is_visible}")
+                if is_visible:
+                    filtered_attrs.append(attr)
+        elif isinstance(attr.view_select, bool) and attr.view_select:
+            # 기존 boolean 형태와의 호환성을 위해
+            print(f"  boolean 형태 - 표시됨")
+            filtered_attrs.append(attr)
+        else:
+            print(f"  조건에 맞지 않음 - 제외됨")
+    
+    print(f"필터링 완료 - 필터링된 속성 수: {len(filtered_attrs)}")
+    return filtered_attrs
+
 def diary_list(request):
     host = request.get_host()
     if 'namatji.com' in host:
@@ -77,22 +108,34 @@ def diary_list(request):
         return redirect('diary_login')
     
     user_id = request.session.get('diary_member_id')
-
     user = User.objects.get(id=user_id)
-
-    print(user_id)
+    
+    # URL 파라미터에서 상태 ID 가져오기
+    status_id = request.GET.get('status_id')
+    if status_id is None:
+        status_id = 'all'
+    
+    print(f"사용자 ID: {user_id}, 상태 ID: {status_id}")
     
     # detail 필터링 추가: 기본적으로 detail=False인 속성만 표시
     show_detail = request.GET.get('detail', '0') == '1'  # detail=1이면 상세 속성도 표시
     
-    # 속성 필터링: detail 값과 view_select 값에 따라 필터링
+    # 기본 속성 쿼리 (view_select 필터링 제거 - 상태별 필터링에서 처리)
     if show_detail:
-        attributes = Attribute.objects.filter(view_select=True).order_by('sort_order', 'id')  # view_select=True인 속성만 표시
-        user_attributes = Attribute.objects.filter(user=user, view_select=True).order_by('sort_order', 'id')  # view_select=True인 속성만 표시
+        base_attributes = Attribute.objects.all().order_by('sort_order', 'id')
+        base_user_attributes = Attribute.objects.filter(user=user).order_by('sort_order', 'id')
     else:
-        attributes = Attribute.objects.filter(detail=False, view_select=True).order_by('sort_order', 'id')  # detail=False이고 view_select=True인 속성만 표시
-        user_attributes = Attribute.objects.filter(user=user, detail=False, view_select=True).order_by('sort_order', 'id')  # detail=False이고 view_select=True인 속성만 표시
+        base_attributes = Attribute.objects.filter(detail=False).order_by('sort_order', 'id')
+        base_user_attributes = Attribute.objects.filter(user=user, detail=False).order_by('sort_order', 'id')
     
+    # 상태별 필터링 적용
+    attributes = filter_attributes_by_status(base_attributes, status_id)
+    user_attributes = filter_attributes_by_status(base_user_attributes, status_id)
+    
+    print(f"필터링된 속성 수: {len(user_attributes)}")
+    
+    for attr in user_attributes:
+        print(f"  - {attr.name}")
     # 행 데이터는 모든 행을 가져옴 (필터링은 속성 레벨에서 처리)
     # 쿼리 최적화: select_related와 prefetch_related 적용
     rows = Row.objects.filter(user=user).select_related('user').prefetch_related(
@@ -226,15 +269,17 @@ def diary_list(request):
         })
     
     # 칸반보드용 dropdown 속성들 가져오기 (필터링된 속성 중에서)
-    dropdown_attributes = user_attributes.filter(attributeType__name='dropdown').order_by('-assential', 'name')
+    # 리스트에서 dropdown 타입만 필터링
+    dropdown_attributes = [attr for attr in user_attributes if attr.attributeType and attr.attributeType.name == 'dropdown']
+    dropdown_attributes.sort(key=lambda x: (-x.assential, x.name))
     
     # 칸반보드 데이터 생성 - 기본적으로 '영업진행' 속성 사용, 없으면 첫 번째 dropdown 속성 사용
     board = []
     selected_kanban_attr = request.GET.get('kanban_attr', '영업진행')
-    kanban_attr = user_attributes.filter(name=selected_kanban_attr, attributeType__name='dropdown').first()
+    kanban_attr = next((attr for attr in user_attributes if attr.name == selected_kanban_attr and attr.attributeType and attr.attributeType.name == 'dropdown'), None)
     
-    if not kanban_attr and dropdown_attributes.exists():
-        kanban_attr = dropdown_attributes.first()
+    if not kanban_attr and dropdown_attributes:
+        kanban_attr = dropdown_attributes[0]
         selected_kanban_attr = kanban_attr.name
     
     if kanban_attr:
@@ -281,13 +326,13 @@ def diary_list(request):
             })
 
     # attributes를 list of dict로 json.dumps
-    attributes_list = list(attributes.values('id', 'name', 'attributeType__name', 'assential'))
+    attributes_list = [{'id': attr.id, 'name': attr.name, 'attributeType__name': attr.attributeType.name if attr.attributeType else None, 'assential': attr.assential} for attr in attributes]
     # dict -> SimpleNamespace, attributeType__name -> attributeType_name
     attributes_obj_list = [SimpleNamespace(**{k.replace('attributeType__name', 'attributeType_name'): v for k, v in d.items()}) for d in attributes_list]
     attributes_json = json.dumps(attributes_list, ensure_ascii=False)
     
     # dropdown 속성별 옵션 딕셔너리 생성 (필터링된 Attribute 기반)
-    dropdown_attrs = user_attributes.filter(attributeType__name='dropdown')
+    dropdown_attrs = [attr for attr in user_attributes if attr.attributeType and attr.attributeType.name == 'dropdown']
     dropdown_options_dict = {}
     for attr in dropdown_attrs:
         # prefetch된 데이터 활용
@@ -310,6 +355,7 @@ def diary_list(request):
         'selected_kanban_attr': selected_kanban_attr,  # 현재 선택된 칸반 속성
         'rows': rows_data,  # 실제 데이터 행들
         'board': board,  # 칸반보드 데이터
+        'current_status_id': status_id,  # 현재 선택된 상태 ID
     })
 
 @require_GET
@@ -3758,13 +3804,18 @@ def update_audio_file_order_and_notes(request):
         return JsonResponse({'success': False, 'error': str(e)})
 
 def entry_table_partial(request):
-     
     user_id = request.session.get('diary_member_id')
-
     user = User.objects.get(id=user_id)
-    # 항상 detail=False, view_select=True만 표시 (쿼리 최적화)
-    attributes = Attribute.objects.filter(user=user, detail=False, view_select=True).select_related('attributeType').order_by('sort_order', 'id')
-    user_attributes = attributes
+    
+    # URL 파라미터에서 상태 ID 가져오기
+    status_id = request.GET.get('status_id', 'all')
+    
+    # 기본 속성 쿼리 (view_select 필터링 제거)
+    base_attributes = Attribute.objects.filter(user=user, detail=False).select_related('attributeType').order_by('sort_order', 'id')
+    
+    # 상태별 필터링 적용
+    user_attributes = filter_attributes_by_status(base_attributes, status_id)
+
     
     # 쿼리 최적화: select_related와 prefetch_related 적용
     rows = Row.objects.filter(user=user).select_related('user').prefetch_related(
@@ -3899,7 +3950,7 @@ def entry_table_partial(request):
             'values': row_values
         })
     
-    attributes_list = list(attributes.values('name', 'attributeType__name', 'assential'))
+    attributes_list = [{'name': attr.name, 'attributeType__name': attr.attributeType.name if attr.attributeType else None, 'assential': attr.assential} for attr in user_attributes]
     attributes_obj_list = [SimpleNamespace(**{k.replace('attributeType__name', 'attributeType_name'): v for k, v in d.items()}) for d in attributes_list]
     return render(request, 'diary/entry_table_partial.html', {
         'attributes': attributes_obj_list,
@@ -4001,20 +4052,57 @@ def get_all_attributes(request):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
 
+@csrf_exempt
+def update_attribute_visibility(request):
+    """속성별 상태 표시 설정을 업데이트하는 API"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            settings = data.get('settings', {})
+            
+            user_id = request.session.get('diary_member_id')
+            user = User.objects.get(id=user_id)
+            
+            # 각 속성의 view_select 업데이트
+            for attr_id, view_select_settings in settings.items():
+                try:
+                    attr = Attribute.objects.get(id=attr_id, user=user)
+                    attr.view_select = view_select_settings
+                    attr.save()
+                except Attribute.DoesNotExist:
+                    continue
+            
+            return JsonResponse({
+                'success': True,
+                'message': '속성 표시 설정이 저장되었습니다.'
+            })
+            
+        except json.JSONDecodeError:
+            return JsonResponse({'success': False, 'error': '잘못된 JSON 형식입니다.'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'POST 요청만 허용됩니다.'}, status=405)
+
 @require_GET
 def get_dropdown_attributes(request):
     """dropdown 타입의 속성 목록을 반환하는 API (칸반보드 필터용)"""
     try:
-         
         user_id = request.session.get('diary_member_id')
-
         user = User.objects.get(id=user_id)
-        dropdown_attributes = Attribute.objects.filter(
+        
+        # URL 파라미터에서 상태 ID 가져오기
+        status_id = request.GET.get('status_id', 'all')
+        
+        # 기본 속성 쿼리 (view_select 필터링 제거)
+        base_dropdown_attributes = Attribute.objects.filter(
             user=user, 
             attributeType__name='dropdown',
-            detail=False,
-            view_select=True
+            detail=False
         ).order_by('-assential', 'name')
+        
+        # 상태별 필터링 적용
+        dropdown_attributes = filter_attributes_by_status(base_dropdown_attributes, status_id)
         
         attributes_data = []
         for attr in dropdown_attributes:

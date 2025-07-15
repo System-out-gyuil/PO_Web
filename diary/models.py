@@ -84,7 +84,7 @@ class Attribute(models.Model):
     assential = models.BooleanField(default=False)
     detail = models.BooleanField(default=False)
     sort_order = models.IntegerField(default=0, db_index=True)
-    view_select = models.BooleanField(default=False)
+    view_select = models.JSONField(default=dict)
     cascade = models.BooleanField(default=False)
 
     class Meta:

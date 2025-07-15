@@ -16,14 +16,13 @@ for attr in attributes:
     # 실제 상태 ID들에 맞게 설정 (전체 탭 포함)
     default_view_select = {
         "0": True,    # 전체 탭
-        "23": True,   # 접수대기
-        "25": True,   # 심사중
-        "36": True,   # 발표완료
         "37": True,   # 진행중
         "38": True,   # 종결
         "39": True,   # 계약전
         "49": True,   # 의사없음
         "50": True,   # 조건부결
+        "54": True,   # 부재중
+        "55": True,   # 연락두절
     }
     
     attr.view_select = default_view_select

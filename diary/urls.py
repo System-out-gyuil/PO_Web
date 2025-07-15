@@ -84,4 +84,9 @@ urlpatterns = [
 
     # 칸반보드 관련 처리
     path('update_kanban_option_order/', views.update_kanban_option_order, name='update_kanban_option_order'),
+
+    # 속성관리
+    path('get_all_attributes/', views.get_all_attributes, name='get_all_attributes'),
+    path('update_attribute_visibility/', views.update_attribute_visibility, name='update_attribute_visibility'),
+    path('get_dropdown_attributes/', views.get_dropdown_attributes, name='get_dropdown_attributes'),
 ] 
