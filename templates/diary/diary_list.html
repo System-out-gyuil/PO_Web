@@ -406,6 +406,17 @@
                         if (typeof bindTableCellEvents === 'function') {
                             bindTableCellEvents();
                         }
+                        
+                        // 드래그앤드롭 재초기화 추가
+                        if (typeof reinitializeDragDrop === 'function') {
+                            reinitializeDragDrop();
+                        }
+                        
+                        // 행 드래그앤드롭 재초기화 추가
+                        if (typeof reinitializeRowDragDrop === 'function') {
+                            reinitializeRowDragDrop();
+                        }
+                        
                         updateFilterStatus();
                         initializeTableData();
                     }
@@ -786,6 +797,16 @@
                     document.getElementById('tableView').innerHTML = html;
                     // 필요시 테이블 관련 이벤트 재바인딩
                     if (typeof bindTableCellEvents === 'function') bindTableCellEvents();
+                    
+                    // 드래그앤드롭 재초기화 추가
+                    if (typeof reinitializeDragDrop === 'function') {
+                        reinitializeDragDrop();
+                    }
+                    
+                    // 행 드래그앤드롭 재초기화 추가
+                    if (typeof reinitializeRowDragDrop === 'function') {
+                        reinitializeRowDragDrop();
+                    }
                     
                     // 상태 필터가 활성화되어 있으면 즉시 적용
                     if (window.currentStatusTab !== null) {
@@ -1388,8 +1409,12 @@ document.addEventListener('DOMContentLoaded', function() {
     bindTableCellEvents();
     bindKanbanSortable();
     
-    // 컬럼 드래그앤드롭 초기화
-    initializeColumnDragDrop();
+    // 컬럼 드래그앤드롭 초기화 - 더 긴 지연 시간으로 안정성 확보
+    setTimeout(() => {
+        if (typeof initializeColumnDragDrop === 'function') {
+            initializeColumnDragDrop();
+        }
+    }, 1000);
     
     // 상태 탭 초기화
     initializeStatusTabs();
@@ -1436,6 +1461,26 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+    
+    // 행 드래그앤드롭 전역 변수로 저장
+    if(typeof Sortable !== 'undefined') {
+        window.rowSortable = new Sortable(document.getElementById('entryTbody'), {
+            handle: '.drag-handle',
+            animation: 150,
+            onEnd: function (evt) {
+                // 순서 변경 시 서버에 반영
+                const ids = Array.from(document.querySelectorAll('#entryTbody tr[data-id]')).map(tr => tr.getAttribute('data-id'));
+                fetch('/sales/reorder/', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({order: ids})
+                }).then(res => res.json()).then(data => {
+                    if(!data.success) alert('순서 저장 실패: '+data.error);
+                }).catch(() => alert('순서 저장 중 오류 발생'));
+            }
+        });
+    }
+    
     // 새로 만들기 버튼 동작은 diary_table.js에서 처리됨
 
     // 메모 모달 관련 함수 리팩토링
@@ -2139,6 +2184,14 @@ function addNewModalDropdownOption(rowId, fieldName, newOption, element) {
         if (data.id) {
             // 새 옵션 추가 성공, 해당 옵션으로 선택
             selectModalDropdownOption(rowId, fieldName, data.id, data.option, element);
+            
+            // 상태 속성인 경우 상태 탭 새로고침
+            if (fieldName === window.statusAttributeName) {
+                console.log('상태 속성 옵션 추가됨, 상태 탭 새로고침');
+                setTimeout(() => {
+                    refreshStatusTabs();
+                }, 100);
+            }
         } else {
             alert('옵션 추가 실패: ' + (data.error || ''));
         }
@@ -2913,6 +2966,11 @@ function refreshTable() {
             // 필요시 테이블 관련 이벤트 재바인딩
             if (typeof bindTableCellEvents === 'function') bindTableCellEvents();
             
+            // 드래그앤드롭 재초기화 추가
+            if (typeof reinitializeDragDrop === 'function') {
+                reinitializeDragDrop();
+            }
+            
             // 탭 상태 재적용 - 상태 필터가 활성화되어 있으면 즉시 적용
             if (window.currentStatusTab !== null) {
                 // 약간의 지연 후 상태 필터 적용 (DOM 렌더링 완료 보장)
@@ -3610,6 +3668,92 @@ function updateCellValueWithStatusFilter(rowId, fieldName, value) {
     .catch(error => {
         console.error('셀 값 수정 오류:', error);
         alert('수정 중 오류가 발생했습니다.');
+    });
+}
+
+// 상태 탭 새로고침 함수 추가
+function refreshStatusTabs() {
+    console.log('상태 탭 새로고침 시작');
+    fetch('/sales/get_status_tabs/')
+        .then(response => response.json())
+        .then(data => {
+            console.log('상태 탭 데이터 응답:', data);
+            if (data.success) {
+                window.statusAttributeName = data.attribute_name;
+                console.log('사용할 속성명:', window.statusAttributeName);
+                
+                // 기존 탭 컨테이너 초기화
+                const tabContainer = document.getElementById('tabContainer');
+                if (tabContainer) {
+                    tabContainer.innerHTML = '';
+                    createStatusTabs(data.options);
+                    
+                    // 현재 활성 탭 상태 복원
+                    if (window.currentStatusTab !== null) {
+                        const statusTabs = document.querySelectorAll('.status-tab');
+                        statusTabs.forEach(tab => {
+                            tab.classList.remove('active');
+                            if (tab.onclick && tab.onclick.toString().includes(window.currentStatusTab)) {
+                                tab.classList.add('active');
+                            }
+                        });
+                    }
+                }
+                
+                // 모달용 상태 탭도 업데이트
+                const modalTabContainer = document.getElementById('statusTabsContainer');
+                if (modalTabContainer) {
+                    modalTabContainer.innerHTML = '';
+                    createStatusTabsForModal(data.options);
+                }
+                
+                console.log('상태 탭 새로고침 완료');
+            } else {
+                console.error('상태 탭 데이터 로드 실패:', data.error);
+            }
+        })
+        .catch(error => {
+            console.error('상태 탭 새로고침 오류:', error);
+        });
+}
+
+// 랜덤 색상 생성 함수 추가
+function generateRandomColor() {
+    const colors = [
+        '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
+        '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
+        '#F8C471', '#82E0AA', '#F1948A', '#85C1E9', '#D7BDE2',
+        '#A9CCE3', '#F9E79F', '#D5A6BD', '#A3E4D7', '#FAD7A0'
+    ];
+    return colors[Math.floor(Math.random() * colors.length)];
+}
+
+// 모달용 새 드롭다운 옵션 추가 함수 (일반 드롭다운 속성용)
+function addNewModalDropdownOption(rowId, fieldName, newOption, element) {
+    // 랜덤 색상 생성
+    const randomColor = generateRandomColor();
+    
+    fetch('/sales/dropdown_options/?field=' + encodeURIComponent(fieldName), {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'name=' + encodeURIComponent(newOption) + '&color=' + encodeURIComponent(randomColor)
+    })
+    .then(r => r.json())
+    .then(function(data) {
+        if (data.id) {
+            // 새 옵션 추가 성공, 해당 옵션으로 선택
+            selectModalDropdownOption(rowId, fieldName, data.id, data.option, element);
+            
+            // 상태 속성인 경우 상태 탭 새로고침
+            if (fieldName === window.statusAttributeName) {
+                console.log('상태 속성 옵션 추가됨, 상태 탭 새로고침');
+                setTimeout(() => {
+                    refreshStatusTabs();
+                }, 100);
+            }
+        } else {
+            alert('옵션 추가 실패: ' + (data.error || ''));
+        }
     });
 }
 </script>

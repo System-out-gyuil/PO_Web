@@ -74,8 +74,8 @@
                                 <div class="dropdown-pill" style="background:{{ option.color|default:''|to_rgba:'0.18' }}; color:#333; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">{{ option.label }}</div>
                             {% endwith %}
                         {% else %}
-                            <div class="dropdown-pill" style="background:{{ dropdown_value.color|default:''|to_rgba:'0.18' }}; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">
-                                {{ dropdown_value.label|default:'선택 없음' }}
+                            <div class="dropdown-pill" style="background:#eee; color:#333; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center; border:1px solid #dee2e6;">
+                                선택 없음
                             </div>
                         {% endif %}
                     </td>
@@ -140,7 +140,9 @@
                     </td>
                 {% elif attr.attributeType_name == 'dropdown' %}
                     <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" class="{% if attr.assential %}essential-column{% endif %}">
-                        <div style="color: #999; font-style: italic;">선택 없음</div>
+                        <div class="dropdown-pill" style="background:#eee; color:#333; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center; border:1px solid #dee2e6;">
+                            선택 없음
+                        </div>
                     </td>
                 {% elif attr.attributeType_name == 'datetime' %}
                     <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" class="{% if attr.assential %}essential-column{% endif %}">
