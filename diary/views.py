@@ -41,7 +41,7 @@ from datetime import datetime, timedelta
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_http_methods
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.contrib.auth.models import User
 from .models import *
 from django.db.models import Q
@@ -69,9 +69,16 @@ logger = logging.getLogger(__name__)
 # 다이어리 목록 및 작성 폼
 
 def diary_list(request):
-    host = request.get_host()
+    # host = request.get_host()
 
-    user = User.objects.get(id=1)
+    if not request.session.get('diary_authenticated'):
+        return redirect('diary_login')
+    
+    user_id = request.session.get('diary_member_id')
+
+    user = User.objects.get(id=user_id)
+
+    print(user_id)
     
     # detail 필터링 추가: 기본적으로 detail=False인 속성만 표시
     show_detail = request.GET.get('detail', '0') == '1'  # detail=1이면 상세 속성도 표시
@@ -306,7 +313,10 @@ def diary_list(request):
 @require_GET
 def fu_events(request):
     events = []
-    user = User.objects.get(id=1)
+     
+    user_id = request.session.get('diary_member_id')
+
+    user = User.objects.get(id=user_id)
     
     # F/U 일정, 회사명, 미팅, 영업진행 속성 가져오기 (쿼리 최적화)
     fu_date_attr = Attribute.objects.filter(user=user, name='F/U 일정').select_related('attributeType').first()
@@ -605,7 +615,10 @@ def status_list(request):
     return JsonResponse({'error': 'Invalid method'}, status=405)
 
 def board_view(request):
-    user = User.objects.get(id=1)  # 현재 사용자
+     
+    user_id = request.session.get('diary_member_id')
+
+    user = User.objects.get(id=user_id)  # 현재 사용자
     
     # "영업진행" 속성 가져오기 (쿼리 최적화)
     sales_progress_attr = Attribute.objects.filter(user=user, name='영업진행').select_related('attributeType').first()
@@ -671,7 +684,10 @@ def update_entry(request):
             
         try:
             # 사용자 ID를 1로 고정
-            user = User.objects.get(id=1)
+             
+            user_id = request.session.get('diary_member_id')
+
+            user = User.objects.get(id=user_id)
             row = Row.objects.get(id=row_id, user=user)
         except Row.DoesNotExist:
             return JsonResponse({'success': False, 'error': 'Row not found'})
@@ -738,10 +754,12 @@ def create_new_row(request):
         if not field:
             return JsonResponse({'success': False, 'error': 'Missing field'})
             
-        user = User.objects.get(id=1)
+         
+        user_id = request.session.get('diary_member_id')
+
+        user = User.objects.get(id=user_id)
         
         # 새 Row 생성 (임시로 빈 Row)
-        from .models import Row
         max_order = Row.objects.aggregate(max_order=models.Max('order'))['max_order']
         new_order = (max_order + 1) if max_order is not None else 0
         
@@ -824,7 +842,10 @@ def update_row_field(request):
                 return JsonResponse({'success': False, 'error': 'row_id와 field_name이 필요합니다'})
             
             # 사용자와 행 조회
-            user = User.objects.get(id=1)
+             
+            user_id = request.session.get('diary_member_id')
+
+            user = User.objects.get(id=user_id)
             row = Row.objects.get(id=row_id, user=user)
             
             # 매출 필드 특별 처리
@@ -1026,7 +1047,10 @@ def add_attribute(request):
         
         try:
             # 사용자 가져오기
-            user = User.objects.get(id=1)  # 임시로 user id=1 사용
+             
+            user_id = request.session.get('diary_member_id')
+
+            user = User.objects.get(id=user_id)  # 임시로 user id=1 사용
             
             # AttributeType 가져오기 또는 생성
             attribute_type, _ = AttributeType.objects.get_or_create(name=attr_type)
@@ -1059,7 +1083,10 @@ def add_attribute(request):
 @require_GET
 def get_row_details(request, row_id):
     try:
-        user = User.objects.get(id=1)
+         
+        user_id = request.session.get('diary_member_id')
+
+        user = User.objects.get(id=user_id)
         # 쿼리 최적화: select_related와 prefetch_related 적용
         row = Row.objects.filter(id=row_id, user=user).select_related('user').prefetch_related(
             'values__attribute__attributeType',
@@ -1162,7 +1189,10 @@ def get_row_details(request, row_id):
 @require_GET
 def debug_fu_data(request):
     """F/U 일정 데이터 디버깅용 뷰"""
-    user = User.objects.get(id=1)
+     
+    user_id = request.session.get('diary_member_id')
+
+    user = User.objects.get(id=user_id)
     fu_date_attr = Attribute.objects.filter(user=user, name='F/U 일정').first()
     
     if not fu_date_attr:
@@ -1192,7 +1222,10 @@ def debug_fu_data(request):
 def get_user_attributes(request):
     """사용자의 속성 목록을 반환하는 API"""
     try:
-        user = User.objects.get(id=1)
+            
+        user_id = request.session.get('diary_member_id')
+
+        user = User.objects.get(id=user_id)
         attributes = Attribute.objects.filter(user=user).order_by('-assential', 'id')  # 필수 속성 먼저, 그 다음 id 순
         
         attributes_data = []
@@ -1219,7 +1252,10 @@ def get_user_attributes(request):
 def get_kanban_data(request):
     """특정 dropdown 속성에 대한 칸반보드 데이터를 반환하는 API"""
     try:
-        user = User.objects.get(id=1)
+         
+        user_id = request.session.get('diary_member_id')
+
+        user = User.objects.get(id=user_id)
         attr_name = request.GET.get('attr_name')
         
         if not attr_name:
@@ -1355,7 +1391,10 @@ def upload_file(request):
             
             try:
                 # Row와 Attribute 가져오기
-                user = User.objects.get(id=1)
+                 
+                user_id = request.session.get('diary_member_id')
+
+                user = User.objects.get(id=user_id)
                 row = Row.objects.get(id=row_id, user=user)
                 attribute = Attribute.objects.get(name=field_name, user=user)
                 
@@ -1572,7 +1611,10 @@ def delete_file(request):
         
         try:
             # 사용자 ID를 1로 고정
-            user = User.objects.get(id=1)
+             
+            user_id = request.session.get('diary_member_id')
+
+            user = User.objects.get(id=user_id)
             
             # Row와 Attribute 조회
             row = Row.objects.get(id=row_id, user=user)
@@ -1750,7 +1792,10 @@ def download_file(request, row_id, field_name):
     """S3에 저장된 파일을 다운로드하는 뷰"""
     try:
         # 사용자 ID를 1로 고정 (이미 import된 User 모델 사용)
-        user = User.objects.get(id=1)
+         
+        user_id = request.session.get('diary_member_id')
+
+        user = User.objects.get(id=user_id)
         
         # Row와 Attribute 조회
         row = Row.objects.get(id=row_id, user=user)
@@ -1980,7 +2025,10 @@ def upload_audio_file(request):
         
         try:
             # 사용자 ID를 1로 고정 (이미 import된 User 모델 사용)
-            user = User.objects.get(id=1)
+             
+            user_id = request.session.get('diary_member_id')
+
+            user = User.objects.get(id=user_id)
             
             # Row 존재 여부 확인
             row = Row.objects.get(id=row_id, user=user)
@@ -2279,7 +2327,10 @@ def get_audio_files_by_date(request):
             })
         
         # 사용자 ID를 1로 고정
-        user = User.objects.get(id=1)
+         
+        user_id = request.session.get('diary_member_id')
+
+        user = User.objects.get(id=user_id)
         
         # Row와 음성파일 속성 조회
         row = Row.objects.get(id=row_id, user=user)
@@ -2363,7 +2414,10 @@ def delete_audio_file(request):
             })
         
         # 사용자 및 Row 조회
-        user = User.objects.get(id=1)
+         
+        user_id = request.session.get('diary_member_id')
+
+        user = User.objects.get(id=user_id)
         row = Row.objects.get(id=row_id, user=user)
         
         # 음성파일 속성 조회
@@ -2460,7 +2514,10 @@ def update_audio_text(request):
         
         # 사용자 정보 가져오기 (고정 ID: 1)
         try:
-            user = User.objects.get(id=1)
+             
+            user_id = request.session.get('diary_member_id')
+
+            user = User.objects.get(id=user_id)
         except User.DoesNotExist:
             return JsonResponse({'success': False, 'error': '사용자를 찾을 수 없습니다.'})
         
@@ -2528,7 +2585,10 @@ def update_audio_memo(request):
         
         # 사용자 정보 가져오기 (고정 ID: 1)
         try:
-            user = User.objects.get(id=1)
+             
+            user_id = request.session.get('diary_member_id')
+
+            user = User.objects.get(id=user_id)
         except User.DoesNotExist:
             return JsonResponse({'success': False, 'error': '사용자를 찾을 수 없습니다.'})
         
@@ -2596,7 +2656,10 @@ def update_audio_file_order(request):
         
         # 사용자 정보 가져오기 (고정 ID: 1)
         try:
-            user = User.objects.get(id=1)
+             
+            user_id = request.session.get('diary_member_id')
+
+            user = User.objects.get(id=user_id)
         except User.DoesNotExist:
             return JsonResponse({'success': False, 'error': '사용자를 찾을 수 없습니다.'})
         
@@ -2670,7 +2733,10 @@ def update_expected_loans(request):
         
         # 사용자 정보 가져오기 (고정 ID: 1)
         try:
-            user = User.objects.get(id=1)
+             
+            user_id = request.session.get('diary_member_id')
+
+            user = User.objects.get(id=user_id)
         except User.DoesNotExist:
             return JsonResponse({'success': False, 'error': '사용자를 찾을 수 없습니다.'})
         
@@ -2725,7 +2791,10 @@ def update_loan_amount(request):
     
     try:
         # 임시로 user id 1 사용 (나중에 request.user로 변경 가능)
-        user = User.objects.get(id=1)
+         
+        user_id = request.session.get('diary_member_id')
+
+        user = User.objects.get(id=user_id)
         
         # JSON 데이터 파싱
         data = json.loads(request.body)
@@ -2793,7 +2862,10 @@ def update_debt_field(request):
         
         # 사용자 정보 가져오기 (고정 ID: 1)
         try:
-            user = User.objects.get(id=1)
+             
+            user_id = request.session.get('diary_member_id')
+
+            user = User.objects.get(id=user_id)
         except User.DoesNotExist:
             return JsonResponse({'success': False, 'error': '사용자를 찾을 수 없습니다.'})
         
@@ -2846,7 +2918,10 @@ def get_debt_details(request, row_id):
     """
     try:
         # 사용자 정보 가져오기 (고정 ID: 1)
-        user = User.objects.get(id=1)
+         
+        user_id = request.session.get('diary_member_id')
+
+        user = User.objects.get(id=user_id)
         
         # Row 객체 가져오기
         try:
@@ -2899,7 +2974,10 @@ def save_debt_details(request):
         
         # 사용자 정보 가져오기 (고정 ID: 1)
         try:
-            user = User.objects.get(id=1)
+             
+            user_id = request.session.get('diary_member_id')
+
+            user = User.objects.get(id=user_id)
         except User.DoesNotExist:
             return JsonResponse({'success': False, 'error': '사용자를 찾을 수 없습니다.'})
         
@@ -2962,7 +3040,10 @@ def get_funding_recommendation(request):
         
         # 사용자 정보 가져오기 (고정 ID: 1)
         try:
-            user = User.objects.get(id=1)
+             
+            user_id = request.session.get('diary_member_id')
+
+            user = User.objects.get(id=user_id)
         except User.DoesNotExist:
             return JsonResponse({'success': False, 'error': '사용자를 찾을 수 없습니다.'})
         
@@ -3402,7 +3483,10 @@ def save_column_order(request):
         column_order = data.get('column_order', [])
         if not column_order:
             return JsonResponse({'success': False, 'error': 'column_order is required'})
-        user = User.objects.get(id=1)
+         
+        user_id = request.session.get('diary_member_id')
+
+        user = User.objects.get(id=user_id)
         with transaction.atomic():
             for index, column_name in enumerate(column_order):
                 try:
@@ -3431,7 +3515,10 @@ def delete_row(request):
             return JsonResponse({'success': False, 'error': 'row_id is required'})
         
         # 현재 사용자 (임시로 id=1 사용)
-        user = User.objects.get(id=1)
+         
+        user_id = request.session.get('diary_member_id')
+
+        user = User.objects.get(id=user_id)
         
         # 해당 행 찾기
         try:
@@ -3520,7 +3607,10 @@ def update_audio_text_notes(request):
         if not row_id or not notes_json or not target_date:
             return JsonResponse({'success': False, 'error': '필수 파라미터 누락'})
         notes = json.loads(notes_json)
-        user = User.objects.get(id=1)
+         
+        user_id = request.session.get('diary_member_id')
+
+        user = User.objects.get(id=user_id)
         row = Row.objects.get(id=row_id, user=user)
         audio_attr = Attribute.objects.get(name='음성파일', user=user)
         attr_value, _ = AttributeValue.objects.get_or_create(row=row, attribute=audio_attr, defaults={'value': '{}'})
@@ -3578,7 +3668,10 @@ def update_audio_file_order_and_notes(request):
         notes = json.loads(notes_json or "[]")
         print(f"파싱된 notes: {notes}")
 
-        user = User.objects.get(id=1)
+         
+        user_id = request.session.get('diary_member_id')
+
+        user = User.objects.get(id=user_id)
         row = Row.objects.get(id=row_id, user=user)
         attr = Attribute.objects.get(name="음성파일", user=user)
         attr_value = AttributeValue.objects.filter(row=row, attribute=attr).first()
@@ -3662,7 +3755,10 @@ def update_audio_file_order_and_notes(request):
         return JsonResponse({'success': False, 'error': str(e)})
 
 def entry_table_partial(request):
-    user = User.objects.get(id=1)
+     
+    user_id = request.session.get('diary_member_id')
+
+    user = User.objects.get(id=user_id)
     # 항상 detail=False, view_select=True만 표시 (쿼리 최적화)
     attributes = Attribute.objects.filter(user=user, detail=False, view_select=True).select_related('attributeType').order_by('sort_order', 'id')
     user_attributes = attributes
@@ -3818,7 +3914,10 @@ def toggle_attribute_visibility(request):
                 return JsonResponse({'success': False, 'error': '속성명이 필요합니다.'})
             
             # 속성 찾기
-            user = User.objects.get(id=1)
+             
+            user_id = request.session.get('diary_member_id')
+
+            user = User.objects.get(id=user_id)
             attribute = Attribute.objects.filter(user=user, name=attribute_name).first()
             
             if not attribute:
@@ -3845,7 +3944,10 @@ def toggle_attribute_visibility(request):
 def get_hidden_attributes(request):
     """숨겨진 속성들(detail=False, view_select=False)을 가져오는 API"""
     try:
-        user = User.objects.get(id=1)
+         
+        user_id = request.session.get('diary_member_id')
+
+        user = User.objects.get(id=user_id)
         hidden_attributes = Attribute.objects.filter(
             user=user, 
             detail=False, 
@@ -3876,7 +3978,10 @@ def get_hidden_attributes(request):
 def get_all_attributes(request):
     """detail=False인 모든 속성(필수 포함)을 반환하는 API"""
     try:
-        user = User.objects.get(id=1)
+         
+        user_id = request.session.get('diary_member_id')
+
+        user = User.objects.get(id=user_id)
         attributes = Attribute.objects.filter(user=user, detail=False).order_by('sort_order', 'id')
         attributes_data = []
         for attr in attributes:
@@ -3897,7 +4002,10 @@ def get_all_attributes(request):
 def get_dropdown_attributes(request):
     """dropdown 타입의 속성 목록을 반환하는 API (칸반보드 필터용)"""
     try:
-        user = User.objects.get(id=1)
+         
+        user_id = request.session.get('diary_member_id')
+
+        user = User.objects.get(id=user_id)
         dropdown_attributes = Attribute.objects.filter(
             user=user, 
             attributeType__name='dropdown',
@@ -4002,7 +4110,10 @@ def upload_note_file(request):
         from .models import User, Row, Attribute, AttributeValue
         import json
 
-        user = User.objects.get(id=1)
+         
+        user_id = request.session.get('diary_member_id')
+
+        user = User.objects.get(id=user_id)
         row = Row.objects.get(id=row_id, user=user)
         attr = Attribute.objects.get(name='음성파일', user=user)
         attr_value, _ = AttributeValue.objects.get_or_create(row=row, attribute=attr)
@@ -4040,7 +4151,10 @@ def delete_note_file(request):
         
         try:
             # 사용자와 행 조회
-            user = User.objects.get(id=1)
+             
+            user_id = request.session.get('diary_member_id')
+
+            user = User.objects.get(id=user_id)
             row = Row.objects.get(id=row_id, user=user)
             audio_attr = Attribute.objects.get(name='음성파일', user=user)
             attr_value = AttributeValue.objects.get(row=row, attribute=audio_attr)
@@ -4118,7 +4232,10 @@ def update_note_order_and_notes(request):
                 })
             
             # 사용자 ID를 1로 고정
-            user = User.objects.get(id=1)
+             
+            user_id = request.session.get('diary_member_id')
+
+            user = User.objects.get(id=user_id)
             
             # Row와 음성파일 속성 조회
             row = Row.objects.get(id=row_id, user=user)
@@ -4209,7 +4326,10 @@ def get_file_preview_url_note(request, file_id):
             row_id = request.GET.get('row_id')
             if not row_id:
                 return JsonResponse({'success': False, 'error': 'row_id가 필요합니다.'})
-            user = User.objects.get(id=1)
+             
+            user_id = request.session.get('diary_member_id')
+
+            user = User.objects.get(id=user_id)
             row = Row.objects.get(id=row_id, user=user)
             audio_attribute = Attribute.objects.get(name='음성파일', user=user)
             attr_value = AttributeValue.objects.filter(row=row, attribute=audio_attribute).first()
@@ -4276,7 +4396,10 @@ def get_file_preview_url_note(request, file_id):
 def get_file_preview_url(request, row_id, field_name):
     """단일 파일 필드(영업노트 방식) presigned URL 반환"""
     try:
-        user = User.objects.get(id=1)
+         
+        user_id = request.session.get('diary_member_id')
+
+        user = User.objects.get(id=user_id)
         row = Row.objects.get(id=row_id, user=user)
         attr = Attribute.objects.get(name=field_name, user=user)
         attr_value = AttributeValue.objects.get(row=row, attribute=attr)
@@ -4321,7 +4444,10 @@ def get_file_preview_url(request, row_id, field_name):
 def get_datetime_attributes(request):
     """datetime 타입의 속성 목록을 반환하는 API"""
     try:
-        user = User.objects.get(id=1)
+         
+        user_id = request.session.get('diary_member_id')
+
+        user = User.objects.get(id=user_id)
         datetime_attributes = Attribute.objects.filter(
             user=user, 
             attributeType__name='datetime'
@@ -4347,7 +4473,10 @@ def get_datetime_attributes(request):
 
 @require_GET
 def get_calendar_settings(request):
-    user = User.objects.get(id=1)
+     
+    user_id = request.session.get('diary_member_id')
+
+    user = User.objects.get(id=user_id)
     calendar_settings = CalendarSettings.objects.filter(user=user).first()
     if calendar_settings:
         return JsonResponse({'success': True, 'settings': calendar_settings.settings})
@@ -4357,7 +4486,10 @@ def get_calendar_settings(request):
 @csrf_exempt
 def save_calendar_settings(request):
     if request.method == 'POST':
-        user = User.objects.get(id=1)
+         
+        user_id = request.session.get('diary_member_id')
+
+        user = User.objects.get(id=user_id)
         data = json.loads(request.body)
         settings = data.get('settings', {})
         calendar_settings, _ = CalendarSettings.objects.get_or_create(user=user)
@@ -4368,7 +4500,10 @@ def save_calendar_settings(request):
 
 @require_GET
 def calendar_events(request):
-    user = User.objects.get(id=1)
+     
+    user_id = request.session.get('diary_member_id')
+
+    user = User.objects.get(id=user_id)
     calendar_settings = CalendarSettings.objects.filter(user=user).first()
     settings = calendar_settings.settings if calendar_settings else {}
     events = []
@@ -4503,7 +4638,10 @@ def update_sales_field(request):
                 return JsonResponse({'success': False, 'error': 'row_id와 field_name이 필요합니다'})
             
             # 사용자와 행 조회
-            user = User.objects.get(id=1)
+             
+            user_id = request.session.get('diary_member_id')
+
+            user = User.objects.get(id=user_id)
             row = Row.objects.get(id=row_id, user=user)
             
             # 총 금액 계산
@@ -4600,7 +4738,10 @@ def duplicate_row(request):
             return JsonResponse({'success': False, 'error': '복제할 행 ID가 필요합니다.'})
         
         # 사용자 가져오기 (diary_list와 동일한 방식)
-        user = User.objects.get(id=1)
+         
+        user_id = request.session.get('diary_member_id')
+
+        user = User.objects.get(id=user_id)
         
         # 소스 행 조회
         source_row = Row.objects.filter(id=source_row_id).first()
@@ -4929,7 +5070,10 @@ def copy_s3_file(source_s3_key, new_filename):
 def get_status_tabs(request):
     """상태 속성의 드롭다운 옵션들을 반환하는 API (탭 생성용)"""
     try:
-        user = User.objects.get(id=1)
+         
+        user_id = request.session.get('diary_member_id')
+
+        user = User.objects.get(id=user_id)
         
         # "상태" 속성 찾기 (없으면 "영업진행" 사용)
         status_attr = Attribute.objects.filter(
@@ -4992,7 +5136,10 @@ def update_attribute_name(request):
         if old_name == new_name:
             return JsonResponse({'success': False, 'error': '기존 속성명과 새로운 속성명이 동일합니다.'})
         
-        user = User.objects.get(id=1)
+         
+        user_id = request.session.get('diary_member_id')
+
+        user = User.objects.get(id=user_id)
         
         # 기존 속성 찾기
         attribute = Attribute.objects.filter(user=user, name=old_name).first()
@@ -5026,7 +5173,10 @@ def sync_cascade_attributes(row_id, attribute_name, new_value):
     """cascade가 true인 속성이 수정될 때 원본 행과 복제된 행들을 동기화"""
     try:
         # 사용자 가져오기
-        user = User.objects.get(id=1)
+         
+        user_id = request.session.get('diary_member_id')
+
+        user = User.objects.get(id=user_id)
         
         # 수정된 행 조회
         modified_row = Row.objects.get(id=row_id)
@@ -5147,7 +5297,10 @@ def toggle_cascade_attribute(request):
             return JsonResponse({'success': False, 'error': '속성명이 필요합니다.'})
         
         # 사용자 가져오기
-        user = User.objects.get(id=1)
+         
+        user_id = request.session.get('diary_member_id')
+
+        user = User.objects.get(id=user_id)
         
         # 속성 조회
         try:
@@ -5175,7 +5328,10 @@ def get_cascade_attributes_list(request):
     """cascade가 true인 속성들의 목록을 반환하는 API"""
     try:
         # 사용자 가져오기
-        user = User.objects.get(id=1)
+         
+        user_id = request.session.get('diary_member_id')
+
+        user = User.objects.get(id=user_id)
         
         # cascade가 true인 속성들 조회
         cascade_attributes = Attribute.objects.filter(
@@ -5195,7 +5351,10 @@ def get_cascade_attributes_list(request):
 def fix_existing_row_relationships(request):
     """기존 행들의 복제 관계를 수정하는 함수 (디버깅용)"""
     try:
-        user = User.objects.get(id=1)
+         
+        user_id = request.session.get('diary_member_id')
+
+        user = User.objects.get(id=user_id)
         
         # 모든 행을 가져와서 복제 관계 확인
         rows = Row.objects.filter(user=user).order_by('id')
@@ -5252,7 +5411,10 @@ def fix_existing_row_relationships(request):
 def debug_row_relationships(request):
     """행들의 복제 관계를 디버깅하는 함수"""
     try:
-        user = User.objects.get(id=1)
+         
+        user_id = request.session.get('diary_member_id')
+
+        user = User.objects.get(id=user_id)
         
         # 모든 행을 가져와서 복제 관계 확인
         rows = Row.objects.filter(user=user).order_by('id')
@@ -5285,7 +5447,10 @@ def debug_row_relationships(request):
 def setup_test_cascade_attributes(request):
     """테스트용 cascade 속성을 설정하는 함수"""
     try:
-        user = User.objects.get(id=1)
+         
+        user_id = request.session.get('diary_member_id')
+
+        user = User.objects.get(id=user_id)
         
         # 테스트할 속성들
         test_attributes = ['회사명', '매출', '업종', '직원수']
@@ -5348,7 +5513,10 @@ def preview_excel(request):
                 preview_data.append(row_dict)
             
             # 사용자의 속성 목록 가져오기
-            user = User.objects.get(id=1)  # 임시로 고정
+             
+            user_id = request.session.get('diary_member_id')
+
+            user = User.objects.get(id=user_id)  # 임시로 고정
             attributes = Attribute.objects.filter(user=user).values_list('name', flat=True)
             attribute_names = list(attributes)
             
@@ -5393,7 +5561,10 @@ def upload_excel(request):
             df = pd.read_excel(excel_file, engine='openpyxl')
             
             # 사용자 정보
-            user = User.objects.get(id=1)  # 임시로 고정
+             
+            user_id = request.session.get('diary_member_id')
+
+            user = User.objects.get(id=user_id)  # 임시로 고정
             
             # 사용자의 속성 목록 가져오기
             attributes = Attribute.objects.filter(user=user)
@@ -5484,7 +5655,10 @@ def upload_excel(request):
 def get_kanban_data(request):
     """특정 dropdown 속성에 대한 칸반보드 데이터를 반환하는 API"""
     try:
-        user = User.objects.get(id=1)
+         
+        user_id = request.session.get('diary_member_id')
+
+        user = User.objects.get(id=user_id)
         attr_name = request.GET.get('attr_name')
         
         if not attr_name:
@@ -5573,7 +5747,10 @@ def update_kanban_option_order(request):
                     'error': 'attr_name과 option_orders가 필요합니다.'
                 })
             
-            user = User.objects.get(id=1)
+             
+            user_id = request.session.get('diary_member_id')
+
+            user = User.objects.get(id=user_id)
             
             # 해당 속성 찾기
             kanban_attr = Attribute.objects.filter(

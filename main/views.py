@@ -39,7 +39,7 @@ class MainView(View):
         host = request.get_host()
 
         if host == 'xn--jj0bw47b70a.com':
-            return redirect('diary_list')
+            return redirect('diary_main')
         
         else:
 

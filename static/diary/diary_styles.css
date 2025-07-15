@@ -770,4 +770,7 @@ body { font-family: Arial, sans-serif; margin: 40px; background: #f8f9fa; }
         flex-direction: column;
     }
 
-    
+    #audioFilesList {
+        min-height: 650px;
+        max-height: 650px;
+    }

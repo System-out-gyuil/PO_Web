@@ -2147,14 +2147,7 @@ function setupDragAndDrop(container) {
         }
     });
     
-    // 키보드 이벤트 (Ctrl+V) 추가
-    container.addEventListener('keydown', function(e) {
-        if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
-            e.preventDefault();
-            // paste 이벤트가 자동으로 발생하므로 여기서는 추가 처리만
-            console.log('Ctrl+V 감지됨');
-        }
-    });
+    // 키보드 이벤트 (Ctrl+V) 제거 - 전역 리스너에서 처리
 }
 
 // 드롭된 파일 처리 함수
@@ -2282,7 +2275,14 @@ function setupGlobalClipboardListener() {
         if (activeElement && (
             activeElement.tagName === 'INPUT' || 
             activeElement.tagName === 'TEXTAREA' || 
-            activeElement.contentEditable === 'true'
+            activeElement.contentEditable === 'true' ||
+            activeElement.isContentEditable ||
+            activeElement.type === 'text' ||
+            activeElement.type === 'search' ||
+            activeElement.type === 'email' ||
+            activeElement.type === 'password' ||
+            activeElement.type === 'url' ||
+            activeElement.type === 'tel'
         )) {
             return;
         }
@@ -2307,14 +2307,21 @@ function setupGlobalClipboardListener() {
         }
     });
     
-    // 키보드 이벤트 (Ctrl+V) 추가
+    // 키보드 이벤트 (Ctrl+V) 추가 - 입력 필드에서는 무시
     document.addEventListener('keydown', function(e) {
         // 현재 활성화된 요소가 입력 필드인 경우는 제외
         const activeElement = document.activeElement;
         if (activeElement && (
             activeElement.tagName === 'INPUT' || 
             activeElement.tagName === 'TEXTAREA' || 
-            activeElement.contentEditable === 'true'
+            activeElement.contentEditable === 'true' ||
+            activeElement.isContentEditable ||
+            activeElement.type === 'text' ||
+            activeElement.type === 'search' ||
+            activeElement.type === 'email' ||
+            activeElement.type === 'password' ||
+            activeElement.type === 'url' ||
+            activeElement.type === 'tel'
         )) {
             return;
         }

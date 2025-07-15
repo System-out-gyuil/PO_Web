@@ -1,9 +1,14 @@
 from django.urls import path
 from . import views
 from .views import upload_note_file, delete_note_file, update_note_order_and_notes, get_file_preview_url, get_file_preview_url_note
+from .login_views import LoginView, LogoutView
+from .main_views import DiaryMainView
 
 urlpatterns = [
-    path('', views.diary_list, name='diary_list'),
+    path('', DiaryMainView.as_view(), name='diary_main'),
+    path('login/', LoginView.as_view(), name='login'),
+    path('logout/', LogoutView.as_view(), name='logout'),
+    path('diary', views.diary_list, name='diary_list'),
     path('fu_events/', views.fu_events, name='fu_events'),
     path('fu_memo/<int:entry_id>/', views.fu_memo, name='fu_memo'),
     path('categories/', views.category_list, name='category_list'),
