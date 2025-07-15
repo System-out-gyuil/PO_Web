@@ -1250,6 +1250,20 @@ function sortTable(column, direction) {
     const tbody = document.getElementById('entryTbody');
     if (!tbody) return;
 
+    // 토글 기능: 같은 컬럼과 방향을 다시 클릭하면 정렬 해제
+    if (window.currentSort.column === column && window.currentSort.direction === direction) {
+        // 정렬 해제
+        window.currentSort = { column: null, direction: null };
+        updateSortButtonStates();
+        
+        // 원래 순서로 복원 (필터링된 행들만)
+        const visibleRows = window.originalRows.filter(row => row.style.display !== 'none');
+        visibleRows.forEach(row => tbody.appendChild(row));
+        
+        updateFilterStatus();
+        return;
+    }
+
     // 현재 정렬 상태 업데이트
     window.currentSort = { column, direction };
     
@@ -1316,17 +1330,34 @@ function sortTable(column, direction) {
                     comparison = aValue.localeCompare(bValue, 'ko');
                 }
             } else {
-                // 다른 컬럼들은 기존 로직 사용
-                // 숫자인지 확인
-                const aNum = parseFloat(aValue.replace(/[^0-9.-]/g, ''));
-                const bNum = parseFloat(bValue.replace(/[^0-9.-]/g, ''));
+                // 전화번호 형식인지 확인 (하이픈이 포함된 경우)
+                const aPhoneMatch = aValue.match(/^(\d{2,3})-(\d{3,4})-(\d{4})$/);
+                const bPhoneMatch = bValue.match(/^(\d{2,3})-(\d{3,4})-(\d{4})$/);
                 
-                if (!isNaN(aNum) && !isNaN(bNum)) {
-                    // 숫자 비교
-                    comparison = aNum - bNum;
+                if (aPhoneMatch && bPhoneMatch) {
+                    // 둘 다 전화번호 형식인 경우 숫자로 비교
+                    const aPhoneNum = aValue.replace(/[^0-9]/g, '');
+                    const bPhoneNum = bValue.replace(/[^0-9]/g, '');
+                    comparison = aPhoneNum.localeCompare(bPhoneNum);
+                } else if (aPhoneMatch && !bPhoneMatch) {
+                    // a만 전화번호 형식인 경우 a를 앞으로
+                    comparison = -1;
+                } else if (!aPhoneMatch && bPhoneMatch) {
+                    // b만 전화번호 형식인 경우 b를 앞으로
+                    comparison = 1;
                 } else {
-                    // 문자열 비교
-                    comparison = aValue.localeCompare(bValue, 'ko');
+                    // 둘 다 전화번호 형식이 아닌 경우 기존 로직 사용
+                    // 숫자인지 확인
+                    const aNum = parseFloat(aValue.replace(/[^0-9.-]/g, ''));
+                    const bNum = parseFloat(bValue.replace(/[^0-9.-]/g, ''));
+                    
+                    if (!isNaN(aNum) && !isNaN(bNum)) {
+                        // 숫자 비교
+                        comparison = aNum - bNum;
+                    } else {
+                        // 문자열 비교
+                        comparison = aValue.localeCompare(bValue, 'ko');
+                    }
                 }
             }
         }
@@ -1482,7 +1513,7 @@ function updateSortButtonStates(activeColumn = null, activeDirection = null) {
         btn.classList.remove('active');
     });
 
-    // 활성 정렬 버튼 표시
+    // 활성 정렬 버튼 표시 (정렬이 활성화된 경우에만)
     if (activeColumn && activeDirection) {
         const headerTh = document.querySelector(`th[data-column="${activeColumn}"]`);
         if (headerTh) {

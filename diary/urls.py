@@ -46,6 +46,7 @@ urlpatterns = [
     path('get_recommended_notices/', views.get_recommended_notices, name='get_recommended_notices'),
     path('save_column_order/', views.save_column_order, name='save_column_order'),
     path('delete_row/', views.delete_row, name='delete_row'),
+    path('delete_attribute_value/', views.delete_attribute_value, name='delete_attribute_value'),
     path('duplicate_row/', views.duplicate_row, name='duplicate_row'),
     path('update_audio_text_notes/', views.update_audio_text_notes, name='update_audio_text_notes'),
     path('update_audio_file_order_and_notes/', views.update_audio_file_order_and_notes, name='update_audio_file_order_and_notes'),

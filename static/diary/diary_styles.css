@@ -236,6 +236,7 @@ body { font-family: Arial, sans-serif; margin: 40px; background: #f8f9fa; }
         color: #333;
         padding: 4px 0 8px 0;
         border-bottom: 2px solid #e0e0e0;
+        cursor: grab;
     }
     .board-cards {
         flex: 1 1 auto;
@@ -771,6 +772,11 @@ body { font-family: Arial, sans-serif; margin: 40px; background: #f8f9fa; }
     }
 
     #audioFilesList {
+        min-height: 650px;
+        max-height: 650px;
+    }
+
+    #sortableAudioContainer {
         min-height: 650px;
         max-height: 650px;
     }

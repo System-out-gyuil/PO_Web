@@ -69,7 +69,9 @@ logger = logging.getLogger(__name__)
 # 다이어리 목록 및 작성 폼
 
 def diary_list(request):
-    # host = request.get_host()
+    host = request.get_host()
+    if 'namatji.com' in host:
+        return redirect('diary_main')
 
     if not request.session.get('diary_authenticated'):
         return redirect('diary_login')
@@ -730,7 +732,7 @@ def update_entry(request):
             print(f"수정된 행 ID: {row_id}")
             print(f"새 값: {value_to_save}")
             
-            synced_count = sync_cascade_attributes(row_id, field, value_to_save)
+            synced_count = sync_cascade_attributes(request, row_id, field, value_to_save)
             if synced_count > 0:
                 print(f"Cascade 동기화 완료: {field} 속성이 {synced_count}개 행에 동기화됨")
             else:
@@ -898,6 +900,7 @@ def update_row_field(request):
                     # 빈 값이거나 다른 형태
                     print(f"  빈 값 또는 다른 형태: '{value}'")
                     value_to_save = value
+
             else:
                 value_to_save = str(value)
             
@@ -919,7 +922,7 @@ def update_row_field(request):
                 print(f"수정된 행 ID: {row_id}")
                 print(f"새 값: {value_to_save}")
                 
-                synced_count = sync_cascade_attributes(row_id, field_name, value_to_save)
+                synced_count = sync_cascade_attributes(request, row_id, field_name, value_to_save)
                 if synced_count > 0:
                     print(f"Cascade 동기화 완료: {field_name} 속성이 {synced_count}개 행에 동기화됨")
                 else:
@@ -5169,7 +5172,7 @@ def update_attribute_name(request):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
 
-def sync_cascade_attributes(row_id, attribute_name, new_value):
+def sync_cascade_attributes(request, row_id, attribute_name, new_value):
     """cascade가 true인 속성이 수정될 때 원본 행과 복제된 행들을 동기화"""
     try:
         # 사용자 가져오기
@@ -5779,6 +5782,48 @@ def update_kanban_option_order(request):
             return JsonResponse({
                 'success': True,
                 'message': '칸반보드 옵션 순서가 업데이트되었습니다.'
+            })
+            
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            })
+    
+    return JsonResponse({'error': 'Invalid method'}, status=405)
+
+@csrf_exempt
+def delete_attribute_value(request):
+    """특정 행의 특정 속성 값을 삭제하는 API"""
+    if request.method == 'POST':
+        try:
+            row_id = request.POST.get('id')
+            field_name = request.POST.get('field')
+            
+            if not row_id or not field_name:
+                return JsonResponse({
+                    'success': False,
+                    'error': '행 ID와 필드명이 필요합니다.'
+                })
+            
+            # 해당 속성 찾기
+            try:
+                attribute = Attribute.objects.get(name=field_name)
+            except Attribute.DoesNotExist:
+                return JsonResponse({
+                    'success': False,
+                    'error': f'속성 \"{field_name}\"을 찾을 수 없습니다.'
+                })
+            
+            # 해당 속성 값 삭제 (row_id, attribute_id로)
+            AttributeValue.objects.filter(
+                row_id=row_id,
+                attribute_id=attribute.id
+            ).delete()
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'속성 \"{field_name}\" 값이 삭제되었습니다.'
             })
             
         except Exception as e:
