@@ -404,6 +404,9 @@
             // 상태 필터 적용
             window.currentStatusTab = statusId;
             
+            // 로딩 표시
+            showTableLoading();
+            
             // 서버에 요청하여 필터링된 데이터 가져오기
             loadFilteredData(statusId);
             
@@ -417,36 +420,65 @@
             window.history.pushState({}, '', currentUrl.toString());
         }
         
+        // 테이블 로딩 표시
+        function showTableLoading() {
+            const tableView = document.getElementById('tableView');
+            if (tableView) {
+                tableView.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: #6c757d;">
+                        <div style="margin-bottom: 10px;">데이터를 불러오는 중...</div>
+                        <div style="width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #007bff; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto;"></div>
+                    </div>
+                    <style>
+                        @keyframes spin {
+                            0% { transform: rotate(0deg); }
+                            100% { transform: rotate(360deg); }
+                        }
+                    </style>
+                `;
+            }
+        }
+        
         // 필터링된 데이터 로드
         function loadFilteredData(statusId) {
-            const url = new URL('/sales/diary', window.location.origin);
+            const url = new URL('/sales/entry_table_partial/', window.location.origin);
             if (statusId !== null) {
                 url.searchParams.set('status_id', statusId);
             }
-            
+
             fetch(url)
-                .then(response => response.text())
+                .then(response => {
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    return response.text();
+                })
                 .then(html => {
-                    // HTML에서 테이블 부분만 추출
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(html, 'text/html');
-                    const newTable = doc.querySelector('#tableView');
+                    // 그냥 tableView에 바로 innerHTML로 table만 넣는다!
                     const currentTable = document.querySelector('#tableView');
-                    
-                    if (newTable && currentTable) {
-                        currentTable.innerHTML = newTable.innerHTML;
-                        
+                    if (currentTable) {
+                        currentTable.innerHTML = html;
+
                         // 테이블 이벤트 재바인딩
                         if (typeof bindTableCellEvents === 'function') {
                             bindTableCellEvents();
                         }
-                        
-                        // 필터 상태 업데이트
                         updateFilterStatus();
+                        initializeTableData();
                     }
                 })
                 .catch(error => {
                     console.error('데이터 로드 오류:', error);
+                    // 오류 시 기본 테이블 표시
+                    const tableView = document.getElementById('tableView');
+                    if (tableView) {
+                        tableView.innerHTML = `
+                            <div style="text-align: center; padding: 40px; color: #dc3545;">
+                                데이터를 불러오는 중 오류가 발생했습니다.<br>
+                                <button onclick="location.reload()" style="margin-top: 10px; padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                    페이지 새로고침
+                                </button>
+                            </div>
+                        `;
+                    }
                 });
         }
         

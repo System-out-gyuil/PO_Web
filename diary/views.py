@@ -71,32 +71,26 @@ logger = logging.getLogger(__name__)
 def filter_attributes_by_status(queryset, status_id='all'):
     """상태 ID에 따라 속성들을 필터링하는 함수"""
     filtered_attrs = []
-    print(f"필터링 시작 - status_id: {status_id}, 총 속성 수: {queryset.count()}")
     
     for attr in queryset:
-        print(f"속성 '{attr.name}'의 view_select: {attr.view_select}")
         
         if isinstance(attr.view_select, dict):
             if status_id == 'all':
                 # 전체 탭에서는 "0" 키가 True인 속성들만 표시
                 is_visible = attr.view_select.get('0', False)
-                print(f"  전체 탭에서 표시 여부: {is_visible}")
                 if is_visible:
                     filtered_attrs.append(attr)
             else:
                 # 특정 상태 탭에서는 해당 상태 ID가 True인 속성들만 표시
                 is_visible = attr.view_select.get(str(status_id), False)
-                print(f"  상태 {status_id}에서 표시 여부: {is_visible}")
                 if is_visible:
                     filtered_attrs.append(attr)
         elif isinstance(attr.view_select, bool) and attr.view_select:
             # 기존 boolean 형태와의 호환성을 위해
-            print(f"  boolean 형태 - 표시됨")
             filtered_attrs.append(attr)
         else:
-            print(f"  조건에 맞지 않음 - 제외됨")
+            pass
     
-    print(f"필터링 완료 - 필터링된 속성 수: {len(filtered_attrs)}")
     return filtered_attrs
 
 def diary_list(request):
@@ -115,8 +109,6 @@ def diary_list(request):
     if status_id is None:
         status_id = 'all'
     
-    print(f"사용자 ID: {user_id}, 상태 ID: {status_id}")
-    
     # detail 필터링 추가: 기본적으로 detail=False인 속성만 표시
     show_detail = request.GET.get('detail', '0') == '1'  # detail=1이면 상세 속성도 표시
     
@@ -132,10 +124,6 @@ def diary_list(request):
     attributes = filter_attributes_by_status(base_attributes, status_id)
     user_attributes = filter_attributes_by_status(base_user_attributes, status_id)
     
-    print(f"필터링된 속성 수: {len(user_attributes)}")
-    
-    for attr in user_attributes:
-        print(f"  - {attr.name}")
     # 행 데이터는 모든 행을 가져옴 (필터링은 속성 레벨에서 처리)
     # 쿼리 최적화: select_related와 prefetch_related 적용
     rows = Row.objects.filter(user=user).select_related('user').prefetch_related(
@@ -3810,18 +3798,25 @@ def entry_table_partial(request):
     # URL 파라미터에서 상태 ID 가져오기
     status_id = request.GET.get('status_id', 'all')
     
-    # 기본 속성 쿼리 (view_select 필터링 제거)
+    # 기본 속성 쿼리
     base_attributes = Attribute.objects.filter(user=user, detail=False).select_related('attributeType').order_by('sort_order', 'id')
     
     # 상태별 필터링 적용
     user_attributes = filter_attributes_by_status(base_attributes, status_id)
-
     
-    # 쿼리 최적화: select_related와 prefetch_related 적용
+    # 행 데이터도 상태별로 필터링
     rows = Row.objects.filter(user=user).select_related('user').prefetch_related(
         'values__attribute__attributeType',
         'values__attribute__dropdown_attributes'
     ).order_by('order')
+    
+    # 상태별로 행 필터링 추가
+    if status_id != 'all':
+        # 상태 속성 찾기
+        status_attribute = Attribute.objects.filter(user=user, name='상태').first()
+        if status_attribute:
+            # 해당 상태를 가진 행들만 필터링
+            rows = rows.filter(values__attribute=status_attribute, values__value=status_id)
     
     rows_data = []
     for row in rows:
@@ -3869,7 +3864,6 @@ def entry_table_partial(request):
                 # 다중선택(dropdown) 필드인 경우
                 try:
                     selected_ids = json.loads(value)
-                    print(f"  JSON 파싱 성공: {selected_ids}")
                     selected_options = []
                     for dropdown_attr in attr.dropdown_attributes.all():
                         if dropdown_attr.id in selected_ids:
@@ -3878,7 +3872,6 @@ def entry_table_partial(request):
                                 'label': dropdown_attr.option,
                                 'color': dropdown_attr.color
                             })
-                    
                     
                     if selected_options:
                         # 첫 번째 옵션의 색상을 기본 색상으로 사용
@@ -3890,7 +3883,6 @@ def entry_table_partial(request):
                             'selected_options': selected_options,
                             'multi_select': True
                         }
-                        print(f"  최종 결과: {row_values[attr.name]}")
                     else:
                         row_values[attr.name] = {
                             'label': '선택 없음',
@@ -3899,9 +3891,7 @@ def entry_table_partial(request):
                             'selected_options': [],
                             'multi_select': True
                         }
-                        print(f"  선택된 옵션 없음: {row_values[attr.name]}")
                 except json.JSONDecodeError as e:
-                    print(f"  JSON 파싱 실패: {e}")
                     row_values[attr.name] = {
                         'label': value,
                         'color': '',
@@ -3952,10 +3942,14 @@ def entry_table_partial(request):
     
     attributes_list = [{'name': attr.name, 'attributeType__name': attr.attributeType.name if attr.attributeType else None, 'assential': attr.assential} for attr in user_attributes]
     attributes_obj_list = [SimpleNamespace(**{k.replace('attributeType__name', 'attributeType_name'): v for k, v in d.items()}) for d in attributes_list]
-    return render(request, 'diary/entry_table_partial.html', {
+    
+    # 캐시 헤더 추가로 브라우저 캐싱 활성화
+    response = render(request, 'diary/entry_table_partial.html', {
         'attributes': attributes_obj_list,
         'rows': rows_data,
     })
+    response['Cache-Control'] = 'public, max-age=30'  # 30초 캐시
+    return response
 
 @csrf_exempt
 def toggle_attribute_visibility(request):
@@ -4839,10 +4833,6 @@ def duplicate_row(request):
         if not source_row:
             return JsonResponse({'success': False, 'error': '복제할 행을 찾을 수 없습니다.'})
         
-        print(f"복제 시작: 소스 행 ID {source_row_id}")
-        print(f"소스 행의 original_row_ids: {source_row.original_row_ids}")
-        print(f"소스 행의 copied_row_ids: {source_row.copied_row_ids}")
-        
         # 현재 사용자의 모든 행 조회하여 order 조정
         user_rows = Row.objects.filter(user=user).order_by('order')
         
@@ -4862,8 +4852,6 @@ def duplicate_row(request):
             created_at=timezone.now()
         )
         
-        print(f"새 행 생성됨: ID {new_row.id}")
-        
         # === 개선된 양방향 관계 설정 ===
         # 1. 새 행의 원본 행 ID들을 설정 (소스 행의 원본 행 ID들 + 소스 행 ID)
         new_original_ids = source_row.original_row_ids.copy()
@@ -4871,11 +4859,9 @@ def duplicate_row(request):
         new_row.original_row_ids = new_original_ids
         new_row.save()
         
-        print(f"새 행의 original_row_ids 설정: {new_row.original_row_ids}")
         
         # 2. 소스 행의 복제된 행 목록에 새 행 추가
         source_row.add_copied_row(new_row.id)
-        print(f"소스 행의 copied_row_ids 업데이트: {source_row.copied_row_ids}")
         
         # 3. 소스 행의 모든 원본 행들에도 새 행을 복제된 행으로 추가
         for original_id in source_row.original_row_ids:
@@ -4935,18 +4921,12 @@ def duplicate_row(request):
         
         for source_value in source_values:
             try:
-                print(f"=== AttributeValue 복사 시작 ===")
-                print(f"속성명: {source_value.attribute.name if source_value.attribute else 'None'}")
-                print(f"속성 타입: {source_value.attribute.attributeType.name if source_value.attribute and source_value.attribute.attributeType else 'None'}")
-                print(f"값: {source_value.value[:100] if source_value.value else 'None'}...")
-                
                 # 파일 타입인 경우 S3에서 파일 복사
                 if (source_value.attribute and 
                     source_value.attribute.attributeType and 
                     source_value.attribute.attributeType.name == 'file' and 
                     source_value.value):
                     
-                    print(f"파일 타입 속성 발견: {source_value.attribute.name}")
                     
                     try:
                         # 기존 파일 정보 파싱
