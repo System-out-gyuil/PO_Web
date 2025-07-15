@@ -70,8 +70,6 @@ logger = logging.getLogger(__name__)
 
 def diary_list(request):
     host = request.get_host()
-    if 'namatji.com' in host:
-        raise Http404("페이지를 찾을 수 없습니다.")
 
     user = User.objects.get(id=1)
     
