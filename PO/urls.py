@@ -26,7 +26,7 @@ urlpatterns = [
     path('po_admin/', include('po_admin.urls')),
     path('search/', include('search.urls')),
     path('imweb/', ImWeb.as_view(), name='imweb'),
-    path('600/', include('diary.urls')),
+    path('diary/', include('diary.urls')),
 
     path('accounts/', include('allauth.urls')),
 ]
