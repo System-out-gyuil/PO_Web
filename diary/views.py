@@ -62,12 +62,17 @@ from django.conf import settings
 from django.db import transaction
 import pandas as pd
 from openpyxl import load_workbook
+from django.http import Http404
 
 logger = logging.getLogger(__name__)
 
 # 다이어리 목록 및 작성 폼
 
 def diary_list(request):
+    host = request.get_host()
+    if 'namatji.com' in host:
+        raise Http404("페이지를 찾을 수 없습니다.")
+
     user = User.objects.get(id=1)
     
     # detail 필터링 추가: 기본적으로 detail=False인 속성만 표시
