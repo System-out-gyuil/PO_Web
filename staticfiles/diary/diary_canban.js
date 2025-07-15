@@ -22,7 +22,7 @@ function bindKanbanSortable() {
               evt.item.style.border = '2px solid #007bff';
               evt.item.style.background = '#f8f9fa';
               
-              fetch('/600/update_row_field/', {
+              fetch('/sales/update_row_field/', {
                   method: 'POST',
                   headers: {
                       'Content-Type': 'application/x-www-form-urlencoded',
@@ -107,7 +107,7 @@ function bindKanbanSortable() {
           const entryId = card.getAttribute('data-entry-id');
           if(entryId) {
               // 새로운 Row 시스템의 get_row_details 엔드포인트 사용
-              fetch('/600/get_row_details/'+entryId+'/')
+              fetch('/sales/get_row_details/'+entryId+'/')
                 .then(r=>r.json())
                 .then(function(data){
                     if(data.success) showDetailModal(data.row_data, data.row_id);
@@ -124,7 +124,7 @@ function bindKanbanSortable() {
           const currentKanbanAttr = btn.closest('.board-col').getAttribute('data-attr-name') || window.SELECTED_KANBAN_ATTR;
           
           // 새 행 생성 - 선택된 칸반 속성 필드를 해당 컬럼의 상태로 설정
-          fetch('/600/create_new_row/', {
+          fetch('/sales/create_new_row/', {
               method: 'POST',
               headers: {'Content-Type': 'application/x-www-form-urlencoded'},
               body: 'field='+encodeURIComponent(currentKanbanAttr)+'&value='+encodeURIComponent(statusId)
@@ -154,7 +154,7 @@ function updateKanbanBoard(attrName) {
   // 로딩 표시
   loadingIndicator.style.display = 'block';
   
-  fetch('/600/get_kanban_data/?attr_name=' + encodeURIComponent(attrName))
+  fetch('/sales/get_kanban_data/?attr_name=' + encodeURIComponent(attrName))
       .then(response => response.json())
       .then(data => {
           loadingIndicator.style.display = 'none';
@@ -232,7 +232,7 @@ function refreshKanban() {
 // 모달의 드롭다운 값을 업데이트하는 헬퍼 함수
 function updateModalDropdownValue(fieldName, newValue) {
     // 드롭다운 옵션 목록을 가져와서 새 값에 해당하는 텍스트 찾기
-    fetch('/600/dropdown_options/', {
+    fetch('/sales/dropdown_options/', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: 'field=' + encodeURIComponent(fieldName)
@@ -356,7 +356,7 @@ function enableKanbanColumnDragDrop() {
                 order: idx
             }));
 
-            fetch('/600/update_kanban_option_order/', {
+            fetch('/sales/update_kanban_option_order/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -406,7 +406,7 @@ function updateKanbanBoard(attrName) {
     // 로딩 표시
     loadingIndicator.style.display = 'block';
     
-    fetch('/600/get_kanban_data/?attr_name=' + encodeURIComponent(attrName))
+    fetch('/sales/get_kanban_data/?attr_name=' + encodeURIComponent(attrName))
         .then(response => response.json())
         .then(data => {
             loadingIndicator.style.display = 'none';

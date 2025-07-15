@@ -13,9 +13,9 @@ function randomColor() {
 function showCalendarSettingsModal(forceSettings) {
     console.log('showCalendarSettingsModal');
     Promise.all([
-        fetch('/600/get_datetime_attributes/').then(r => r.json()),
-        fetch('/600/get_user_attributes/').then(r => r.json()),
-        fetch('/600/get_calendar_settings/').then(r => r.json())
+        fetch('/sales/get_datetime_attributes/').then(r => r.json()),
+        fetch('/sales/get_user_attributes/').then(r => r.json()),
+        fetch('/sales/get_calendar_settings/').then(r => r.json())
     ]).then(([datetimeData, attributesData, settingsData]) => {
         if (!datetimeData.success || !attributesData.success || !settingsData.success) {
             alert('설정을 불러오는데 실패했습니다.');
@@ -424,7 +424,7 @@ function saveCalendarSettings() {
 
     const settings = { date_fields, custom_events };
 
-    fetch('/600/save_calendar_settings/', {
+    fetch('/sales/save_calendar_settings/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -534,7 +534,7 @@ function initializeCalendarWithSettings() {
     }
 
     // 모든 기준 날짜 필드의 이벤트를 한 번에 불러옴
-    const eventUrl = `/600/calendar_events/`;
+    const eventUrl = `/sales/calendar_events/`;
 
     // 캘린더 렌더 직후 한 번만 모든 셀의 테두리 초기화
     function clearAllCellBorders() {
@@ -633,7 +633,7 @@ function initializeCalendarWithSettings() {
             }
             // 이벤트 클릭 시 기존 상세보기 모달 표시
             const rowId = info.event.id.split('_')[0];
-            fetch(`/600/get_row_details/${rowId}/`)
+            fetch(`/sales/get_row_details/${rowId}/`)
                 .then(r => r.json())
                 .then(function(data) {
                     if (data.success) {

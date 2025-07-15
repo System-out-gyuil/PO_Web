@@ -198,7 +198,7 @@ function saveColumnOrder() {
     const requestData = {column_order: columnOrder};
     console.log('전송할 데이터:', requestData);
     
-    fetch('/600/save_column_order/', {
+    fetch('/sales/save_column_order/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

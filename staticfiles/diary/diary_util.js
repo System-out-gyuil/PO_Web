@@ -228,7 +228,7 @@ function hexToRgba(hex, alpha) {
 
 
 function updateEntryField(id, field, value) {
-  fetch('/600/update/', {
+  fetch('/sales/update/', {
       method: 'POST',
       headers: {'Content-Type': 'application/x-www-form-urlencoded'},
       body: 'id='+encodeURIComponent(id)+'&field='+encodeURIComponent(field)+'&value='+encodeURIComponent(value)
@@ -240,7 +240,7 @@ function updateEntryField(id, field, value) {
           return;
       }
       // 항상 최신 entry로 모달/테이블/보드 동기화
-      return fetch('/600/update/?id='+id);
+      return fetch('/sales/update/?id='+id);
   })
   .then(r => r ? r.json() : null)
   .then(function(data){
@@ -619,7 +619,7 @@ function showFilePreviewModal(fileInfo) {
         }
         // 영업노트(단일 파일 필드) 방식: fieldName이 있으면 해당 API 사용
         if (fieldName) {
-            fetch(`/600/get_file_preview_url/${currentRowId}/${fieldName}/`, {
+            fetch(`/sales/get_file_preview_url/${currentRowId}/${fieldName}/`, {
                 method: 'GET',
                 headers: {
                     'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''

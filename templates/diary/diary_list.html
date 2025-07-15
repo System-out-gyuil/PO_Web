@@ -320,7 +320,7 @@
         // 탭 초기화 함수
         function initializeStatusTabs() {
             console.log('탭 초기화 시작');
-            fetch('/600/get_status_tabs/')
+            fetch('/sales/get_status_tabs/')
                 .then(response => response.json())
                 .then(data => {
                     console.log('탭 데이터 응답:', data);
@@ -455,7 +455,7 @@
                 return;
             }
             
-            fetch('/600/delete_attribute/', {
+            fetch('/sales/delete_attribute/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
@@ -1056,7 +1056,7 @@ document.addEventListener('DOMContentLoaded', function() {
             onEnd: function (evt) {
                 // 순서 변경 시 서버에 반영
                 const ids = Array.from(document.querySelectorAll('#entryTbody tr[data-id]')).map(tr => tr.getAttribute('data-id'));
-                fetch('/600/reorder/', {
+                fetch('/sales/reorder/', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({order: ids})
@@ -1159,7 +1159,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const id = tr.getAttribute('data-id');
             if(!id) { alert('ID 정보가 없습니다.'); return; }
             // 새로운 Row 시스템의 get_row_details 엔드포인트 사용
-            fetch('/600/get_row_details/'+id+'/')
+            fetch('/sales/get_row_details/'+id+'/')
               .then(r => r.json())
               .then(function(data){
                   if(data.success) showDetailModal(data.row_data, data.row_id);
@@ -1200,7 +1200,7 @@ function saveNewAttribute() {
     }
     
     // 서버에 새 속성 추가 요청
-    fetch('/600/add_attribute/', {
+    fetch('/sales/add_attribute/', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: 'name=' + encodeURIComponent(name) + '&type=' + encodeURIComponent(type)
@@ -1543,7 +1543,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // 모달용 드롭다운 옵션 표시 함수 (일반 드롭다운 속성용)
 function showModalDropdownOptions(rowId, fieldName, btn) {
-    fetch('/600/dropdown_options/?field=' + encodeURIComponent(fieldName))
+    fetch('/sales/dropdown_options/?field=' + encodeURIComponent(fieldName))
         .then(r => r.json())
         .then(function(data) {
             if (!data.options) {
@@ -1652,7 +1652,7 @@ function showModalDropdownOptions(rowId, fieldName, btn) {
 // 모달용 드롭다운 옵션 선택 함수 (일반 드롭다운 속성용)
 function selectModalDropdownOption(rowId, fieldName, optionId, optionText, element) {
     // 서버에 업데이트 요청
-    fetch('/600/update_row_field/', {
+    fetch('/sales/update_row_field/', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: 'id=' + encodeURIComponent(rowId) + '&field=' + encodeURIComponent(fieldName) + '&value=' + encodeURIComponent(optionId)
@@ -1682,7 +1682,7 @@ function selectModalDropdownOption(rowId, fieldName, optionId, optionText, eleme
             }
             
             // 모달 새로고침
-            fetch('/600/get_row_details/' + rowId + '/')
+            fetch('/sales/get_row_details/' + rowId + '/')
                 .then(r => r.json())
                 .then(function(data) {
                     if (data.success) {
@@ -1712,7 +1712,7 @@ function selectModalDropdownOption(rowId, fieldName, optionId, optionText, eleme
 
 // 모달용 새 드롭다운 옵션 추가 함수 (일반 드롭다운 속성용)
 function addNewModalDropdownOption(rowId, fieldName, newOption, element) {
-    fetch('/600/dropdown_options/?field=' + encodeURIComponent(fieldName), {
+    fetch('/sales/dropdown_options/?field=' + encodeURIComponent(fieldName), {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: 'name=' + encodeURIComponent(newOption)
@@ -1755,7 +1755,7 @@ function handleFileUpload(rowId, fieldName, fileInput) {
     const uploadingText = '업로드 중...';
     
     // 파일 업로드 요청
-    fetch('/600/upload_file/', {
+    fetch('/sales/upload_file/', {
         method: 'POST',
         body: formData
     })
@@ -1768,7 +1768,7 @@ function handleFileUpload(rowId, fieldName, fileInput) {
             alert('파일 업로드 완료!\n파일명: ' + file.name);
             
             // 모달 데이터 새로고침
-            fetch('/600/get_row_details/' + rowId + '/')
+            fetch('/sales/get_row_details/' + rowId + '/')
                 .then(r => r.json())
                 .then(function(data) {
                     if (data.success) {
@@ -1817,7 +1817,7 @@ function deleteAllFiles(rowId, fieldName) {
     }
     
     // 파일 삭제 요청
-    fetch('/600/delete_file/', {
+    fetch('/sales/delete_file/', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: 'row_id=' + encodeURIComponent(rowId) + '&field_name=' + encodeURIComponent(fieldName)
@@ -1830,7 +1830,7 @@ function deleteAllFiles(rowId, fieldName) {
             alert('모든 파일이 성공적으로 삭제되었습니다.');
             
             // 모달 데이터 새로고침
-            fetch('/600/get_row_details/' + rowId + '/')
+            fetch('/sales/get_row_details/' + rowId + '/')
                 .then(r => r.json())
                 .then(function(data) {
                     if (data.success) {
@@ -1898,7 +1898,7 @@ function handleAudioUpload(fileInput) {
     }
     
     // 음성파일 업로드 및 텍스트 변환 요청
-    fetch('/600/upload_audio_file/', {
+    fetch('/sales/upload_audio_file/', {
         method: 'POST',
         body: formData
     })
@@ -2018,7 +2018,7 @@ function saveConvertedText() {
     const { date, fileId } = window.selectedAudioFile;
     
     // 서버에 텍스트 업데이트 요청
-    fetch('/600/update_audio_text/', {
+    fetch('/sales/update_audio_text/', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: `row_id=${encodeURIComponent(window.currentDetailRowId)}&date=${encodeURIComponent(date)}&file_id=${encodeURIComponent(fileId)}&converted_text=${encodeURIComponent(textValue)}`
@@ -2091,7 +2091,7 @@ function openDebtDetailsModal(rowId) {
     currentDebtRowId = rowId;
     
     // 기존 데이터 불러오기
-    fetch('/600/get_debt_details/' + rowId + '/')
+    fetch('/sales/get_debt_details/' + rowId + '/')
         .then(response => response.json())
         .then(data => {
             if (data.success) {
@@ -2147,7 +2147,7 @@ function saveDebtDetails() {
     const total = Object.values(debtData).reduce((sum, val) => sum + val, 0);
     
     // 서버에 저장
-    fetch('/600/save_debt_details/', {
+    fetch('/sales/save_debt_details/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -2269,7 +2269,7 @@ function loadCascadeAttributes() {
     const cascadeAttributesList = document.getElementById('cascadeAttributesList');
     cascadeAttributesList.innerHTML = '<div style="text-align:center;color:#6c757d;padding:20px;">로딩 중...</div>';
     
-    fetch('/600/get_all_attributes/')
+    fetch('/sales/get_all_attributes/')
         .then(response => response.json())
         .then(data => {
             if (data.success) {
@@ -2325,7 +2325,7 @@ function displayCascadeAttributes(attributes) {
 
 // Cascade 속성 토글
 function toggleCascadeAttribute(attributeName, btn) {
-    fetch('/600/toggle_cascade_attribute/', {
+    fetch('/sales/toggle_cascade_attribute/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -2372,7 +2372,7 @@ function toggleCascadeAttribute(attributeName, btn) {
 function loadHiddenAttributes() {
     const hiddenAttributesList = document.getElementById('hiddenAttributesList');
     hiddenAttributesList.innerHTML = '<div style="text-align:center;color:#6c757d;padding:20px;">로딩 중...</div>';
-    fetch('/600/get_all_attributes/')
+    fetch('/sales/get_all_attributes/')
         .then(response => response.json())
         .then(data => {
             if (data.success) {
@@ -2439,7 +2439,7 @@ function getAttributeTypeIcon(typeName) {
 
 // 속성 표시/숨김 토글
 function toggleAttributeVisibility(attributeName, btn) {
-    fetch('/600/toggle_attribute_visibility/', {
+    fetch('/sales/toggle_attribute_visibility/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -2479,7 +2479,7 @@ function toggleAttributeVisibility(attributeName, btn) {
 
 // 테이블 비동기 갱신 함수
 function refreshTable() {
-    fetch('/600/entry_table_partial/')
+    fetch('/sales/entry_table_partial/')
         .then(response => response.text())
         .then(html => {
             document.getElementById('tableView').innerHTML = html;
@@ -2513,7 +2513,7 @@ function refreshTable() {
 // 속성 삭제 (모달용)
 function deleteAttributeFromModal(attrName) {
     if (!confirm(`"${attrName}" 속성을 삭제하시겠습니까?`)) return;
-    fetch('/600/delete_attribute/', {
+    fetch('/sales/delete_attribute/', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: 'name=' + encodeURIComponent(attrName)
@@ -2549,7 +2549,7 @@ function enableAttributeDragDrop() {
             const order = Array.from(list.querySelectorAll('.hidden-attribute-item')).map(
                 el => el.getAttribute('data-attr-name')
             );
-            fetch('/600/save_column_order/', {
+            fetch('/sales/save_column_order/', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken()},
                 body: JSON.stringify({column_order: order})
@@ -2610,7 +2610,7 @@ function refreshKanbanFilter() {
     const kanbanSelect = document.getElementById('kanbanAttributeSelect');
     if (!kanbanSelect) return;
     
-    fetch('/600/get_dropdown_attributes/')
+    fetch('/sales/get_dropdown_attributes/')
         .then(response => response.json())
         .then(data => {
             if (data.success) {
@@ -2645,7 +2645,7 @@ function refreshCalendarSettings() {
     const calendarSettingsModal = document.getElementById('calendarSettingsModal');
     if (calendarSettingsModal && calendarSettingsModal.style.display === 'flex') {
         // 캘린더 설정 모달의 속성 목록 업데이트
-        fetch('/600/get_all_attributes/')
+        fetch('/sales/get_all_attributes/')
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
@@ -2697,7 +2697,7 @@ function updateCalendarSettingsAttributes(attributes) {
 // 셀 값 수정 시 캘린더 업데이트 함수 추가
 function updateCellValueAndRefreshCalendar(rowId, fieldName, value) {
     // 기존 셀 값 업데이트 로직
-    fetch('/600/update_row_field/', {
+    fetch('/sales/update_row_field/', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: 'id=' + encodeURIComponent(rowId) + '&field=' + encodeURIComponent(fieldName) + '&value=' + encodeURIComponent(value)
@@ -2753,7 +2753,7 @@ function duplicateRow(rowId) {
     document.body.appendChild(loadingNotification);
     
     // 서버에 복제 요청
-    fetch('/600/duplicate_row/', {
+    fetch('/sales/duplicate_row/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -2906,7 +2906,7 @@ function saveAttributeName(oldName, newName, editableDiv, nameText, editBtn) {
     }
     
     // 서버에 속성명 변경 요청
-    fetch('/600/update_attribute_name/', {
+    fetch('/sales/update_attribute_name/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -3007,7 +3007,7 @@ function handleExcelFileSelect(file) {
     formData.append('file', file);
     
     // 파일 미리보기 요청
-    fetch('/600/preview_excel/', {
+    fetch('/sales/preview_excel/', {
         method: 'POST',
         body: formData
     })
@@ -3101,7 +3101,7 @@ function uploadExcelFile() {
     formData.append('file', file);
     
     // 파일 업로드 요청
-    fetch('/600/upload_excel/', {
+    fetch('/sales/upload_excel/', {
         method: 'POST',
         body: formData
     })
@@ -3137,7 +3137,7 @@ function uploadExcelFile() {
 
 // 상태 필터가 활성화된 상태에서 셀 값 변경 시 즉시 필터 재적용
 function updateCellValueWithStatusFilter(rowId, fieldName, value) {
-    fetch('/600/update_row_field/', {
+    fetch('/sales/update_row_field/', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: 'id=' + encodeURIComponent(rowId) + '&field=' + encodeURIComponent(fieldName) + '&value=' + encodeURIComponent(value)

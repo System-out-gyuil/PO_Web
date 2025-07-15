@@ -2,7 +2,7 @@
 function updateAudioFileOrder(rowId, fileId, newOrder) {
   const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
   
-  fetch('/600/update_audio_file_order/', {
+  fetch('/sales/update_audio_file_order/', {
       method: 'POST',
       headers: {
           'Content-Type': 'application/json',
@@ -305,7 +305,7 @@ function saveAudioFileOrder(sortableContainer) {
   
   console.log('저장할 순서:', orderedFiles);
   
-  fetch('/600/update_audio_file_order/', {
+  fetch('/sales/update_audio_file_order/', {
       method: 'POST',
       headers: {'Content-Type': 'application/x-www-form-urlencoded'},
       body: `row_id=${encodeURIComponent(window.currentDetailRowId)}&ordered_files=${encodeURIComponent(JSON.stringify(orderedFiles))}`
@@ -433,7 +433,7 @@ function deleteAudioFileItem(fileId, filename) {
         return;
     }
     if (!confirm('정말 삭제하시겠습니까?')) return;
-    fetch('/600/delete_note_file/', {
+    fetch('/sales/delete_note_file/', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: `row_id=${encodeURIComponent(window.currentDetailRowId)}&file_id=${encodeURIComponent(fileId)}&s3_key=${encodeURIComponent(s3Key)}`
@@ -478,7 +478,7 @@ function deleteAudioFile(date, fileId) {
   
   const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
   
-  fetch('/600/delete_audio_file/', {
+  fetch('/sales/delete_audio_file/', {
       method: 'POST',
       headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -525,7 +525,7 @@ async function refreshSalesNoteSection() {
     
     try {
         // 서버에서 최신 데이터 가져오기
-        const response = await fetch(`/600/get_row_details/${window.currentDetailRowId}/`);
+        const response = await fetch(`/sales/get_row_details/${window.currentDetailRowId}/`);
         const data = await response.json();
         
         if (data.success) {
@@ -743,7 +743,7 @@ function saveEditedText(date, fileId) {
   
   const textValue = textArea.value;
   
-  fetch('/600/update_audio_text/', {
+  fetch('/sales/update_audio_text/', {
       method: 'POST',
       headers: {'Content-Type': 'application/x-www-form-urlencoded'},
       body: `row_id=${encodeURIComponent(window.currentDetailRowId)}&date=${encodeURIComponent(date)}&file_id=${encodeURIComponent(fileId)}&converted_text=${encodeURIComponent(textValue)}`
@@ -774,7 +774,7 @@ function saveEditedMemo(date, fileId) {
   
   const memoText = memoTextarea.value;
   
-  fetch('/600/update_audio_memo/', {
+  fetch('/sales/update_audio_memo/', {
       method: 'POST',
       headers: {'Content-Type': 'application/x-www-form-urlencoded'},
       body: `row_id=${encodeURIComponent(window.currentDetailRowId)}&date=${encodeURIComponent(date)}&file_id=${encodeURIComponent(fileId)}&memo=${encodeURIComponent(memoText)}`
@@ -864,7 +864,7 @@ function saveTextNotesToServer() {
     
     console.log('서버로 보낼 allItems:', allItems);
     
-    fetch('/600/update_audio_file_order_and_notes/', {
+    fetch('/sales/update_audio_file_order_and_notes/', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: `row_id=${encodeURIComponent(window.currentDetailRowId)}&notes=${encodeURIComponent(JSON.stringify(allItems))}`
@@ -908,7 +908,7 @@ function addTextCell() {
     console.log('업데이트된 audioFileData:', window.audioFileData);
     
     // 서버에 저장
-    fetch('/600/update_audio_file_order_and_notes/', {
+    fetch('/sales/update_audio_file_order_and_notes/', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: `row_id=${encodeURIComponent(window.currentDetailRowId)}&notes=${encodeURIComponent(JSON.stringify([newTextNote]))}`
@@ -973,7 +973,7 @@ function handleMultiFileUpload(fileInput) {
   formData.append('row_id', window.currentDetailRowId);
   formData.append('file', file);
 
-  fetch('/600/upload_note_file/', {
+  fetch('/sales/upload_note_file/', {
     method: 'POST',
     body: formData
   })
@@ -1092,7 +1092,7 @@ function createImageFileElement(fileData, index) {
 // 이미지 썸네일 로드 함수
 function loadImageThumbnail(fileId, fileInfo) {
     // 서버에서 새로운 서명된 URL 요청
-    fetch(`/600/get_file_preview_url_note/${fileId}/?row_id=${window.currentDetailRowId}`, {
+    fetch(`/sales/get_file_preview_url_note/${fileId}/?row_id=${window.currentDetailRowId}`, {
         method: 'GET',
         headers: {
             'X-CSRFToken': getCsrfToken()
@@ -1175,7 +1175,7 @@ function showImagePreview(fileId, filename) {
     document.body.appendChild(modal);
     
     // 새로운 서명된 URL 요청
-    fetch(`/600/get_file_preview_url_note/${fileId}/?row_id=${window.currentDetailRowId}`, {
+    fetch(`/sales/get_file_preview_url_note/${fileId}/?row_id=${window.currentDetailRowId}`, {
         method: 'GET',
         headers: {
             'X-CSRFToken': getCsrfToken()
@@ -1350,7 +1350,7 @@ function handleAudioFileUpload(file, insertIndex) {
     formData.append('audio_file', file);
     formData.append('row_id', window.currentDetailRowId);
     
-    fetch('/600/upload_audio_file/', {
+    fetch('/sales/upload_audio_file/', {
         method: 'POST',
         headers: {
             'X-CSRFToken': getCsrfToken()
@@ -1385,7 +1385,7 @@ function handleGeneralFileUpload(file, insertIndex) {
     formData.append('file', file);
     formData.append('row_id', window.currentDetailRowId);
     
-    fetch('/600/upload_note_file/', {
+    fetch('/sales/upload_note_file/', {
         method: 'POST',
         body: formData
     })
@@ -1479,7 +1479,7 @@ function insertTextNoteAtIndex(index) {
     }
 
     // 5. 서버에 전체 데이터 저장
-    fetch('/600/update_audio_file_order_and_notes/', {
+    fetch('/sales/update_audio_file_order_and_notes/', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: `row_id=${encodeURIComponent(window.currentDetailRowId)}&notes=${encodeURIComponent(JSON.stringify(allItems))}`
@@ -1784,7 +1784,7 @@ function deleteTextNote(noteId) {
     console.log('삭제 후 남을 노트들:', remainingNotes);
     
     // 서버에 업데이트된 노트 목록 저장
-    fetch('/600/update_audio_text_notes/', {
+    fetch('/sales/update_audio_text_notes/', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: `row_id=${encodeURIComponent(window.currentDetailRowId)}&date=${encodeURIComponent('data')}&notes=${encodeURIComponent(JSON.stringify(remainingNotes))}`
@@ -1847,7 +1847,7 @@ function saveAllOrderToServer() {
     
     console.log('서버에 저장할 모든 아이템:', allItems);
     
-    fetch('/600/update_audio_file_order_and_notes/', {
+    fetch('/sales/update_audio_file_order_and_notes/', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: `row_id=${encodeURIComponent(window.currentDetailRowId)}&notes=${encodeURIComponent(JSON.stringify(allItems))}`
@@ -1923,7 +1923,7 @@ function showFilePreview(fileId, fileInfo) {
     document.body.appendChild(modal);
     
     // 새로운 S3 서명된 URL 요청
-    fetch(`/600/get_file_preview_url_note/${fileId}/?row_id=${window.currentDetailRowId}`, {
+    fetch(`/sales/get_file_preview_url_note/${fileId}/?row_id=${window.currentDetailRowId}`, {
         method: 'GET',
         headers: {
             'X-CSRFToken': getCsrfToken()

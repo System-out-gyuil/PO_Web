@@ -17,7 +17,7 @@ function showDetailModal(rowData, rowId) {
     const user = { id: 1 }; // 임시로 user id 1 사용
     
     // 백엔드에서 사용자의 속성 목록을 가져와야 함
-    fetch('/600/get_user_attributes/')
+    fetch('/sales/get_user_attributes/')
         .then(response => response.json())
         .then(data => {
             if (!data.success) {
@@ -524,7 +524,7 @@ function showDetailModal(rowData, rowId) {
                     inputHtml = `<button type="button" class="add-btn" id="modal-dropdown-btn-${rowId}-${attr.name}" style="width:100%;background:#f8f9fa;color:#333;border:1px solid #eee;" onclick="openDetailDropdown('${rowId}','${attr.name}',this)">${value||'선택'}</button>`;
                     // 옵션 색상 fetch 후 버튼 배경색 적용
                     setTimeout(() => {
-                        fetch('/600/dropdown_options/?field=' + encodeURIComponent(attr.name))
+                        fetch('/sales/dropdown_options/?field=' + encodeURIComponent(attr.name))
                             .then(r => r.json())
                             .then(data => {
                                 if (data.options) {
@@ -814,7 +814,7 @@ function updateRowFieldWithKoreanCurrency(rowId, fieldName, value) {
     }
     
     // 서버에 숫자 값으로 저장
-    fetch('/600/update_row_field/', {
+    fetch('/sales/update_row_field/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -863,7 +863,7 @@ function openDetailDropdown(rowId, fieldName, btn) {
   
   console.log('일반 드롭다운 처리');
   // 일반 드롭다운 속성 처리
-  fetch('/600/get_user_attributes/')
+  fetch('/sales/get_user_attributes/')
       .then(r => r.json())
       .then(function(attributesData) {
           if (!attributesData.success) {
@@ -891,7 +891,7 @@ function showModalDropdownOptions(rowId, fieldName, btn) {
   console.log('showModalDropdownOptions 호출됨:', rowId, fieldName, btn);
   
   // 드롭다운 옵션 가져오기
-  fetch('/600/dropdown_options/?field=' + encodeURIComponent(fieldName))
+  fetch('/sales/dropdown_options/?field=' + encodeURIComponent(fieldName))
       .then(r => r.json())
       .then(function(data) {
           console.log('모달 드롭다운 옵션 로드됨:', data);
@@ -1075,7 +1075,7 @@ function selectModalDropdownOption(rowId, fieldName, optionId, optionText, btn, 
   }
   
   // 서버에 업데이트 요청
-  fetch('/600/update_row_field/', {
+  fetch('/sales/update_row_field/', {
       method: 'POST',
       headers: {
           'Content-Type': 'application/json',
@@ -1316,7 +1316,7 @@ function showModalSubregionDropdown(rowId, fieldName, btn) {
   console.log('showModalSubregionDropdown 호출됨:', rowId, fieldName, btn);
   
   // 서버에서 현재 지역 가져오기
-  fetch(`/600/get_row_details/${rowId}/`)
+  fetch(`/sales/get_row_details/${rowId}/`)
     .then(response => response.json())
     .then(data => {
       console.log('서버 응답 데이터:', data);
@@ -1494,7 +1494,7 @@ function showModalSubregionDropdown(rowId, fieldName, btn) {
 // 모달용 지역 옵션 선택 함수
 function selectModalRegionOption(rowId, regionText, element) {
   // 서버에 업데이트 요청
-  fetch('/600/update_row_field/', {
+  fetch('/sales/update_row_field/', {
       method: 'POST',
       headers: {'Content-Type': 'application/x-www-form-urlencoded'},
       body: 'id=' + encodeURIComponent(rowId) + '&field=지역&value=' + encodeURIComponent(regionText)
@@ -1528,7 +1528,7 @@ function selectModalRegionOption(rowId, regionText, element) {
           const firstSubregion = (regionMap[regionText] || [])[0] || '';
           if (firstSubregion) {
               // 상세지역도 함께 업데이트
-              fetch('/600/update_row_field/', {
+              fetch('/sales/update_row_field/', {
                   method: 'POST',
                   headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                   body: 'id=' + encodeURIComponent(rowId) + '&field=상세지역&value=' + encodeURIComponent(firstSubregion)
@@ -1537,7 +1537,7 @@ function selectModalRegionOption(rowId, regionText, element) {
               .then(function(data) {
                   if (data.success) {
                       // 모달 새로고침
-                      fetch('/600/get_row_details/' + rowId + '/')
+                      fetch('/sales/get_row_details/' + rowId + '/')
                           .then(r => r.json())
                           .then(function(data) {
                               if (data.success) {
@@ -1581,7 +1581,7 @@ function selectModalRegionOption(rowId, regionText, element) {
               }
               
               // 모달 새로고침
-              fetch('/600/get_row_details/' + rowId + '/')
+              fetch('/sales/get_row_details/' + rowId + '/')
                   .then(r => r.json())
                   .then(function(data) {
                       if (data.success) {
@@ -1598,7 +1598,7 @@ function selectModalRegionOption(rowId, regionText, element) {
 // 모달용 상세지역 옵션 선택 함수
 function selectModalSubregionOption(rowId, subregionText, element) {
   // 서버에 업데이트 요청
-  fetch('/600/update_row_field/', {
+  fetch('/sales/update_row_field/', {
       method: 'POST',
       headers: {'Content-Type': 'application/x-www-form-urlencoded'},
       body: 'id=' + encodeURIComponent(rowId) + '&field=상세지역&value=' + encodeURIComponent(subregionText)
@@ -1610,7 +1610,7 @@ function selectModalSubregionOption(rowId, subregionText, element) {
           closeDropdown();
           
           // 모달 새로고침
-          fetch('/600/get_row_details/' + rowId + '/')
+          fetch('/sales/get_row_details/' + rowId + '/')
               .then(r => r.json())
               .then(function(data) {
                   if (data.success) {
@@ -1736,7 +1736,7 @@ function updateDebtField(rowId, debtKey, value) {
     }
     
     // 서버에 저장
-    fetch('/600/update_debt_field/', {
+    fetch('/sales/update_debt_field/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -2029,7 +2029,7 @@ function requestFundingRecommendation(rowId) {
         console.log('모달이 닫혀있음 - 서버에서 데이터 가져와서 검증');
         
         // 모달이 닫혀있는 경우 서버에서 데이터를 가져와서 확인
-        fetch(`/600/get_row_details/${rowId}/`)
+        fetch(`/sales/get_row_details/${rowId}/`)
             .then(response => response.json())
             .then(data => {
                 console.log('서버 응답:', data);
@@ -2149,7 +2149,7 @@ function proceedWithFundingRecommendation(rowId) {
     showNotification('추천자금을 분석 중입니다...', 'info');
     
     // 백엔드에 추천자금 요청
-    fetch('/600/get_funding_recommendation/', {
+    fetch('/sales/get_funding_recommendation/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -2210,7 +2210,7 @@ function proceedWithFundingRecommendation(rowId) {
             const existingDetailModal = document.querySelector('#detailModal');
             if (existingDetailModal) {
                 // 서버에서 최신 데이터를 가져와서 백그라운드에서 준비 (모달은 닫지 않음)
-                fetch(`/600/get_row_details/${rowId}/`)
+                fetch(`/sales/get_row_details/${rowId}/`)
                     .then(response => response.json())
                     .then(updatedData => {
                         if (updatedData.success) {
@@ -2558,7 +2558,7 @@ function closeFundingRecommendationModal() {
 // 자금 상세보기 모달 함수
 function showFundingDetailModal(rowId, fieldName) {
     // 서버에서 행 데이터 가져오기
-    fetch(`/600/get_row_details/${rowId}/`)
+    fetch(`/sales/get_row_details/${rowId}/`)
         .then(response => response.json())
         .then(data => {
             if (!data.success) {
@@ -2592,7 +2592,7 @@ function showFundingDetailModal(rowId, fieldName) {
             // pblanc_ids가 있으면 공고 정보를 서버에서 가져오기
             let recommendedNoticesPromise = Promise.resolve([]);
             if (fundingData.pblanc_ids && fundingData.pblanc_ids.length > 0) {
-                recommendedNoticesPromise = fetch('/600/get_recommended_notices/', {
+                recommendedNoticesPromise = fetch('/sales/get_recommended_notices/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -2987,7 +2987,7 @@ function updateRowFieldWithNumber(rowId, fieldName, value) {
 }
 
 function updateRowField(rowId, fieldName, value) {
-    fetch('/600/update_row_field/', {
+    fetch('/sales/update_row_field/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -3157,7 +3157,7 @@ function formatDebtInputRealtime(input, rowId, categoryKey) {
 // 파일 다운로드 함수
 function downloadFile(rowId, fieldName) {
     // 직접 다운로드 URL로 이동
-    window.open(`/600/download_file/${rowId}/${fieldName}/`, '_blank');
+    window.open(`/sales/download_file/${rowId}/${fieldName}/`, '_blank');
 }
 
 // 파일 삭제 함수
@@ -3192,7 +3192,7 @@ function deleteFile(rowId, fieldName, fileIndex = null) {
     
     console.log('서버로 전송할 데이터:', requestData);
     
-    fetch('/600/delete_file/', {
+    fetch('/sales/delete_file/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -3306,7 +3306,7 @@ function uploadFile(rowId, fieldName, fileInput) {
         // 진행 상황 업데이트
         uploadNotification.textContent = `${index + 1}/${files.length}개 파일 업로드 중... (${file.name})`;
         
-        fetch('/600/upload_file/', {
+        fetch('/sales/upload_file/', {
             method: 'POST',
             body: formData,
             headers: {
@@ -3374,7 +3374,7 @@ function updateFileFieldInModal(rowId, fieldName, fileInfo) {
     const fileContainer = targetFieldDiv.querySelector('div[style*="flex:1"]');
     if (fileContainer) {
         const fileName = fileInfo.original_filename || fileInfo.filename || '업로드된 파일';
-        const downloadUrl = fileInfo.download_url || `/600/download_file/${rowId}/${fieldName}/`;
+        const downloadUrl = fileInfo.download_url || `/sales/download_file/${rowId}/${fieldName}/`;
         
         fileContainer.innerHTML = `
             <div style="display: flex; align-items: center;">
@@ -3481,7 +3481,7 @@ function updateFileFieldInModalAfterDelete(rowId, fieldName) {
     console.log('필드 div 찾음:', targetFieldDiv);
     
     // 서버에서 최신 파일 정보를 가져와서 업데이트
-    fetch(`/600/get_row_details/${rowId}/`)
+    fetch(`/sales/get_row_details/${rowId}/`)
         .then(response => response.json())
         .then(data => {
             if (data.success && data.row_data) {
@@ -3739,7 +3739,7 @@ function saveSalesInput(rowId, fieldName) {
     const cheonman = parseInt(cheonmanInput.value) || 0;
     
     // 새로운 API 사용
-    fetch('/600/update_sales_field/', {
+    fetch('/sales/update_sales_field/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -3821,7 +3821,7 @@ function showFilePreview(fileId, fileInfo, rowId, fieldName) {
     const fileExt = fileName.split('.').pop()?.toLowerCase() || '';
     
     // 서버에 row_id도 함께 전달
-    fetch(`/600/get_file_preview_url/${fileId}/${fieldName}/?row_id=${rowId}`)
+    fetch(`/sales/get_file_preview_url/${fileId}/${fieldName}/?row_id=${rowId}`)
         .then(r => r.json())
         .then(data => {
             if (data.success && data.preview_url) {
@@ -3953,7 +3953,7 @@ function updateBusinessField(rowId, fieldName, dataType, value) {
 
 // 모달에서 필드 업데이트 함수
 function updateRowField(rowId, field, value) {
-    fetch('/600/update_row_field/', {
+    fetch('/sales/update_row_field/', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: 'id='+encodeURIComponent(rowId)+'&field='+encodeURIComponent(field)+'&value='+encodeURIComponent(value)
@@ -3985,7 +3985,7 @@ function updateRowField(rowId, field, value) {
         
         // 모달 리랜더링 제거 - 모달은 그대로 유지
         // if (document.getElementById('detailModal') && document.getElementById('detailModal').style.display !== 'none') {
-        //     fetch('/600/get_row_details/'+rowId+'/')
+        //     fetch('/sales/get_row_details/'+rowId+'/')
         //       .then(r => r.json())
         //       .then(function(data){
         //           if(data.success) showDetailModal(data.row_data, data.row_id);
@@ -4001,7 +4001,7 @@ function updateRowField(rowId, field, value) {
 // 파일 업로드 후 모달 필드 새로고침 함수
 function updateFileFieldInModalAfterUpload(rowId, fieldName) {
     // 서버에서 최신 파일 정보를 가져와서 모달 업데이트
-    fetch(`/600/get_row_details/${rowId}/`)
+    fetch(`/sales/get_row_details/${rowId}/`)
         .then(response => response.json())
         .then(data => {
             if (data.success && data.row_data) {
@@ -4141,7 +4141,7 @@ function recreateDuplicateButtons() {
                         return; 
                     }
                     console.log(`상세보기 버튼 클릭: ID = ${id}`);
-                    fetch('/600/get_row_details/' + id + '/')
+                    fetch('/sales/get_row_details/' + id + '/')
                         .then(r => r.json())
                         .then(function(data) {
                             if (data.success) showDetailModal(data.row_data, data.row_id);
@@ -4179,7 +4179,7 @@ function recreateDuplicateButtons() {
                                     return; 
                                 }
                                 console.log(`상세보기 버튼 클릭: ID = ${id}`);
-                                fetch('/600/get_row_details/' + id + '/')
+                                fetch('/sales/get_row_details/' + id + '/')
                                     .then(r => r.json())
                                     .then(function(data) {
                                         if (data.success) showDetailModal(data.row_data, data.row_id);
@@ -4222,7 +4222,7 @@ function recreateDuplicateButtons() {
                 onEnd: function (evt) {
                     // 순서 변경 시 서버에 반영
                     const ids = Array.from(document.querySelectorAll('#entryTbody tr[data-id]')).map(tr => tr.getAttribute('data-id'));
-                    fetch('/600/reorder/', {
+                    fetch('/sales/reorder/', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({order: ids})
