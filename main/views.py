@@ -1,5 +1,6 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.views import View
+from diary.views import diary_list
 from board.models import BizInfo
 from main.models import Count, IpAddress, Count_by_date, BizTop
 from django.http import HttpResponse
@@ -35,28 +36,36 @@ class TestView(View):
 
 class MainView(View):
     def get(self, request):
-        biz_list_10 = BizInfo.objects.all().order_by('-registered_at')[:15]
+        host = request.get_host()
 
-        biz_top_10 = BizTop.objects.all().order_by('-update_date')
+        if host == 'xn--jj0bw47b70a.com':
+            return redirect('diary_list')
+        
+        else:
 
-        pblanc_ids = [biz.pblanc_id for biz in biz_top_10]
-        print(pblanc_ids)
 
-        biz_top_10 = list(BizInfo.objects.filter(pblanc_id__in=pblanc_ids))
+            biz_list_10 = BizInfo.objects.all().order_by('-registered_at')[:15]
 
-        today = date.today()
-        month = today.month
-        week = get_week_of_month(today)
-        current_week_str = f"{month}월 {week}주차"
+            biz_top_10 = BizTop.objects.all().order_by('-update_date')
 
-        context = {
-            'biz_list': biz_list_10,
-            'biz_top_10': biz_top_10[:15],
-            'current_week_str': current_week_str
-        }
+            pblanc_ids = [biz.pblanc_id for biz in biz_top_10]
+            print(pblanc_ids)
 
-        update_count(request, "main")
-        return render(request, 'main/main.html', context)
+            biz_top_10 = list(BizInfo.objects.filter(pblanc_id__in=pblanc_ids))
+
+            today = date.today()
+            month = today.month
+            week = get_week_of_month(today)
+            current_week_str = f"{month}월 {week}주차"
+
+            context = {
+                'biz_list': biz_list_10,
+                'biz_top_10': biz_top_10[:15],
+                'current_week_str': current_week_str
+            }
+
+            update_count(request, "main")
+            return render(request, 'main/main.html', context)
 
 class TermsOfServiceView(View):
     def get(self, request):
