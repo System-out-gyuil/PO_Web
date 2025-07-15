@@ -2124,11 +2124,45 @@ function setupDragAndDrop(container) {
     
     // 클립보드 붙여넣기 이벤트 추가
     container.addEventListener('paste', function(e) {
+        // 현재 활성화된 요소가 입력 필드인 경우는 무시
+        const activeElement = document.activeElement;
+        if (activeElement && (
+            activeElement.tagName === 'INPUT' || 
+            activeElement.tagName === 'TEXTAREA' || 
+            activeElement.contentEditable === 'true' ||
+            activeElement.isContentEditable ||
+            activeElement.type === 'text' ||
+            activeElement.type === 'search' ||
+            activeElement.type === 'email' ||
+            activeElement.type === 'password' ||
+            activeElement.type === 'url' ||
+            activeElement.type === 'tel'
+        )) {
+            // 입력 필드에서는 기본 동작 허용 (텍스트 붙여넣기 등)
+            return;
+        }
+        
+        // 입력 필드가 아닌 경우에만 이벤트 차단
         e.preventDefault();
         e.stopPropagation();
         
         const items = e.clipboardData.items;
         if (!items) return;
+        
+        // 파일이 있는지 확인
+        let hasFiles = false;
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            if (item.kind === 'file') {
+                hasFiles = true;
+                break;
+            }
+        }
+        
+        // 파일이 없으면 기본 동작 허용 (텍스트 붙여넣기 등)
+        if (!hasFiles) {
+            return;
+        }
         
         const files = [];
         for (let i = 0; i < items.length; i++) {
@@ -2147,14 +2181,7 @@ function setupDragAndDrop(container) {
         }
     });
     
-    // 키보드 이벤트 (Ctrl+V) 추가
-    container.addEventListener('keydown', function(e) {
-        if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
-            e.preventDefault();
-            // paste 이벤트가 자동으로 발생하므로 여기서는 추가 처리만
-            console.log('Ctrl+V 감지됨');
-        }
-    });
+    // 키보드 이벤트 (Ctrl+V) 제거 - 전역 리스너에서 처리
 }
 
 // 드롭된 파일 처리 함수
@@ -2277,19 +2304,43 @@ function setupGlobalClipboardListener() {
     if (window.globalClipboardListenerSet) return;
     
     document.addEventListener('paste', function(e) {
-        // 현재 활성화된 요소가 입력 필드인 경우는 제외
+        // 현재 활성화된 요소가 입력 필드인 경우는 완전히 무시
         const activeElement = document.activeElement;
         if (activeElement && (
             activeElement.tagName === 'INPUT' || 
             activeElement.tagName === 'TEXTAREA' || 
-            activeElement.contentEditable === 'true'
+            activeElement.contentEditable === 'true' ||
+            activeElement.isContentEditable ||
+            activeElement.type === 'text' ||
+            activeElement.type === 'search' ||
+            activeElement.type === 'email' ||
+            activeElement.type === 'password' ||
+            activeElement.type === 'url' ||
+            activeElement.type === 'tel'
         )) {
+            // 입력 필드에서는 파일 붙여넣기를 완전히 무시하고 기본 동작 허용
             return;
         }
         
         const items = e.clipboardData.items;
         if (!items) return;
         
+        // 파일이 있는지 확인
+        let hasFiles = false;
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            if (item.kind === 'file') {
+                hasFiles = true;
+                break;
+            }
+        }
+        
+        // 파일이 없으면 기본 동작 허용 (텍스트 붙여넣기 등)
+        if (!hasFiles) {
+            return;
+        }
+        
+        // 파일이 있는 경우에만 처리
         const files = [];
         for (let i = 0; i < items.length; i++) {
             const item = items[i];
@@ -2307,14 +2358,21 @@ function setupGlobalClipboardListener() {
         }
     });
     
-    // 키보드 이벤트 (Ctrl+V) 추가
+    // 키보드 이벤트 (Ctrl+V) 추가 - 입력 필드에서는 무시
     document.addEventListener('keydown', function(e) {
         // 현재 활성화된 요소가 입력 필드인 경우는 제외
         const activeElement = document.activeElement;
         if (activeElement && (
             activeElement.tagName === 'INPUT' || 
             activeElement.tagName === 'TEXTAREA' || 
-            activeElement.contentEditable === 'true'
+            activeElement.contentEditable === 'true' ||
+            activeElement.isContentEditable ||
+            activeElement.type === 'text' ||
+            activeElement.type === 'search' ||
+            activeElement.type === 'email' ||
+            activeElement.type === 'password' ||
+            activeElement.type === 'url' ||
+            activeElement.type === 'tel'
         )) {
             return;
         }

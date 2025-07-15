@@ -471,6 +471,29 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                           </div>
                         `;
                     });
+                    
+                    // "선택 없음" 옵션 추가
+                    html += `
+                      <div class="dropdown-option-container" style="padding: 4px 8px; border-bottom: 1px solid #f0f0f0;">
+                        <div class="dropdown-item" data-option-id="none" 
+                             style="cursor: pointer; 
+                                    background: #f8f9fa; 
+                                    border-radius: 4px; 
+                                    padding: 6px 8px; 
+                                    margin-bottom: 4px;
+                                    border: 1px solid #ddd;
+                                    transition: all 0.2s;
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: space-between;
+                                    position: relative;">
+                          <div style="display: flex; align-items: center; flex: 1; min-width: 0;">
+                            <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #999; font-style: italic;">선택 없음</span>
+                          </div>
+                        </div>
+                      </div>
+                    `;
+                    
                     html += '</div>';
                     // 새 옵션 추가 영역은 그대로 유지
                     html += `<div style="border-top: 1px solid #eee; padding: 8px; background: #f8f9fa;">
@@ -494,11 +517,73 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                         item.addEventListener('click', function(e) {
                             e.stopPropagation();
                             const optionId = this.getAttribute('data-option-id');
+                            
+                            // "선택 없음" 옵션 처리
+                            if (optionId === 'none') {
+                                // UI 업데이트
+                                td.innerHTML = `<div class="dropdown-pill" style="background:#eee; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">선택 없음</div>`;
+                                td.setAttribute('data-value', '');
+                                
+                                // 서버에서 해당 속성 값 삭제
+                                if (id && id.startsWith('temp_')) {
+                                    // 새 행인 경우 로컬에서만 처리
+                                    console.log('새 행에서 선택 없음 처리');
+                                } else {
+                                    // 기존 행인 경우 서버에서 삭제
+                                    fetch('/sales/delete_attribute_value/', {
+                                        method: 'POST',
+                                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                                        body: 'id='+id+'&field='+encodeURIComponent(type)
+                                    })
+                                    .then(response => response.json())
+                                    .then(data => {
+                                        if (data.success) {
+                                            console.log('속성 값 삭제 성공');
+                                            syncTableAndKanban(type);
+                                        } else {
+                                            throw new Error(data.error || '삭제 실패');
+                                        }
+                                    })
+                                    .catch(error => {
+                                        console.error('속성 값 삭제 실패:', error);
+                                        alert('삭제 중 오류가 발생했습니다: ' + error.message);
+                                    });
+                                }
+                                
+                                // 드롭다운 닫기
+                                if (window.dropdown && window.dropdown.parentNode) {
+                                    window.dropdown.parentNode.removeChild(window.dropdown);
+                                    window.dropdown = null;
+                                }
+                                return;
+                            }
+                            
                             const option = options.find(o => String(o.id) === String(optionId));
                             // UI 업데이트
                             const color = option.color ? hexToRgba(option.color, 0.18) : '#eee';
                             td.innerHTML = `<div class="dropdown-pill" style="background:${color}; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">${option.option}</div>`;
                             td.setAttribute('data-value', optionId);
+                            
+                            // 상태 필터가 활성화되어 있고, 변경된 필드가 상태 속성인 경우
+                            if (window.currentStatusTab !== null && type === window.statusAttributeName) {
+                                // 해당 행의 상태 셀 업데이트
+                                const row = document.querySelector(`tr[data-id="${id}"]`);
+                                if (row) {
+                                    const statusCell = row.querySelector(`td[data-field="${type}"]`);
+                                    if (statusCell) {
+                                        // 새로운 값으로 data-value 업데이트
+                                        statusCell.setAttribute('data-value', optionId);
+                                        
+                                        // 상태 필터 즉시 재적용
+                                        setTimeout(() => {
+                                            if (typeof applyStatusFilter === 'function') {
+                                                applyStatusFilter();
+                                            }
+                                        }, 50);
+                                    }
+                                }
+                            }
+                            
                             // 서버 업데이트 - 단일 값으로 저장
                             if (id && id.startsWith('temp_')) {
                                 saveNewRowField(td.parentElement, type, optionId);
@@ -1638,6 +1723,29 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                             </div>
                           `;
                       });
+                      
+                      // "선택 없음" 옵션 추가
+                      html += `
+                        <div class="dropdown-option-container" style="padding: 4px 8px; border-bottom: 1px solid #f0f0f0;">
+                          <div class="dropdown-item" data-option-id="none" 
+                               style="cursor: pointer; 
+                                      background: #f8f9fa; 
+                                      border-radius: 4px; 
+                                      padding: 6px 8px; 
+                                      margin-bottom: 4px;
+                                      border: 1px solid #ddd;
+                                      transition: all 0.2s;
+                                      display: flex;
+                                      align-items: center;
+                                      justify-content: space-between;
+                                      position: relative;">
+                            <div style="display: flex; align-items: center; flex: 1; min-width: 0;">
+                              <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #999; font-style: italic;">선택 없음</span>
+                            </div>
+                          </div>
+                        </div>
+                      `;
+                      
                       html += '</div>';
                       // 새 옵션 추가 영역은 그대로 유지
                       html += `<div style="border-top: 1px solid #eee; padding: 8px; background: #f8f9fa;">
@@ -1656,23 +1764,106 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                       // === 드롭다운 모달 이벤트 바인딩 추가 ===
                       bindDropdownModalEvents(window.dropdown, type, options);
                       
-                      // 컬러피커 미리보기 클릭 시 input[type=color]을 해당 위치에 띄우기
-                      window.dropdown.querySelectorAll('.color-preview').forEach(function(preview) {
-                        preview.addEventListener('click', function(e) {
-                          e.stopPropagation();
-                          const colorInput = this.parentNode.querySelector('input[type=color][data-color-edit]');
-                          const rect = this.getBoundingClientRect();
-                          colorInput.style.display = 'block';
-                          colorInput.style.position = 'fixed';
-                          colorInput.style.left = rect.left + 'px';
-                          colorInput.style.top = rect.top + 'px';
-                          colorInput.focus();
-                        });
-                      });
-                      window.dropdown.querySelectorAll('input[type=color][data-color-edit]').forEach(function(input) {
-                        input.addEventListener('blur', function() {
-                          setTimeout(() => { input.style.display = 'none'; }, 200);
-                        });
+                      // 단일선택: 옵션 클릭 시 바로 선택
+                      window.dropdown.querySelectorAll('.dropdown-item[data-option-id]').forEach(function(item) {
+                          item.addEventListener('click', function(e) {
+                              e.stopPropagation();
+                              const optionId = this.getAttribute('data-option-id');
+                              
+                              // "선택 없음" 옵션 처리
+                              if (optionId === 'none') {
+                                  // UI 업데이트
+                                  td.innerHTML = `<div class="dropdown-pill" style="background:#f8f9fa; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center; font-style:italic;">선택 없음</div>`;
+                                  td.setAttribute('data-value', '');
+                                  
+                                  // 서버에서 해당 속성 값 삭제
+                                  if (id && id.startsWith('temp_')) {
+                                      // 새 행인 경우 로컬에서만 처리
+                                      console.log('새 행에서 선택 없음 처리');
+                                  } else {
+                                      // 기존 행인 경우 서버에서 삭제
+                                      fetch('/sales/delete_attribute_value/', {
+                                          method: 'POST',
+                                          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                                          body: 'id='+id+'&field='+encodeURIComponent(type)
+                                      })
+                                      .then(response => response.json())
+                                      .then(data => {
+                                          if (data.success) {
+                                              console.log('속성 값 삭제 성공');
+                                              syncTableAndKanban(type);
+                                          } else {
+                                              throw new Error(data.error || '삭제 실패');
+                                          }
+                                      })
+                                      .catch(error => {
+                                          console.error('속성 값 삭제 실패:', error);
+                                          alert('삭제 중 오류가 발생했습니다: ' + error.message);
+                                      });
+                                  }
+                                  
+                                  // 드롭다운 닫기
+                                  if (window.dropdown && window.dropdown.parentNode) {
+                                      window.dropdown.parentNode.removeChild(window.dropdown);
+                                      window.dropdown = null;
+                                  }
+                                  return;
+                              }
+                              
+                              const option = options.find(o => String(o.id) === String(optionId));
+                              // UI 업데이트
+                              const color = option.color ? hexToRgba(option.color, 0.18) : '#eee';
+                              td.innerHTML = `<div class="dropdown-pill" style="background:${color}; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">${option.option}</div>`;
+                              td.setAttribute('data-value', optionId);
+                              
+                              // 상태 필터가 활성화되어 있고, 변경된 필드가 상태 속성인 경우
+                              if (window.currentStatusTab !== null && type === window.statusAttributeName) {
+                                  // 해당 행의 상태 셀 업데이트
+                                  const row = document.querySelector(`tr[data-id="${id}"]`);
+                                  if (row) {
+                                      const statusCell = row.querySelector(`td[data-field="${type}"]`);
+                                      if (statusCell) {
+                                          // 새로운 값으로 data-value 업데이트
+                                          statusCell.setAttribute('data-value', optionId);
+                                          
+                                          // 상태 필터 즉시 재적용
+                                          setTimeout(() => {
+                                              if (typeof applyStatusFilter === 'function') {
+                                                  applyStatusFilter();
+                                              }
+                                          }, 50);
+                                      }
+                                  }
+                              }
+                              
+                              // 서버 업데이트 - 단일 값으로 저장
+                              if (id && id.startsWith('temp_')) {
+                                  saveNewRowField(td.parentElement, type, optionId);
+                              } else {
+                                  fetch('/sales/update_row_field/', {
+                                      method: 'POST',
+                                      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                                      body: 'id='+id+'&field='+encodeURIComponent(type)+'&value='+encodeURIComponent(optionId)
+                                  })
+                                  .then(response => response.json())
+                                  .then(data => {
+                                      if (data.success) {
+                                          syncTableAndKanban(type);
+                                      } else {
+                                          throw new Error(data.error || '업데이트 실패');
+                                      }
+                                  })
+                                  .catch(error => {
+                                      console.error('업데이트 실패:', error);
+                                      alert('업데이트 중 오류가 발생했습니다: ' + error.message);
+                                  });
+                              }
+                              // 드롭다운 닫기
+                              if (window.dropdown && window.dropdown.parentNode) {
+                                  window.dropdown.parentNode.removeChild(window.dropdown);
+                                  window.dropdown = null;
+                              }
+                          });
                       });
                   }
               })
@@ -1977,12 +2168,12 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                                           cell.innerHTML = htmlContent;
                                           cell.setAttribute('data-value', JSON.stringify(parsed));
                                       } else {
-                                          cell.innerHTML = '<div style="color: #999; font-style: italic;">선택 없음</div>';
+                                          cell.innerHTML = '<div class="dropdown-pill" style="background:#eee; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">선택 없음</div>';
                                           cell.setAttribute('data-value', '');
                                       }
                                   } else if (Array.isArray(parsed) && parsed.length === 0) {
                                       // 빈 배열인 경우
-                                      cell.innerHTML = '<div style="color: #999; font-style: italic;">선택 없음</div>';
+                                      cell.innerHTML = '<div class="dropdown-pill" style="background:#eee; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">선택 없음</div>';
                                       cell.setAttribute('data-value', '');
                                   } else {
                                       // 단일 선택 값 처리 (기존 로직)
@@ -2254,7 +2445,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
           document.querySelectorAll(`td[data-field="${field}"]`).forEach(cell => {
               const currentValue = cell.getAttribute('data-value');
               if (!currentValue) {
-                  cell.innerHTML = '<div style="color: #999; font-style: italic;">선택 없음</div>';
+                  cell.innerHTML = '<div class="dropdown-pill" style="background:#eee; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">선택 없음</div>';
                   return;
               }
               let parsed = null;
@@ -2281,7 +2472,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                               htmlContent = `<div class="dropdown-pill" style="background:${color}; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">${opt.option}</div>`;
                           }
                       }
-                      cell.innerHTML = htmlContent || '<div style="color: #999; font-style: italic;">선택 없음</div>';
+                      cell.innerHTML = htmlContent || '<div class="dropdown-pill" style="background:#eee; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">선택 없음</div>';
                   });
           });
       });
