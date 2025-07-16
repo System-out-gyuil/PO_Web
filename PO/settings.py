@@ -80,7 +80,7 @@ MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/{AWS_LOCATION}/'
 # 매일 18시마다 bizinfo api data update, * * * * * 순서대로 분, 시, 일, 월, 요일
 CRONJOBS = [
     ('* 18 * * *', 'PO.cron.update_bizinfo'), #매일 18시
-    ('0 8 * * 1', 'PO.cron.update_biztop'), #매주 월요일 08시
+    # ('0 8 * * 1', 'PO.cron.update_biztop'), #매주 월요일 08시
 ]
 
 SITE_ID = 18 #sitemap 

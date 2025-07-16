@@ -8,5 +8,5 @@ django.setup()
 def update_bizinfo():
     call_command("update_bizinfo")
 
-def update_biztop():
-    call_command("update_biztop")
+# def update_biztop():
+#     call_command("update_biztop")
