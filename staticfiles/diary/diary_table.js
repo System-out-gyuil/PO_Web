@@ -1188,6 +1188,9 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                       console.log('드래그앤드롭 재초기화 완료');
                   }
                   
+                  // 행 드래그앤드롭 재초기화 추가
+                  reinitializeRowDragDrop();
+                  
                   // 정렬/필터 데이터 재초기화
                   if (typeof initializeTableData === 'function') {
                       initializeTableData();
@@ -1773,7 +1776,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                               // "선택 없음" 옵션 처리
                               if (optionId === 'none') {
                                   // UI 업데이트
-                                  td.innerHTML = `<div class="dropdown-pill" style="background:#f8f9fa; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center; font-style:italic;">선택 없음</div>`;
+                                  td.innerHTML = `<div class="dropdown-pill" style="background:#f8f9fa; color:#6c757d; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center; border:1px solid #dee2e6;">선택 없음</div>`;
                                   td.setAttribute('data-value', '');
                                   
                                   // 서버에서 해당 속성 값 삭제
@@ -1987,6 +1990,10 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                           
                           // 실시간 동기화
                           syncTableAndKanban(type);
+                          // 상태 속성인 경우 상태 탭 새로고침
+                          if (window.statusAttributeName && type === window.statusAttributeName && typeof window.refreshStatusTabs === 'function') {
+                              setTimeout(() => { window.refreshStatusTabs(); }, 100);
+                          }
                       } else {
                           alert('옵션 수정 실패: ' + (data.error || ''));
                           optionText.style.display = '';
@@ -2445,7 +2452,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
           document.querySelectorAll(`td[data-field="${field}"]`).forEach(cell => {
               const currentValue = cell.getAttribute('data-value');
               if (!currentValue) {
-                  cell.innerHTML = '<div class="dropdown-pill" style="background:#eee; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">선택 없음</div>';
+                  cell.innerHTML = '<div class="dropdown-pill" style="background:#f8f9fa; color:#6c757d; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center; border:1px solid #dee2e6;">선택 없음</div>';
                   return;
               }
               let parsed = null;
@@ -2472,7 +2479,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                               htmlContent = `<div class="dropdown-pill" style="background:${color}; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">${opt.option}</div>`;
                           }
                       }
-                      cell.innerHTML = htmlContent || '<div class="dropdown-pill" style="background:#eee; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">선택 없음</div>';
+                      cell.innerHTML = htmlContent || '<div class="dropdown-pill" style="background:#f8f9fa; color:#6c757d; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center; border:1px solid #dee2e6;">선택 없음</div>';
                   });
           });
       });
@@ -2628,6 +2635,10 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                           
                           // 실시간 동기화
                           syncTableAndKanban(fieldType);
+                          // 상태 속성인 경우 상태 탭 새로고침
+                          if (window.statusAttributeName && fieldType === window.statusAttributeName && typeof window.refreshStatusTabs === 'function') {
+                              setTimeout(() => { window.refreshStatusTabs(); }, 100);
+                          }
                       } else {
                           alert('옵션 수정 실패: ' + (data.error || ''));
                           optionText.style.display = '';
@@ -2697,4 +2708,44 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
               }
           });
       });
+  }
+  
+  // 행 드래그앤드롭 재초기화 함수
+  function reinitializeRowDragDrop() {
+      console.log('행 드래그앤드롭 재초기화 시작');
+      
+      // 기존 Sortable 인스턴스 제거
+      if (window.rowSortable) {
+          window.rowSortable.destroy();
+          window.rowSortable = null;
+      }
+      
+      // 약간의 지연 후 새로운 Sortable 인스턴스 생성
+      setTimeout(() => {
+          try {
+              const tbody = document.getElementById('entryTbody');
+              if (tbody && typeof Sortable !== 'undefined') {
+                  window.rowSortable = new Sortable(tbody, {
+                      handle: '.drag-handle',
+                      animation: 150,
+                      onEnd: function (evt) {
+                          // 순서 변경 시 서버에 반영
+                          const ids = Array.from(document.querySelectorAll('#entryTbody tr[data-id]')).map(tr => tr.getAttribute('data-id'));
+                          fetch('/sales/reorder/', {
+                              method: 'POST',
+                              headers: {'Content-Type': 'application/json'},
+                              body: JSON.stringify({order: ids})
+                          }).then(res => res.json()).then(data => {
+                              if(!data.success) alert('순서 저장 실패: '+data.error);
+                          }).catch(() => alert('순서 저장 중 오류 발생'));
+                      }
+                  });
+                  console.log('행 드래그앤드롭 재초기화 완료');
+              } else {
+                  console.log('tbody 또는 Sortable을 찾을 수 없음');
+              }
+          } catch (error) {
+              console.error('행 드래그앤드롭 재초기화 오류:', error);
+          }
+      }, 200);
   }

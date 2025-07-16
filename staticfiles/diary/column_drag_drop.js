@@ -11,21 +11,38 @@ function initializeColumnDragDrop(force) {
         console.log('컬럼 드래그앤드롭: 이미 초기화됨');
         return;
     }
-    isColumnDragInitialized = true;
+    
     console.log('컬럼 드래그앤드롭 초기화 시작');
+    
     const headers = document.querySelectorAll('.attribute-header');
+    console.log('찾은 헤더 개수:', headers.length);
+    
+    if (headers.length === 0) {
+        console.log('헤더를 찾을 수 없음, 초기화 건너뜀');
+        return;
+    }
+    
     headers.forEach((header, index) => {
+        // 기존 이벤트 리스너 제거
         const newHeader = header.cloneNode(true);
         header.parentNode.replaceChild(newHeader, header);
+        
+        // 드래그 가능하게 설정
         newHeader.draggable = true;
         newHeader.style.cursor = 'move';
+        
+        // 드래그 이벤트 바인딩
         bindColumnDragEvents(newHeader, index);
     });
+    
+    // 드롭 인디케이터 초기화
     if (!dropIndicator) {
         dropIndicator = document.createElement('div');
         dropIndicator.className = 'drop-indicator';
         document.body.appendChild(dropIndicator);
     }
+    
+    isColumnDragInitialized = true;
     console.log('컬럼 드래그앤드롭 초기화 완료');
 }
 
@@ -246,10 +263,27 @@ if (!window._columnDragDropLoaded) {
 
 // 테이블 새로고침 후 드래그앤드롭 재초기화
 function reinitializeDragDrop() {
+    console.log('드래그앤드롭 재초기화 시작');
     isColumnDragInitialized = false;
+    
+    // 기존 드래그 이미지 정리
+    if (dragImageEl && dragImageEl.parentNode) {
+        dragImageEl.parentNode.removeChild(dragImageEl);
+        dragImageEl = null;
+    }
+    
+    // 기존 드래그 상태 정리
+    clearDragState();
+    
+    // 약간의 지연 후 초기화 (DOM 렌더링 완료 보장)
     setTimeout(() => {
-        initializeColumnDragDrop(true);
-    }, 100);
+        try {
+            initializeColumnDragDrop(true);
+            console.log('드래그앤드롭 재초기화 완료');
+        } catch (error) {
+            console.error('드래그앤드롭 재초기화 오류:', error);
+        }
+    }, 200);
 }
 
 // 전역 함수로 노출
