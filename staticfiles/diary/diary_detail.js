@@ -2986,52 +2986,6 @@ function updateRowFieldWithNumber(rowId, fieldName, value) {
     updateRowField(rowId, fieldName, numericValue);
 }
 
-function updateRowField(rowId, fieldName, value) {
-    fetch('/sales/update_row_field/', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCsrfToken()
-        },
-        body: JSON.stringify({
-            row_id: rowId,
-            field_name: fieldName,
-            value: value
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            console.log('필드 업데이트 성공:', fieldName, value);
-            if (typeof refreshTable === 'function') {
-                refreshTable();
-            }
-            const currentKanbanAttr = document.getElementById('kanbanAttributeSelect') ? 
-                document.getElementById('kanbanAttributeSelect').value : 
-                window.SELECTED_KANBAN_ATTR || window.kanbanAttribute;
-            if (currentKanbanAttr && fieldName === currentKanbanAttr) {
-                if (typeof refreshKanban === 'function') {
-                    refreshKanban();
-                }
-            }
-            // 캘린더 비동기 새로고침 (datetime 타입 또는 날짜/일/시간 포함 필드)
-            if (window.ATTR_FIELDS) {
-                const attr = window.ATTR_FIELDS.find(a => a.name === fieldName);
-                if ((attr && attr.type === 'datetime') || fieldName.includes('일') || fieldName.includes('날짜') || fieldName.includes('시간')) {
-                    if (window.calendar) window.calendar.refetchEvents();
-                }
-            }
-        } else {
-            console.error('필드 업데이트 실패:', data.error);
-            showNotification('업데이트 실패: ' + data.error, 'error');
-        }
-    })
-    .catch(error => {
-        console.error('업데이트 요청 오류:', error);
-        showNotification('업데이트 중 오류가 발생했습니다.', 'error');
-    });
-}
-
 // 나이 필드 업데이트 함수
 function updateAgeField(rowId, fieldName, dataType, value) {
     // 현재 저장된 나이 데이터 가져오기
@@ -3953,6 +3907,7 @@ function updateBusinessField(rowId, fieldName, dataType, value) {
 
 // 모달에서 필드 업데이트 함수
 function updateRowField(rowId, field, value) {
+    console.log('updateRowField, 디테일2')
     fetch('/sales/update_row_field/', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -4031,8 +3986,6 @@ function recreateDuplicateButtons() {
             console.log(`행 ${index}: ID를 찾을 수 없습니다.`);
             return;
         }
-        
-        console.log(`행 ${index}: ID = ${rowId}`);
         
         // drag-cell 찾기
         const dragCell = row.querySelector('.drag-cell');
@@ -4124,12 +4077,10 @@ function recreateDuplicateButtons() {
         `;
         buttonContainer.appendChild(dragHandle);
         
-        console.log(`행 ${index}: 버튼들 생성 완료`);
         
         // 상세보기 버튼 이벤트 재바인딩
         const moreBtn = row.querySelector('.more-btn');
         if (moreBtn) {
-            console.log(`행 ${index}: 상세보기 버튼 발견`);
             if (!moreBtn.hasAttribute('data-event-bound')) {
                 moreBtn.setAttribute('data-event-bound', 'true');
                 moreBtn.onclick = function(e) {
@@ -4153,9 +4104,8 @@ function recreateDuplicateButtons() {
                         });
                 };
                 console.log(`행 ${index}: 상세보기 버튼 이벤트 바인딩 완료`);
-            } else {
-                console.log(`행 ${index}: 상세보기 버튼 이벤트가 이미 바인딩되어 있습니다.`);
             }
+
         } else {
             console.log(`행 ${index}: 상세보기 버튼을 찾을 수 없습니다.`);
             // name-container 구조 확인

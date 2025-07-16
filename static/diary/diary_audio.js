@@ -1862,12 +1862,6 @@ function saveAllOrderToServer() {
     });
 }
 
-// CSRF 토큰 가져오기 함수
-function getCsrfToken() {
-    const token = document.querySelector('[name=csrfmiddlewaretoken]');
-    return token ? token.value : '';
-}
-
 // 파일 미리보기 함수
 function showFilePreview(fileId, fileInfo) {
     console.log('showFilePreview 호출됨:', fileId, fileInfo);
@@ -2226,77 +2220,7 @@ function handleDroppedFiles(files) {
     }
 }
 
-// 알림 표시 함수 (기존에 없다면 추가)
-function showNotification(message, type = 'info') {
-    // 기존 알림 제거
-    const existingNotifications = document.querySelectorAll('.notification');
-    existingNotifications.forEach(notification => notification.remove());
-    
-    const notification = document.createElement('div');
-    notification.className = 'notification';
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        padding: 12px 20px;
-        border-radius: 6px;
-        color: white;
-        font-weight: bold;
-        z-index: 10000;
-        max-width: 300px;
-        word-wrap: break-word;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-        animation: slideIn 0.3s ease;
-    `;
-    
-    // 타입별 스타일 설정
-    switch (type) {
-        case 'success':
-            notification.style.background = '#28a745';
-            break;
-        case 'error':
-            notification.style.background = '#dc3545';
-            break;
-        case 'warning':
-            notification.style.background = '#ffc107';
-            notification.style.color = '#333';
-            break;
-        default:
-            notification.style.background = '#17a2b8';
-    }
-    
-    notification.textContent = message;
-    document.body.appendChild(notification);
-    
-    // 3초 후 자동 제거
-    setTimeout(() => {
-        if (notification.parentNode) {
-            notification.style.animation = 'slideOut 0.3s ease';
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.remove();
-                }
-            }, 300);
-        }
-    }, 3000);
-    
-    // CSS 애니메이션 추가
-    if (!document.getElementById('notification-styles')) {
-        const style = document.createElement('style');
-        style.id = 'notification-styles';
-        style.textContent = `
-            @keyframes slideIn {
-                from { transform: translateX(100%); opacity: 0; }
-                to { transform: translateX(0); opacity: 1; }
-            }
-            @keyframes slideOut {
-                from { transform: translateX(0); opacity: 1; }
-                to { transform: translateX(100%); opacity: 0; }
-            }
-        `;
-        document.head.appendChild(style);
-    }
-}
+
 
 // 전역 클립보드 이벤트 리스너 설정
 function setupGlobalClipboardListener() {

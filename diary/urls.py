@@ -7,7 +7,7 @@ from .file_handler import upload_file, delete_file, download_file
 from .calendar_handlers import get_datetime_attributes, get_calendar_settings, save_calendar_settings, calendar_events
 from .excel_handlers import preview_excel, upload_excel
 from .kanban_handlers import update_kanban_option_order, get_kanban_data
-from .attribute_handlers import delete_attribute_value, toggle_attribute_visibility, update_attribute_visibility, get_dropdown_attributes
+from .attribute_handlers import delete_attribute_value, toggle_attribute_visibility, update_attribute_visibility, get_dropdown_attributes, add_attribute, delete_attribute
 from .audio_handler import upload_audio_file, get_audio_files_by_date, delete_audio_file, update_audio_file_order
 from .cascade_handlers import toggle_cascade_attribute, get_cascade_attributes_list
 
@@ -29,8 +29,8 @@ urlpatterns = [
     path('update_row_field/', views.update_row_field, name='update_row_field'),
     path('update_sales_field/', views.update_sales_field, name='update_sales_field'),
     path('dropdown_options/', views.dropdown_options, name='dropdown_options'),
-    path('add_attribute/', views.add_attribute, name='add_attribute'),
-    path('delete_attribute/', views.delete_attribute, name='delete_attribute'),
+    path('add_attribute/', add_attribute, name='add_attribute'),
+    path('delete_attribute/', delete_attribute, name='delete_attribute'),
     path('get_row_details/<int:row_id>/', views.get_row_details, name='get_row_details'),
     path('get_user_attributes/', views.get_user_attributes, name='get_user_attributes'),
     path('get_kanban_data/', get_kanban_data, name='get_kanban_data'),

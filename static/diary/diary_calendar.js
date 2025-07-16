@@ -450,31 +450,6 @@ function saveCalendarSettings() {
     });
 }
 
-// CSRF 토큰 가져오기 함수
-function getCsrfToken() {
-    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-    if (token) return token;
-    
-    // Django의 기본 CSRF 토큰 쿠키에서 가져오기
-    const cookies = document.cookie.split(';');
-    for (let cookie of cookies) {
-        const [name, value] = cookie.trim().split('=');
-        if (name === 'csrftoken') {
-            return value;
-        }
-    }
-    return '';
-}
-
-function hexToRgba(hex, alpha) {
-    hex = hex.replace('#', '');
-    if (hex.length === 3) hex = hex.split('').map(x => x + x).join('');
-    const r = parseInt(hex.substring(0,2), 16);
-    const g = parseInt(hex.substring(2,4), 16);
-    const b = parseInt(hex.substring(4,6), 16);
-    return `rgba(${r},${g},${b},${alpha})`;
-}
-
 // 개업년월 필드의 새로운 JSON 형식 처리 함수
 function formatBusinessOpeningDate(value) {
     if (!value) return '';

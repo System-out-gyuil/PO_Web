@@ -776,7 +776,7 @@ def create_new_row(request):
 @csrf_exempt
 def update_row_field(request):
     if request.method == 'POST':
-        print("===========update_row_field")
+        print("===========update_row_field===========")
         try:
             # JSON 형 field식과 form-urlencoded 형식 모두 지원
             if request.content_type == 'application/json':

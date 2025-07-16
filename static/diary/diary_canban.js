@@ -262,15 +262,6 @@ function updateModalDropdownValue(fieldName, newValue) {
     });
 }
 
-// CSRF 토큰 가져오기 함수
-function getCsrfToken() {
-    const cookieValue = document.cookie
-        .split('; ')
-        .find(row => row.startsWith('csrftoken='))
-        ?.split('=')[1];
-    return cookieValue || '';
-}
-
 // 한국 통화 형식으로 변환하는 함수 (Django to_korean_currency 필터와 동일)
 function formatKoreanCurrency(value) {
     if (!value) return '0원';
