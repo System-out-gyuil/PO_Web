@@ -1,14 +1,7 @@
 // 상세보기 모달 함수 - 새로운 Row 시스템에 맞게 수정
 function showDetailModal(rowData, rowId) {
     console.log('===== showDetailModal 시작 =====');
-    console.log('rowData:', rowData);
-    console.log('rowId:', rowId);
-    console.log('rowData["음성파일"]:', rowData['음성파일']);
-    console.log('rowData 전체 속성:');
-    Object.keys(rowData).forEach(key => {
-        console.log(`- ${key}:`, rowData[key]);
-    });
-    console.log('================================');
+    
     
     // 현재 상세 조회 중인 행 ID 저장
     window.currentDetailRowId = rowId;
@@ -199,7 +192,7 @@ function showDetailModal(rowData, rowId) {
                             <input type="text" 
                                    value="${displayValue}" 
                                    data-field="${attr.name}" 
-                                   onchange="updateRowField('${rowId}', '${attr.name}', this.value)"
+                                   onchange="detailUpdateRowField('${rowId}', '${attr.name}', this.value)"
                                    style="flex: 1; padding: 8px; border: 1px solid #ced4da; border-radius: 4px;">
                             ${detailData ? `
                             <button type="button" 
@@ -238,7 +231,7 @@ function showDetailModal(rowData, rowId) {
                             <input type="text" 
                                    value="${displayValue}" 
                                    data-field="${attr.name}" 
-                                   onchange="updateRowField('${rowId}', '${attr.name}', this.value)"
+                                   onchange="detailUpdateRowField('${rowId}', '${attr.name}', this.value)"
                                    style="flex: 1; padding: 8px; border: 1px solid #ced4da; border-radius: 4px;">
                             ${detailData ? `
                             <button type="button" 
@@ -358,7 +351,7 @@ function showDetailModal(rowData, rowId) {
                     ).join('');
                     
                     inputHtml = `
-                        <select onchange="updateRowField('${rowId}', '${attr.name}', this.value)" 
+                        <select onchange="detailUpdateRowField('${rowId}', '${attr.name}', this.value)" 
                                 style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;background:white;">
                             <option value="">업종 선택</option>
                             ${selectOptions}
@@ -548,9 +541,9 @@ function showDetailModal(rowData, rowId) {
                             dateValue = value;
                         }
                     }
-                    inputHtml = `<input class="input-field" type="date" value="${dateValue}" data-field="${attr.name}" onchange="updateRowField('${rowId}', '${attr.name}', this.value)">`;
+                    inputHtml = `<input class="input-field" type="date" value="${dateValue}" data-field="${attr.name}" onchange="detailUpdateRowField('${rowId}', '${attr.name}', this.value)">`;
                 } else if (attr.type === 'number') {
-                    inputHtml = `<input class="input-field" type="number" value="${value}" data-field="${attr.name}" onchange="updateRowField('${rowId}', '${attr.name}', this.value)">`;
+                    inputHtml = `<input class="input-field" type="number" value="${value}" data-field="${attr.name}" onchange="detailUpdateRowField('${rowId}', '${attr.name}', this.value)">`;
                 } else if (attr.type === 'age') {
                     // 나이 필드 처리 - 달력과 체크박스 포함
                     let ageData = {};
@@ -626,10 +619,10 @@ function showDetailModal(rowData, rowId) {
                     if (attr.name === '신용점수') {
                         // 신용점수 필드는 실시간 검증 추가
                         inputHtml = `<input type="text" value="${value}" data-field="${attr.name}" 
-                                   onchange="updateRowField('${rowId}', '${attr.name}', this.value); highlightRequiredField(this, this.value && this.value !== '0' ? false : true);" 
+                                   onchange="detailUpdateRowField('${rowId}', '${attr.name}', this.value); highlightRequiredField(this, this.value && this.value !== '0' ? false : true);" 
                                    oninput="highlightRequiredField(this, this.value && this.value !== '0' ? false : true);">`;
                     } else {
-                        inputHtml = `<input class="input-field" type="text" value="${value}" data-field="${attr.name}" onchange="updateRowField('${rowId}', '${attr.name}', this.value)">`;
+                        inputHtml = `<input class="input-field" type="text" value="${value}" data-field="${attr.name}" onchange="detailUpdateRowField('${rowId}', '${attr.name}', this.value)">`;
                     }
                 }
                 
@@ -714,92 +707,8 @@ function showDetailModal(rowData, rowId) {
         });
 }
 
-// 한국어 통화 단위 변환 함수
-function formatToKoreanCurrency(amount) {
-    if (!amount || amount === 0) return '0원';
-    
-    const numAmount = typeof amount === 'string' ? parseInt(amount.replace(/[^\d]/g, '')) : amount;
-    if (isNaN(numAmount) || numAmount === 0) return '0원';
-    
-    let result = '';
-    let remaining = numAmount;
-    
-    // 억 단위 처리
-    if (remaining >= 100000000) {
-        const eok = Math.floor(remaining / 100000000);
-        result += eok + '억';
-        remaining = remaining % 100000000;
-    }
-    
-    // 천만 단위 처리 (천으로 표시)
-    if (remaining >= 10000000) {
-        const cheon = Math.floor(remaining / 10000000);
-        if (result) result += ' ';
-        result += cheon + '천';
-        remaining = remaining % 10000000;
-    }
-    
-    // 백만 단위 처리
-    if (remaining >= 1000000) {
-        const baek = Math.floor(remaining / 1000000);
-        if (result) result += ' ';
-        result += baek + '백';
-        remaining = remaining % 1000000;
-    }
-    
-    // 만 단위가 남아있으면 추가
-    if (remaining >= 10000) {
-        if (result) result += '만';
-        else result = Math.floor(remaining / 10000) + '만';
-    } else if (result) {
-        result += '';
-    }
-    
-    return result + '';
-}
-
-// 한국어 통화를 숫자로 변환하는 함수
-function parseKoreanCurrency(koreanCurrency) {
-    if (!koreanCurrency || koreanCurrency === '0') return 0;
-    
-    let result = 0;
-    const str = koreanCurrency.toString().replace(/[,\s]/g, '');
-    
-    // 억 단위 처리
-    const eokMatch = str.match(/(\d+)억/);
-    if (eokMatch) {
-        result += parseInt(eokMatch[1]) * 100000000;
-    }
-    
-    // 천만 단위 처리
-    const cheonmanMatch = str.match(/(\d+)천만/);
-    if (cheonmanMatch) {
-        result += parseInt(cheonmanMatch[1]) * 10000000;
-    }
-    
-    // 백만 단위 처리
-    const baekmanMatch = str.match(/(\d+)백만/);
-    if (baekmanMatch) {
-        result += parseInt(baekmanMatch[1]) * 1000000;
-    }
-    
-    // 만 단위 처리
-    const manMatch = str.match(/(\d+)만/);
-    if (manMatch) {
-        result += parseInt(manMatch[1]) * 10000;
-    }
-    
-    // 천 단위 처리
-    const cheonMatch = str.match(/(\d+)천/);
-    if (cheonMatch) {
-        result += parseInt(cheonMatch[1]) * 1000;
-    }
-    
-    return result;
-}
-
 // 한국어 통화 단위로 업데이트하는 함수
-function updateRowFieldWithKoreanCurrency(rowId, fieldName, value) {
+function detailUpdateRowFieldWithKoreanCurrency(rowId, fieldName, value) {
     // 입력값에서 숫자만 추출
     const cleanValue = value.replace(/[^\d]/g, '');
     const numericValue = parseInt(cleanValue) || 0;
@@ -846,650 +755,13 @@ function updateRowFieldWithKoreanCurrency(rowId, fieldName, value) {
     });
 }
 
-// 상세 모달용 드롭다운 오픈 함수
-function openDetailDropdown(rowId, fieldName, btn) {
-  console.log('openDetailDropdown 호출됨:', rowId, fieldName, btn);
-  
-  // 지역과 상세지역은 특별 처리
-  if (fieldName === '지역') {
-      console.log('지역 드롭다운 호출');
-      showModalRegionDropdown(rowId, fieldName, btn);
-      return;
-  } else if (fieldName === '상세지역') {
-      console.log('상세지역 드롭다운 호출');
-      showModalSubregionDropdown(rowId, fieldName, btn);
-      return;
-  }
-  
-  console.log('일반 드롭다운 처리');
-  // 일반 드롭다운 속성 처리
-  fetch('/sales/get_user_attributes/')
-      .then(r => r.json())
-      .then(function(attributesData) {
-          if (!attributesData.success) {
-              alert('속성 정보를 불러올 수 없습니다.');
-              return;
-          }
-          
-          const attr = attributesData.attributes.find(a => a.name === fieldName);
-          if (!attr) {
-              alert('해당 속성을 찾을 수 없습니다.');
-              return;
-          }
-          
-          if (attr.type === 'dropdown') {
-              // 드롭다운 옵션들을 가져와서 표시
-              showModalDropdownOptions(rowId, fieldName, btn);
-          } else {
-              alert('드롭다운 타입이 아닙니다.');
-          }
-      });
-}
 
-// 모달용 일반 드롭다운 옵션 표시 함수
-function showModalDropdownOptions(rowId, fieldName, btn) {
-  console.log('showModalDropdownOptions 호출됨:', rowId, fieldName, btn);
-  
-  // 드롭다운 옵션 가져오기
-  fetch('/sales/dropdown_options/?field=' + encodeURIComponent(fieldName))
-      .then(r => r.json())
-      .then(function(data) {
-          console.log('모달 드롭다운 옵션 로드됨:', data);
-          if (!data.options) {
-              alert('드롭다운 옵션을 불러올 수 없습니다.');
-              return;
-          }
-          
-          // 기존 드롭다운이 있으면 닫기 - 완전한 정리
-          if (typeof closeDropdown === 'function') {
-            closeDropdown();
-          }
-          
-          // 추가적으로 남아있을 수 있는 모든 드롭다운 요소들 제거
-          const existingDropdowns = document.querySelectorAll('.dropdown-edit');
-          existingDropdowns.forEach(function(dropdown) {
-            if (dropdown.parentNode) {
-              dropdown.parentNode.removeChild(dropdown);
-            }
-          });
-          
-          // 현재 선택된 값 가져오기
-          const currentValue = btn.textContent.trim();
-          console.log('현재 선택된 값:', currentValue);
-          
-          // 드롭다운 메뉴 생성 - select 태그처럼 자연스럽게
-          const dropdown = document.createElement('div');
-          dropdown.className = 'dropdown-edit';
-          dropdown.id = 'modal-dropdown-' + Date.now();
-          
-          // 버튼의 위치 정보 가져오기
-          const rect = btn.getBoundingClientRect();
-          const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-          const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
-          
-          // 버튼 바로 아래에 위치하도록 계산
-          const topPosition = rect.bottom + scrollTop + 2;
-          const leftPosition = rect.left + scrollLeft;
-          
-          // select 태그처럼 자연스러운 스타일 적용
-          dropdown.setAttribute('style', `
-            position: absolute !important;
-            background: white !important;
-            border: 1px solid #ccc !important;
-            border-radius: 4px !important;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
-            z-index: 10000 !important;
-            min-width: ${Math.max(rect.width, 150)}px !important;
-            max-height: 200px !important;
-            overflow-y: auto !important;
-            display: block !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-            font-size: 14px !important;
-            font-family: inherit !important;
-            top: ${topPosition}px !important;
-            left: ${leftPosition}px !important;
-            padding: 4px 0 !important;
-          `);
-          
-          console.log('모달 드롭다운 위치 설정:', {
-            top: topPosition,
-            left: leftPosition,
-            buttonWidth: rect.width,
-            buttonRect: rect
-          });
-          
-          // 드롭다운 항목들 생성
-          let html = '';
-          data.options.forEach(function(option) {
-              const isSelected = option.option === currentValue;
-              const backgroundColor = option.color ? hexToRgba(option.color, 0.18) : 'white';
-              html += `
-                <div class="dropdown-item" data-option-id="${option.id}" data-option-text="${option.option}" data-color="${option.color||''}"
-                     style="padding: 8px 12px; 
-                            cursor: pointer; 
-                            border-bottom: 1px solid #f0f0f0;
-                            background: ${backgroundColor};
-                            color: #333;
-                            ${isSelected ? 'border-left: 3px solid #007bff; font-weight: bold;' : ''}
-                            transition: background-color 0.2s;">
-                  ${option.option}
-                </div>
-              `;
-          });
-          
-          dropdown.innerHTML = html;
-          document.body.appendChild(dropdown);
-          
-          // 전역 dropdown 변수에 저장 (closeDropdown 함수에서 사용)
-          window.dropdown = dropdown;
-          
-          console.log('모달 드롭다운 생성 완료:', {
-            element: dropdown,
-            parentNode: dropdown.parentNode,
-            offsetWidth: dropdown.offsetWidth,
-            offsetHeight: dropdown.offsetHeight,
-            computedDisplay: window.getComputedStyle(dropdown).display,
-            computedVisibility: window.getComputedStyle(dropdown).visibility,
-            computedOpacity: window.getComputedStyle(dropdown).opacity,
-            computedZIndex: window.getComputedStyle(dropdown).zIndex
-          });
-          
-          // 호버 효과와 클릭 이벤트 바인딩
-          dropdown.querySelectorAll('.dropdown-item[data-option-id]').forEach(function(item) {
-              // 호버 효과
-              item.addEventListener('mouseenter', function() {
-                  if (!this.style.borderLeft.includes('#007bff')) {
-                      const color = this.getAttribute('data-color');
-                      if (color && color !== 'null' && color !== 'undefined') {
-                          this.style.background = hexToRgba(color, 0.3);
-                      } else {
-                          this.style.background = '#f8f9fa';
-                      }
-                  }
-              });
-              // mouseleave → mouseout
-              item.addEventListener('mouseout', function() {
-                  if (!this.style.borderLeft.includes('#007bff')) {
-                      const color = this.getAttribute('data-color');
-                      if (color && color !== 'null' && color !== 'undefined') {
-                          this.style.background = hexToRgba(color, 0.18);
-                      } else {
-                          this.style.background = '#f8f9fa';
-                      }
-                  }
-              });
-              
-              // 클릭 이벤트
-              item.addEventListener('click', function(e) {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  
-                  const selectedOptionId = this.getAttribute('data-option-id');
-                  const selectedOptionText = this.getAttribute('data-option-text');
-                  const selectedColor = this.getAttribute('data-color');
-                  if (dropdown && dropdown.parentNode) {
-                      dropdown.parentNode.removeChild(dropdown);
-                      window.dropdown = null;
-                  }
-                  // 버튼 배경색 변경
-                  btn.textContent = selectedOptionText;
-                  btn.style.background = selectedColor ? hexToRgba(selectedColor, 0.18) : '#f8f9fa';
-                  btn.style.color = '#333';
-                  // 드롭다운 옵션 선택 처리
-                  selectModalDropdownOption(rowId, fieldName, selectedOptionId, selectedOptionText, btn, selectedColor);
-              });
-          });
-          
-          // 드롭다운 외부 클릭 시 닫기
-          setTimeout(() => {
-              document.addEventListener('click', function closeHandler(e) {
-                  if (dropdown && !dropdown.contains(e.target) && !btn.contains(e.target)) {
-                      if (dropdown.parentNode) {
-                          dropdown.parentNode.removeChild(dropdown);
-                          window.dropdown = null;
-                      }
-                      document.removeEventListener('click', closeHandler);
-                  }
-              });
-          }, 100);
-      })
-      .catch(function(error) {
-          console.error('모달 드롭다운 옵션 로드 실패:', error);
-          alert('드롭다운 옵션을 불러오는데 실패했습니다: ' + error.message);
-      });
-}
 
-// 모달용 드롭다운 옵션 선택 함수
-function selectModalDropdownOption(rowId, fieldName, optionId, optionText, btn, color) {
-  console.log('selectModalDropdownOption 호출됨:', rowId, fieldName, optionId, optionText);
-  
-  // 버튼 텍스트 즉시 업데이트
-  btn.textContent = optionText;
-  btn.style.background = color ? hexToRgba(color, 0.18) : '#f8f9fa';
-  btn.style.color = '#333';
-  
-  // 업종이 선택되면 빨간 테두리 제거
-  if (fieldName === '업종') {
-    highlightRequiredField(btn, false);
-  }
-  
-  // 서버에 업데이트 요청
-  fetch('/sales/update_row_field/', {
-      method: 'POST',
-      headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': getCsrfToken()
-      },
-      body: JSON.stringify({
-          row_id: rowId,
-          field_name: fieldName,
-          value: optionId
-      })
-  })
-  .then(response => response.json())
-  .then(data => {
-      if (data.success) {
-          console.log('모달 드롭다운 업데이트 성공:', fieldName, optionId);
-          
-          // 테이블 실시간 업데이트
-          if (typeof refreshTable === 'function') {
-              refreshTable();
-          }
-          
-          // 칸반보드 실시간 업데이트 - 현재 칸반보드 속성과 일치하는 경우
-          const currentKanbanAttr = document.getElementById('kanbanAttributeSelect') ? 
-              document.getElementById('kanbanAttributeSelect').value : 
-              window.SELECTED_KANBAN_ATTR || window.kanbanAttribute;
-              
-          if (currentKanbanAttr && fieldName === currentKanbanAttr) {
-              if (typeof refreshKanban === 'function') {
-                  refreshKanban();
-              }
-          }
-      } else {
-          console.error('모달 드롭다운 업데이트 실패:', data.error);
-          showNotification('업데이트 실패: ' + data.error, 'error');
-          // 실패 시 버튼 텍스트 복원
-          btn.textContent = btn.textContent; // 이전 값으로 복원 (실제로는 서버에서 가져와야 함)
-      }
-  })
-  .catch(error => {
-      console.error('모달 드롭다운 업데이트 요청 오류:', error);
-      showNotification('업데이트 중 오류가 발생했습니다.', 'error');
-      // 실패 시 버튼 텍스트 복원
-      btn.textContent = btn.textContent; // 이전 값으로 복원 (실제로는 서버에서 가져와야 함)
-  });
-}
 
-// hexToRgba 함수 (모달에서도 사용)
-function hexToRgba(hex, alpha) {
-    if (!hex) return `rgba(238, 238, 238, ${alpha})`;
-    
-    // # 제거
-    hex = hex.replace('#', '');
-    
-    // 3자리 hex를 6자리로 변환
-    if (hex.length === 3) {
-        hex = hex.split('').map(char => char + char).join('');
-    }
-    
-    const r = parseInt(hex.substr(0, 2), 16);
-    const g = parseInt(hex.substr(2, 2), 16);
-    const b = parseInt(hex.substr(4, 2), 16);
-    
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
 
-// 모달용 지역 드롭다운 표시 함수
-function showModalRegionDropdown(rowId, fieldName, btn) {
-  console.log('showModalRegionDropdown 호출됨:', rowId, fieldName, btn);
-  
-  const regionNames = ['서울','경기','인천', '경북', '경남', '대구','부산','광주','대전','울산','세종','강원','충북','충남','전북','전남'];
-  
-  // 기존 드롭다운이 있으면 닫기 - 완전한 정리
-  if (typeof closeDropdown === 'function') {
-    closeDropdown();
-  }
-  
-  // 추가적으로 남아있을 수 있는 모든 드롭다운 요소들 제거
-  const existingDropdowns = document.querySelectorAll('.dropdown-edit');
-  existingDropdowns.forEach(function(dropdown) {
-    if (dropdown.parentNode) {
-      dropdown.parentNode.removeChild(dropdown);
-    }
-  });
-  
-  // 현재 선택된 지역 값 가져오기
-  const currentRegion = btn.previousElementSibling ? btn.previousElementSibling.textContent.trim() : '';
-  console.log('현재 선택된 지역:', currentRegion);
-  
-  // 드롭다운 메뉴 생성 - select 태그처럼 자연스럽게
-  const dropdown = document.createElement('div');
-  dropdown.className = 'dropdown-edit';
-  dropdown.id = 'modal-region-dropdown-' + Date.now();
-  
-  // 버튼의 위치 정보 가져오기
-  const rect = btn.getBoundingClientRect();
-  const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-  const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
-  
-  // 버튼 바로 아래에 위치하도록 계산
-  const topPosition = rect.bottom + scrollTop + 2;
-  const leftPosition = rect.left + scrollLeft;
-  
-  // select 태그처럼 자연스러운 스타일 적용
-  dropdown.setAttribute('style', `
-    position: absolute !important;
-    background: white !important;
-    border: 1px solid #ccc !important;
-    border-radius: 4px !important;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
-    z-index: 10000 !important;
-    min-width: ${Math.max(rect.width, 150)}px !important;
-    max-height: 200px !important;
-    overflow-y: auto !important;
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    font-size: 14px !important;
-    font-family: inherit !important;
-    top: ${topPosition}px !important;
-    left: ${leftPosition}px !important;
-    padding: 4px 0 !important;
-  `);
-  
-  console.log('모달 드롭다운 위치 설정:', {
-    top: topPosition,
-    left: leftPosition,
-    buttonWidth: rect.width,
-    buttonRect: rect
-  });
-  
-  // 드롭다운 항목들 생성
-  let html = '';
-  regionNames.forEach(function(region) {
-      const isSelected = region === currentRegion;
-      html += `
-        <div class="dropdown-item" data-region="${region}" 
-             style="padding: 8px 12px !important; 
-                    cursor: pointer !important; 
-                    border-bottom: 1px solid #f0f0f0 !important;
-                    ${isSelected ? 'background: #007bff !important; color: white !important;' : 'background: white !important; color: #333 !important;'}
-                    transition: background-color 0.2s !important;">
-          ${region}
-        </div>
-      `;
-  });
-  
-  dropdown.innerHTML = html;
-  document.body.appendChild(dropdown);
-  
-  // 전역 dropdown 변수에 저장 (closeDropdown 함수에서 사용)
-  window.dropdown = dropdown;
-  
-  console.log('모달 지역 드롭다운 생성 완료:', {
-    element: dropdown,
-    parentNode: dropdown.parentNode,
-    offsetWidth: dropdown.offsetWidth,
-    offsetHeight: dropdown.offsetHeight,
-    computedDisplay: window.getComputedStyle(dropdown).display,
-    computedVisibility: window.getComputedStyle(dropdown).visibility,
-    computedOpacity: window.getComputedStyle(dropdown).opacity,
-    computedZIndex: window.getComputedStyle(dropdown).zIndex
-  });
-  
-  // 호버 효과와 클릭 이벤트 바인딩
-  dropdown.querySelectorAll('.dropdown-item[data-region]').forEach(function(item) {
-      // 호버 효과
-      item.addEventListener('mouseenter', function() {
-          if (!this.style.background.includes('#007bff')) {
-              this.style.background = '#f8f9fa !important';
-          }
-      });
-      
-      item.addEventListener('mouseleave', function() {
-          if (!this.style.background.includes('#007bff')) {
-              this.style.background = 'white !important';
-          }
-      });
-      
-      // 클릭 이벤트
-      item.addEventListener('click', function(e) {
-          e.preventDefault();
-          e.stopPropagation();
-          
-          const selectedRegion = this.getAttribute('data-region');
-          console.log('모달에서 지역 선택됨:', selectedRegion);
-          
-          // 드롭다운 제거
-          if (dropdown && dropdown.parentNode) {
-              dropdown.parentNode.removeChild(dropdown);
-              window.dropdown = null;
-          }
-          
-          // 지역 선택 처리
-          selectModalRegionOption(rowId, selectedRegion, this);
-      });
-  });
-  
-  // 드롭다운 외부 클릭 시 닫기
-  setTimeout(() => {
-      document.addEventListener('click', function closeHandler(e) {
-          if (dropdown && !dropdown.contains(e.target) && !btn.contains(e.target)) {
-              if (dropdown.parentNode) {
-                  dropdown.parentNode.removeChild(dropdown);
-                  window.dropdown = null;
-              }
-              document.removeEventListener('click', closeHandler);
-          }
-      });
-  }, 100);
-}
 
-// 지역별 상세지역 매핑 함수
-function getSubregions(region) {
-  const regionMap = {
-    '서울': ['관악구','금천구','강남구','강서구','강동구','강북구','광진구','구로구','노원구','도봉구','동대문구','동작구','마포구','서대문구','서초구','성동구','성북구','송파구','양천구','영등포구','용산구','은평구','종로구','중구','중랑구'],
-    '경기': ['수원시','고양시','성남시','용인시','부천시','안산시','안양시','남양주시','화성시','평택시','의정부시','시흥시','파주시','광명시','김포시','군포시','광주시','오산시','이천시','안성시','의왕시','하남시','여주시','양평군','동두천시','과천시','가평군','연천군'],
-    '인천': ['계양구', '남동구', '동구', '미추홀구', '부평구', '서구', '연수구', '중구', '강화군', '옹진군'],
-    '경북': ['경주시', '포항시', '김천시', '안동시', '구미시', '영주시', '영천시', '상주시', '문경시', '경산시', '군위군', '의성군', '청송군', '영양군', '영덕군', '청도군', '고령군', '성주군', '칠곡군', '예천군', '봉화군', '울진군', '울릉군'],
-    '경남': ['창원시','진주시','통영시','사천시','김해시','밀양시','거제시','양산시','의령군','함안군','창녕군','고성군','남해군','하동군','산청군','함양군','거창군','합천군'],
-    '대구': ['중구','동구','서구','남구','북구','수성구','달서구','달성군'],
-    '부산': ['중구','서구','동구','영도구','부산진구','동래구','남구','북구','해운대구','사하구','금정구','강서구','연제구','수영구','사상구','기장군'],
-    '광주': ['동구','서구','남구','북구','광산구'],
-    '대전': ['동구','중구','서구','유성구','대덕구'],
-    '울산': ['중구','남구','동구','북구','울주군'],
-    '세종': ['세종특별자치시'],
-    '강원': ['춘천시','원주시','강릉시','동해시','태백시','속초시','삼척시','홍천군','횡성군','영월군','평창군','정선군','철원군','화천군','양구군','인제군','고성군','양양군'],
-    '충북': ['청주시','충주시','제천시','보은군','옥천군','영동군','증평군','진천군','괴산군','음성군','단양군'],
-    '충남': ['천안시','공주시','보령시','아산시','서산시','논산시','계룡시','당진시','금산군','부여군','서천군','청양군','홍성군','예산군','태안군'],
-    '전북': ['전주시','군산시','익산시','정읍시','남원시','김제시','완주군','진안군','무주군','장수군','임실군','순창군','고창군','부안군'],
-    '전남': ['목포시','여수시','순천시','나주시','광양시','담양군','곡성군','구례군','고흥군','보성군','화순군','장흥군','강진군','해남군','영암군','무안군','함평군','영광군','장성군','완도군','진도군','신안군'],
-  };
-  
-  return regionMap[region] || [];
-}
 
-// 모달용 상세지역 드롭다운 표시 함수
-function showModalSubregionDropdown(rowId, fieldName, btn) {
-  console.log('showModalSubregionDropdown 호출됨:', rowId, fieldName, btn);
-  
-  // 서버에서 현재 지역 가져오기
-  fetch(`/sales/get_row_details/${rowId}/`)
-    .then(response => response.json())
-    .then(data => {
-      console.log('서버 응답 데이터:', data);
-      
-      // 현재 지역과 상세지역 정보 추출
-      let currentRegion = '';
-      let currentSubregion = '';
-      
-      if (data.success && data.row_data) {
-        currentRegion = data.row_data['지역'] || '';
-        currentSubregion = data.row_data['상세지역'] || '';
-      } else if (data.region) {
-        currentRegion = data.region;
-        currentSubregion = data.region_detail || '';
-      }
-      
-      console.log('현재 지역:', currentRegion, '현재 상세지역:', currentSubregion);
-      
-      // 지역이 없으면 경고
-      if (!currentRegion) {
-        alert('먼저 지역을 선택해주세요.');
-        return;
-      }
-      
-      // 기존 드롭다운이 있으면 닫기 - 완전한 정리
-      if (typeof closeDropdown === 'function') {
-        closeDropdown();
-      }
-      
-      // 추가적으로 남아있을 수 있는 모든 드롭다운 요소들 제거
-      const existingDropdowns = document.querySelectorAll('.dropdown-edit');
-      existingDropdowns.forEach(function(dropdown) {
-        if (dropdown.parentNode) {
-          dropdown.parentNode.removeChild(dropdown);
-        }
-      });
-      
-      // 상세지역 목록 가져오기
-      const subregions = getSubregions(currentRegion);
-      console.log('상세지역 목록:', subregions);
-      
-      if (!subregions || subregions.length === 0) {
-        alert(`${currentRegion}에 대한 상세지역 정보가 없습니다.`);
-        return;
-      }
-      
-      // 드롭다운 메뉴 생성 - select 태그처럼 자연스럽게
-      const dropdown = document.createElement('div');
-      dropdown.className = 'dropdown-edit';
-      dropdown.id = 'modal-subregion-dropdown-' + Date.now();
-      
-      // 버튼의 위치 정보 가져오기
-      const rect = btn.getBoundingClientRect();
-      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-      const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
-      
-      // 버튼 바로 아래에 위치하도록 계산
-      const topPosition = rect.bottom + scrollTop + 2;
-      const leftPosition = rect.left + scrollLeft;
-      
-      // select 태그처럼 자연스러운 스타일 적용
-      dropdown.setAttribute('style', `
-        position: absolute !important;
-        background: white !important;
-        border: 1px solid #ccc !important;
-        border-radius: 4px !important;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
-        z-index: 10000 !important;
-        min-width: ${Math.max(rect.width, 150)}px !important;
-        max-height: 200px !important;
-        overflow-y: auto !important;
-        display: block !important;
-        visibility: visible !important;
-        opacity: 1 !important;
-        font-size: 14px !important;
-        font-family: inherit !important;
-        top: ${topPosition}px !important;
-        left: ${leftPosition}px !important;
-        padding: 4px 0 !important;
-      `);
-      
-      console.log('모달 상세지역 드롭다운 위치 설정:', {
-        top: topPosition,
-        left: leftPosition,
-        buttonWidth: rect.width,
-        buttonRect: rect
-      });
-      
-      // 드롭다운 항목들 생성
-      let html = '';
-      subregions.forEach(function(subregion) {
-          const isSelected = subregion === currentSubregion;
-          html += `
-            <div class="dropdown-item" data-subregion="${subregion}" 
-                 style="padding: 8px 12px !important; 
-                        cursor: pointer !important; 
-                        border-bottom: 1px solid #f0f0f0 !important;
-                        ${isSelected ? 'background: #007bff !important; color: white !important;' : 'background: white !important; color: #333 !important;'}
-                        transition: background-color 0.2s !important;">
-              ${subregion}
-            </div>
-          `;
-      });
-      
-      dropdown.innerHTML = html;
-      document.body.appendChild(dropdown);
-      
-      // 전역 dropdown 변수에 저장 (closeDropdown 함수에서 사용)
-      window.dropdown = dropdown;
-      
-      console.log('모달 상세지역 드롭다운 생성 완료:', {
-        element: dropdown,
-        parentNode: dropdown.parentNode,
-        offsetWidth: dropdown.offsetWidth,
-        offsetHeight: dropdown.offsetHeight,
-        computedDisplay: window.getComputedStyle(dropdown).display,
-        computedVisibility: window.getComputedStyle(dropdown).visibility,
-        computedOpacity: window.getComputedStyle(dropdown).opacity,
-        computedZIndex: window.getComputedStyle(dropdown).zIndex
-      });
-      
-      // 호버 효과와 클릭 이벤트 바인딩
-      dropdown.querySelectorAll('.dropdown-item[data-subregion]').forEach(function(item) {
-          // 호버 효과
-          item.addEventListener('mouseenter', function() {
-              if (!this.style.background.includes('#007bff')) {
-                  this.style.background = '#f8f9fa !important';
-              }
-          });
-          
-          item.addEventListener('mouseleave', function() {
-              if (!this.style.background.includes('#007bff')) {
-                  this.style.background = 'white !important';
-              }
-          });
-          
-          // 클릭 이벤트
-          item.addEventListener('click', function(e) {
-              e.preventDefault();
-              e.stopPropagation();
-              
-              const selectedSubregion = this.getAttribute('data-subregion');
-              console.log('모달에서 상세지역 선택됨:', selectedSubregion);
-              
-              // 드롭다운 제거
-              if (dropdown && dropdown.parentNode) {
-                  dropdown.parentNode.removeChild(dropdown);
-                  window.dropdown = null;
-              }
-              
-              // 상세지역 선택 처리
-              selectModalSubregionOption(rowId, selectedSubregion, this);
-          });
-      });
-      
-      // 드롭다운 외부 클릭 시 닫기
-      setTimeout(() => {
-          document.addEventListener('click', function closeHandler(e) {
-              if (dropdown && !dropdown.contains(e.target) && !btn.contains(e.target)) {
-                  if (dropdown.parentNode) {
-                      dropdown.parentNode.removeChild(dropdown);
-                      window.dropdown = null;
-                  }
-                  document.removeEventListener('click', closeHandler);
-              }
-          });
-      }, 100);
-    })
-    .catch(error => {
-      console.error('상세지역 드롭다운 로딩 오류:', error);
-      alert('상세지역 정보를 불러오는 중 오류가 발생했습니다.');
-    });
-}
+
 
 // 모달용 지역 옵션 선택 함수
 function selectModalRegionOption(rowId, regionText, element) {
@@ -1773,70 +1045,6 @@ function updateDebtField(rowId, debtKey, value) {
     });
 }
 
-// CSRF 토큰 가져오기 함수 (이미 있다면 중복 제거)
-function getCsrfToken() {
-    const cookieValue = document.cookie
-        .split('; ')
-        .find(row => row.startsWith('csrftoken='))
-        ?.split('=')[1];
-    return cookieValue || '';
-}
-
-// 알림 표시 함수 (이미 있다면 중복 제거)
-function showNotification(message, type = 'info') {
-    // 기존 알림 제거
-    const existingNotification = document.querySelector('.notification');
-    if (existingNotification) {
-        existingNotification.remove();
-    }
-    
-    // 새 알림 생성
-    const notification = document.createElement('div');
-    notification.className = 'notification';
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        padding: 15px 20px;
-        border-radius: 8px;
-        color: white;
-        font-weight: 500;
-        z-index: 10000;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-        transition: all 0.3s ease;
-        transform: translateX(100%);
-    `;
-    
-    // 타입별 색상 설정
-    switch (type) {
-        case 'success':
-            notification.style.background = 'linear-gradient(135deg, #28a745 0%, #20c997 100%)';
-            break;
-        case 'error':
-            notification.style.background = 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)';
-            break;
-        default:
-            notification.style.background = 'linear-gradient(135deg, #007bff 0%, #0056b3 100%)';
-    }
-    
-    notification.textContent = message;
-    document.body.appendChild(notification);
-    
-    // 애니메이션으로 표시
-    setTimeout(() => {
-        notification.style.transform = 'translateX(0)';
-    }, 100);
-    
-    // 3초 후 자동 제거
-    setTimeout(() => {
-        notification.style.transform = 'translateX(100%)';
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.parentNode.removeChild(notification);
-            }
-        }, 300);
-    }, 3000);
-}
 
 // 추천자금 요청 함수
 function requestFundingRecommendation(rowId) {
@@ -2246,6 +1454,7 @@ function proceedWithFundingRecommendation(rowId) {
 
 // 추천자금 결과 모달 표시 함수
 function showFundingRecommendationModal(recommendation, analysisData) {
+    console.log('showFundingRecommendationModal, 디테일')
     // 기존 모달이 있으면 제거
     const existingModal = document.getElementById('fundingRecommendationModal');
     if (existingModal) {
@@ -2415,7 +1624,7 @@ function showFundingRecommendationModal(recommendation, analysisData) {
                     </h4>
                     <div style="display: flex; flex-direction: column; gap: 12px;">
                         ${result.recommended_notices.map(notice => `
-                            <div onclick="window.open('/board/detail/${notice.pblanc_id}/?page_index=1', '_blank')" style="
+                            <div onclick="window.open('/board/detail/${notice.pblanc_id}/', '_blank')" style="
                                 background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
                                 border: 1px solid #dee2e6;
                                 border-radius: 8px;
@@ -2539,6 +1748,7 @@ function showFundingRecommendationModal(recommendation, analysisData) {
 
 // 추천자금 모달 닫기 함수
 function closeFundingRecommendationModal() {
+    console.log('closeFundingRecommendationModal, 디테일')
     const modal = document.getElementById('fundingRecommendationModal');
     if (modal) {
         modal.remove();
@@ -2557,6 +1767,7 @@ function closeFundingRecommendationModal() {
 
 // 자금 상세보기 모달 함수
 function showFundingDetailModal(rowId, fieldName) {
+    console.log('showFundingDetailModal, 디테일')
     // 서버에서 행 데이터 가져오기
     fetch(`/sales/get_row_details/${rowId}/`)
         .then(response => response.json())
@@ -2840,7 +2051,7 @@ function showFundingDetailModal(rowId, fieldName) {
                                 </h4>
                                 <div style="display: flex; flex-direction: column; gap: 12px;">
                                     ${normalizedData.recommended_notices.map(notice => `
-                                        <div onclick="window.open('/board/detail/${notice.pblanc_id}/?page_index=1', '_blank')" style="
+                                        <div onclick="window.open('/board/detail/${notice.pblanc_id}/', '_blank')" style="
                                             background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
                                             border: 1px solid #dee2e6;
                                             border-radius: 8px;
@@ -2974,16 +2185,11 @@ function showFundingDetailModal(rowId, fieldName) {
 
 // 자금 상세보기 모달 닫기 함수
 function closeFundingDetailModal() {
+    console.log('closeFundingDetailModal, 디테일')
     const modal = document.getElementById('fundingDetailModal');
     if (modal) {
         modal.remove();
     }
-}
-
-// 숫자 필드 업데이트 함수 (콤마 제거 후 저장)
-function updateRowFieldWithNumber(rowId, fieldName, value) {
-    const numericValue = removeCommaFromNumber(value);
-    updateRowField(rowId, fieldName, numericValue);
 }
 
 // 나이 필드 업데이트 함수
@@ -3038,7 +2244,7 @@ function updateAgeField(rowId, fieldName, dataType, value) {
     
     // 서버에 업데이트 요청
     const ageDataToSend = JSON.stringify(currentAgeData);
-    updateRowField(rowId, fieldName, ageDataToSend);
+    detailUpdateRowField(rowId, fieldName, ageDataToSend);
 }
 
 // 날짜 입력 포맷 함수 (YY.MM.DD)
@@ -3108,190 +2314,7 @@ function formatDebtInputRealtime(input, rowId, categoryKey) {
     }
 }
 
-// 파일 다운로드 함수
-function downloadFile(rowId, fieldName) {
-    // 직접 다운로드 URL로 이동
-    window.open(`/sales/download_file/${rowId}/${fieldName}/`, '_blank');
-}
 
-// 파일 삭제 함수
-function deleteFile(rowId, fieldName, fileIndex = null) {
-    console.log('deleteFile 호출됨:', rowId, fieldName, fileIndex);
-    console.log('fileIndex 타입:', typeof fileIndex);
-    console.log('fileIndex 값:', fileIndex);
-    
-    // fileIndex가 문자열로 전달된 경우 숫자로 변환
-    if (fileIndex !== null && typeof fileIndex === 'string') {
-        fileIndex = parseInt(fileIndex, 10);
-        console.log('변환된 fileIndex:', fileIndex);
-    }
-    
-    const confirmMessage = fileIndex !== null 
-        ? '이 파일을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.'
-        : '모든 파일을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.';
-    
-    if (!confirm(confirmMessage)) {
-        return;
-    }
-    
-    const requestData = {
-        row_id: rowId,
-        field_name: fieldName
-    };
-    
-    // 특정 파일 인덱스가 제공된 경우 추가
-    if (fileIndex !== null) {
-        requestData.file_index = fileIndex;
-    }
-    
-    console.log('서버로 전송할 데이터:', requestData);
-    
-    fetch('/sales/delete_file/', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'X-CSRFToken': getCsrfToken()
-        },
-        body: new URLSearchParams(requestData).toString()
-    })
-    .then(response => response.json())
-    .then(data => {
-        console.log('파일 삭제 응답:', data);
-        
-        if (data.success) {
-            const message = fileIndex !== null 
-                ? '파일이 성공적으로 삭제되었습니다.'
-                : '모든 파일이 성공적으로 삭제되었습니다.';
-            showNotification(message, 'success');
-            
-            // 테이블 새로고침
-            refreshTable();
-            
-            // 상세보기 모달이 열려있으면 해당 파일 필드 업데이트
-            updateFileFieldInModalAfterDelete(rowId, fieldName);
-            
-        } else {
-            alert('파일 삭제 실패: ' + (data.error || '알 수 없는 오류'));
-        }
-    })
-    .catch(error => {
-        console.error('파일 삭제 오류:', error);
-        alert('파일 삭제 중 오류가 발생했습니다.');
-    });
-}
-
-// 파일 업로드 함수 (여러 파일 지원)
-function uploadFile(rowId, fieldName, fileInput) {
-    console.log('uploadFile 호출됨:', rowId, fieldName, fileInput);
-    
-    const files = fileInput.files;
-    if (!files || files.length === 0) {
-        alert('파일을 선택해주세요.');
-        return;
-    }
-    
-    // 파일 개수 제한 (최대 10개)
-    if (files.length > 10) {
-        alert('한 번에 최대 10개 파일까지 업로드할 수 있습니다.');
-        return;
-    }
-    
-    // 각 파일에 대해 크기 체크
-    for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        if (file.size > 10 * 1024 * 1024) {
-            alert(`파일 "${file.name}"의 크기가 10MB를 초과합니다.`);
-            return;
-        }
-    }
-    
-    console.log('업로드할 파일들:', Array.from(files).map(f => f.name));
-    
-    // 업로드 진행 상황 표시
-    const uploadNotification = document.createElement('div');
-    uploadNotification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: #007bff;
-        color: white;
-        padding: 15px 20px;
-        border-radius: 6px;
-        z-index: 1000;
-        font-size: 14px;
-    `;
-    uploadNotification.textContent = `${files.length}개 파일 업로드 중...`;
-    document.body.appendChild(uploadNotification);
-    
-    // 파일들을 순차적으로 업로드
-    let uploadedCount = 0;
-    let failedCount = 0;
-    
-    function uploadNextFile(index) {
-        if (index >= files.length) {
-            // 모든 파일 업로드 완료
-            uploadNotification.remove();
-            
-            if (failedCount === 0) {
-                showNotification(`${uploadedCount}개 파일이 성공적으로 업로드되었습니다.`, 'success');
-            } else if (uploadedCount === 0) {
-                showNotification('모든 파일 업로드에 실패했습니다.', 'error');
-            } else {
-                showNotification(`${uploadedCount}개 파일 업로드 성공, ${failedCount}개 파일 업로드 실패`, 'warning');
-            }
-            
-            // 테이블 새로고침
-            refreshTable();
-            
-            // 상세보기 모달이 열려있으면 파일 필드 새로고침
-            updateFileFieldInModalAfterUpload(rowId, fieldName);
-            
-            // 파일 입력 초기화
-            fileInput.value = '';
-            return;
-        }
-        
-        const file = files[index];
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('row_id', rowId);
-        formData.append('field_name', fieldName);
-        
-        // 진행 상황 업데이트
-        uploadNotification.textContent = `${index + 1}/${files.length}개 파일 업로드 중... (${file.name})`;
-        
-        fetch('/sales/upload_file/', {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-CSRFToken': getCsrfToken()
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            console.log(`파일 "${file.name}" 업로드 응답:`, data);
-            
-            if (data.success) {
-                uploadedCount++;
-                console.log(`파일 "${file.name}" 업로드 성공`);
-            } else {
-                failedCount++;
-                console.error(`파일 "${file.name}" 업로드 실패:`, data.error);
-            }
-        })
-        .catch(error => {
-            console.error(`파일 "${file.name}" 업로드 오류:`, error);
-            failedCount++;
-        })
-        .finally(() => {
-            // 다음 파일 업로드
-            uploadNextFile(index + 1);
-        });
-    }
-    
-    // 첫 번째 파일부터 업로드 시작
-    uploadNextFile(0);
-}
 
 // 상세보기 모달의 파일 필드 실시간 업데이트 함수
 function updateFileFieldInModal(rowId, fieldName, fileInfo) {
@@ -3657,14 +2680,6 @@ function updateFileFieldInModalAfterDelete(rowId, fieldName) {
         });
 }
 
-// 한글 금액 → 숫자(콤마)로 변환하여 입력모드로 전환
-function showNumberForEdit(input, rowId, fieldName) {
-    const value = input.value;
-    const number = parseKoreanCurrency(value);
-    input.value = formatNumberWithComma(number);
-    input.select();
-}
-
 // 매출 입력값 실시간 업데이트
 function updateSalesFromInputs(rowId, fieldName) {
     const eokInput = document.getElementById('sales_eok_' + rowId);
@@ -3752,115 +2767,6 @@ function cancelSalesInput(rowId, fieldName) {
     delete window.tempSalesAmount;
 }
 
-function showFilePreview(fileId, fileInfo, rowId, fieldName) {
-    // fileId가 없거나 숫자가 아니면 fileInfo에서 최대한 추출
-    if (!fileId || fileId === 'undefined' || fileId === 'null') {
-        fileId = (fileInfo && (fileInfo.id || fileInfo.stored_filename || fileInfo.filename)) || '';
-    }
-    // rowId도 없으면 fileInfo에서 추출 시도
-    if (!rowId && fileInfo && fileInfo.row_id) {
-        rowId = fileInfo.row_id;
-    }
-    if (!fileId) {
-        showNotification('파일 정보가 올바르지 않습니다.', 'error');
-        return;
-    }
-    if (!rowId) {
-        showNotification('행 정보가 올바르지 않습니다.', 'error');
-        return;
-    }
-    
-    const fileName = fileInfo.original_filename || fileInfo.filename || fileInfo.stored_filename || 'Unknown';
-    const contentType = fileInfo.content_type || '';
-    const fileExt = fileName.split('.').pop()?.toLowerCase() || '';
-    
-    // 서버에 row_id도 함께 전달
-    fetch(`/sales/get_file_preview_url/${fileId}/${fieldName}/?row_id=${rowId}`)
-        .then(r => r.json())
-        .then(data => {
-            if (data.success && data.preview_url) {
-                // 파일 타입에 따라 미리보기 모달 표시
-                let contentHtml = '';
-                const fileUrl = data.preview_url;
-                
-                if (contentType.startsWith('image/') || fileInfo.type === 'img') {
-                    // 이미지 파일
-                    contentHtml = `<img src="${fileUrl}" alt="미리보기" style="max-width:100%;max-height:70vh;display:block;margin:0 auto;">`;
-                } else if (contentType === 'application/pdf' || fileExt === 'pdf' || fileInfo.type === 'pdf') {
-                    // PDF 파일
-                    contentHtml = `<iframe src="${fileUrl}" style="width:90vw;height:70vh;border:none;"></iframe>`;
-                } else if (contentType.includes('audio/') || fileInfo.type === 'audio') {
-                    // 오디오 파일
-                    contentHtml = `<audio controls src="${fileUrl}" style="width:100%;"></audio>`;
-                } else if (contentType.includes('video/') || fileInfo.type === 'video') {
-                    // 비디오 파일
-                    contentHtml = `<video controls src="${fileUrl}" style="max-width:100%;max-height:70vh;"></video>`;
-                } else if (['docx', 'doc', 'pptx', 'ppt', 'xlsx', 'xls'].includes(fileExt) || 
-                           contentType.includes('wordprocessingml') || 
-                           contentType.includes('presentationml') || 
-                           contentType.includes('spreadsheetml') ||
-                           contentType.includes('msword')) {
-                    // Office 문서 파일들 - Google Docs Viewer 사용
-                    const encodedUrl = encodeURIComponent(fileUrl);
-                    contentHtml = `
-                        <div style="width: 90vw; height: 70vh; display: flex; flex-direction: column;">
-                            <iframe src="https://docs.google.com/viewer?url=${encodedUrl}&embedded=true"
-                                    style="flex: 1; border: none;"
-                                    title="${fileName}">
-                            </iframe>
-                            <div style="text-align: center; margin-top: 15px; padding: 10px;">
-                                <button onclick="window.open('${fileUrl}', '_blank')" 
-                                        style="padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">
-                                    새 창에서 열기
-                                </button>
-                                <button onclick="window.open('${fileInfo.download_url || fileUrl}', '_blank')" 
-                                        style="padding: 8px 16px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                                    다운로드
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                } else if (contentType.includes('text/') || contentType.includes('application/json') || contentType.includes('application/xml')) {
-                    // 텍스트 파일
-                    contentHtml = `<iframe src="${fileUrl}" style="width:90vw;height:70vh;border:none;"></iframe>`;
-                } else {
-                    // 지원하지 않는 파일 타입
-                    contentHtml = `
-                        <div style="text-align:center;padding:40px 0;">
-                            <div style="font-size:48px;color:#dc3545;">📄</div>
-                            <div style="margin-top:16px;font-size:18px;font-weight:500;">${fileName}</div>
-                            <div style="margin-top:8px;color:#888;">이 파일 타입은 미리보기를 지원하지 않습니다.</div>
-                            <button onclick="window.open('${fileUrl}','_blank')" 
-                                    style="margin-top:20px;padding:10px 24px;background:#007bff;color:white;border:none;border-radius:6px;font-size:16px;cursor:pointer;margin-right:10px;">
-                                새 창에서 열기
-                            </button>
-                            <button onclick="window.open('${fileInfo.download_url || fileUrl}','_blank')" 
-                                    style="margin-top:20px;padding:10px 24px;background:#28a745;color:white;border:none;border-radius:6px;font-size:16px;cursor:pointer;">
-                                다운로드
-                            </button>
-                        </div>
-                    `;
-                }
-                
-                showModal({
-                    title: fileName,
-                    content: contentHtml
-                });
-            } else {
-                showModal({
-                    title: fileName,
-                    content: `<div style="text-align:center;padding:40px 0;"><div style="font-size:48px;color:#dc3545;">✗</div><div style="margin-top:16px;font-size:18px;font-weight:500;">미리보기 로드 실패</div><div style="margin-top:8px;color:#888;">${data.error || '파일을 찾을 수 없습니다.'}</div><button onclick="window.open('${fileInfo && fileInfo.download_url ? fileInfo.download_url : '#'}','_blank')" style="margin-top:20px;padding:10px 24px;background:#007bff;color:white;border:none;border-radius:6px;font-size:16px;cursor:pointer;">새 창에서 열기</button></div>`
-                });
-            }
-        })
-        .catch(err => {
-            showModal({
-                title: fileName,
-                content: `<div style="text-align:center;padding:40px 0;"><div style="font-size:48px;color:#dc3545;">✗</div><div style="margin-top:16px;font-size:18px;font-weight:500;">미리보기 로드 실패</div><div style="margin-top:8px;color:#888;">${err.message || '알 수 없는 오류'}</div></div>`
-            });
-        });
-}
-
 // 개업년월 필드 업데이트 함수
 function updateBusinessField(rowId, fieldName, dataType, value) {
     // 현재 저장된 개업 데이터 가져오기
@@ -3902,12 +2808,12 @@ function updateBusinessField(rowId, fieldName, dataType, value) {
     
     // 서버에 업데이트 요청
     const businessDataToSend = JSON.stringify(currentBusinessData);
-    updateRowField(rowId, fieldName, businessDataToSend);
+    detailUpdateRowField(rowId, fieldName, businessDataToSend);
 }
 
 // 모달에서 필드 업데이트 함수
-function updateRowField(rowId, field, value) {
-    console.log('updateRowField, 디테일2')
+function detailUpdateRowField(rowId, field, value) {
+    console.log('detailUpdateRowField, 디테일2')
     fetch('/sales/update_row_field/', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -3986,6 +2892,7 @@ function recreateDuplicateButtons() {
             console.log(`행 ${index}: ID를 찾을 수 없습니다.`);
             return;
         }
+        
         
         // drag-cell 찾기
         const dragCell = row.querySelector('.drag-cell');
@@ -4103,9 +3010,9 @@ function recreateDuplicateButtons() {
                             console.error(err);
                         });
                 };
-                console.log(`행 ${index}: 상세보기 버튼 이벤트 바인딩 완료`);
+            } else {
+                console.log(`행 ${index}: 상세보기 버튼 이벤트가 이미 바인딩되어 있습니다.`);
             }
-
         } else {
             console.log(`행 ${index}: 상세보기 버튼을 찾을 수 없습니다.`);
             // name-container 구조 확인
