@@ -3,6 +3,13 @@ from . import views
 from .views import upload_note_file, delete_note_file, update_note_order_and_notes, get_file_preview_url, get_file_preview_url_note
 from .login_views import LoginView, LogoutView
 from .main_views import DiaryMainView
+from .file_handler import upload_file, delete_file, download_file
+from .calendar_handlers import get_datetime_attributes, get_calendar_settings, save_calendar_settings, calendar_events
+from .excel_handlers import preview_excel, upload_excel
+from .kanban_handlers import update_kanban_option_order, get_kanban_data
+from .attribute_handlers import delete_attribute_value, toggle_attribute_visibility, update_attribute_visibility, get_dropdown_attributes
+from .audio_handler import upload_audio_file, get_audio_files_by_date, delete_audio_file, update_audio_file_order
+from .cascade_handlers import toggle_cascade_attribute, get_cascade_attributes_list
 
 urlpatterns = [
     path('', DiaryMainView.as_view(), name='diary_main'),
@@ -25,18 +32,17 @@ urlpatterns = [
     path('add_attribute/', views.add_attribute, name='add_attribute'),
     path('delete_attribute/', views.delete_attribute, name='delete_attribute'),
     path('get_row_details/<int:row_id>/', views.get_row_details, name='get_row_details'),
-    path('debug_fu_data/', views.debug_fu_data, name='debug_fu_data'),
     path('get_user_attributes/', views.get_user_attributes, name='get_user_attributes'),
-    path('get_kanban_data/', views.get_kanban_data, name='get_kanban_data'),
-    path('upload_file/', views.upload_file, name='upload_file'),
-    path('download_file/<int:row_id>/<str:field_name>/', views.download_file, name='download_file'),
-    path('delete_file/', views.delete_file, name='delete_file'),
-    path('upload_audio_file/', views.upload_audio_file, name='upload_audio_file'),
-    path('get_audio_files_by_date/', views.get_audio_files_by_date, name='get_audio_files_by_date'),
-    path('delete_audio_file/', views.delete_audio_file, name='delete_audio_file'),
+    path('get_kanban_data/', get_kanban_data, name='get_kanban_data'),
+    path('upload_file/', upload_file, name='upload_file'),
+    path('download_file/<int:row_id>/<str:field_name>/', download_file, name='download_file'),
+    path('delete_file/', delete_file, name='delete_file'),
+    path('upload_audio_file/', upload_audio_file, name='upload_audio_file'),
+    path('get_audio_files_by_date/', get_audio_files_by_date, name='get_audio_files_by_date'),
+    path('delete_audio_file/', delete_audio_file, name='delete_audio_file'),
     path('update_audio_text/', views.update_audio_text, name='update_audio_text'),
     path('update_audio_memo/', views.update_audio_memo, name='update_audio_memo'),
-    path('update_audio_file_order/', views.update_audio_file_order, name='update_audio_file_order'),
+    path('update_audio_file_order/', update_audio_file_order, name='update_audio_file_order'),
     path('update_expected_loans/', views.update_expected_loans, name='update_expected_loans'),
     path('update_loan_amount/', views.update_loan_amount, name='update_loan_amount'),
     path('update_debt_field/', views.update_debt_field, name='update_debt_field'),
@@ -46,15 +52,15 @@ urlpatterns = [
     path('get_recommended_notices/', views.get_recommended_notices, name='get_recommended_notices'),
     path('save_column_order/', views.save_column_order, name='save_column_order'),
     path('delete_row/', views.delete_row, name='delete_row'),
-    path('delete_attribute_value/', views.delete_attribute_value, name='delete_attribute_value'),
+    path('delete_attribute_value/', delete_attribute_value, name='delete_attribute_value'),
     path('duplicate_row/', views.duplicate_row, name='duplicate_row'),
     path('update_audio_text_notes/', views.update_audio_text_notes, name='update_audio_text_notes'),
     path('update_audio_file_order_and_notes/', views.update_audio_file_order_and_notes, name='update_audio_file_order_and_notes'),
     path('entry_table_partial/', views.entry_table_partial, name='entry_table_partial'),
-    path('toggle_attribute_visibility/', views.toggle_attribute_visibility, name='toggle_attribute_visibility'),
+    path('toggle_attribute_visibility/', toggle_attribute_visibility, name='toggle_attribute_visibility'),
     path('get_hidden_attributes/', views.get_hidden_attributes, name='get_hidden_attributes'),
     path('get_all_attributes/', views.get_all_attributes, name='get_all_attributes'),
-    path('get_dropdown_attributes/', views.get_dropdown_attributes, name='get_dropdown_attributes'),
+    path('get_dropdown_attributes/', get_dropdown_attributes, name='get_dropdown_attributes'),
     path('update_attribute_name/', views.update_attribute_name, name='update_attribute_name'),
     path('get_status_tabs/', views.get_status_tabs, name='get_status_tabs'),
     path('upload_note_file/', upload_note_file, name='upload_note_file'),
@@ -64,29 +70,24 @@ urlpatterns = [
     path('get_file_preview_url_note/<str:file_id>/', get_file_preview_url_note, name='get_file_preview_url_note'),
     
     # 캘린더 설정 관련 API
-    path('get_datetime_attributes/', views.get_datetime_attributes, name='get_datetime_attributes'),
-    path('get_calendar_settings/', views.get_calendar_settings, name='get_calendar_settings'),
-    path('save_calendar_settings/', views.save_calendar_settings, name='save_calendar_settings'),
-    path('calendar_events/', views.calendar_events, name='calendar_events'),
+    path('get_datetime_attributes/', get_datetime_attributes, name='get_datetime_attributes'),
+    path('get_calendar_settings/', get_calendar_settings, name='get_calendar_settings'),
+    path('save_calendar_settings/', save_calendar_settings, name='save_calendar_settings'),
+    path('calendar_events/', calendar_events, name='calendar_events'),
     
     # Cascade 관련 API
-    path('toggle_cascade_attribute/', views.toggle_cascade_attribute, name='toggle_cascade_attribute'),
-    path('get_cascade_attributes_list/', views.get_cascade_attributes_list, name='get_cascade_attributes_list'),
-    
-    # 디버깅용 API
-    path('fix_existing_row_relationships/', views.fix_existing_row_relationships, name='fix_existing_row_relationships'),
-    path('debug_row_relationships/', views.debug_row_relationships, name='debug_row_relationships'),
-    path('setup_test_cascade_attributes/', views.setup_test_cascade_attributes, name='setup_test_cascade_attributes'),
+    path('toggle_cascade_attribute/', toggle_cascade_attribute, name='toggle_cascade_attribute'),
+    path('get_cascade_attributes_list/', get_cascade_attributes_list, name='get_cascade_attributes_list'),
     
     # 엑셀 파일 처리 관련 API
-    path('preview_excel/', views.preview_excel, name='preview_excel'),
-    path('upload_excel/', views.upload_excel, name='upload_excel'),
+    path('preview_excel/', preview_excel, name='preview_excel'),
+    path('upload_excel/', upload_excel, name='upload_excel'),
 
     # 칸반보드 관련 처리
-    path('update_kanban_option_order/', views.update_kanban_option_order, name='update_kanban_option_order'),
+    path('update_kanban_option_order/', update_kanban_option_order, name='update_kanban_option_order'),
 
     # 속성관리
     path('get_all_attributes/', views.get_all_attributes, name='get_all_attributes'),
-    path('update_attribute_visibility/', views.update_attribute_visibility, name='update_attribute_visibility'),
-    path('get_dropdown_attributes/', views.get_dropdown_attributes, name='get_dropdown_attributes'),
+    path('update_attribute_visibility/', update_attribute_visibility, name='update_attribute_visibility'),
+    path('get_dropdown_attributes/', get_dropdown_attributes, name='get_dropdown_attributes'),
 ] 
