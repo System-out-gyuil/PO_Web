@@ -65,17 +65,15 @@ class BoardView(View):
 
 class BoardDetailView(View):
     def get(self, request, pblanc_id):
-        page_index = request.GET.get("page_index", 1)
         item = get_object_or_404(BizInfo, pblanc_id=pblanc_id)
 
         item.hashtag = item.hashtag.split(",")
 
         update_count(request, "board_detail")
 
-        print(item.iframe_src)
+        print(item.hashtag)
 
         return render(request, "board/detail.html", {
             "item": item,
             "iframe_src": item.iframe_src,
-            "page_index": page_index,
         })

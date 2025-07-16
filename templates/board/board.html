@@ -96,7 +96,7 @@
             <td class="table-row-2">전국</td>
           {% endif %}
 
-          <td class="table-row-3" onclick="location.href='{% url 'board:detail' item.pblanc_id %}?page_index={{ page_index }}'" style="cursor:pointer;">
+          <td class="table-row-3" onclick="location.href='{% url 'board:detail' item.pblanc_id %}'" style="cursor:pointer;">
             {{ item.title }}
           </td>
         </tr>
