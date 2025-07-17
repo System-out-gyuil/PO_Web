@@ -413,7 +413,7 @@ function showDetailModal(rowData, rowId) {
                                 filesHtml += `
                                     <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding: 8px; border: 1px solid #e9ecef; border-radius: 4px; background: #f8f9fa;">
                                         <span style="flex: 1; font-size: 14px;">📄 ${displayFileName}</span>
-                                        <button onclick="showFilePreviewModal(${JSON.stringify({...fileInfo, field_name: attr.name}).replace(/\"/g, '&quot;')})"
+                                        <button onclick="showFilePreviewModal(${JSON.stringify({...fileInfo, field_name: attr.name, row_id: rowId}).replace(/\"/g, '&quot;')})"
                                                 style="padding: 4px 8px; background: #ffc107; color: #333; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
                                             미리보기
                                         </button>
@@ -456,7 +456,7 @@ function showDetailModal(rowData, rowId) {
                                 filesHtml += `
                                     <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding: 8px; border: 1px solid #e9ecef; border-radius: 4px; background: #f8f9fa;">
                                         <span style="flex: 1; font-size: 14px;">📄 ${displayFileName}</span>
-                                        <button onclick="showFilePreviewModal(${JSON.stringify({...fileInfo, field_name: attr.name}).replace(/\"/g, '&quot;')})"
+                                        <button onclick="showFilePreviewModal(${JSON.stringify({...fileInfo, field_name: attr.name, row_id: rowId}).replace(/\"/g, '&quot;')})"
                                                 style="padding: 4px 8px; background: #ffc107; color: #333; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
                                             미리보기
                                         </button>
@@ -3090,6 +3090,272 @@ function recreateDuplicateButtons() {
             });
             console.log('드래그 기능 재초기화 완료');
         }
+    }
+}
+
+// 파일 업로드 함수 (여러 파일 지원)
+function uploadFile(rowId, fieldName, fileInput) {
+  console.log('uploadFile 호출됨:', rowId, fieldName, fileInput);
+  
+  const files = fileInput.files;
+  if (!files || files.length === 0) {
+      alert('파일을 선택해주세요.');
+      return;
+  }
+  
+  // 파일 개수 제한 (최대 10개)
+  if (files.length > 10) {
+      alert('한 번에 최대 10개 파일까지 업로드할 수 있습니다.');
+      return;
+  }
+  
+  // 각 파일에 대해 크기 체크
+  for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (file.size > 10 * 1024 * 1024) {
+          alert(`파일 "${file.name}"의 크기가 10MB를 초과합니다.`);
+          return;
+      }
+  }
+  
+  console.log('업로드할 파일들:', Array.from(files).map(f => f.name));
+  
+  // 업로드 진행 상황 표시
+  const uploadNotification = document.createElement('div');
+  uploadNotification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #007bff;
+      color: white;
+      padding: 15px 20px;
+      border-radius: 6px;
+      z-index: 1000;
+      font-size: 14px;
+  `;
+  uploadNotification.textContent = `${files.length}개 파일 업로드 중...`;
+  document.body.appendChild(uploadNotification);
+  
+  // 파일들을 순차적으로 업로드
+  let uploadedCount = 0;
+  let failedCount = 0;
+  
+  function uploadNextFile(index) {
+      if (index >= files.length) {
+          // 모든 파일 업로드 완료
+          uploadNotification.remove();
+          
+          if (failedCount === 0) {
+              showNotification(`${uploadedCount}개 파일이 성공적으로 업로드되었습니다.`, 'success');
+          } else if (uploadedCount === 0) {
+              showNotification('모든 파일 업로드에 실패했습니다.', 'error');
+          } else {
+              showNotification(`${uploadedCount}개 파일 업로드 성공, ${failedCount}개 파일 업로드 실패`, 'warning');
+          }
+          
+          // 테이블 새로고침
+          refreshTable();
+          
+          // 상세보기 모달이 열려있으면 모달 전체 새로고침
+          const detailModal = document.getElementById('detailModal');
+          if (detailModal && detailModal.style.display !== 'none') {
+              // 모달 새로고침
+              fetch(`/sales/get_row_details/${rowId}/`)
+                  .then(response => response.json())
+                  .then(data => {
+                      if (data.success) {
+                          showDetailModal(data.row_data, data.row_id);
+                      }
+                  })
+                  .catch(error => {
+                      console.error('모달 새로고침 오류:', error);
+                  });
+          }
+          
+          // 파일 입력 초기화
+          fileInput.value = '';
+          return;
+      }
+      
+      const file = files[index];
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('row_id', rowId);
+      formData.append('field_name', fieldName);
+      
+      // 진행 상황 업데이트
+      uploadNotification.textContent = `${index + 1}/${files.length}개 파일 업로드 중... (${file.name})`;
+      
+      fetch('/sales/upload_file/', {
+          method: 'POST',
+          body: formData,
+          headers: {
+              'X-CSRFToken': getCsrfToken()
+          }
+      })
+      .then(response => response.json())
+      .then(data => {
+          console.log(`파일 "${file.name}" 업로드 응답:`, data);
+          
+          if (data.success) {
+              uploadedCount++;
+              console.log(`파일 "${file.name}" 업로드 성공`);
+          } else {
+              failedCount++;
+              console.error(`파일 "${file.name}" 업로드 실패:`, data.error);
+          }
+      })
+      .catch(error => {
+          console.error(`파일 "${file.name}" 업로드 오류:`, error);
+          failedCount++;
+      })
+      .finally(() => {
+          // 다음 파일 업로드
+          uploadNextFile(index + 1);
+      });
+  }
+  
+  // 첫 번째 파일부터 업로드 시작
+  uploadNextFile(0);
+}
+
+// 파일 업로드 처리 함수
+function handleFileUpload(rowId, fieldName, fileInput) {
+  const file = fileInput.files[0];
+  if (!file) {
+      return;
+  }
+  
+  console.log('파일 업로드 시작:', file.name, file.size, file.type);
+  
+  // FormData 생성
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('row_id', rowId);
+  formData.append('field_name', fieldName);
+  
+  // 업로드 중 표시
+  const uploadingText = '업로드 중...';
+  
+  // 파일 업로드 요청
+  fetch('/sales/upload_file/', {
+      method: 'POST',
+      body: formData
+  })
+  .then(response => response.json())
+  .then(data => {
+      console.log('파일 업로드 응답:', data);
+      
+      if (data.success) {
+          // 업로드 성공 - 상세 모달 새로고침
+          alert('파일 업로드 완료!\n파일명: ' + file.name);
+          
+          // 모달 데이터 새로고침
+          fetch('/sales/get_row_details/' + rowId + '/')
+              .then(r => r.json())
+              .then(function(data) {
+                  if (data.success) {
+                      showDetailModal(data.row_data, data.row_id);
+                  }
+              });
+          
+          // 테이블과 칸반보드도 새로고침
+          refreshTable();
+          // 칸반보드가 활성화되어 있고 업데이트된 필드가 현재 칸반보드 속성과 일치하는 경우에만 새로고침
+          if (window.kanbanAttribute && '지역' === window.kanbanAttribute) {
+              refreshKanban();
+          }
+          
+          // 캘린더 업데이트
+          refreshCalendar();
+      } else {
+          alert('파일 업로드 실패: ' + (data.error || '알 수 없는 오류'));
+      }
+  })
+  .catch(error => {
+      console.error('파일 업로드 오류:', error);
+      alert('파일 업로드 중 오류가 발생했습니다.');
+  });
+  
+  // 파일 입력 초기화
+  fileInput.value = '';
+}
+
+// 파일 업로드 후 모달 필드 새로고침 함수
+function updateFileFieldInModalAfterUpload(rowId, fieldName) {
+    // 서버에서 최신 파일 정보를 가져와서 모달 업데이트
+    fetch(`/sales/get_row_details/${rowId}/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.row_data) {
+                const fileValue = data.row_data[fieldName];
+                updateFileFieldInModal(rowId, fieldName, fileValue);
+            }
+        })
+        .catch(error => {
+            console.error('파일 업로드 후 모달 업데이트 오류:', error);
+        });
+}
+
+// 파일 삭제 후 상세보기 모달의 파일 필드를 "파일 없음" 상태로 업데이트하는 함수
+function updateFileFieldInModalAfterDelete(rowId, fieldName) {
+    console.log('updateFileFieldInModalAfterDelete 호출됨:', rowId, fieldName);
+    
+    const detailModal = document.getElementById('detailModal');
+    if (!detailModal) {
+        console.log('상세보기 모달이 열려있지 않음');
+        return; // 모달이 열려있지 않으면 종료
+    }
+    
+    // 모달 전체 새로고침으로 변경
+    fetch(`/sales/get_row_details/${rowId}/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showDetailModal(data.row_data, data.row_id);
+            }
+        })
+        .catch(error => {
+            console.error('파일 삭제 후 모달 새로고침 오류:', error);
+        });
+}
+
+// 파일 미리보기 모달 함수
+function showFilePreviewModal(fileInfo) {
+    console.log('showFilePreviewModal 호출됨:', fileInfo);
+    
+    // 기존 showFilePreview 함수 사용
+    // fileInfo에서 필요한 데이터 추출
+    const fileId = fileInfo.id || fileInfo.stored_filename || fileInfo.filename || '';
+    const rowId = window.currentDetailRowId || fileInfo.row_id || '';
+    const fieldName = fileInfo.field_name || '';
+    
+    console.log('파일 미리보기 파라미터:', {
+        fileId: fileId,
+        fileInfo: fileInfo,
+        rowId: rowId,
+        fieldName: fieldName
+    });
+    
+    // 필수 파라미터 검증
+    if (!fileId) {
+        showNotification('파일 ID를 찾을 수 없습니다.', 'error');
+        return;
+    }
+    
+    if (!rowId) {
+        showNotification('행 ID를 찾을 수 없습니다.', 'error');
+        return;
+    }
+    
+    showFilePreview(fileId, fileInfo, rowId, fieldName);
+}
+
+// 파일 미리보기 모달 닫기 함수
+function closeFilePreviewModal() {
+    const modal = document.getElementById('filePreviewModal');
+    if (modal) {
+        modal.remove();
     }
 }
 

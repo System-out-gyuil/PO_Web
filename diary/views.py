@@ -53,7 +53,8 @@ from .kanban_handlers import get_kanban_data, update_kanban_option_order
 from .attribute_handlers import (
     add_attribute, delete_attribute, update_attribute_name,
     toggle_attribute_visibility, update_attribute_visibility,
-    get_hidden_attributes, get_all_attributes, get_dropdown_attributes
+    get_hidden_attributes, get_all_attributes, get_dropdown_attributes,
+    filter_attributes_by_status
 )
 from .excel_handlers import preview_excel, upload_excel
 from .calendar_handlers import get_calendar_settings, save_calendar_settings, calendar_events
@@ -68,36 +69,11 @@ from .kanban_handlers import get_kanban_data, update_kanban_option_order
 from .funding_calculator import FundingCalculator
 from .data_utils import parse_korean_currency, parse_sales_amount, parse_business_data, calculate_business_years, formatToKoreanCurrency
 
-
-
 logger = logging.getLogger(__name__)
 
 # 다이어리 목록 및 작성 폼
 
-def filter_attributes_by_status(queryset, status_id='all'):
-    """상태 ID에 따라 속성들을 필터링하는 함수"""
-    filtered_attrs = []
-    
-    for attr in queryset:
-        
-        if isinstance(attr.view_select, dict):
-            if status_id == 'all':
-                # 전체 탭에서는 "0" 키가 True인 속성들만 표시
-                is_visible = attr.view_select.get('0', False)
-                if is_visible:
-                    filtered_attrs.append(attr)
-            else:
-                # 특정 상태 탭에서는 해당 상태 ID가 True인 속성들만 표시
-                is_visible = attr.view_select.get(str(status_id), False)
-                if is_visible:
-                    filtered_attrs.append(attr)
-        elif isinstance(attr.view_select, bool) and attr.view_select:
-            # 기존 boolean 형태와의 호환성을 위해
-            filtered_attrs.append(attr)
-        else:
-            pass
-    
-    return filtered_attrs
+
 
 def diary_list(request):
     host = request.get_host()
@@ -120,10 +96,10 @@ def diary_list(request):
     
     # 기본 속성 쿼리 (view_select 필터링 제거 - 상태별 필터링에서 처리)
     if show_detail:
-        base_attributes = Attribute.objects.all().order_by('sort_order', 'id')
+        base_attributes = Attribute.objects.filter(user=user).order_by('sort_order', 'id')
         base_user_attributes = Attribute.objects.filter(user=user).order_by('sort_order', 'id')
     else:
-        base_attributes = Attribute.objects.filter(detail=False).order_by('sort_order', 'id')
+        base_attributes = Attribute.objects.filter(user=user, detail=False).order_by('sort_order', 'id')
         base_user_attributes = Attribute.objects.filter(user=user, detail=False).order_by('sort_order', 'id')
     
     # 상태별 필터링 적용
@@ -320,7 +296,7 @@ def diary_list(request):
             })
 
     # attributes를 list of dict로 json.dumps
-    attributes_list = [{'id': attr.id, 'name': attr.name, 'attributeType__name': attr.attributeType.name if attr.attributeType else None, 'assential': attr.assential} for attr in attributes]
+    attributes_list = [{'id': attr.id, 'name': attr.name, 'attributeType__name': attr.attributeType.name if attr.attributeType else None, 'assential': attr.assential, 'width': attr.width} for attr in attributes]
     # dict -> SimpleNamespace, attributeType__name -> attributeType_name
     attributes_obj_list = [SimpleNamespace(**{k.replace('attributeType__name', 'attributeType_name'): v for k, v in d.items()}) for d in attributes_list]
     attributes_json = json.dumps(attributes_list, ensure_ascii=False)
@@ -647,7 +623,7 @@ def update_entry(request):
             return JsonResponse({'success': False, 'error': 'Invalid row ID'})
             
         try:
-            attr = Attribute.objects.get(name=field)
+            attr = Attribute.objects.get(name=field, user=user)
         except Attribute.DoesNotExist:
             return JsonResponse({'success': False, 'error': 'Invalid attribute'})
         
@@ -719,7 +695,7 @@ def create_new_row(request):
         
         # 첫 번째 필드 값 설정
         try:
-            attr = Attribute.objects.get(name=field)
+            attr = Attribute.objects.get(name=field, user=user)
         except Attribute.DoesNotExist:
             return JsonResponse({'success': False, 'error': 'Invalid attribute'})
             
@@ -899,8 +875,13 @@ def dropdown_options(request):
     print(field)
     if not field:
         return JsonResponse({'error': 'No field'}, status=400)
+    
+    # 사용자 정보 가져오기
+    user_id = request.session.get('diary_member_id')
+    user = User.objects.get(id=user_id)
+    
     try:
-        attr = Attribute.objects.get(name=field)
+        attr = Attribute.objects.get(name=field, user=user)
     except Attribute.DoesNotExist:
         return JsonResponse({'error': 'Invalid field'}, status=400)
 
@@ -916,7 +897,28 @@ def dropdown_options(request):
             if color:
                 dropdown, created = DropdownAttribute.objects.get_or_create(attribute=attr, option=option, defaults={'color': color})
             else:
-                dropdown, created = DropdownAttribute.objects.get_or_create(attribute=attr, option=option)
+                # 색상이 제공되지 않으면 랜덤 색상 생성
+                random_generated_color = random_color()
+                dropdown, created = DropdownAttribute.objects.get_or_create(attribute=attr, option=option, defaults={'color': random_generated_color})
+            
+            # 상태 속성인 경우 view_select에 자동 추가
+            if attr.name == '상태' or attr.name == '영업진행':
+                # 해당 사용자의 모든 Attribute 행들을 가져와서 view_select에 새 옵션 추가
+                user_attributes = Attribute.objects.filter(user=user)
+                
+                for user_attr in user_attributes:
+                    # 기존 view_select 데이터 가져오기
+                    view_select_data = user_attr.view_select if user_attr.view_select else {}
+                    
+                    # 새로 추가된 dropdown의 ID를 true로 설정
+                    view_select_data[str(dropdown.id)] = True
+                    
+                    # Attribute 업데이트
+                    user_attr.view_select = view_select_data
+                    user_attr.save()
+                
+                print(f"상태 속성 '{attr.name}'의 새 옵션 '{dropdown.option}' (ID: {dropdown.id})을 모든 Attribute의 view_select에 추가")
+            
             return JsonResponse({'success': True, 'id': dropdown.id, 'option': dropdown.option, 'color': dropdown.color, 'created': created})
         return JsonResponse({'error': 'No option'}, status=400)
 
@@ -931,11 +933,31 @@ def dropdown_options(request):
         
         dropdown = DropdownAttribute.objects.filter(id=id, attribute=attr).first()
         if dropdown:
+            old_option_name = dropdown.option  # 기존 옵션명 저장
+            
             if name:
                 dropdown.option = name
             if color:
                 dropdown.color = color
             dropdown.save()
+            
+            # 상태 속성인 경우 view_select 업데이트
+            if attr.name == '상태' or attr.name == '영업진행' and name:
+                # 옵션 수정 후 모든 옵션들을 view_select에 다시 설정
+                view_select_data = {}
+                all_dropdown_options = DropdownAttribute.objects.filter(attribute=attr).order_by('id')
+                
+                for dropdown_option in all_dropdown_options:
+                    option_id = str(dropdown_option.id)
+                    # 0번(전체)을 제외하고 나머지 모든 옵션을 true로 설정
+                    if option_id != "0":
+                        view_select_data[option_id] = True
+                
+                attr.view_select = view_select_data
+                attr.save()
+                
+                print(f"상태 속성 '{attr.name}'의 view_select 재설정: {len(all_dropdown_options)}개 옵션")
+            
             return JsonResponse({'success': True})
         return JsonResponse({'error': 'Invalid'}, status=400)
 
@@ -950,6 +972,30 @@ def dropdown_options(request):
         dropdown = DropdownAttribute.objects.filter(id=id, attribute=attr).first()
         if not dropdown:
             return JsonResponse({'error': 'Option not found'}, status=404)
+        
+        # 상태 속성인 경우 view_select에서 해당 옵션 제거
+        if attr.name == '상태' or attr.name == '영업진행':
+            # 삭제할 옵션의 ID 저장
+            deleted_option_id = str(dropdown.id)
+            
+            # 해당 사용자의 모든 Attribute 행들에서 해당 옵션 ID 제거
+            user_attributes = Attribute.objects.filter(user=user)
+            
+            for user_attr in user_attributes:
+                view_select_data = user_attr.view_select if user_attr.view_select else {}
+                
+                if deleted_option_id in view_select_data:
+                    del view_select_data[deleted_option_id]
+                    user_attr.view_select = view_select_data
+                    user_attr.save()
+            
+            print(f"상태 속성 '{attr.name}'의 옵션 '{dropdown.option}' (ID: {deleted_option_id})을 모든 Attribute의 view_select에서 제거")
+            
+            # DropdownAttribute 삭제
+            dropdown.delete()
+        else:
+            # DropdownAttribute 삭제
+            dropdown.delete()
         
         # 해당 옵션을 사용하는 모든 AttributeValue 찾기
         affected_values = AttributeValue.objects.filter(attribute=attr)
@@ -976,8 +1022,6 @@ def dropdown_options(request):
                         attr_value.value = ''
                         attr_value.save()
         
-        # DropdownAttribute 삭제
-        dropdown.delete()
         return JsonResponse({'success': True})
 
     return JsonResponse({'error': 'Invalid method'}, status=405)
@@ -1228,7 +1272,7 @@ def update_audio_memo(request):
         
         # 음성파일 속성 가져오기
         try:
-            audio_attr = Attribute.objects.get(name='음성파일')
+            audio_attr = Attribute.objects.get(name='음성파일', user=user)
             audio_attr_value, created = AttributeValue.objects.get_or_create(
                 row=row,
                 attribute=audio_attr,
@@ -2455,7 +2499,7 @@ def entry_table_partial(request):
             'values': row_values
         })
     
-    attributes_list = [{'name': attr.name, 'attributeType__name': attr.attributeType.name if attr.attributeType else None, 'assential': attr.assential} for attr in user_attributes]
+    attributes_list = [{'name': attr.name, 'attributeType__name': attr.attributeType.name if attr.attributeType else None, 'assential': attr.assential, 'width': attr.width} for attr in user_attributes]
     attributes_obj_list = [SimpleNamespace(**{k.replace('attributeType__name', 'attributeType_name'): v for k, v in d.items()}) for d in attributes_list]
     
     # 캐시 헤더 추가로 브라우저 캐싱 활성화
@@ -2807,6 +2851,7 @@ def get_file_preview_url_note(request, file_id):
 def get_file_preview_url(request, row_id, field_name):
     """단일 파일 필드(영업노트 방식) presigned URL 반환"""
     try:
+        print(f'row_id: {row_id}, field_name: {field_name}')
          
         user_id = request.session.get('diary_member_id')
 
@@ -2815,6 +2860,16 @@ def get_file_preview_url(request, row_id, field_name):
         attr = Attribute.objects.get(name=field_name, user=user)
         attr_value = AttributeValue.objects.get(row=row, attribute=attr)
         file_info = json.loads(attr_value.value)
+
+        print(f'file_info: {file_info}')
+        
+        # file_info가 리스트인 경우 첫 번째 항목 사용
+        if isinstance(file_info, list):
+            if len(file_info) > 0:
+                file_info = file_info[0]
+            else:
+                return JsonResponse({'success': False, 'error': '파일 정보가 없습니다.'})
+        
         s3_key = file_info.get('s3_key')
         if not s3_key:
             return JsonResponse({'success': False, 'error': 'S3 키가 없습니다.'})
@@ -3292,3 +3347,28 @@ def get_status_tabs(request):
             'success': False,
             'error': str(e)
         })
+
+@csrf_exempt
+def save_column_width(request):
+    # 컬럼 너비 저장
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST method required'})
+    try:
+        data = json.loads(request.body)
+        attribute_name = data.get('attribute_name')
+        width = data.get('width')
+        if not attribute_name or width is None:
+            return JsonResponse({'success': False, 'error': 'attribute_name과 width가 필요합니다'})
+        user_id = request.session.get('diary_member_id')
+        user = User.objects.get(id=user_id)
+        try:
+            attribute = Attribute.objects.get(name=attribute_name, user=user)
+            attribute.width = width
+            attribute.save()
+            return JsonResponse({'success': True, 'message': '컬럼 너비가 저장되었습니다.'})
+        except Attribute.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '속성을 찾을 수 없습니다'})
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})

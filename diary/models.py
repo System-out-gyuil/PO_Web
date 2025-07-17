@@ -78,7 +78,7 @@ class BaseAttributeDetail(models.Model):
         return self.name
 
 class Attribute(models.Model):
-    name = models.CharField(max_length=50, unique=True)
+    name = models.CharField(max_length=50)
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='attributes')
     attributeType = models.ForeignKey(AttributeType, on_delete=models.SET_NULL, null=True, blank=True, related_name='attributes')
     assential = models.BooleanField(default=False)
@@ -86,6 +86,7 @@ class Attribute(models.Model):
     sort_order = models.IntegerField(default=0, db_index=True)
     view_select = models.JSONField(default=dict)
     cascade = models.BooleanField(default=False)
+    width = models.IntegerField(default=150)
 
     class Meta:
         ordering = ['sort_order', 'id']  # sort_order 필드로 기본 정렬

@@ -7,284 +7,96 @@
     <title>영업 관리표</title>
     <link rel="stylesheet" href="{% static 'diary/diary_styles.css' %}">
     <style>
-        /* 기대출 관련 스타일 */
-        .debt-summary {
+        /* 다중 선택 관련 스타일 */
+        .row-checkbox {
+            margin-right: 8px;
             cursor: pointer;
-            padding: 4px 8px;
-            border-radius: 4px;
-            background: #f8f9fa;
-            border: 1px solid #e9ecef;
-            text-align: center;
-            transition: background-color 0.2s;
-        }
-        
-        .debt-summary:hover {
-            background: #e9ecef;
-        }
-        
-        .debt-count {
-            font-weight: bold;
-            color: #007bff;
-            font-size: 12px;
-        }
-        
-        .debt-preview {
-            color: #6c757d;
-            font-size: 11px;
-            margin-left: 5px;
-        }
-        
-        .empty-debt {
-            color: #6c757d;
-            font-size: 12px;
-        }
-        
-        .debt-category {
-            margin-bottom: 15px;
-        }
-        
-        .debt-category label {
-            font-weight: bold;
-            color: #495057;
-            margin-bottom: 5px;
-        }
-        
-        .debt-category input[type="number"] {
-            width: 200px;
-            padding: 8px 12px;
-            border: 1px solid #ced4da;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-        
-        .debt-category input[type="number"]:focus {
-            outline: none;
-            border-color: #007bff;
-            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
-        }
-        
-        #debtModal .debt-category span {
-            color: #6c757d;
-            font-size: 14px;
-        }
-        
-        .dropdown-pill {
-          display: inline-block;
-          padding: 4px 14px;
-          border-radius: 16px;
-          font-size: 13px;
-          font-weight: 500;
-          min-width: 48px;
-          text-align: center;
-          background: #eee;
-          color: #333;
-        }
-        
-        .drag-handle {
-          font-size: 16px;
-          color: #999;
-          cursor: move;
-          user-select: none;
-          padding: 2px;
-          border-radius: 3px;
-          transition: all 0.2s ease;
-          opacity: 0;
-        }
-        
-        .drag-handle:hover {
-          color: #666;
-          background-color: #f0f0f0;
-        }
-        
-        .modal-drag-handle {
-          font-size: 18px;
-          color: #888;
-          margin-right: 6px;
-          cursor: move;
-          user-select: none;
-        }
-        
-        /* 복제 버튼 스타일 */
-        .duplicate-row-btn {
-          background: #28a745;
-          color: white;
-          border: none;
-          border-radius: 3px;
-          padding: 3px 6px;
-          font-size: 11px;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          opacity: 0;
-          min-width: 20px;
-          height: 20px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-        
-        .duplicate-row-btn:hover {
-          background: #218838;
-          transform: scale(1.05);
-        }
-        
-        .duplicate-row-btn:active {
-          background: #1e7e34;
-          transform: scale(0.95);
-        }
-        
-        /* 드래그 셀 스타일 */
-        .drag-cell {
-          width: 90px;
-          min-width: 90px;
-          max-width: 90px;
-          padding: 6px 8px;
-          text-align: center;
-          position: relative;
-          vertical-align: middle;
-        }
-        
-        /* 행에 마우스 오버 시 복제 버튼 표시 */
-        tr:hover .duplicate-row-btn {
-          opacity: 1;
-        }
-        
-        /* 삭제 버튼 스타일 조정 */
-        .delete-row-btn {
-          background: #dc3545;
-          color: white;
-          border: none;
-          border-radius: 3px;
-          padding: 3px 6px;
-          font-size: 11px;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          min-width: 20px;
-          height: 20px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          opacity: 0;
-        }
-        
-        .delete-row-btn:hover {
-          background: #c82333;
-          transform: scale(1.05);
-        }
-        
-        .delete-row-btn:active {
-          background: #bd2130;
-          transform: scale(0.95);
-        }
-        
-        /* 버튼 컨테이너 스타일 */
-        .button-container {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 6px;
-          flex-wrap: nowrap;
-          height: 100%;
-        }
-        
-        /* 행에 마우스 오버 시 모든 버튼 표시 */
-        tr:hover .delete-row-btn,
-        tr:hover .duplicate-row-btn,
-        tr:hover .drag-handle {
-          opacity: 1;
-        }
-        
-        
-        /* 속성명 편집 관련 스타일 */
-        .attribute-name-editable {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            cursor: pointer;
-        }
-        
-        
-        
-        .edit-attribute-name-btn {
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-size: 12px;
-            color: #6c757d;
-            padding: 2px;
-            border-radius: 3px;
             opacity: 0;
             transition: opacity 0.2s ease;
         }
         
-        .attribute-name-editable:hover .edit-attribute-name-btn {
+        /* 테이블에 마우스 오버 시 체크박스 표시 */
+        #tableView:hover .row-checkbox {
             opacity: 1;
         }
         
-        .edit-attribute-name-btn:hover {
-            background-color: #e9ecef;
-            color: #495057;
-        }
-        
-        .attribute-name-input {
-            border: 1px solid #007bff;
-            border-radius: 4px;
-            padding: 4px 8px;
-            font-size: 14px;
-            font-weight: 500;
-            color: #495057;
-            background: white;
-            min-width: 80px;
-            max-width: 200px;
-        }
-        
-        .attribute-name-input:focus {
-            outline: none;
-            border-color: #0056b3;
-            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
-        }
-        
-        .attribute-name-save-btn {
-            background: #28a745;
-            color: white;
-            border: none;
-            border-radius: 3px;
-            padding: 2px 6px;
-            font-size: 11px;
+        /* 전체 선택 체크박스는 항상 표시 */
+        #selectAllCheckbox {
+            margin-right: 8px;
             cursor: pointer;
-            margin-left: 3px;
+            opacity: 1;
         }
         
-        .attribute-name-save-btn:hover {
-            background: #218838;
+        .bulk-delete-btn {
+            transition: all 0.3s ease;
         }
         
-        .attribute-name-cancel-btn {
-            background: #6c757d;
-            color: white;
-            border: none;
-            border-radius: 3px;
-            padding: 2px 6px;
-            font-size: 11px;
-            cursor: pointer;
-            margin-left: 2px;
+        .bulk-delete-btn:hover {
+            background: #c82333rtant;
+            transform: scale(1.05);
         }
         
-        .attribute-name-cancel-btn:hover {
-            background: #5a6268;
+        .button-container {
+            display: flex;
+            align-items: center;
+            gap: 4px;
         }
         
+        .drag-cell[object Object]{
+            min-width:120;
+        }
         
-        /* 속성 관리 모달 체크박스 스타일 */
-        .attribute-visibility-checkbox {
-            margin-right: 10px;
-            width: 16px;
-            height: 16px;
-            cursor: pointer;
+        /* 컬럼 리사이즈 핸들 스타일 */
+        .column-resize-handle {
+            position: absolute;
+            right: -3px;
+            top: 0;
+            bottom: 0;
+            width: 6px;
+            cursor: col-resize;
+            background: transparent;
+            z-index: 10;
+            transition: background-color 0.2s ease, opacity 0.2s ease;
+            will-change: background-color, opacity;
+        }
+        
+        .column-resize-handle:hover {
+            background: #007bff !important;
+            opacity: 0.5 !important;
+        }
+        
+        /* 리사이즈 중인 컬럼 스타일 */
+        th.resizing {
+            background-color: #f8f9fa !important;
+            border-right: 2px solid #007bff !important;
+            will-change: width;
+        }
+        
+        /* 테이블 헤더 상대 위치 설정 */
+        #entryTable thead th {
+            position: relative;
+            will-change: width;
+        }
+        
+        /* 속성 추가 열은 리사이즈 제외 */
+        .add-attribute-th {
+            position: relative !important;
+        }
+        
+        .add-attribute-th .column-resize-handle {
+            display: none;
+        }
+        
+        /* 테이블 성능 최적화 */
+        #entryTable {
+            will-change: auto;
+        }
+        
+        #entryTable.resizing {
+            will-change: layout;
         }
     </style>
     <script>
-        
-
         window.ATTR_FIELDS = JSON.parse('{{ attributes_json|escapejs }}');
         window.DROPDOWN_OPTIONS = JSON.parse('{{ dropdown_options|escapejs }}');
         window.DROPDOWN_ATTRIBUTES = JSON.parse('{{ dropdown_attributes_json|escapejs }}');
@@ -299,585 +111,29 @@
         window.currentStatusTab = null;
         window.statusAttributeName = null;
         
-        // 탭 초기화 함수
-        function initializeStatusTabs() {
-            console.log('탭 초기화 시작');
-            fetch('/sales/get_status_tabs/')
-                .then(response => response.json())
-                .then(data => {
-                    console.log('탭 데이터 응답:', data);
-                    if (data.success) {
-                        window.statusAttributeName = data.attribute_name;
-                        console.log('사용할 속성명:', window.statusAttributeName);
-                        createStatusTabs(data.options);
-                    } else {
-                        console.error('탭 데이터 로드 실패:', data.error);
-                    }
-                })
-                .catch(error => {
-                    console.error('탭 초기화 오류:', error);
-                });
-        }
-        
-        // 상태 탭 생성 함수
-        function createStatusTabs(options) {
-            const tabContainer = document.getElementById('tabContainer');
-            if (!tabContainer) return;
-            
-            // 전체 탭 추가
-            const allTab = document.createElement('button');
-            allTab.className = 'status-tab active';
-            allTab.textContent = '전체';
-            allTab.onclick = () => selectStatusTab(null);
-            tabContainer.appendChild(allTab);
-            
-            // 각 상태별 탭 추가
-            options.forEach(option => {
-                const tab = document.createElement('button');
-                tab.className = 'status-tab';
-                tab.textContent = option.name;
-                tab.style.backgroundColor = option.color ? hexToRgba(option.color, 0.18) : '#f8f9fa';
-                tab.style.color = '#333';
-                tab.onclick = () => selectStatusTab(option.id);
-                tabContainer.appendChild(tab);
-            });
-        }
-        
-        // 탭 선택 함수
-        function selectStatusTab(statusId) {
-            // 기존 활성 탭 비활성화
-            document.querySelectorAll('.status-tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            
-            // 클릭된 탭 활성화
-            event.target.classList.add('active');
-            
-            // 상태 필터 적용
-            window.currentStatusTab = statusId;
-            
-            // 로딩 표시
-            showTableLoading();
-            
-            // 서버에 요청하여 필터링된 데이터 가져오기
-            loadFilteredData(statusId);
-            
-            // URL을 기본 URL로 변경 (쿼리스트링 제거)
-            const baseUrl = window.location.origin + '/sales/diary/';
-            window.history.pushState({}, '', baseUrl);
-        }
-        
-        // 테이블 로딩 표시
-        function showTableLoading() {
-            const tableView = document.getElementById('tableView');
-            if (tableView) {
-                tableView.innerHTML = `
-                    <div style="text-align: center; padding: 40px; color: #6c757d;">
-                        <div style="margin-bottom: 10px;">데이터를 불러오는 중...</div>
-                        <div style="width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #007bff; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto;"></div>
-                    </div>
-                    <style>
-                        @keyframes spin {
-                            0% { transform: rotate(0deg); }
-                            100% { transform: rotate(360deg); }
-                        }
-                    </style>
-                `;
-            }
-        }
-        
-        // 필터링된 데이터 로드
-        function loadFilteredData(statusId) {
-            const url = new URL('/sales/entry_table_partial/', window.location.origin);
-            if (statusId !== null) {
-                url.searchParams.set('status_id', statusId);
-            }
-
-            fetch(url)
-                .then(response => {
-                    if (!response.ok) throw new Error('Network response was not ok');
-                    return response.text();
-                })
-                .then(html => {
-                    // 그냥 tableView에 바로 innerHTML로 table만 넣는다!
-                    const currentTable = document.querySelector('#tableView');
-                    if (currentTable) {
-                        currentTable.innerHTML = html;
-
-                        // 테이블 이벤트 재바인딩
-                        if (typeof bindTableCellEvents === 'function') {
-                            bindTableCellEvents();
-                        }
-                        
-                        // 드래그앤드롭 재초기화 추가
-                        if (typeof reinitializeDragDrop === 'function') {
-                            reinitializeDragDrop();
-                        }
-                        
-                        // 행 드래그앤드롭 재초기화 추가
-                        if (typeof reinitializeRowDragDrop === 'function') {
-                            reinitializeRowDragDrop();
-                        }
-                        
-                        updateFilterStatus();
-                        initializeTableData();
-                    }
-                })
-                .catch(error => {
-                    console.error('데이터 로드 오류:', error);
-                    // 오류 시 기본 테이블 표시
-                    const tableView = document.getElementById('tableView');
-                    if (tableView) {
-                        tableView.innerHTML = `
-                            <div style="text-align: center; padding: 40px; color: #dc3545;">
-                                데이터를 불러오는 중 오류가 발생했습니다.<br>
-                                <button onclick="location.reload()" style="margin-top: 10px; padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                                    페이지 새로고침
-                                </button>
-                            </div>
-                        `;
-                    }
-                });
-        }
-        
-        // 상태 필터 적용 함수
-        function applyStatusFilter() {
-            if (!window.statusAttributeName) return;
-            
-            const tbody = document.getElementById('entryTbody');
-            if (!tbody) return;
-            
-            const rows = tbody.querySelectorAll('tr[data-id]');
-            console.log('상태 필터 적용:', {
-                statusAttributeName: window.statusAttributeName,
-                currentStatusTab: window.currentStatusTab,
-                totalRows: rows.length
-            });
-            
-            rows.forEach(row => {
-                const statusCell = row.querySelector(`td[data-field="${window.statusAttributeName}"]`);
-                if (!statusCell) {
-                    console.log('상태 셀을 찾을 수 없음:', row);
-                    row.style.display = 'none';
-                    return;
-                }
-                
-                const statusValue = statusCell.getAttribute('data-value');
-                console.log('행 상태 값:', {
-                    rowId: row.getAttribute('data-id'),
-                    statusValue: statusValue,
-                    expectedValue: window.currentStatusTab
-                });
-                
-                if (window.currentStatusTab === null) {
-                    // 전체 탭 선택 시 모든 행 표시
-                    row.style.display = '';
-                } else {
-                    // 특정 상태 탭 선택 시 해당 상태의 행만 표시
-                    let shouldShow = false;
-                    
-                    if (statusValue) {
-                        try {
-                            // JSON 배열 형태인지 확인
-                            const parsedValue = JSON.parse(statusValue);
-                            if (Array.isArray(parsedValue)) {
-                                // 배열인 경우 해당 값이 포함되어 있는지 확인
-                                shouldShow = parsedValue.includes(window.currentStatusTab);
-                            } else {
-                                // 단일 값인 경우 직접 비교
-                                shouldShow = parsedValue === window.currentStatusTab;
-                            }
-                        } catch (e) {
-                            // JSON이 아닌 경우 문자열로 직접 비교
-                            // 숫자와 문자열 모두 비교 시도
-                            shouldShow = statusValue === window.currentStatusTab.toString() || 
-                                       statusValue === window.currentStatusTab;
-                        }
-                    }
-                    
-                    row.style.display = shouldShow ? '' : 'none';
-                }
-            });
-            
-            // 필터 상태 업데이트
-            updateFilterStatus();
-        }
-        
-        // hexToRgba 함수 (이미 존재하는 경우 제외)
-        if (typeof hexToRgba === 'undefined') {
-            function hexToRgba(hex, alpha) {
-                const r = parseInt(hex.slice(1, 3), 16);
-                const g = parseInt(hex.slice(3, 5), 16);
-                const b = parseInt(hex.slice(5, 7), 16);
-                return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-            }
-        }
-        
-        // 속성 삭제 함수
-        function deleteAttribute(attrName) {
-            if (!confirm(`"${attrName}" 속성을 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없으며, 해당 속성과 관련된 모든 데이터가 삭제됩니다.`)) {
-                return;
-            }
-            
-            fetch('/sales/delete_attribute/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: `name=${encodeURIComponent(attrName)}`
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert(data.message);
-                    // 페이지 새로고침으로 변경사항 반영
-                    location.reload();
-                    
-                    // 칸반보드 필터 업데이트
-                    refreshKanbanFilter();
-                    
-                    // 캘린더 설정 업데이트
-                    refreshCalendarSettings();
-                } else {
-                    alert('오류: ' + data.error);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('속성 삭제 중 오류가 발생했습니다.');
-            });
-        }
-        
         // 속성 관리 모달 관련 변수들
         window.currentModalStatusId = 'all';
         window.statusOptions = [];
         window.allAttributes = [];
-        
-        
-        // 속성 관리 모달 닫기
-        function closeAttributeVisibilityModal() {
-            console.log('속성 관리 모달 닫기');
-            const modal = document.getElementById('attributeVisibilityModal');
-            modal.style.display = 'none';
-        }
-        
-        // 모달용 상태 탭 로드
-        function loadStatusTabsForModal() {
-            console.log('모달용 상태 탭 로드 시작');
-            fetch('/sales/get_status_tabs/')
-                .then(response => response.json())
-                .then(data => {
-                    console.log('상태 탭 데이터 응답:', data);
-                    if (data.success) {
-                        window.statusOptions = data.options;
-                        createStatusTabsForModal(data.options);
-                        loadAttributesForModal();
-                    } else {
-                        console.error('상태 탭 데이터 로드 실패:', data.error);
-                    }
-                })
-                .catch(error => {
-                    console.error('상태 탭 로드 오류:', error);
-                });
-        }
-        
-        // 모달용 상태 탭 생성
-        function createStatusTabsForModal(options) {
-            console.log('모달용 상태 탭 생성:', options);
-            const container = document.getElementById('statusTabsContainer');
-            if (!container) {
-                console.error('statusTabsContainer를 찾을 수 없습니다.');
-                return;
-            }
-            
-            container.innerHTML = '';
-            
-            // 전체 탭 추가
-            const allTab = document.createElement('button');
-            allTab.className = 'modal-status-tab active';
-            allTab.textContent = '전체';
-            allTab.onclick = () => selectModalStatusTab('all');
-            container.appendChild(allTab);
-            
-            // 각 상태별 탭 추가
-            options.forEach(option => {
-                const tab = document.createElement('button');
-                tab.className = 'modal-status-tab';
-                tab.textContent = option.name;
-                tab.style.backgroundColor = option.color ? hexToRgba(option.color, 0.18) : '#f8f9fa';
-                tab.style.color = '#333';
-                tab.onclick = () => selectModalStatusTab(option.id);
-                container.appendChild(tab);
-            });
-        }
-        
-        // 모달에서 상태 탭 선택
-        function selectModalStatusTab(statusId) {
-            console.log('모달에서 상태 탭 선택:', statusId);
-            // 기존 활성 탭 비활성화
-            document.querySelectorAll('.modal-status-tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            
-            // 클릭된 탭 활성화
-            event.target.classList.add('active');
-            
-            // 현재 상태 ID 업데이트
-            window.currentModalStatusId = statusId;
-            
-            console.log('현재 모달 상태 ID 업데이트:', window.currentModalStatusId);
-            
-            // 속성 데이터 다시 로드하여 최신 상태 반영
-            loadAttributesForModal();
-        }
-        
-        // 모달용 속성 데이터 로드
-        function loadAttributesForModal() {
-            console.log('모달용 속성 데이터 로드 시작');
-            fetch('/sales/get_all_attributes/')
-                .then(response => response.json())
-                .then(data => {
-                    console.log('속성 데이터 응답:', data);
-                    if (data.success) {
-                        window.allAttributes = data.attributes;
-                        updateAttributesListForModal();
-                    } else {
-                        console.error('속성 데이터 로드 실패:', data.error);
-                    }
-                })
-                .catch(error => {
-                    console.error('속성 로드 오류:', error);
-                });
-        }
-        
-        // 모달용 속성 목록 업데이트
-        function updateAttributesListForModal() {
-            console.log('모달용 속성 목록 업데이트 시작');
-            const container = document.getElementById('attributesListContainer');
-            if (!container) {
-                console.error('attributesListContainer를 찾을 수 없습니다.');
-                return;
-            }
-            
-            console.log('현재 속성들:', window.allAttributes);
-            console.log('현재 상태 ID:', window.currentModalStatusId);
-            
-            container.innerHTML = '';
-            
-            if (!window.allAttributes || window.allAttributes.length === 0) {
-                container.innerHTML = '<div style="text-align:center;color:#6c757d;padding:20px;">속성을 불러오는 중...</div>';
-                return;
-            }
-            
-            window.allAttributes.forEach(attr => {
-                const attrDiv = document.createElement('div');
-                attrDiv.style.cssText = 'display:flex;align-items:center;padding:10px;border-bottom:1px solid #eee;';
-                
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkbox.id = `attr_${attr.id}_${window.currentModalStatusId}`; // 상태별로 고유한 ID
-                checkbox.className = 'attribute-visibility-checkbox';
-                
-                // 현재 상태에서의 표시 여부 설정
-                let isChecked = false;
-                if (window.currentModalStatusId === 'all') {
-                    // 전체 탭은 "0" 키로 관리되는 독립적인 상태
-                    isChecked = attr.view_select && attr.view_select['0'] === true;
-                } else {
-                    // 특정 상태 탭에서는 해당 상태만 확인
-                    isChecked = attr.view_select && attr.view_select[window.currentModalStatusId] === true;
-                }
-                checkbox.checked = isChecked;
-                
-                // 체크박스 변경 이벤트 추가
-                checkbox.addEventListener('change', function() {
-                    saveSingleAttributeSetting(attr.id, window.currentModalStatusId, this.checked);
-                });
-                
-                console.log(`속성 ${attr.name}: view_select=${JSON.stringify(attr.view_select)}, checked=${isChecked}`);
-                
-                const label = document.createElement('label');
-                label.htmlFor = `attr_${attr.id}_${window.currentModalStatusId}`;
-                label.textContent = attr.name;
-                label.style.flex = '1';
-                
-                attrDiv.appendChild(checkbox);
-                attrDiv.appendChild(label);
-                container.appendChild(attrDiv);
-            });
-        }
-        
-        // 단일 속성 설정 저장
-        function saveSingleAttributeSetting(attrId, statusId, isVisible) {
-            console.log(`단일 속성 설정 저장: 속성 ID=${attrId}, 상태 ID=${statusId}, 표시=${isVisible}`);
-            
-            // 해당 속성 찾기
-            const attr = window.allAttributes.find(a => a.id === attrId);
-            if (!attr) {
-                console.error('속성을 찾을 수 없습니다:', attrId);
-                return;
-            }
-            
-            const settings = {};
-            settings[attrId] = { ...attr.view_select };
-            
-            if (statusId === 'all') {
-                settings[attrId]['0'] = isVisible;
-            } else {
-                settings[attrId][statusId] = isVisible;
-            }
-            
-            console.log('저장할 설정:', settings);
-            
-            // 서버에 저장
-            fetch('/sales/update_attribute_visibility/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCsrfToken()
-                },
-                body: JSON.stringify({ settings: settings })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    console.log(`속성 설정 저장 성공: ${attr.name} (${statusId})`);
-                    
-                    // 속성 데이터 업데이트
-                    if (attr.view_select) {
-                        if (statusId === 'all') {
-                            attr.view_select['0'] = isVisible;
-                        } else {
-                            attr.view_select[statusId] = isVisible;
-                        }
-                    } else {
-                        attr.view_select = {};
-                        if (statusId === 'all') {
-                            attr.view_select['0'] = isVisible;
-                        } else {
-                            attr.view_select[statusId] = isVisible;
-                        }
-                    }
-                    
-                    // 테이블 즉시 새로고침
-                    refreshTableWithStatusFilter();
-                    
-                } else {
-                    console.error('설정 저장 실패:', data.error);
-                    alert('설정 저장 실패: ' + data.error);
-                    
-                    // 실패 시 체크박스 상태 되돌리기
-                    const checkbox = document.getElementById(`attr_${attrId}_${statusId}`);
-                    if (checkbox) {
-                        checkbox.checked = !isVisible;
-                    }
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('설정 저장 중 오류가 발생했습니다.');
-                
-                // 실패 시 체크박스 상태 되돌리기
-                const checkbox = document.getElementById(`attr_${attrId}_${statusId}`);
-                if (checkbox) {
-                    checkbox.checked = !isVisible;
-                }
-            });
-        }
-        
-        // 상태 필터를 고려한 테이블 새로고침
-        function refreshTableWithStatusFilter() {
-            // 현재 상태 ID를 URL 파라미터로 전달
-            const url = new URL('/sales/entry_table_partial/', window.location.origin);
-            if (window.currentStatusTab !== null) {
-                url.searchParams.set('status_id', window.currentStatusTab);
-            }
-            
-            fetch(url)
-                .then(response => response.text())
-                .then(html => {
-                    document.getElementById('tableView').innerHTML = html;
-                    // 필요시 테이블 관련 이벤트 재바인딩
-                    if (typeof bindTableCellEvents === 'function') bindTableCellEvents();
-                    
-                    // 드래그앤드롭 재초기화 추가
-                    if (typeof reinitializeDragDrop === 'function') {
-                        reinitializeDragDrop();
-                    }
-                    
-                    // 행 드래그앤드롭 재초기화 추가
-                    if (typeof reinitializeRowDragDrop === 'function') {
-                        reinitializeRowDragDrop();
-                    }
-                    
-                    // 상태 필터가 활성화되어 있으면 즉시 적용
-                    if (window.currentStatusTab !== null) {
-                        setTimeout(() => {
-                            applyStatusFilter();
-                        }, 100);
-                    }
-                    
-                    // 필터 상태 업데이트
-                    updateFilterStatus();
-                })
-                .catch(error => {
-                    console.error('테이블 새로고침 오류:', error);
-                });
-        }
-        
-        // 탭 전환 함수
-        function switchTab(tabName) {
-            // 모든 탭 콘텐츠 숨기기
-            document.getElementById('visibilityTabContent').style.display = 'none';
-            document.getElementById('cascadeTabContent').style.display = 'none';
-            
-            // 모든 탭 버튼 비활성화
-            document.getElementById('visibilityTab').style.background = '#6c757d';
-            document.getElementById('cascadeTab').style.background = '#6c757d';
-            
-            // 선택된 탭 콘텐츠 표시
-            document.getElementById(tabName + 'TabContent').style.display = 'block';
-            document.getElementById(tabName + 'Tab').style.background = '#007bff';
-            
-            // 상태별 표시 관리 탭이 선택된 경우 초기화
-            if (tabName === 'visibility') {
-                loadStatusTabsForModal();
-            }
-        }
-        
-        // CSRF 토큰 가져오기
-        function getCsrfToken() {
-            const name = 'csrftoken';
-            let cookieValue = null;
-            if (document.cookie && document.cookie !== '') {
-                const cookies = document.cookie.split(';');
-                for (let i = 0; i < cookies.length; i++) {
-                    const cookie = cookies[i].trim();
-                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                        break;
-                    }
-                }
-            }
-            return cookieValue;
-        }
     </script>
 </head>
 <body>
 <div class="container">
     <h1>영업 관리표</h1>
     
-    
-    
     <!-- 필터 컨트롤 -->
     <div class="filter-controls">
         <span class="filter-status" id="filterStatus">전체 데이터 표시 중</span>
-        <div style="display: flex; gap: 10px; align-items: center;">
-            <button class="attribute-visibility-btn" onclick="openAttributeVisibilityModal()" 
-                    style="padding: 8px 12px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <button class="attribute-visibility-btn" onclick="openAttributeVisibilityModal()" 
+                style="padding: 8px 12px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
                 속성 관리
             </button>
             <button class="clear-filters-btn" onclick="clearAllFilters()">필터 초기화</button>
+            <button id="bulkDeleteBtn" class="bulk-delete-btn" onclick="bulkDeleteRows()" 
+                    style="padding: 8px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; display: none;">
+                🗑️ 선택된 행 삭제 (<span id="selectedCount">0</span>)
+            </button>
         </div>
     </div>
 
@@ -893,14 +149,17 @@
         <table id="entryTable" style="width:auto; min-width:unset;">
             <thead>
             <tr>
-                <th class="drag-cell"></th>
+                <th class="drag-cell">
+                    <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this)" style="margin-right: 8px;">
+                    <label for="selectAllCheckbox" style="font-size:12px; color: #666;">전체</label>
+                </th>
                 {% for attr in attributes %}
                     {% if forloop.last and attr.assential %}
-                        <th data-column="{{ attr.name }}" class="attribute-header essential-separator" data-essential="{{ attr.assential|yesno:'true,false' }}">
+                        <th data-column="{{ attr.name }}" class="attribute-header essential-separator" data-essential="{{ attr.assential|yesno:'true,false' }}" style="width: {{ attr.width }}px; min-width: {{ attr.width }}px; max-width: {{ attr.width }}px;">
                     {% elif forloop.first and not attr.assential %}
-                        <th data-column="{{ attr.name }}" class="attribute-header non-essential-start" data-essential="{{ attr.assential|yesno:'true,false' }}">
+                        <th data-column="{{ attr.name }}" class="attribute-header non-essential-start" data-essential="{{ attr.assential|yesno:'true,false' }}" style="width: {{ attr.width }}px; min-width: {{ attr.width }}px; max-width: {{ attr.width }}px;">
                     {% else %}
-                        <th data-column="{{ attr.name }}" class="attribute-header" data-essential="{{ attr.assential|yesno:'true,false' }}">
+                        <th data-column="{{ attr.name }}" class="attribute-header" data-essential="{{ attr.assential|yesno:'true,false' }}" style="width: {{ attr.width }}px; min-width: {{ attr.width }}px; max-width: {{ attr.width }}px;">
                     {% endif %}
                         <div class="sort-filter-container">
                             <div class="header-content">
@@ -943,6 +202,7 @@
                 <tr data-id="{{ row.id }}">
                     <td class="drag-cell">
                         <div class="button-container">
+                            <input type="checkbox" class="row-checkbox" data-row-id="{{ row.id }}" onchange="updateBulkDeleteButton()" style="margin-right: 8px;">
                             <button class="delete-row-btn" onclick="deleteRow('{{ row.id }}')" title="행 삭제">×</button>
                             <button class="duplicate-row-btn" onclick="duplicateRow('{{ row.id }}')" title="행 복제">📋</button>
                             <span class="drag-handle">⋮⋮⋮</span>
@@ -1015,36 +275,9 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td class="drag-cell">
-                        <div class="button-container">
-                            <span class="drag-handle">⋮⋮⋮</span>
-                        </div>
+                    <td colspan="{{ attributes|length|add:2 }}" style="text-align: center; padding: 40px; color: #6c757d; font-size: 14px; background: #f8f9fa;">
+                        작성된 데이터가 없습니다.
                     </td>
-                    {% for attr in attributes %}
-                        {% if attr.name == '회사명' %}
-                            <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" class="{% if attr.assential %}essential-column{% endif %}">
-                                <div class="name-container">
-                                    <div class="name-text">작성된 데이터가 없습니다.</div>
-                                    <div class="more-btn-wrapper"><div class="more-btn" style="cursor:pointer;">⋯</div></div>
-                                </div>
-                            </td>
-                        {% elif attr.attributeType_name == 'dropdown' %}
-                            <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" class="{% if attr.assential %}essential-column{% endif %}">
-                                
-                            </td>
-                        {% elif attr.attributeType_name == 'datetime' %}
-                            <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" class="{% if attr.assential %}essential-column{% endif %}">
-                                
-                            </td>
-                        {% elif attr.attributeType_name == 'file' %}
-                            <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" class="{% if attr.assential %}essential-column{% endif %}">
-                                <span style="color: #6c757d; font-size: 12px;">파일 없음</span>
-                            </td>
-                        {% else %}
-                            <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" class="{% if attr.assential %}essential-column{% endif %}"></td>
-                        {% endif %}
-                    {% endfor %}
-                    <td class="add-attribute-cell" style="background:#f8f9fa;"></td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -1411,6 +644,8 @@
 <script src="{% static 'diary/column_drag_drop.js' %}"></script>
 <script src="{% static 'diary/add_attr.js' %}"></script>
 <script src="{% static 'diary/table_filter.js' %}"></script>
+<script src="{% static 'diary/column_resize.js' %}"></script>
+<script src="{% static 'diary/status.js' %}"></script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -2453,6 +1688,11 @@ function refreshTable() {
             // 드래그앤드롭 재초기화 추가
             if (typeof reinitializeDragDrop === 'function') {
                 reinitializeDragDrop();
+            }
+            
+            // 컬럼 리사이저 재초기화
+            if (typeof reinitializeColumnResizer === 'function') {
+                reinitializeColumnResizer();
             }
             
             // 탭 상태 재적용 - 상태 필터가 활성화되어 있으면 즉시 적용

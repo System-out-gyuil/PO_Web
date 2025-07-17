@@ -2,7 +2,7 @@
 <style>
 .dropdown-pill {
   display: inline-block;
-  padding: 4px 14px;
+  padding: 4px;
   border-radius: 16px;
   font-size: 13px;
   font-weight: 500;
@@ -11,22 +11,82 @@
   background: #eee;
   color: #333;
 }
+
+/* 컬럼 리사이즈 핸들 스타일 */
+.column-resize-handle {
+    position: absolute;
+    right: -3px;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+    cursor: col-resize;
+    background: transparent;
+    z-index: 10;
+    transition: background-color 0.2s ease, opacity 0.2s ease;
+    will-change: background-color, opacity;
+}
+
+.column-resize-handle:hover {
+    background: #007bff !important;
+    opacity: 0.5 !important;
+}
+
+/* 리사이즈 중인 컬럼 스타일 */
+th.resizing {
+    background-color: #f8f9fa !important;
+    border-right: 2px solid #007bff !important;
+    will-change: width;
+}
+
+/* 테이블 헤더 상대 위치 설정 */
+#entryTable thead th {
+    position: relative;
+    will-change: width;
+}
+
+/* 속성 추가 열은 리사이즈 제외 */
+.add-attribute-th {
+    position: relative !important;
+}
+
+.add-attribute-th .column-resize-handle {
+    display: none;
+}
+
+/* 테이블 성능 최적화 */
+#entryTable {
+    will-change: auto;
+}
+
+#entryTable.resizing {
+    will-change: layout;
+}
 </style>
 <table id="entryTable" style="width:auto; min-width:unset;">
     <thead class="sticky">
     <tr>
-        <th class="drag-cell"></th>
+        <th class="drag-cell">
+            <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this)" style="margin-right: 8px;">
+            <label for="selectAllCheckbox" style="font-size:12px; color: #666;">전체</label>
+        </th>
         {% for attr in attributes %}
             {% if forloop.last and attr.assential %}
-                <th data-column="{{ attr.name }}" class="attribute-header essential-separator" data-essential="{{ attr.assential|yesno:'true,false' }}">
+                <th data-column="{{ attr.name }}" class="attribute-header essential-separator" data-essential="{{ attr.assential|yesno:'true,false' }}" style="width: {{ attr.width }}px; min-width: {{ attr.width }}px; max-width: {{ attr.width }}px;">
             {% elif forloop.first and not attr.assential %}
-                <th data-column="{{ attr.name }}" class="attribute-header non-essential-start" data-essential="{{ attr.assential|yesno:'true,false' }}">
+                <th data-column="{{ attr.name }}" class="attribute-header non-essential-start" data-essential="{{ attr.assential|yesno:'true,false' }}" style="width: {{ attr.width }}px; min-width: {{ attr.width }}px; max-width: {{ attr.width }}px;">
             {% else %}
-                <th data-column="{{ attr.name }}" class="attribute-header" data-essential="{{ attr.assential|yesno:'true,false' }}">
+                <th data-column="{{ attr.name }}" class="attribute-header" data-essential="{{ attr.assential|yesno:'true,false' }}" style="width: {{ attr.width }}px; min-width: {{ attr.width }}px; max-width: {{ attr.width }}px;">
             {% endif %}
                 <div class="sort-filter-container">
                     <div class="header-content">
-                        <span>{{ attr.name }}</span>
+                        {% if not attr.assential %}
+                            <div class="attribute-name-editable" data-attribute-name="{{ attr.name }}">
+                                <span class="attribute-name-text">{{ attr.name }}</span>
+                                <button class="edit-attribute-name-btn" onclick="editAttributeName('{{ attr.name }}')" title="속성명 수정">✏️</button>
+                            </div>
+                        {% else %}
+                            <span>{{ attr.name }}</span>
+                        {% endif %}
                         <div class="header-buttons">
                             {% if not attr.assential %}
                                 <button class="delete-attribute-btn" onclick="deleteAttribute('{{ attr.name }}')" title="속성 삭제">
@@ -53,6 +113,7 @@
         <tr data-id="{{ row.id }}">
             <td class="drag-cell">
                 <div class="button-container">
+                    <input type="checkbox" class="row-checkbox" data-row-id="{{ row.id }}" onchange="updateBulkDeleteButton()" style="margin-right: 8px;">
                     <button class="delete-row-btn" onclick="deleteRow('{{ row.id }}')" title="행 삭제">×</button>
                     <button class="duplicate-row-btn" onclick="duplicateRow('{{ row.id }}')" title="행 복제">📋</button>
                     <span class="drag-handle">⋮⋮⋮</span>
@@ -125,39 +186,19 @@
         </tr>
         {% empty %}
         <tr>
-            <td class="drag-cell">
-                <div class="button-container">
-                    <span class="drag-handle">⋮⋮⋮</span>
-                </div>
+            <td colspan="{{ attributes|length|add:2 }}" style="text-align: center; padding: 40px; color: #6c757d; font-size: 14px; background: #f8f9fa;">
+                작성된 데이터가 없습니다.
             </td>
-            {% for attr in attributes %}
-                {% if attr.name == '회사명' %}
-                    <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" class="{% if attr.assential %}essential-column{% endif %}">
-                        <div class="name-container">
-                            <div class="name-text">작성된 데이터가 없습니다.</div>
-                            <div class="more-btn-wrapper"><div class="more-btn" style="cursor:pointer;">⋯</div></div>
-                        </div>
-                    </td>
-                {% elif attr.attributeType_name == 'dropdown' %}
-                    <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" class="{% if attr.assential %}essential-column{% endif %}">
-                        <div class="dropdown-pill" style="background:#eee; color:#333; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center; border:1px solid #dee2e6;">
-                            선택 없음
-                        </div>
-                    </td>
-                {% elif attr.attributeType_name == 'datetime' %}
-                    <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" class="{% if attr.assential %}essential-column{% endif %}">
-                        
-                    </td>
-                {% elif attr.attributeType_name == 'file' %}
-                    <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" class="{% if attr.assential %}essential-column{% endif %}">
-                        <span style="color: #6c757d; font-size: 12px;">파일 없음</span>
-                    </td>
-                {% else %}
-                    <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" class="{% if attr.assential %}essential-column{% endif %}"></td>
-                {% endif %}
-            {% endfor %}
-            <td class="add-attribute-cell" style="background:#f8f9fa;"></td>
         </tr>
         {% endfor %}
     </tbody>
-</table> 
+</table>
+
+{% comment %} <script>
+// 테이블 새로고침 후 컬럼 리사이저 재초기화
+if (typeof reinitializeColumnResizer === 'function') {
+    setTimeout(() => {
+        reinitializeColumnResizer();
+    }, 200);
+}
+</script>  {% endcomment %}

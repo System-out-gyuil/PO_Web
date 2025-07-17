@@ -1,7 +1,7 @@
 from django.urls import path
 from . import views
 from .views import upload_note_file, delete_note_file, update_note_order_and_notes, get_file_preview_url, get_file_preview_url_note
-from .login_views import LoginView, LogoutView
+from .login_views import LoginView, LogoutView, SignupView
 from .main_views import DiaryMainView
 from .file_handler import upload_file, delete_file, download_file
 from .calendar_handlers import get_datetime_attributes, get_calendar_settings, save_calendar_settings, calendar_events
@@ -15,6 +15,7 @@ urlpatterns = [
     path('', DiaryMainView.as_view(), name='diary_main'),
     path('login/', LoginView.as_view(), name='login'),
     path('logout/', LogoutView.as_view(), name='logout'),
+    path('signup/', SignupView.as_view(), name='signup'),
     path('diary/', views.diary_list, name='diary_list'),
     path('fu_events/', views.fu_events, name='fu_events'),
     path('fu_memo/<int:entry_id>/', views.fu_memo, name='fu_memo'),
@@ -90,4 +91,6 @@ urlpatterns = [
     path('get_all_attributes/', views.get_all_attributes, name='get_all_attributes'),
     path('update_attribute_visibility/', update_attribute_visibility, name='update_attribute_visibility'),
     path('get_dropdown_attributes/', get_dropdown_attributes, name='get_dropdown_attributes'),
+    
+    path('save_column_width/', views.save_column_width, name='save_column_width'),
 ] 

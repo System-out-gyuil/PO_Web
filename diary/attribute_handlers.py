@@ -309,6 +309,9 @@ def delete_attribute_value(request):
         try:
             row_id = request.POST.get('id')
             field_name = request.POST.get('field')
+
+            user_id = request.session.get('diary_member_id')
+            user = User.objects.get(id=user_id)
             
             if not row_id or not field_name:
                 return JsonResponse({
@@ -318,7 +321,7 @@ def delete_attribute_value(request):
             
             # 해당 속성 찾기
             try:
-                attribute = Attribute.objects.get(name=field_name)
+                attribute = Attribute.objects.get(name=field_name, user=user)
             except Attribute.DoesNotExist:
                 return JsonResponse({
                     'success': False,
@@ -343,3 +346,27 @@ def delete_attribute_value(request):
             })
     
     return JsonResponse({'error': 'Invalid method'}, status=405)
+def filter_attributes_by_status(queryset, status_id='all'):
+    """상태 ID에 따라 속성들을 필터링하는 함수"""
+    filtered_attrs = []
+    
+    for attr in queryset:
+        
+        if isinstance(attr.view_select, dict):
+            if status_id == 'all':
+                # 전체 탭에서는 "0" 키가 True인 속성들만 표시
+                is_visible = attr.view_select.get('0', False)
+                if is_visible:
+                    filtered_attrs.append(attr)
+            else:
+                # 특정 상태 탭에서는 해당 상태 ID가 True인 속성들만 표시
+                is_visible = attr.view_select.get(str(status_id), False)
+                if is_visible:
+                    filtered_attrs.append(attr)
+        elif isinstance(attr.view_select, bool) and attr.view_select:
+            # 기존 boolean 형태와의 호환성을 위해
+            filtered_attrs.append(attr)
+        else:
+            pass
+    
+    return filtered_attrs

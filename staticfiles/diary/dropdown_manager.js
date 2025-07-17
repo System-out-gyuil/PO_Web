@@ -610,7 +610,7 @@ function bindDropdownModalEvents(dropdown, fieldType, options) {
                   'Content-Type': 'application/x-www-form-urlencoded',
                   'X-CSRFToken': getCsrfToken()
               },
-              body: `field=${encodeURIComponent(fieldType)}&name=${encodeURIComponent(newOptionName)}&color=${encodeURIComponent('#007bff')}`
+              body: `field=${encodeURIComponent(fieldType)}&name=${encodeURIComponent(newOptionName)}`
           })
           .then(response => response.json())
           .then(data => {
