@@ -208,7 +208,7 @@ input, select {
 .drag-handle { 
     display: none; 
     cursor: grab; 
-    font-size: 16px; 
+    font-size: 17px; 
     color: #bbb; 
     user-select: none;
     transition: color 0.2s;
@@ -963,7 +963,7 @@ tr:hover .delete-row-btn {
 }
 
 .drag-handle {
-    font-size: 16px;
+    font-size: 17px;
     color: #999;
     cursor: move;
     user-select: none;
@@ -1162,4 +1162,102 @@ tr:hover .drag-handle {
     width: 16px;
     height: 16px;
     cursor: pointer;
+}
+
+/* 첫 번째 열 스타일 개선 */
+.drag-cell {
+    min-width: 140px !important;
+    width: 140px !important;
+    max-width: 140px !important;
+    padding: 8px 12px !important;
+    background-color: #f8f9fa;
+    border-right: 2px solid #dee2e6;
+}
+
+/* 헤더의 전체 선택 영역 */
+.select-all-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+}
+
+.select-all-container label {
+    font-size: 12px;
+    color: #495057;
+    font-weight: 500;
+    margin: 0;
+    cursor: pointer;
+}
+
+/* 셀 내부 버튼 컨테이너 */
+.cell-button-container {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: nowrap;
+}
+
+/* 체크박스 스타일 */
+.row-checkbox, #selectAllCheckbox {
+    margin: 0;
+    cursor: pointer;
+    width: 20px;
+    height: 20px;
+}
+
+/* 버튼 공통 스타일 */
+.action-btn {
+    padding: 0;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 삭제 버튼 */
+.delete-row-btn {
+    background: #dc3545;
+    color: white;
+}
+
+.delete-row-btn:hover {
+    background: #c82333;
+    transform: scale(1.05);
+}
+
+/* 복제 버튼 */
+.duplicate-row-btn {
+    background: #28a745;
+    color: white;
+}
+
+.duplicate-row-btn:hover {
+    background: #218838;
+    transform: scale(1.05);
+}
+
+/* 드래그 핸들 */
+.drag-handle {
+    color: #6c757d;
+    cursor: move;
+    font-size: 11px;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 3px;
+    transition: background-color 0.2s ease;
+}
+
+.drag-handle:hover {
+    background-color: #e9ecef;
 }
