@@ -95,7 +95,8 @@ class SignupView(View):
             '나이',        # 7. baseattribute
             '업종',        # 8. baseattribute
             '경력',        # 9. baseattribute
-            '직원수'       # 10. baseattribute
+            '직원수',      # 10. baseattribute
+            '추천자금'
         ]
         
         # sort_order를 위한 카운터
