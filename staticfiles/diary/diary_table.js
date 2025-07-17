@@ -566,6 +566,9 @@
                   currentTable.innerHTML = newTable.innerHTML;
                   console.log('테이블 내용 교체 완료');
                   
+                  // 체크박스 상태 초기화
+                  resetCheckboxes();
+                  
                   // 스크롤 위치 복원
                   const tableView = document.getElementById('tableView');
                   if (tableView) {
@@ -1867,4 +1870,258 @@
               console.error('행 드래그앤드롭 재초기화 오류:', error);
           }
       }, 200);
-  }
+}
+  
+// 테이블 로딩 표시
+function showTableLoading() {
+    const tableView = document.getElementById('tableView');
+    if (tableView) {
+        tableView.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: #6c757d;">
+                <div style="margin-bottom: 10px;">데이터를 불러오는 중...</div>
+                <div style="width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #007bff; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto;"></div>
+            </div>
+            <style>
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+            </style>
+        `;
+    }
+}
+
+// 속성 삭제 함수
+function deleteAttribute(attrName) {
+    if (!confirm(`"${attrName}" 속성을 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없으며, 해당 속성과 관련된 모든 데이터가 삭제됩니다.`)) {
+        return;
+    }
+    
+    fetch('/sales/delete_attribute/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `name=${encodeURIComponent(attrName)}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            // 페이지 새로고침으로 변경사항 반영
+            location.reload();
+            
+            // 칸반보드 필터 업데이트
+            refreshKanbanFilter();
+            
+            // 캘린더 설정 업데이트
+            refreshCalendarSettings();
+        } else {
+            alert('오류: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('속성 삭제 중 오류가 발생했습니다.');
+    });
+}
+
+// 속성 관리 모달 닫기
+function closeAttributeVisibilityModal() {
+    console.log('속성 관리 모달 닫기');
+    const modal = document.getElementById('attributeVisibilityModal');
+    modal.style.display = 'none';
+}
+
+// 다중 선택 관련 함수들
+function toggleSelectAll(checkbox) {
+    const rowCheckboxes = document.querySelectorAll('.row-checkbox');
+    rowCheckboxes.forEach(cb => {
+        cb.checked = checkbox.checked;
+    });
+    updateBulkDeleteButton();
+}
+
+function updateBulkDeleteButton() {
+    const selectedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
+    const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+    const selectedCountSpan = document.getElementById('selectedCount');
+    
+    if (selectedCheckboxes.length > 0) {
+        bulkDeleteBtn.style.display = 'inline-block';
+        selectedCountSpan.textContent = selectedCheckboxes.length;
+    } else {
+        bulkDeleteBtn.style.display = 'none';
+        selectedCountSpan.textContent = '0';
+    }
+}
+
+function bulkDeleteRows() {
+    const selectedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
+    
+    if (selectedCheckboxes.length === 0) {
+        alert('삭제할 행을 선택해주세요.');
+        return;
+    }
+    
+    const selectedRowIds = Array.from(selectedCheckboxes).map(cb => cb.getAttribute('data-row-id'));
+    
+    if (!confirm(`선택된 ${selectedRowIds.length}개 행을 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) {
+        return;
+    }
+    
+    // 로딩 표시
+    const loadingNotification = document.createElement('div');
+    loadingNotification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #007bff;
+        color: white;
+        padding: 15px;
+        border-radius: 6px;
+        z-index: 1000
+        font-size: 14px;
+    `;
+    loadingNotification.textContent = `${selectedRowIds.length}개 행을 삭제하는 중...`;
+    document.body.appendChild(loadingNotification);
+    
+    // 선택된 행들을 순차적으로 삭제
+    let deletedCount = 0;
+    let failedCount = 0;
+    
+    function deleteNextRow(index) {
+        if (index >= selectedRowIds.length) {
+            // 모든 삭제 완료
+            loadingNotification.remove();
+            
+            // 결과 알림
+            const resultMessage = `삭제 완료: ${deletedCount}개 성공, ${failedCount}개 실패`;
+            const resultNotification = document.createElement('div');
+            resultNotification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: ${failedCount === 0 ? '#28a745' : '#dc3545'};
+                color: white;
+                padding: 15px 20px;
+                border-radius: 6px;
+                z-index: 1000
+                font-size: 14px;
+            `;
+            resultNotification.textContent = resultMessage;
+            document.body.appendChild(resultNotification);
+            
+            setTimeout(() => resultNotification.remove(), 3000);
+            
+            // 테이블 새로고침
+            refreshTable();
+            
+            // 칸반보드 새로고침
+            if (window.kanbanAttribute) {
+                refreshKanban();
+            }
+            
+            // 캘린더 업데이트
+            refreshCalendar();
+            
+            // 전체 선택 체크박스 초기화
+            const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+            if (selectAllCheckbox) {
+                selectAllCheckbox.checked = false;
+            }
+            
+            return;
+        }
+        
+        const rowId = selectedRowIds[index];
+        
+        // deleteRow 함수를 직접 호출하지 않고 서버에 삭제 요청
+        fetch('/sales/delete_row/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({
+                row_id: rowId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                deletedCount++;
+            } else {
+                failedCount++;
+                console.error(`행 ${rowId} 삭제 실패:`, data.error);
+            }
+            
+            // 다음 행 삭제
+            deleteNextRow(index + 1);
+        })
+        .catch(error => {
+            console.error(`행 ${rowId} 삭제 중 오류:`, error);
+            failedCount++;
+            deleteNextRow(index + 1);
+        });
+    }
+    
+    // 첫 번째 행부터 삭제 시작
+    deleteNextRow(0);
+}
+
+// 테이블 새로고침 시 체크박스 상태 초기화
+function resetCheckboxes() {
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    const rowCheckboxes = document.querySelectorAll('.row-checkbox');
+    
+    if (selectAllCheckbox) {
+        selectAllCheckbox.checked = false;
+    }
+    
+    rowCheckboxes.forEach(cb => {
+        cb.checked = false;
+    });
+    
+    updateBulkDeleteButton();
+}
+
+// 기존 refreshTable 함수를 수정하여 체크박스 상태 초기화 추가
+function refreshTable() {
+    // 현재 상태 ID를 URL 파라미터로 전달
+    const url = new URL('/sales/entry_table_partial/', window.location.origin);
+    if (window.currentStatusTab !== null) {
+        url.searchParams.set('status_id', window.currentStatusTab);
+    }
+    
+    fetch(url)
+        .then(response => response.text())
+        .then(html => {
+            document.getElementById('tableView').innerHTML = html;
+            
+            // 체크박스 상태 초기화
+            resetCheckboxes();
+            
+            // 필요시 테이블 관련 이벤트 재바인딩
+            if (typeof bindTableCellEvents === 'function') bindTableCellEvents();
+            
+            // 드래그앤드롭 재초기화 추가
+            if (typeof reinitializeDragDrop === 'function') {
+                reinitializeDragDrop();
+            }
+            
+            // 탭 상태 재적용 - 상태 필터가 활성화되어 있으면 즉시 적용
+            if (window.currentStatusTab !== null) {
+                // 약간의 지연 후 상태 필터 적용 (DOM 렌더링 완료 보장)
+                setTimeout(() => {
+                    applyStatusFilter();
+                }, 100);
+            }
+            
+            // 필터 상태 업데이트
+            updateFilterStatus();
+        })
+        .catch(error => {
+            console.error('테이블 새로고침 오류:', error);
+        });
+}

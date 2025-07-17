@@ -626,6 +626,17 @@ function bindDropdownModalEvents(dropdown, fieldType, options) {
                   
                   // 실시간 동기화
                   syncTableAndKanban(fieldType);
+                  
+                  // 상태 속성인 경우 상태 탭 새로고침
+                  if (window.statusAttributeName && fieldType === window.statusAttributeName) {
+                      console.log('상태 속성 옵션 추가됨, 상태 탭 새로고침 시작');
+                      // 상태 탭 새로고침 함수 호출
+                      if (typeof refreshStatusTabs === 'function') {
+                          setTimeout(() => {
+                              refreshStatusTabs();
+                          }, 100);
+                      }
+                  }
               } else {
                   alert('옵션 추가 실패: ' + (data.error || ''));
               }
@@ -666,6 +677,17 @@ function bindDropdownModalEvents(dropdown, fieldType, options) {
                       dropdownItem.style.background = hexToRgba(newColor, 0.18);
                   }
                   syncTableAndKanban(fieldType);
+                  
+                  // 상태 속성인 경우 상태 탭 새로고침
+                  if (window.statusAttributeName && fieldType === window.statusAttributeName) {
+                      console.log('상태 속성 색상 변경됨, 상태 탭 새로고침 시작');
+                      // 상태 탭 새로고침 함수 호출
+                      if (typeof refreshStatusTabs === 'function') {
+                          setTimeout(() => {
+                              refreshStatusTabs();
+                          }, 100);
+                      }
+                  }
               } else {
                   alert('색상 변경 실패: ' + (data.error || ''));
               }
@@ -737,8 +759,8 @@ function bindDropdownModalEvents(dropdown, fieldType, options) {
                       // 실시간 동기화
                       syncTableAndKanban(fieldType);
                       // 상태 속성인 경우 상태 탭 새로고침
-                      if (window.statusAttributeName && fieldType === window.statusAttributeName && typeof window.refreshStatusTabs === 'function') {
-                          setTimeout(() => { window.refreshStatusTabs(); }, 100);
+                      if (window.statusAttributeName && fieldType === window.statusAttributeName && typeof refreshStatusTabs === 'function') {
+                          setTimeout(() => { refreshStatusTabs(); }, 100);
                       }
                   } else {
                       alert('옵션 수정 실패: ' + (data.error || ''));
@@ -798,6 +820,17 @@ function bindDropdownModalEvents(dropdown, fieldType, options) {
                       console.log('옵션 삭제 성공:', data);
                       optionContainer.remove();
                       syncTableAndKanban(fieldType);
+                      
+                      // 상태 속성인 경우 상태 탭 새로고침
+                      if (window.statusAttributeName && fieldType === window.statusAttributeName) {
+                          console.log('상태 속성 옵션 삭제됨, 상태 탭 새로고침 시작');
+                          // 상태 탭 새로고침 함수 호출
+                          if (typeof refreshStatusTabs === 'function') {
+                              setTimeout(() => {
+                                  refreshStatusTabs();
+                              }, 100);
+                          }
+                      }
                   } else {
                       alert('옵션 삭제 실패: ' + (data.error || ''));
                   }

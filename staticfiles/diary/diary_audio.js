@@ -1067,7 +1067,7 @@ function createImageFileElement(fileData, index) {
           </div>
           
           <div style="gap: 5px; margin-left: 15px;">
-              <button onclick="showFilePreview('${fileId}', ${JSON.stringify(fileInfo).replace(/\"/g, '&quot;')})" 
+              <button onclick="showNoteFilePreview('${fileId}', ${JSON.stringify(fileInfo).replace(/\"/g, '&quot;')})" 
                       style="padding: 6px 12px; background: #ffc107; color: #333; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;">
                   미리보기
               </button>
@@ -1296,7 +1296,7 @@ function createDocumentFileElement(fileData, index) {
   previewBtn.style.cssText = 'padding: 6px 12px; background: #ffc107; color: #333; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;';
   previewBtn.onclick = function(e) {
     e.stopPropagation();
-    showFilePreview(fileId, fileInfo);
+    showNoteFilePreview(fileId, fileInfo);
   };
 
   // 다운로드 버튼
@@ -1863,7 +1863,7 @@ function saveAllOrderToServer() {
 }
 
 // 파일 미리보기 함수
-function showFilePreview(fileId, fileInfo) {
+function showNoteFilePreview(fileId, fileInfo) {
     console.log('showFilePreview 호출됨:', fileId, fileInfo);
     
     // 기존 미리보기 모달이 있으면 제거
