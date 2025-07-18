@@ -189,6 +189,207 @@
         .drag-handle:hover {
             background-color: #e9ecef;
         }
+        
+        /* 블로그 모달 스타일 */
+        .blog-modal {
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .blog-modal-content {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow: hidden;
+            animation: modalSlideIn 0.3s ease-out;
+        }
+        
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px) scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        
+        .blog-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 24px;
+            border-bottom: 1px solid #dee2e6;
+            background-color: #f8f9fa;
+        }
+        
+        .blog-modal-header h3 {
+            margin: 0;
+            color: #495057;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .blog-modal-close {
+            font-size: 24px;
+            font-weight: bold;
+            color: #6c757d;
+            cursor: pointer;
+            line-height: 1;
+            transition: color 0.2s ease;
+        }
+        
+        .blog-modal-close:hover {
+            color: #dc3545;
+        }
+        
+        .blog-modal-body {
+            padding: 24px;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+        
+        .file-upload-area {
+            text-align: center;
+        }
+        
+        .file-drop-zone {
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            padding: 40px 20px;
+            background-color: #f8f9fa;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+        }
+        
+        .file-drop-zone:hover {
+            border-color: #007bff;
+            background-color: #e3f2fd;
+        }
+        
+        .file-drop-text {
+            color: #6c757d;
+        }
+        
+        .file-drop-text p {
+            margin: 8px 0;
+            font-size: 14px;
+        }
+        
+        .file-drop-text p:first-of-type {
+            font-size: 16px;
+            font-weight: 500;
+            color: #495057;
+        }
+        
+        #selectedFileInfo {
+            background-color: #e8f5e8;
+            border: 1px solid #c3e6c3;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+        
+        #selectedFileInfo p {
+            margin: 5px 0;
+            font-size: 14px;
+            color: #155724;
+        }
+        
+        .blog-modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            padding: 20px 24px;
+            border-top: 1px solid #dee2e6;
+            background-color: #f8f9fa;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background-color: #5a6268;
+        }
+        
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+        
+        .btn-primary:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        
+        /* 블로그 div 스타일 */
+        .filter-controls div:last-child {
+            cursor: pointer;
+            padding: 8px 12px;
+            background: #007bff;
+            color: white;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        
+        .filter-controls div:last-child:hover {
+            background: #0056b3;
+            transform: translateY(-1px);
+        }
+        
+        /* 알림 애니메이션 */
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        @keyframes slideOutRight {
+            from {
+                opacity: 1;
+                transform: translateX(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+        }
     </style>
     <script>
         window.ATTR_FIELDS = JSON.parse('{{ attributes_json|escapejs }}');
@@ -217,11 +418,11 @@
     
     <!-- 필터 컨트롤 -->
     <div class="filter-controls">
-        <span class="filter-status" id="filterStatus">전체 데이터 표시 중</span>
-            <div style="display: flex; gap: 10px; align-items: center;">
-                <button class="attribute-visibility-btn" onclick="openAttributeVisibilityModal()" 
-                style="padding: 8px 12px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
-                속성 관리
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <span class="filter-status" id="filterStatus">전체 데이터 표시 중</span>
+            <button class="attribute-visibility-btn" onclick="openAttributeVisibilityModal()" 
+            style="padding: 8px 12px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+            속성 관리
             </button>
             <button class="clear-filters-btn" onclick="clearAllFilters()">필터 초기화</button>
             <button id="bulkDeleteBtn" class="bulk-delete-btn" onclick="bulkDeleteRows()" 
@@ -229,6 +430,7 @@
                 🗑️ 선택된 행 삭제 (<span id="selectedCount">0</span>)
             </button>
         </div>
+        <div>블로그</div>
     </div>
 
     <!-- 상태 탭 -->
@@ -742,6 +944,7 @@
 <script src="{% static 'diary/table_filter.js' %}"></script>
 <script src="{% static 'diary/column_resize.js' %}"></script>
 <script src="{% static 'diary/status.js' %}"></script>
+<script src="{% static 'diary/auto_blog.js' %}"></script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -2577,6 +2780,8 @@ function addNewModalDropdownOption(rowId, fieldName, newOption, element) {
     });
 }
 </script>
+
+<script src="{% static 'diary/auto_blog.js' %}"></script>
 
 </body>
 </html> 
