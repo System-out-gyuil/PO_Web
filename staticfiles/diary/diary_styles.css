@@ -453,8 +453,8 @@ td[data-field] {
     align-items: flex-start;
     margin-bottom: 15px;
     gap: 10px;
-    flex-direction: column;
-    margin-left: 60px;
+    flex-direction: row;
+    justify-content: space-between;
 }
 
 .filter-status {
