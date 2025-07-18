@@ -1,14 +1,10 @@
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
-import json
-from django.conf import settings
-import uuid
 from datetime import datetime
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
-import os
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 import time
@@ -22,7 +18,6 @@ from selenium.webdriver.common.keys import Keys
 import pyperclip
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
-import pygetwindow as gw
 
 @csrf_exempt
 @require_http_methods(["POST"])
