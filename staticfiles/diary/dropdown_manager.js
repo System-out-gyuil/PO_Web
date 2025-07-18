@@ -157,6 +157,14 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                           // 부분 업데이트로 변경
                           updateTableCell(id, '지역', selectedRegion);
                           
+                          // 종속된 행들 찾아서 업데이트
+                          updateDependentRows(id, '지역', selectedRegion);
+                          
+                          // 테이블 리렌더링으로 모든 드롭다운 pill 업데이트
+                          if (typeof refreshTable === 'function') {
+                              refreshTable();
+                          }
+                          
                           // 상태 필터가 활성화되어 있고, 변경된 필드가 상태 속성인 경우
                           if (window.currentStatusTab !== null && '지역' === window.statusAttributeName) {
                               // 해당 행의 상태 셀 업데이트
@@ -312,6 +320,14 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                       if (data.success) {
                           // 실시간 동기화
                           syncTableAndKanban('상세지역');
+                          
+                          // 종속된 행들 찾아서 업데이트
+                          updateDependentRows(id, '상세지역', selectedSubregion);
+                          
+                          // 테이블 리렌더링으로 모든 드롭다운 pill 업데이트
+                          if (typeof refreshTable === 'function') {
+                              refreshTable();
+                          }
                           
                           // 상태 필터가 활성화되어 있고, 변경된 필드가 상태 속성인 경우
                           if (window.currentStatusTab !== null && '상세지역' === window.statusAttributeName) {
@@ -502,6 +518,17 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                                   .then(data => {
                                       if (data.success) {
                                           console.log('속성 값 삭제 성공');
+                                          
+                                          // 테이블 리렌더링으로 모든 드롭다운 pill 업데이트
+                                          if (typeof refreshTable === 'function') {
+                                              refreshTable();
+                                          }
+                                          
+                                          // 종속된 행들 찾아서 업데이트
+                                          if (typeof updateDependentRows === 'function') {
+                                              updateDependentRows(id, type, '');
+                                          }
+                                          
                                           syncTableAndKanban(type);
                                       } else {
                                           throw new Error(data.error || '삭제 실패');
@@ -522,10 +549,23 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                           }
                           
                           const option = options.find(o => String(o.id) === String(optionId));
-                          // UI 업데이트
-                          const color = option.color ? hexToRgba(option.color, 0.18) : '#eee';
-                          td.innerHTML = `<div class="dropdown-pill" style="background:${color}; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">${option.option}</div>`;
-                          td.setAttribute('data-value', optionId);
+                          // UI 업데이트 - 즉시 실행
+                          if (option) {
+                              const color = option.color ? hexToRgba(option.color, 0.18) : '#eee';
+                              td.innerHTML = `<div class="dropdown-pill" style="background:${color}; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">${option.option}</div>`;
+                              td.setAttribute('data-value', optionId);
+                          } else {
+                              // 옵션을 찾지 못한 경우에도 pill 형태로 표시
+                              console.log(`옵션을 찾지 못함, pill 형태로 표시: ${optionId}`);
+                              td.innerHTML = `<div class="dropdown-pill" style="background:#f8f9fa; color:#6c757d; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center; border:1px solid #dee2e6;">${optionId}</div>`;
+                              td.setAttribute('data-value', optionId);
+                          }
+                          
+                          // 드롭다운 닫기 - 즉시 실행
+                          if (window.dropdown && window.dropdown.parentNode) {
+                              window.dropdown.parentNode.removeChild(window.dropdown);
+                              window.dropdown = null;
+                          }
                           
                           // 상태 필터가 활성화되어 있고, 변경된 필드가 상태 속성인 경우
                           if (window.currentStatusTab !== null && type === window.statusAttributeName) {
@@ -559,6 +599,14 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                               .then(response => response.json())
                               .then(data => {
                                   if (data.success) {
+                                      // 테이블 리렌더링으로 모든 드롭다운 pill 업데이트
+                                      if (typeof refreshTable === 'function') {
+                                          refreshTable();
+                                      }
+                                      
+                                      // 종속된 행들 찾아서 업데이트 (ID 전달)
+                                      updateDependentRows(id, type, optionId);
+                                      
                                       syncTableAndKanban(type);
                                   } else {
                                       throw new Error(data.error || '업데이트 실패');
@@ -1051,9 +1099,14 @@ function selectModalDropdownOption(rowId, fieldName, optionId, optionText, btn, 
       if (data.success) {
           console.log('모달 드롭다운 업데이트 성공:', fieldName, optionId);
           
-          // 테이블 실시간 업데이트
+          // 테이블 실시간 업데이트 - 리렌더링으로 모든 드롭다운 pill 업데이트
           if (typeof refreshTable === 'function') {
               refreshTable();
+          }
+          
+          // 종속된 행들 찾아서 업데이트
+          if (typeof updateDependentRows === 'function') {
+              updateDependentRows(rowId, fieldName, optionId);
           }
           
           // 칸반보드 실시간 업데이트 - 현재 칸반보드 속성과 일치하는 경우

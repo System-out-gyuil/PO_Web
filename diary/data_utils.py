@@ -116,4 +116,11 @@ def formatToKoreanCurrency(amount):
         else:
             result = f'{man}만'
     
+    # 10,000 미만의 값은 그대로 표시
+    if amount > 0 and amount < 10000:
+        if result:
+            result += str(amount)
+        else:
+            result = str(amount)
+    
     return result + '원'

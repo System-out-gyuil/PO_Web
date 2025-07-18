@@ -1226,6 +1226,22 @@ def update_audio_text(request):
             attr_value.value = json.dumps(audio_data, ensure_ascii=False)
             attr_value.save()
             
+            # Cascade 기능: cascade가 true인 속성이 수정되면 원본 행과 복제된 행들을 동기화
+            if audio_attribute.cascade:
+                print(f"=== Cascade 동기화 시작 (update_audio_text) ===")
+                print(f"속성 '음성파일'의 cascade 값: {audio_attribute.cascade}")
+                print(f"수정된 행 ID: {row_id}")
+                print(f"새 값: {json.dumps(audio_data, ensure_ascii=False)}")
+                
+                synced_count = sync_cascade_attributes(request, row_id, '음성파일', json.dumps(audio_data, ensure_ascii=False))
+                if synced_count > 0:
+                    print(f"Cascade 동기화 완료: 음성파일 속성이 {synced_count}개 행에 동기화됨")
+                else:
+                    print(f"Cascade 동기화 실패 또는 동기화할 행이 없음")
+                print(f"=== Cascade 동기화 종료 (update_audio_text) ===")
+            else:
+                print(f"속성 '음성파일'의 cascade 값: {audio_attribute.cascade} - 동기화하지 않음")
+            
             logger.info(f"음성파일 텍스트 업데이트 성공 - Row ID: {row_id}, Date: {date}, File ID: {file_id}")
             
             return JsonResponse({
@@ -1294,6 +1310,22 @@ def update_audio_memo(request):
             # 업데이트된 데이터 저장
             audio_attr_value.value = json.dumps(audio_data, ensure_ascii=False)
             audio_attr_value.save()
+            
+            # Cascade 기능: cascade가 true인 속성이 수정되면 원본 행과 복제된 행들을 동기화
+            if audio_attr.cascade:
+                print(f"=== Cascade 동기화 시작 (update_audio_memo) ===")
+                print(f"속성 '음성파일'의 cascade 값: {audio_attr.cascade}")
+                print(f"수정된 행 ID: {row_id}")
+                print(f"새 값: {json.dumps(audio_data, ensure_ascii=False)}")
+                
+                synced_count = sync_cascade_attributes(request, row_id, '음성파일', json.dumps(audio_data, ensure_ascii=False))
+                if synced_count > 0:
+                    print(f"Cascade 동기화 완료: 음성파일 속성이 {synced_count}개 행에 동기화됨")
+                else:
+                    print(f"Cascade 동기화 실패 또는 동기화할 행이 없음")
+                print(f"=== Cascade 동기화 종료 (update_audio_memo) ===")
+            else:
+                print(f"속성 '음성파일'의 cascade 값: {audio_attr.cascade} - 동기화하지 않음")
             
             logger.info(f"음성파일 메모 업데이트 성공: Row {row_id}, Date {date}, File {file_id}")
             return JsonResponse({'success': True, 'message': '메모가 성공적으로 저장되었습니다.'})
@@ -1365,6 +1397,22 @@ def update_expected_loans(request):
             attr_value.value = value
             attr_value.save()
         
+        # Cascade 기능: cascade가 true인 속성이 수정되면 원본 행과 복제된 행들을 동기화
+        if expected_loans_attr.cascade:
+            print(f"=== Cascade 동기화 시작 (update_expected_loans) ===")
+            print(f"속성 '기대출'의 cascade 값: {expected_loans_attr.cascade}")
+            print(f"수정된 행 ID: {row_id}")
+            print(f"새 값: {value}")
+            
+            synced_count = sync_cascade_attributes(request, row_id, '기대출', value)
+            if synced_count > 0:
+                print(f"Cascade 동기화 완료: 기대출 속성이 {synced_count}개 행에 동기화됨")
+            else:
+                print(f"Cascade 동기화 실패 또는 동기화할 행이 없음")
+            print(f"=== Cascade 동기화 종료 (update_expected_loans) ===")
+        else:
+            print(f"속성 '기대출'의 cascade 값: {expected_loans_attr.cascade} - 동기화하지 않음")
+        
         return JsonResponse({
             'success': True,
             'message': '기대출 정보가 성공적으로 업데이트되었습니다.'
@@ -1426,6 +1474,22 @@ def update_loan_amount(request):
         if not created:
             attr_value.value = loan_data_str
             attr_value.save()
+        
+        # Cascade 기능: cascade가 true인 속성이 수정되면 원본 행과 복제된 행들을 동기화
+        if expected_loans_attr.cascade:
+            print(f"=== Cascade 동기화 시작 (update_loan_amount) ===")
+            print(f"속성 '기대출'의 cascade 값: {expected_loans_attr.cascade}")
+            print(f"수정된 행 ID: {row_id}")
+            print(f"새 값: {loan_data_str}")
+            
+            synced_count = sync_cascade_attributes(request, row_id, '기대출', loan_data_str)
+            if synced_count > 0:
+                print(f"Cascade 동기화 완료: 기대출 속성이 {synced_count}개 행에 동기화됨")
+            else:
+                print(f"Cascade 동기화 실패 또는 동기화할 행이 없음")
+            print(f"=== Cascade 동기화 종료 (update_loan_amount) ===")
+        else:
+            print(f"속성 '기대출'의 cascade 값: {expected_loans_attr.cascade} - 동기화하지 않음")
         
         return JsonResponse({
             'success': True,
@@ -1494,6 +1558,22 @@ def update_debt_field(request):
         if not created:
             attr_value.value = json.dumps(debt_data)
             attr_value.save()
+        
+        # Cascade 기능: cascade가 true인 속성이 수정되면 원본 행과 복제된 행들을 동기화
+        if debt_attribute.cascade:
+            print(f"=== Cascade 동기화 시작 (update_debt_field) ===")
+            print(f"속성 '기대출'의 cascade 값: {debt_attribute.cascade}")
+            print(f"수정된 행 ID: {row_id}")
+            print(f"새 값: {json.dumps(debt_data)}")
+            
+            synced_count = sync_cascade_attributes(request, row_id, '기대출', json.dumps(debt_data))
+            if synced_count > 0:
+                print(f"Cascade 동기화 완료: 기대출 속성이 {synced_count}개 행에 동기화됨")
+            else:
+                print(f"Cascade 동기화 실패 또는 동기화할 행이 없음")
+            print(f"=== Cascade 동기화 종료 (update_debt_field) ===")
+        else:
+            print(f"속성 '기대출'의 cascade 값: {debt_attribute.cascade} - 동기화하지 않음")
         
         return JsonResponse({
             'success': True,
@@ -1606,6 +1686,22 @@ def save_debt_details(request):
         if not created:
             attr_value.value = json.dumps(debt_data)
             attr_value.save()
+        
+        # Cascade 기능: cascade가 true인 속성이 수정되면 원본 행과 복제된 행들을 동기화
+        if debt_attribute.cascade:
+            print(f"=== Cascade 동기화 시작 (save_debt_details) ===")
+            print(f"속성 '기대출'의 cascade 값: {debt_attribute.cascade}")
+            print(f"수정된 행 ID: {row_id}")
+            print(f"새 값: {json.dumps(debt_data)}")
+            
+            synced_count = sync_cascade_attributes(request, row_id, '기대출', json.dumps(debt_data))
+            if synced_count > 0:
+                print(f"Cascade 동기화 완료: 기대출 속성이 {synced_count}개 행에 동기화됨")
+            else:
+                print(f"Cascade 동기화 실패 또는 동기화할 행이 없음")
+            print(f"=== Cascade 동기화 종료 (save_debt_details) ===")
+        else:
+            print(f"속성 '기대출'의 cascade 값: {debt_attribute.cascade} - 동기화하지 않음")
         
         return JsonResponse({
             'success': True,
@@ -2241,6 +2337,23 @@ def update_audio_text_notes(request):
                 }
         attr_value.value = json.dumps(data, ensure_ascii=False)
         attr_value.save()
+        
+        # Cascade 기능: cascade가 true인 속성이 수정되면 원본 행과 복제된 행들을 동기화
+        if audio_attr.cascade:
+            print(f"=== Cascade 동기화 시작 (update_audio_text_notes) ===")
+            print(f"속성 '음성파일'의 cascade 값: {audio_attr.cascade}")
+            print(f"수정된 행 ID: {row_id}")
+            print(f"새 값: {json.dumps(data, ensure_ascii=False)}")
+            
+            synced_count = sync_cascade_attributes(request, row_id, '음성파일', json.dumps(data, ensure_ascii=False))
+            if synced_count > 0:
+                print(f"Cascade 동기화 완료: 음성파일 속성이 {synced_count}개 행에 동기화됨")
+            else:
+                print(f"Cascade 동기화 실패 또는 동기화할 행이 없음")
+            print(f"=== Cascade 동기화 종료 (update_audio_text_notes) ===")
+        else:
+            print(f"속성 '음성파일'의 cascade 값: {audio_attr.cascade} - 동기화하지 않음")
+        
         return JsonResponse({'success': True})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
@@ -2342,6 +2455,22 @@ def update_audio_file_order_and_notes(request):
 
         attr_value.value = json.dumps(value, ensure_ascii=False)
         attr_value.save()
+
+        # Cascade 기능: cascade가 true인 속성이 수정되면 원본 행과 복제된 행들을 동기화
+        if attr.cascade:
+            print(f"=== Cascade 동기화 시작 (update_audio_file_order_and_notes) ===")
+            print(f"속성 '음성파일'의 cascade 값: {attr.cascade}")
+            print(f"수정된 행 ID: {row_id}")
+            print(f"새 값: {json.dumps(value, ensure_ascii=False)}")
+            
+            synced_count = sync_cascade_attributes(request, row_id, '음성파일', json.dumps(value, ensure_ascii=False))
+            if synced_count > 0:
+                print(f"Cascade 동기화 완료: 음성파일 속성이 {synced_count}개 행에 동기화됨")
+            else:
+                print(f"Cascade 동기화 실패 또는 동기화할 행이 없음")
+            print(f"=== Cascade 동기화 종료 (update_audio_file_order_and_notes) ===")
+        else:
+            print(f"속성 '음성파일'의 cascade 값: {attr.cascade} - 동기화하지 않음")
 
         print("=== update_audio_file_order_and_notes 완료 ===")
         return JsonResponse({'success': True})
@@ -2589,6 +2718,23 @@ def upload_note_file(request):
         value_dict["data"][file_id] = file_info
         attr_value.value = json.dumps(value_dict, ensure_ascii=False)
         attr_value.save()
+        
+        # Cascade 기능: cascade가 true인 속성이 수정되면 원본 행과 복제된 행들을 동기화
+        if attr.cascade:
+            print(f"=== Cascade 동기화 시작 (upload_note_file) ===")
+            print(f"속성 '음성파일'의 cascade 값: {attr.cascade}")
+            print(f"수정된 행 ID: {row_id}")
+            print(f"새 값: {json.dumps(value_dict, ensure_ascii=False)}")
+            
+            synced_count = sync_cascade_attributes(request, row_id, '음성파일', json.dumps(value_dict, ensure_ascii=False))
+            if synced_count > 0:
+                print(f"Cascade 동기화 완료: 음성파일 속성이 {synced_count}개 행에 동기화됨")
+            else:
+                print(f"Cascade 동기화 실패 또는 동기화할 행이 없음")
+            print(f"=== Cascade 동기화 종료 (upload_note_file) ===")
+        else:
+            print(f"속성 '음성파일'의 cascade 값: {attr.cascade} - 동기화하지 않음")
+        
         # === DB 저장 끝 ===
 
         return JsonResponse({'success': True, 'file_info': file_info, 'file_id': file_id})
@@ -2649,6 +2795,22 @@ def delete_note_file(request):
             # 업데이트된 데이터 저장
             attr_value.value = json.dumps(current_data, ensure_ascii=False)
             attr_value.save()
+            
+            # Cascade 기능: cascade가 true인 속성이 수정되면 원본 행과 복제된 행들을 동기화
+            if audio_attr.cascade:
+                print(f"=== Cascade 동기화 시작 (delete_note_file) ===")
+                print(f"속성 '음성파일'의 cascade 값: {audio_attr.cascade}")
+                print(f"수정된 행 ID: {row_id}")
+                print(f"새 값: {json.dumps(current_data, ensure_ascii=False)}")
+                
+                synced_count = sync_cascade_attributes(request, row_id, '음성파일', json.dumps(current_data, ensure_ascii=False))
+                if synced_count > 0:
+                    print(f"Cascade 동기화 완료: 음성파일 속성이 {synced_count}개 행에 동기화됨")
+                else:
+                    print(f"Cascade 동기화 실패 또는 동기화할 행이 없음")
+                print(f"=== Cascade 동기화 종료 (delete_note_file) ===")
+            else:
+                print(f"속성 '음성파일'의 cascade 값: {audio_attr.cascade} - 동기화하지 않음")
             
             print(f"노트 파일 삭제 완료 - Row: {row_id}, File: {file_id}")
             
@@ -2749,6 +2911,22 @@ def update_note_order_and_notes(request):
             if not created:
                 attr_value.value = json.dumps(existing_data, ensure_ascii=False)
                 attr_value.save()
+            
+            # Cascade 기능: cascade가 true인 속성이 수정되면 원본 행과 복제된 행들을 동기화
+            if audio_attribute.cascade:
+                print(f"=== Cascade 동기화 시작 (update_note_order_and_notes) ===")
+                print(f"속성 '음성파일'의 cascade 값: {audio_attribute.cascade}")
+                print(f"수정된 행 ID: {row_id}")
+                print(f"새 값: {json.dumps(existing_data, ensure_ascii=False)}")
+                
+                synced_count = sync_cascade_attributes(request, row_id, '음성파일', json.dumps(existing_data, ensure_ascii=False))
+                if synced_count > 0:
+                    print(f"Cascade 동기화 완료: 음성파일 속성이 {synced_count}개 행에 동기화됨")
+                else:
+                    print(f"Cascade 동기화 실패 또는 동기화할 행이 없음")
+                print(f"=== Cascade 동기화 종료 (update_note_order_and_notes) ===")
+            else:
+                print(f"속성 '음성파일'의 cascade 값: {audio_attribute.cascade} - 동기화하지 않음")
             
             return JsonResponse({
                 'success': True,
@@ -3372,3 +3550,265 @@ def save_column_width(request):
         return JsonResponse({'success': False, 'error': 'Invalid JSON'})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
+
+@csrf_exempt
+def get_dependent_rows(request):
+    """종속된 행들을 반환하는 API"""
+    if request.method == 'POST':
+        try:
+            row_id = request.POST.get('row_id')
+            field = request.POST.get('field')
+            
+            if not row_id or not field:
+                return JsonResponse({'success': False, 'error': 'row_id와 field가 필요합니다'})
+            
+            # 사용자 정보 가져오기
+            user_id = request.session.get('diary_member_id')
+            user = User.objects.get(id=user_id)
+            
+            # 현재 행 조회
+            try:
+                current_row = Row.objects.get(id=row_id, user=user)
+            except Row.DoesNotExist:
+                return JsonResponse({'success': False, 'error': '행을 찾을 수 없습니다'})
+            
+            dependent_rows = []
+            
+            # Cascade가 활성화된 속성인지 확인
+            try:
+                cascade_attribute = Attribute.objects.get(name=field, user=user, cascade=True)
+                print(f"Cascade 속성 찾음: {field}")
+            except Attribute.DoesNotExist:
+                print(f"Cascade 속성을 찾을 수 없습니다: {field}")
+                # Cascade가 false인 속성이면 종속된 행들을 찾지 않음
+                return JsonResponse({
+                    'success': True,
+                    'dependent_rows': []
+                })
+            
+            # === 새로운 행 복제 시스템을 사용한 종속된 행들 찾기 ===
+            
+            # 1. 현재 행의 원본 행들
+            original_rows = []
+            for original_id in current_row.original_row_ids:
+                try:
+                    original_row = Row.objects.get(id=original_id, user=user)
+                    original_rows.append(original_row)
+                except Row.DoesNotExist:
+                    print(f"원본 행 {original_id}를 찾을 수 없습니다.")
+                    continue
+            
+            # 2. 현재 행의 복제된 행들
+            copied_rows = []
+            for copied_id in current_row.copied_row_ids:
+                try:
+                    copied_row = Row.objects.get(id=copied_id, user=user)
+                    copied_rows.append(copied_row)
+                except Row.DoesNotExist:
+                    print(f"복제된 행 {copied_id}를 찾을 수 없습니다.")
+                    continue
+            
+            # 3. 원본 행들의 복제된 행들도 포함
+            for original_row in original_rows:
+                for copied_id in original_row.copied_row_ids:
+                    try:
+                        copied_row = Row.objects.get(id=copied_id, user=user)
+                        if copied_row not in copied_rows and copied_row.id != row_id:
+                            copied_rows.append(copied_row)
+                    except Row.DoesNotExist:
+                        continue
+            
+            # 4. 복제된 행들의 원본 행들도 포함
+            for copied_row in copied_rows:
+                for original_id in copied_row.original_row_ids:
+                    try:
+                        original_row = Row.objects.get(id=original_id, user=user)
+                        if original_row not in original_rows and original_row.id != row_id:
+                            original_rows.append(original_row)
+                    except Row.DoesNotExist:
+                        continue
+            
+            # 모든 관련 행들을 하나의 리스트로 합치기
+            all_related_rows = original_rows + copied_rows
+            unique_related_rows = []
+            seen_ids = set()
+            
+            for row in all_related_rows:
+                if row.id not in seen_ids and row.id != row_id:
+                    unique_related_rows.append(row)
+                    seen_ids.add(row.id)
+            
+            print(f"동기화할 관련 행들: {[row.id for row in unique_related_rows]}")
+            
+            # 각 관련 행에 대해 해당 필드의 값을 가져와서 종속된 행 목록에 추가
+            for dep_row in unique_related_rows:
+                try:
+                    attr_value = AttributeValue.objects.get(row=dep_row, attribute=cascade_attribute)
+                    dependent_rows.append({
+                        'row_id': dep_row.id,
+                        'field': field,
+                        'value': attr_value.value
+                    })
+                    print(f"종속된 행 추가: {dep_row.id}, {field}, {attr_value.value}")
+                except AttributeValue.DoesNotExist:
+                    # 해당 속성의 값이 없으면 빈 값으로 설정
+                    dependent_rows.append({
+                        'row_id': dep_row.id,
+                        'field': field,
+                        'value': ''
+                    })
+                    print(f"종속된 행 추가 (빈 값): {dep_row.id}, {field}")
+            
+            return JsonResponse({
+                'success': True,
+                'dependent_rows': dependent_rows
+            })
+            
+        except Exception as e:
+            print(f"get_dependent_rows 오류: {str(e)}")
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'POST 요청만 지원합니다'})
+
+@csrf_exempt
+def get_column_widths(request):
+    # 컬럼 너비 조회
+    if request.method != 'GET':
+        return JsonResponse({'success': False, 'error': 'GET method required'})
+    try:
+        user_id = request.session.get('diary_member_id')
+        user = User.objects.get(id=user_id)
+        
+        # 사용자의 모든 속성에서 width가 설정된 것들만 가져오기
+        attributes = Attribute.objects.filter(user=user, width__isnull=False)
+        widths = {}
+        
+        for attribute in attributes:
+            if attribute.width:
+                widths[attribute.name] = attribute.width
+        
+        return JsonResponse({
+            'success': True, 
+            'widths': widths
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+@csrf_exempt
+def get_dependent_rows(request):
+    """종속된 행들을 반환하는 API"""
+    if request.method == 'POST':
+        try:
+            row_id = request.POST.get('row_id')
+            field = request.POST.get('field')
+            
+            if not row_id or not field:
+                return JsonResponse({'success': False, 'error': 'row_id와 field가 필요합니다'})
+            
+            # 사용자 정보 가져오기
+            user_id = request.session.get('diary_member_id')
+            user = User.objects.get(id=user_id)
+            
+            # 현재 행 조회
+            try:
+                current_row = Row.objects.get(id=row_id, user=user)
+            except Row.DoesNotExist:
+                return JsonResponse({'success': False, 'error': '행을 찾을 수 없습니다'})
+            
+            dependent_rows = []
+            
+            # Cascade가 활성화된 속성인지 확인
+            try:
+                cascade_attribute = Attribute.objects.get(name=field, user=user, cascade=True)
+                print(f"Cascade 속성 찾음: {field}")
+            except Attribute.DoesNotExist:
+                print(f"Cascade 속성을 찾을 수 없습니다: {field}")
+                # Cascade가 false인 속성이면 종속된 행들을 찾지 않음
+                return JsonResponse({
+                    'success': True,
+                    'dependent_rows': []
+                })
+            
+            # === 새로운 행 복제 시스템을 사용한 종속된 행들 찾기 ===
+            
+            # 1. 현재 행의 원본 행들
+            original_rows = []
+            for original_id in current_row.original_row_ids:
+                try:
+                    original_row = Row.objects.get(id=original_id, user=user)
+                    original_rows.append(original_row)
+                except Row.DoesNotExist:
+                    print(f"원본 행 {original_id}를 찾을 수 없습니다.")
+                    continue
+            
+            # 2. 현재 행의 복제된 행들
+            copied_rows = []
+            for copied_id in current_row.copied_row_ids:
+                try:
+                    copied_row = Row.objects.get(id=copied_id, user=user)
+                    copied_rows.append(copied_row)
+                except Row.DoesNotExist:
+                    print(f"복제된 행 {copied_id}를 찾을 수 없습니다.")
+                    continue
+            
+            # 3. 원본 행들의 복제된 행들도 포함
+            for original_row in original_rows:
+                for copied_id in original_row.copied_row_ids:
+                    try:
+                        copied_row = Row.objects.get(id=copied_id, user=user)
+                        if copied_row not in copied_rows and copied_row.id != row_id:
+                            copied_rows.append(copied_row)
+                    except Row.DoesNotExist:
+                        continue
+            
+            # 4. 복제된 행들의 원본 행들도 포함
+            for copied_row in copied_rows:
+                for original_id in copied_row.original_row_ids:
+                    try:
+                        original_row = Row.objects.get(id=original_id, user=user)
+                        if original_row not in original_rows and original_row.id != row_id:
+                            original_rows.append(original_row)
+                    except Row.DoesNotExist:
+                        continue
+            
+            # 모든 관련 행들을 하나의 리스트로 합치기
+            all_related_rows = original_rows + copied_rows
+            unique_related_rows = []
+            seen_ids = set()
+            
+            for row in all_related_rows:
+                if row.id not in seen_ids and row.id != row_id:
+                    unique_related_rows.append(row)
+                    seen_ids.add(row.id)
+            
+            print(f"동기화할 관련 행들: {[row.id for row in unique_related_rows]}")
+            
+            # 각 관련 행에 대해 해당 필드의 값을 가져와서 종속된 행 목록에 추가
+            for dep_row in unique_related_rows:
+                try:
+                    attr_value = AttributeValue.objects.get(row=dep_row, attribute=cascade_attribute)
+                    dependent_rows.append({
+                        'row_id': dep_row.id,
+                        'field': field,
+                        'value': attr_value.value
+                    })
+                    print(f"종속된 행 추가: {dep_row.id}, {field}, {attr_value.value}")
+                except AttributeValue.DoesNotExist:
+                    # 해당 속성의 값이 없으면 빈 값으로 설정
+                    dependent_rows.append({
+                        'row_id': dep_row.id,
+                        'field': field,
+                        'value': ''
+                    })
+                    print(f"종속된 행 추가 (빈 값): {dep_row.id}, {field}")
+            
+            return JsonResponse({
+                'success': True,
+                'dependent_rows': dependent_rows
+            })
+            
+        except Exception as e:
+            print(f"get_dependent_rows 오류: {str(e)}")
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'POST 요청만 지원합니다'})

@@ -9,6 +9,7 @@ class ColumnResizer {
         this.minWidth = 80; // 최소 너비
         this.animationFrameId = null;
         this.resizeTimeout = null;
+        this.columnWidths = new Map(); // 컬럼별 너비 저장
         
         this.init();
     }
@@ -25,6 +26,42 @@ class ColumnResizer {
         // 이벤트 리스너 등록
         this.bindEvents();
         
+        // 저장된 컬럼 너비 복원
+        this.restoreColumnWidths();
+    }
+    
+    // 저장된 컬럼 너비 복원
+    restoreColumnWidths() {
+        const headers = this.table.querySelectorAll('thead th');
+        headers.forEach((header, index) => {
+            if (header.classList.contains('add-attribute-th')) return;
+            
+            const attrName = header.getAttribute('data-column');
+            if (attrName) {
+                const savedWidth = localStorage.getItem(`column_max_width_${attrName}`);
+                if (savedWidth) {
+                    this.applyColumnMaxWidth(attrName, parseInt(savedWidth));
+                }
+            }
+        });
+    }
+    
+    // 컬럼 최대 너비 적용
+    applyColumnMaxWidth(attrName, maxWidth) {
+        const cells = this.table.querySelectorAll(`td[data-field="${attrName}"]`);
+        cells.forEach(cell => {
+            cell.style.maxWidth = maxWidth + 'px';
+            cell.style.overflow = 'hidden';
+            cell.style.textOverflow = 'ellipsis';
+            cell.style.whiteSpace = 'nowrap';
+        });
+    }
+    
+    // 컬럼 최대 너비 계산 (컬럼 너비에 비례)
+    calculateColumnMaxWidth(width) {
+        // 컬럼 너비에 비례하여 최대 너비 계산 (예: 컬럼 너비의 0.8배)
+        const maxWidth = Math.max(width * 0.8, 50); // 최소 50px
+        return Math.round(maxWidth);
     }
     
     addResizeHandles() {
@@ -173,6 +210,10 @@ class ColumnResizer {
         this.currentColumn.style.minWidth = newWidth + 'px';
         this.currentColumn.style.maxWidth = newWidth + 'px';
         
+        // 컬럼 최대 너비 계산 및 적용
+        const newMaxWidth = this.calculateColumnMaxWidth(newWidth);
+        this.applyColumnMaxWidth(this.currentColumn.getAttribute('data-column'), newMaxWidth);
+        
         // 가이드 라인 위치 업데이트
         this.updateGuideLine(newWidth);
     }
@@ -197,9 +238,10 @@ class ColumnResizer {
         // 테이블 레이아웃 복원
         this.table.style.tableLayout = 'auto';
         
-        // width 저장 (디바운싱 적용)
+        // width와 height 저장 (디바운싱 적용)
         const attrName = this.currentColumn.getAttribute('data-column');
         const width = parseInt(this.currentColumn.offsetWidth, 10);
+        const maxWidth = this.calculateColumnMaxWidth(width);
         
         if (attrName && width) {
             // 이전 타임아웃 취소
@@ -209,7 +251,7 @@ class ColumnResizer {
             
             // 디바운싱으로 저장 지연
             this.resizeTimeout = setTimeout(() => {
-                this.saveColumnWidth(attrName, width);
+                this.saveColumnWidth(attrName, width, maxWidth);
             }, 300);
         }
         
@@ -230,7 +272,8 @@ class ColumnResizer {
         });
     }
     
-    saveColumnWidth(attrName, width) {
+    saveColumnWidth(attrName, width, maxWidth) {
+        // 서버에 너비 저장
         fetch('/sales/save_column_width/', {
             method: 'POST',
             headers: {
@@ -248,6 +291,10 @@ class ColumnResizer {
             }
         })
         .catch(err => console.error('컬럼 너비 저장 오류:', err));
+        
+        // 로컬 스토리지에 높이 저장
+        localStorage.setItem(`column_max_width_${attrName}`, maxWidth.toString());
+        console.log(`컬럼 최대 너비 저장: ${attrName} = ${maxWidth}px`);
     }
     
     cancelResize() {
@@ -257,6 +304,13 @@ class ColumnResizer {
         this.currentColumn.style.width = this.startWidth + 'px';
         this.currentColumn.style.minWidth = this.startWidth + 'px';
         this.currentColumn.style.maxWidth = 'none';
+        
+        // 원래 높이로 복원
+        const attrName = this.currentColumn.getAttribute('data-column');
+        if (attrName) {
+            const originalMaxWidth = this.calculateColumnMaxWidth(this.startWidth);
+            this.applyColumnMaxWidth(attrName, originalMaxWidth);
+        }
         
         // 테이블 리사이징 클래스 제거
         this.table.classList.remove('resizing');

@@ -82,6 +82,7 @@ function closeDropdown() {
 
 // 한국어 단위로 변환하는 함수
 function formatToKoreanCurrency(amount) {
+    console.log(123)
   if (!amount || amount === 0) return '0원';
   
   const numAmount = typeof amount === 'string' ? parseInt(amount.replace(/[^\d]/g, '')) : amount;
@@ -119,6 +120,15 @@ function formatToKoreanCurrency(amount) {
       else result = Math.floor(remaining / 10000) + '만';
   } else if (result) {
       result += '만';
+  }
+  
+  // 10,000 미만의 값은 그대로 표시
+  if (remaining > 0 && remaining < 10000) {
+      if (result) {
+          result += remaining;
+      } else {
+          result = remaining.toString();
+      }
   }
   
   return result + '원';

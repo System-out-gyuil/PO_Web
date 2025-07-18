@@ -59,8 +59,23 @@
     }
     
     .error {
-      color: red;
+      color: #dc3545;
+      background-color: #f8d7da;
+      border: 1px solid #f5c6cb;
+      border-radius: 4px;
+      padding: 10px;
       margin-bottom: 15px;
+      font-size: 14px;
+    }
+    
+    .success {
+      color: #155724;
+      background-color: #d4edda;
+      border: 1px solid #c3e6cb;
+      border-radius: 4px;
+      padding: 10px;
+      margin-bottom: 15px;
+      font-size: 14px;
     }
     
     /* 모달 스타일 */
@@ -95,6 +110,11 @@
     .close:hover {
       color: black;
     }
+    
+    .loading {
+      opacity: 0.6;
+      pointer-events: none;
+    }
   </style>
 </head>
 <body>
@@ -102,11 +122,10 @@
   <div class="login-container">
     <h2>로그인</h2>
     
-    {% if error %}
-    <div class="error">{{ error }}</div>
-    {% endif %}
+    <div id="loginError" class="error" style="display: none;"></div>
+    <div id="loginSuccess" class="success" style="display: none;"></div>
     
-    <form method="post">
+    <form id="loginForm">
       {% csrf_token %}
       <div class="form-group">
         <input type="text" name="member_id" placeholder="아이디 입력" required>
@@ -127,6 +146,7 @@
       <h2>회원가입</h2>
       
       <div id="signupError" class="error" style="display: none;"></div>
+      <div id="signupSuccess" class="success" style="display: none;"></div>
       
       <form id="signupForm">
         {% csrf_token %}
@@ -152,6 +172,7 @@
     function closeSignupModal() {
       document.getElementById('signupModal').style.display = 'none';
       document.getElementById('signupError').style.display = 'none';
+      document.getElementById('signupSuccess').style.display = 'none';
       document.getElementById('signupForm').reset();
     }
     
@@ -163,6 +184,61 @@
       }
     }
     
+    // 로그인 폼 제출
+    document.getElementById('loginForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      var formData = new FormData(this);
+      var loginData = {
+        member_id: formData.get('member_id'),
+        member_pw: formData.get('member_pw')
+      };
+      
+      // 에러 메시지 초기화
+      document.getElementById('loginError').style.display = 'none';
+      document.getElementById('loginSuccess').style.display = 'none';
+      
+      // 로딩 상태 표시
+      var submitBtn = this.querySelector('button[type="submit"]');
+      var originalText = submitBtn.textContent;
+      submitBtn.textContent = '로그인 중...';
+      submitBtn.disabled = true;
+      
+      // AJAX로 로그인 요청
+      fetch('/sales/login/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify(loginData)
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          document.getElementById('loginSuccess').textContent = data.message;
+          document.getElementById('loginSuccess').style.display = 'block';
+          
+          // 성공 시 리다이렉트
+          setTimeout(() => {
+            window.location.href = data.redirect_url;
+          }, 1000);
+        } else {
+          document.getElementById('loginError').textContent = data.error;
+          document.getElementById('loginError').style.display = 'block';
+        }
+      })
+      .catch(error => {
+        document.getElementById('loginError').textContent = '서버 오류가 발생했습니다.';
+        document.getElementById('loginError').style.display = 'block';
+      })
+      .finally(() => {
+        // 버튼 상태 복원
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
+      });
+    });
+    
     // 회원가입 폼 제출
     document.getElementById('signupForm').addEventListener('submit', function(e) {
       e.preventDefault();
@@ -171,11 +247,34 @@
       var pw = document.getElementById('signup_pw').value;
       var pwConfirm = document.getElementById('signup_pw_confirm').value;
       
+      // 에러 메시지 초기화
+      document.getElementById('signupError').style.display = 'none';
+      document.getElementById('signupSuccess').style.display = 'none';
+      
+      // 클라이언트 측 유효성 검사
+      if (!id || !pw || !pwConfirm) {
+        document.getElementById('signupError').textContent = '모든 필드를 입력해주세요.';
+        document.getElementById('signupError').style.display = 'block';
+        return;
+      }
+      
       if (pw !== pwConfirm) {
         document.getElementById('signupError').textContent = '비밀번호가 일치하지 않습니다.';
         document.getElementById('signupError').style.display = 'block';
         return;
       }
+      
+      if (pw.length < 6) {
+        document.getElementById('signupError').textContent = '비밀번호는 6자 이상이어야 합니다.';
+        document.getElementById('signupError').style.display = 'block';
+        return;
+      }
+      
+      // 로딩 상태 표시
+      var submitBtn = this.querySelector('button[type="submit"]');
+      var originalText = submitBtn.textContent;
+      submitBtn.textContent = '가입 중...';
+      submitBtn.disabled = true;
       
       // AJAX로 회원가입 요청
       fetch('/sales/signup/', {
@@ -192,16 +291,26 @@
       .then(response => response.json())
       .then(data => {
         if (data.success) {
-          alert('회원가입이 완료되었습니다!');
-          closeSignupModal();
+          document.getElementById('signupSuccess').textContent = data.message;
+          document.getElementById('signupSuccess').style.display = 'block';
+          
+          // 성공 시 모달 닫기
+          setTimeout(() => {
+            closeSignupModal();
+          }, 2000);
         } else {
-          document.getElementById('signupError').textContent = data.error || '회원가입 중 오류가 발생했습니다.';
+          document.getElementById('signupError').textContent = data.error;
           document.getElementById('signupError').style.display = 'block';
         }
       })
       .catch(error => {
         document.getElementById('signupError').textContent = '서버 오류가 발생했습니다.';
         document.getElementById('signupError').style.display = 'block';
+      })
+      .finally(() => {
+        // 버튼 상태 복원
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
       });
     });
   </script>

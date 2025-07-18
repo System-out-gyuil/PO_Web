@@ -38,7 +38,7 @@ function refreshKanban() {
 }
 
 function updateEntryField(id, field, value) {
-  fetch('/sales/update/', {
+  fetch('/sales/update_row_field/', {
       method: 'POST',
       headers: {'Content-Type': 'application/x-www-form-urlencoded'},
       body: 'id='+encodeURIComponent(id)+'&field='+encodeURIComponent(field)+'&value='+encodeURIComponent(value)

@@ -110,7 +110,14 @@ def to_korean_currency(value):
         elif result:
             result += ''
         
-        return result + ''
+        # 10,000 미만의 값은 그대로 표시
+        if remaining > 0 and remaining < 10000:
+            if result:
+                result += str(remaining)
+            else:
+                result = str(remaining)
+        
+        return result + '원'
         
     except (ValueError, TypeError):
         return str(value) 

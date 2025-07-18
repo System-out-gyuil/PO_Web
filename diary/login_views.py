@@ -6,31 +6,57 @@ from django.utils.decorators import method_decorator
 from .models import User, BaseAttribute, BaseAttributeDetail, Attribute
 import json
 
+@method_decorator(csrf_exempt, name='dispatch')
 class LoginView(View):
     def get(self, request):
         return render(request, 'diary/diary_login.html')
     
     def post(self, request):
-        member_id = request.POST.get('member_id')
-        member_pw = request.POST.get('member_pw')
-
-        print(member_id, member_pw)
-
         try:
-            member = User.objects.get(email=member_id, password=member_pw)
+            # JSON 데이터 파싱
+            data = json.loads(request.body)
+            member_id = data.get('member_id')
+            member_pw = data.get('member_pw')
 
-            # 로그인 성공 → 세션 저장
-            request.session['diary_authenticated'] = True
-            request.session['diary_member_id'] = member.id  # 👉 해당 행의 id 저장
+            print(member_id, member_pw)
 
-            print(member.id)
+            # 입력값 검증
+            if not member_id or not member_pw:
+                return JsonResponse({
+                    'success': False,
+                    'error': '아이디와 비밀번호를 모두 입력해주세요.'
+                })
 
-            if member.id:
-                return redirect('diary_list')
+            try:
+                member = User.objects.get(email=member_id, password=member_pw)
 
-        except User.DoesNotExist:
-            return render(request, 'diary/diary_login.html', {
-                'error': '아이디 또는 비밀번호가 틀렸습니다.'
+                # 로그인 성공 → 세션 저장
+                request.session['diary_authenticated'] = True
+                request.session['diary_member_id'] = member.id
+
+                print(member.id)
+
+                return JsonResponse({
+                    'success': True,
+                    'message': '로그인되었습니다.',
+                    'redirect_url': '/sales/diary/'
+                })
+
+            except User.DoesNotExist:
+                return JsonResponse({
+                    'success': False,
+                    'error': '아이디 또는 비밀번호가 틀렸습니다.'
+                })
+
+        except json.JSONDecodeError:
+            return JsonResponse({
+                'success': False,
+                'error': '잘못된 요청 형식입니다.'
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': f'로그인 중 오류가 발생했습니다: {str(e)}'
             })
 
 @method_decorator(csrf_exempt, name='dispatch')

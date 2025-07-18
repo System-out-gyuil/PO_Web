@@ -1,3 +1,31 @@
+// hexToRgba 함수 정의
+function hexToRgba(hex, alpha) {
+    // hex 값이 없거나 유효하지 않은 경우 기본값 반환
+    if (!hex || typeof hex !== 'string') {
+        return `rgba(0, 0, 0, ${alpha})`;
+    }
+    
+    // # 제거
+    hex = hex.replace('#', '');
+    
+    // 3자리 hex를 6자리로 변환
+    if (hex.length === 3) {
+        hex = hex.split('').map(char => char + char).join('');
+    }
+    
+    // 유효한 hex 값인지 확인
+    if (!/^[0-9A-F]{6}$/i.test(hex)) {
+        return `rgba(0, 0, 0, ${alpha})`;
+    }
+    
+    // RGB 값 추출
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+    
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 // 드롭다운 닫기 함수
 // function closeDropdown() {
 //     console.log('table closeDropdown 호출됨');
@@ -149,16 +177,29 @@
                       } else {
                           // 기존 행인 경우
                           console.log('update_row_field, 테이블3')
-                          fetch('/sales/update/', {
+                          fetch('/sales/update_row_field/', {
                               method: 'POST',
                               headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                              body: 'id=' + id + '&field=' + type + '&value=' + encodeURIComponent(newValue)
+                              body: 'id=' + id + '&field=' + encodeURIComponent(type) + '&value=' + encodeURIComponent(newValue)
                           }).then(function(response) {
                               return response.json();
                           }).then(function(data) {
-                              if (!data.success) alert('수정 실패: ' + data.error);
+                              if (!data.success) {
+                                  alert('수정 실패: ' + data.error);
+                                  return;
+                              }
+                              
+                              // 현재 셀 즉시 업데이트
+                              updateTableCell(id, type, newValue);
+                              
+                              // 종속된 행들 찾아서 업데이트
+                              updateDependentRows(id, type, newValue);
+                              
                               // 필요시 테이블/보드 갱신
                               refreshCalendarSettings();
+                          }).catch(function(error) {
+                              console.error('업데이트 중 오류:', error);
+                              alert('업데이트 중 오류가 발생했습니다.');
                           });
                       }
                   };
@@ -203,16 +244,26 @@
                           } else {
                               // 기존 행인 경우
                               console.log('update_row_field, 테이블4')
-                              fetch('/sales/update/', {
+                              fetch('/sales/update_row_field/', {
                                   method: 'POST',
                                   headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                                   body: 'id='+id+'&field='+encodeURIComponent(type)+'&value='+encodeURIComponent(newValue)
                               }).then(function(response) {
                                   return response.json();
                               }).then(function(data) {
-                                  if (!data.success) alert('수정 실패: ' + (data.error || ''));
+                                  if (!data.success) {
+                                      alert('수정 실패: ' + (data.error || ''));
+                                      return;
+                                  }
+                                  
+                                  // 현재 셀 즉시 업데이트
+                                  updateTableCell(id, type, newValue);
+                                  
+                                  // 종속된 행들 찾아서 업데이트
+                                  updateDependentRows(id, type, newValue);
                               }).catch(function(error) {
                                   console.error('업데이트 중 오류:', error);
+                                  alert('업데이트 중 오류가 발생했습니다.');
                               });
                           }
                       };
@@ -355,10 +406,26 @@
                                           saveNewRowField(td.parentElement, '회사명', newValue);
                                       } else {
                                           console.log('update_row_field, 테이블5')
-                                          fetch('/sales/update/', {
+                                          fetch('/sales/update_row_field/', {
                                               method: 'POST',
                                               headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                                               body: 'id=' + id + '&field=회사명&value=' + encodeURIComponent(newValue)
+                                          }).then(function(response) {
+                                              return response.json();
+                                          }).then(function(data) {
+                                              if (!data.success) {
+                                                  alert('수정 실패: ' + (data.error || ''));
+                                                  return;
+                                              }
+                                              
+                                              // 현재 셀 즉시 업데이트
+                                              updateTableCell(id, '회사명', newValue);
+                                              
+                                              // 종속된 행들 찾아서 업데이트
+                                              updateDependentRows(id, '회사명', newValue);
+                                          }).catch(function(error) {
+                                              console.error('업데이트 중 오류:', error);
+                                              alert('업데이트 중 오류가 발생했습니다.');
                                           });
                                       }
                                   };
@@ -376,10 +443,26 @@
                                   saveNewRowField(td.parentElement, '회사명', newValue);
                               } else {
                                   console.log('update_row_field, 테이블6')
-                                  fetch('/sales/update/', {
+                                  fetch('/sales/update_row_field/', {
                                       method: 'POST',
                                       headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                                       body: 'id=' + id + '&field=회사명&value=' + encodeURIComponent(newValue)
+                                  }).then(function(response) {
+                                      return response.json();
+                                  }).then(function(data) {
+                                      if (!data.success) {
+                                          alert('수정 실패: ' + (data.error || ''));
+                                          return;
+                                      }
+                                      
+                                      // 현재 셀 즉시 업데이트
+                                      updateTableCell(id, '회사명', newValue);
+                                      
+                                      // 종속된 행들 찾아서 업데이트
+                                      updateDependentRows(id, '회사명', newValue);
+                                  }).catch(function(error) {
+                                      console.error('업데이트 중 오류:', error);
+                                      alert('업데이트 중 오류가 발생했습니다.');
                                   });
                               }
                           };
@@ -434,16 +517,26 @@
                               }
                               td.style.width = '';
                               console.log('update_row_field, 테이블7')
-                              fetch('/sales/update/', {
+                              fetch('/sales/update_row_field/', {
                                   method: 'POST',
                                   headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                                   body: 'id='+id+'&field='+encodeURIComponent(type)+'&value='+encodeURIComponent(newValue)
                               }).then(function(response) {
                                   return response.json();
                               }).then(function(data) {
-                                  if (!data.success) alert('수정 실패: ' + (data.error || ''));
+                                  if (!data.success) {
+                                      alert('수정 실패: ' + (data.error || ''));
+                                      return;
+                                  }
+                                  
+                                  // 현재 셀 즉시 업데이트
+                                  updateTableCell(id, type, newValue);
+                                  
+                                  // 종속된 행들 찾아서 업데이트
+                                  updateDependentRows(id, type, newValue);
                               }).catch(function(error) {
                                   console.error('업데이트 중 오류:', error);
+                                  alert('업데이트 중 오류가 발생했습니다.');
                               });
                           };
                       }
@@ -503,9 +596,12 @@
       const cell = row.querySelector(`td[data-field="${field}"]`);
       if (!cell) return;
       
+      console.log(`updateTableCell 호출: ${rowId}, ${field}, ${value}`);
+      
       // 셀 내용만 업데이트 (전체 테이블 새로고침 없이)
       if (field === '매출' || field.includes('매출')) {
           cell.textContent = formatToKoreanCurrency(value);
+          cell.setAttribute('data-raw', value);
       } else if (field === '개업년월') {
           // 개업년월 특별 처리
           try {
@@ -524,8 +620,90 @@
           } catch (e) {
               cell.textContent = value;
           }
+      } else if (field === '회사명') {
+          // 회사명 필드 특별 처리
+          const nameTextDiv = cell.querySelector('.name-text');
+          if (nameTextDiv) {
+              nameTextDiv.innerText = value;
+          } else {
+              cell.textContent = value;
+          }
       } else {
-          cell.textContent = value;
+          // 드롭다운 필드인지 확인
+          const dropdownFields = (window.ATTR_FIELDS || [])
+              .filter(attr => attr.attributeType_name === 'dropdown')
+              .map(attr => attr.name);
+          
+          if (dropdownFields.includes(field)) {
+              // 드롭다운 필드는 서버에서 최신 옵션 정보를 가져와서 업데이트
+              console.log(`드롭다운 필드 업데이트: ${field}, 값: ${value}`);
+              
+              // 먼저 현재 셀의 내용을 pill 형태로 임시 업데이트 (로딩 상태)
+              if (value) {
+                  cell.innerHTML = `<div class="dropdown-pill" style="background:#f8f9fa; color:#6c757d; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center; border:1px solid #dee2e6;">${value}</div>`;
+                  cell.setAttribute('data-value', value);
+              }
+              
+              // 서버에서 옵션 정보를 가져와서 처리
+              fetch('/sales/dropdown_options/?field=' + encodeURIComponent(field))
+                  .then(response => {
+                      if (!response.ok) {
+                          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                      }
+                      return response.json();
+                  })
+                  .then(data => {
+                      console.log(`드롭다운 옵션 데이터:`, data);
+                      if (data.options && Array.isArray(data.options)) {
+                          // 값이 숫자인 경우 ID로 처리, 그렇지 않으면 텍스트로 처리
+                          let option = null;
+                          let displayValue = value;
+                          
+                          if (value && !isNaN(value)) {
+                              // 숫자인 경우 ID로 찾기
+                              option = data.options.find(opt => opt.id == value);
+                              console.log(`ID ${value}로 찾은 옵션:`, option);
+                              if (option) {
+                                  displayValue = option.option;
+                              }
+                          } else {
+                              // 텍스트인 경우 이름으로 찾기
+                              option = data.options.find(opt => opt.option === value);
+                              console.log(`텍스트 "${value}"로 찾은 옵션:`, option);
+                              if (option) {
+                                  displayValue = option.option;
+                              }
+                          }
+                          
+                          if (option) {
+                              const color = option.color ? hexToRgba(option.color, 0.18) : '#eee';
+                              cell.innerHTML = `<div class="dropdown-pill" style="background:${color}; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">${displayValue}</div>`;
+                              cell.setAttribute('data-value', option.id);
+                              console.log(`드롭다운 셀 업데이트 완료: ${displayValue}`);
+                          } else {
+                              // 옵션을 찾지 못한 경우에도 pill 형태로 표시
+                              console.log(`옵션을 찾지 못함, pill 형태로 표시: ${displayValue}`);
+                              cell.innerHTML = `<div class="dropdown-pill" style="background:#f8f9fa; color:#6c757d; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center; border:1px solid #dee2e6;">${displayValue}</div>`;
+                              cell.setAttribute('data-value', value);
+                          }
+                      } else {
+                          // 옵션 데이터가 없는 경우에도 pill 형태로 표시
+                          console.log(`옵션 데이터가 없음, pill 형태로 표시: ${value}`);
+                          cell.innerHTML = `<div class="dropdown-pill" style="background:#f8f9fa; color:#6c757d; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center; border:1px solid #dee2e6;">${value}</div>`;
+                          cell.setAttribute('data-value', value);
+                      }
+                  })
+                  .catch(error => {
+                      console.error('드롭다운 옵션 업데이트 실패:', error);
+                      // 오류 발생 시에도 pill 형태로 표시
+                      cell.innerHTML = `<div class="dropdown-pill" style="background:#f8f9fa; color:#6c757d; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center; border:1px solid #dee2e6;">${value}</div>`;
+                      cell.setAttribute('data-value', value);
+                  });
+          } else {
+              // 일반 필드
+              cell.textContent = value;
+              cell.setAttribute('data-value', value);
+          }
       }
       
       // 실시간 동기화 (캘린더만)
@@ -566,6 +744,34 @@
                   currentTable.innerHTML = newTable.innerHTML;
                   console.log('테이블 내용 교체 완료');
                   
+                  // 테이블 레이아웃을 fixed로 강제 설정
+                  currentTable.style.tableLayout = 'fixed';
+                  currentTable.style.width = '100%';
+                  
+                  // 모든 th와 td의 width를 강제로 설정
+                  const headers = currentTable.querySelectorAll('thead th');
+                  headers.forEach((th, index) => {
+                      if (th.style.width) {
+                          const width = th.style.width;
+                          // 해당 컬럼의 모든 td에도 같은 width 적용
+                          const tbody = currentTable.querySelector('tbody');
+                          if (tbody) {
+                              const rows = tbody.querySelectorAll('tr');
+                              rows.forEach(row => {
+                                  const td = row.children[index];
+                                  if (td) {
+                                      td.style.width = width;
+                                      td.style.minWidth = width;
+                                      td.style.maxWidth = width;
+                                      td.style.overflow = 'hidden';
+                                      td.style.textOverflow = 'ellipsis';
+                                      td.style.whiteSpace = 'nowrap';
+                                  }
+                              });
+                          }
+                      }
+                  });
+                  
                   // 체크박스 상태 초기화
                   resetCheckboxes();
                   
@@ -579,6 +785,23 @@
                   bindTableCellEvents(); // 테이블 이벤트 복구
                   console.log('테이블 이벤트 바인딩 완료');
                   
+                  // 체크박스와 상세보기 버튼 이벤트 재바인딩
+                  if (typeof bindCheckboxEvents === 'function') {
+                      bindCheckboxEvents();
+                      console.log('체크박스 이벤트 바인딩 완료');
+                  }
+                  
+                  // 상세보기 버튼 이벤트 바인딩 (약간의 지연 후 실행)
+                  setTimeout(() => {
+                      if (typeof bindDetailButtonEvents === 'function') {
+                          console.log('상세보기 버튼 이벤트 바인딩 시작...');
+                          bindDetailButtonEvents();
+                          console.log('상세보기 버튼 이벤트 바인딩 완료');
+                      } else {
+                          console.log('bindDetailButtonEvents 함수를 찾을 수 없습니다.');
+                      }
+                  }, 100);
+                  
                   // 컬럼 드래그앤드롭 재초기화
                   if (typeof reinitializeDragDrop === 'function') {
                       reinitializeDragDrop();
@@ -586,7 +809,10 @@
                   }
                   
                   // 행 드래그앤드롭 재초기화 추가
-                  reinitializeRowDragDrop();
+                  if (typeof reinitializeRowDragDrop === 'function') {
+                      reinitializeRowDragDrop();
+                      console.log('행 드래그앤드롭 재초기화 완료');
+                  }
                   
                   // 정렬/필터 데이터 재초기화
                   if (typeof initializeTableData === 'function') {
@@ -663,6 +889,32 @@
                   
                   // === pill 렌더링 추가 ===
                   renderDropdownPills();
+                  
+                  // 드롭다운 pill 렌더링을 지연시켜 더 안정적으로 처리
+                  setTimeout(() => {
+                      renderDropdownPills();
+                      console.log('드롭다운 pill 렌더링 완료');
+                  }, 100);
+                  
+                  // 추가 지연 후 한 번 더 렌더링 (안정성 확보)
+                  setTimeout(() => {
+                      renderDropdownPills();
+                      console.log('드롭다운 pill 렌더링 2차 완료');
+                  }, 300);
+                  
+                  // 컬럼 리사이저 재초기화 및 너비 재적용
+                  if (typeof reinitializeColumnResizer === 'function') {
+                      reinitializeColumnResizer();
+                      console.log('컬럼 리사이저 재초기화 완료');
+                      
+                      // 저장된 컬럼 width 재적용
+                      setTimeout(() => {
+                          if (window.columnResizer && typeof window.columnResizer.loadColumnWidths === 'function') {
+                              window.columnResizer.loadColumnWidths();
+                              console.log('저장된 컬럼 너비 재적용 완료');
+                          }
+                      }, 100);
+                  }
                   
                   console.log('refreshTable 완료');
               } else {
@@ -820,7 +1072,7 @@
                       
                       // 서버에 업데이트
                       console.log('update_row_field, 테이블1')
-                      fetch('/sales/update/', {
+                      fetch('/sales/update_row_field/', {
                           method: 'POST',
                           headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                           body: 'id='+id+'&field='+encodeURIComponent(type)+'&value='+encodeURIComponent(newValue)
@@ -884,6 +1136,11 @@
                   // 실시간 동기화
                   syncTableAndKanban(field);
                   
+                  // 종속된 행들 업데이트
+                  if (typeof updateDependentRows === 'function') {
+                      updateDependentRows(data.id, field, processedValue);
+                  }
+                  
                   // F/U 일정 필드인 경우 캘린더 새로고침
                   if (field === 'F/U 일정' && window.calendar) {
                       window.calendar.refetchEvents();
@@ -909,6 +1166,11 @@
               if (data.success) {
                   // 실시간 동기화
                   syncTableAndKanban(field);
+                  
+                  // 종속된 행들 업데이트
+                  if (typeof updateDependentRows === 'function') {
+                      updateDependentRows(currentId, field, processedValue);
+                  }
                   
                   // F/U 일정 필드인 경우 캘린더 새로고침
                   if (field === 'F/U 일정' && window.calendar) {
@@ -1169,7 +1431,7 @@
                               // UI 업데이트
                               const color = option.color ? hexToRgba(option.color, 0.18) : '#eee';
                               td.innerHTML = `<div class="dropdown-pill" style="background:${color}; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">${option.option}</div>`;
-                              td.setAttribute('data-value', optionId);
+                              td.setAttribute('data-value', option.id);
                               
                               // 상태 필터가 활성화되어 있고, 변경된 필드가 상태 속성인 경우
                               if (window.currentStatusTab !== null && type === window.statusAttributeName) {
@@ -1419,7 +1681,7 @@
       
       // 기존 행인 경우
       console.log('update_row_field, 테이블2')
-      fetch('/sales/update/', {
+      fetch('/sales/update_row_field/', {
           method: 'POST',
           headers: {'Content-Type': 'application/x-www-form-urlencoded'},
           body: 'id=' + id + '&field=' + encodeURIComponent(fieldName) + '&value=' + encodeURIComponent(value)
@@ -1432,6 +1694,12 @@
               alert('수정 실패: ' + (data.error || ''));
               return;
           }
+          
+          // 현재 셀 즉시 업데이트
+          updateTableCell(id, fieldName, value);
+          
+          // 종속된 행들 찾아서 업데이트
+          updateDependentRows(id, fieldName, value);
           
           // 상태 필터가 활성화되어 있고, 변경된 필드가 상태 속성인 경우에만 즉시 필터 적용
           if (window.currentStatusTab !== null && fieldName === window.statusAttributeName) {
@@ -1451,11 +1719,6 @@
                       }, 50);
                   }
               }
-          }
-          
-          // 테이블과 칸반보드 새로고침
-          if (typeof refreshTable === 'function') {
-              refreshTable();
           }
           
           // 칸반보드가 활성화되어 있고 업데이트된 필드가 현재 칸반보드 속성과 일치하는 경우에만 새로고침
@@ -1484,6 +1747,104 @@
           console.error('업데이트 중 오류:', error);
           alert('업데이트 중 오류가 발생했습니다.');
       });
+  }
+  
+  // 종속된 행들을 찾아서 업데이트하는 함수
+  function updateDependentRows(updatedRowId, fieldName, value) {
+      console.log('종속된 행들 업데이트 시작:', {updatedRowId, fieldName, value});
+      
+      // 모든 필드에 대해 종속된 행들 찾기 (매출 관련 필드 제한 제거)
+      // 서버에서 종속된 행들 정보 가져오기
+      fetch('/sales/get_dependent_rows/', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+          body: 'row_id=' + encodeURIComponent(updatedRowId) + '&field=' + encodeURIComponent(fieldName)
+      })
+      .then(response => response.json())
+      .then(data => {
+          if (data.success && data.dependent_rows) {
+              console.log('종속된 행들:', data.dependent_rows);
+              
+              // 드롭다운 필드인지 확인
+              const dropdownFields = (window.ATTR_FIELDS || [])
+                  .filter(attr => attr.attributeType_name === 'dropdown')
+                  .map(attr => attr.name);
+              
+              const isDropdownField = dropdownFields.includes(fieldName);
+              
+              // 각 종속된 행의 셀 업데이트
+              data.dependent_rows.forEach(depRow => {
+                  if (depRow.row_id && depRow.field && depRow.value !== undefined) {
+                      console.log('종속된 행 업데이트:', depRow);
+                      
+                      // 드롭다운 필드인 경우 옵션 정보를 가져와서 처리
+                      let displayValue = depRow.value;
+                      if (isDropdownField && depRow.value) {
+                          // 값이 숫자인 경우에만 ID를 이름으로 변환
+                          if (!isNaN(depRow.value)) {
+                              // 드롭다운 옵션 정보 가져와서 ID를 이름으로 변환
+                              fetch('/sales/dropdown_options/?field=' + encodeURIComponent(fieldName))
+                                  .then(response => {
+                                      if (!response.ok) {
+                                          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                                      }
+                                      return response.json();
+                                  })
+                                  .then(optionData => {
+                                      if (optionData.options && Array.isArray(optionData.options)) {
+                                          const option = optionData.options.find(opt => opt.id == depRow.value);
+                                          if (option) {
+                                              displayValue = option.option;
+                                          } else {
+                                              // 옵션을 찾지 못한 경우 원래 값 사용
+                                              displayValue = depRow.value;
+                                          }
+                                      } else {
+                                          // 옵션 데이터가 없는 경우 원래 값 사용
+                                          displayValue = depRow.value;
+                                      }
+                                      
+                                      // 약간의 지연을 두고 업데이트 (DOM 업데이트 보장)
+                                      setTimeout(() => {
+                                          updateTableCell(depRow.row_id, depRow.field, displayValue);
+                                      }, 10);
+                                  })
+                                  .catch(error => {
+                                      console.error('드롭다운 옵션 정보 가져오기 실패:', error);
+                                      // 실패 시 원래 값으로 업데이트 (updateTableCell에서 pill 형태로 처리됨)
+                                      setTimeout(() => {
+                                          updateTableCell(depRow.row_id, depRow.field, depRow.value);
+                                      }, 10);
+                                  });
+                          } else {
+                              // 값이 이미 텍스트인 경우 그대로 사용
+                              setTimeout(() => {
+                                  updateTableCell(depRow.row_id, depRow.field, displayValue);
+                              }, 10);
+                          }
+                      } else {
+                          // 일반 필드인 경우 그대로 사용
+                          setTimeout(() => {
+                              updateTableCell(depRow.row_id, depRow.field, displayValue);
+                          }, 10);
+                      }
+                  }
+              });
+          } else {
+              console.log('종속된 행이 없거나 오류 발생:', data);
+          }
+      })
+      .catch(error => {
+          console.error('종속된 행들 업데이트 실패:', error);
+      });
+      
+      // 드롭다운 필드인 경우 관련 셀들 동기화
+      if (dropdownFields.includes(fieldName)) {
+          // 드롭다운 옵션 동기화는 기존 syncTableAndKanban 함수에서 처리
+          if (typeof syncTableAndKanban === 'function') {
+              syncTableAndKanban(fieldName);
+          }
+      }
   }
   
   // 테이블과 칸반보드 실시간 동기화 함수
@@ -1551,6 +1912,11 @@
                                               const color = textOption.color ? hexToRgba(textOption.color, 0.18) : '#eee';
                                               cell.innerHTML = `<div class="dropdown-pill" style="background:${color}; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">${textOption.option}</div>`;
                                               cell.setAttribute('data-value', textOption.id);
+                                          } else {
+                                              // 옵션을 찾지 못한 경우에도 pill 형태로 표시
+                                              console.log(`옵션을 찾지 못함, pill 형태로 표시: ${currentValue}`);
+                                              cell.innerHTML = `<div class="dropdown-pill" style="background:#f8f9fa; color:#6c757d; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center; border:1px solid #dee2e6;">${currentValue}</div>`;
+                                              cell.setAttribute('data-value', currentValue);
                                           }
                                       }
                                   }
@@ -1562,6 +1928,11 @@
                                       const color = option.color ? hexToRgba(option.color, 0.18) : '#eee';
                                       cell.innerHTML = `<div class="dropdown-pill" style="background:${color}; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">${option.option}</div>`;
                                       cell.setAttribute('data-value', option.id);
+                                  } else {
+                                      // 옵션을 찾지 못한 경우에도 pill 형태로 표시
+                                      console.log(`JSON 파싱 실패 후 옵션을 찾지 못함, pill 형태로 표시: ${currentValue}`);
+                                      cell.innerHTML = `<div class="dropdown-pill" style="background:#f8f9fa; color:#6c757d; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center; border:1px solid #dee2e6;">${currentValue}</div>`;
+                                      cell.setAttribute('data-value', currentValue);
                                   }
                               }
                           }
@@ -1791,43 +2162,86 @@
 
   // === 다중선택 드롭다운 셀을 옵션명 pill로 변환하는 함수 ===
   function renderDropdownPills() {
+      console.log('renderDropdownPills 함수 시작');
+      
       // 다중선택 드롭다운 필드 목록 동적 추출
       const dropdownFields = getDropdownFields();
+      console.log('드롭다운 필드들:', dropdownFields);
+      
       dropdownFields.forEach(field => {
-          document.querySelectorAll(`td[data-field="${field}"]`).forEach(cell => {
+          const cells = document.querySelectorAll(`td[data-field="${field}"]`);
+          console.log(`필드 "${field}"의 셀 개수: ${cells.length}`);
+          
+          cells.forEach(cell => {
               const currentValue = cell.getAttribute('data-value');
+              console.log(`셀 ${field} 값:`, currentValue);
+              
               if (!currentValue) {
                   cell.innerHTML = '<div class="dropdown-pill" style="background:#f8f9fa; color:#6c757d; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center; border:1px solid #dee2e6;">선택 없음</div>';
                   return;
               }
+              
               let parsed = null;
               try {
                   parsed = JSON.parse(currentValue);
               } catch (e) {
                   parsed = currentValue;
               }
+              
+              // 서버에서 옵션 정보를 가져와서 처리
               fetch('/sales/dropdown_options/?field=' + encodeURIComponent(field))
-                  .then(response => response.json())
+                  .then(response => {
+                      if (!response.ok) {
+                          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                      }
+                      return response.json();
+                  })
                   .then(data => {
-                      if (!data.options) return;
+                      console.log(`필드 "${field}" 옵션 데이터:`, data);
+                      
+                      if (!data.options) {
+                          console.log(`필드 "${field}" 옵션 데이터가 없음`);
+                          cell.innerHTML = `<div class="dropdown-pill" style="background:#f8f9fa; color:#6c757d; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center; border:1px solid #dee2e6;">${parsed}</div>`;
+                          return;
+                      }
+                      
                       let htmlContent = '';
                       if (Array.isArray(parsed)) {
+                          // 다중선택 값 처리
                           const selectedOptions = data.options.filter(opt => parsed.includes(Number(opt.id)));
+                          console.log(`다중선택 옵션들:`, selectedOptions);
+                          
                           selectedOptions.forEach(opt => {
                               const color = opt.color ? hexToRgba(opt.color, 0.18) : '#eee';
                               htmlContent += `<div class="dropdown-pill" style="background:${color}; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center; margin-bottom:2px;">${opt.option}</div>`;
                           });
                       } else {
+                          // 단일 선택 값 처리
                           const opt = data.options.find(opt => opt.id == parsed);
+                          console.log(`단일선택 옵션 찾기:`, parsed, opt);
+                          
                           if (opt) {
                               const color = opt.color ? hexToRgba(opt.color, 0.18) : '#eee';
                               htmlContent = `<div class="dropdown-pill" style="background:${color}; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">${opt.option}</div>`;
+                          } else {
+                              // 옵션을 찾지 못한 경우에도 pill 형태로 표시
+                              console.log(`옵션을 찾지 못함, pill 형태로 표시: ${parsed}`);
+                              htmlContent = `<div class="dropdown-pill" style="background:#f8f9fa; color:#6c757d; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center; border:1px solid #dee2e6;">${parsed}</div>`;
                           }
                       }
+                      
                       cell.innerHTML = htmlContent || '<div class="dropdown-pill" style="background:#f8f9fa; color:#6c757d; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center; border:1px solid #dee2e6;">선택 없음</div>';
+                      console.log(`셀 ${field} 업데이트 완료`);
+                  })
+                  .catch(error => {
+                      console.error(`드롭다운 옵션 로드 실패 (${field}):`, error);
+                      // 오류 발생 시에도 pill 형태로 표시
+                      cell.innerHTML = `<div class="dropdown-pill" style="background:#f8f9fa; color:#6c757d; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center; border:1px solid #dee2e6;">${currentValue}</div>`;
                   });
           });
       });
+      
+      console.log('renderDropdownPills 함수 완료');
   }
 
   

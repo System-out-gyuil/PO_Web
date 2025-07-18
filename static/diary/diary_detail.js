@@ -744,6 +744,11 @@ function detailUpdateRowFieldWithKoreanCurrency(rowId, fieldName, value) {
             if (typeof refreshTable === 'function') {
                 refreshTable();
             }
+            
+            // 종속된 행들 업데이트
+            if (typeof updateDependentRows === 'function') {
+                updateDependentRows(rowId, fieldName, numericValue);
+            }
         } else {
             console.error('매출 업데이트 실패:', data.error);
             showNotification('매출 정보 업데이트에 실패했습니다.', 'error');
@@ -966,6 +971,20 @@ function closeDetailModal() {
           console.log('상세 모달 닫기 후 테이블 셀 이벤트 재바인딩 완료');
         }
         
+        // 체크박스와 상세보기 버튼 이벤트 재바인딩
+        if (typeof bindCheckboxEvents === 'function') {
+          bindCheckboxEvents();
+          console.log('상세 모달 닫기 후 체크박스 이벤트 재바인딩 완료');
+        }
+        
+        if (typeof bindDetailButtonEvents === 'function') {
+          setTimeout(() => {
+              console.log('상세 모달 닫기 후 상세보기 버튼 이벤트 바인딩 시작...');
+              bindDetailButtonEvents();
+              console.log('상세 모달 닫기 후 상세보기 버튼 이벤트 바인딩 완료');
+          }, 200);
+        }
+        
         // 드롭다운 pill 렌더링
         if (typeof renderDropdownPills === 'function') {
           renderDropdownPills();
@@ -976,6 +995,12 @@ function closeDetailModal() {
         if (typeof recreateDuplicateButtons === 'function') {
           recreateDuplicateButtons();
           console.log('상세 모달 닫기 후 행 복제 버튼과 상세보기 버튼 재생성 완료');
+        }
+        
+        // 행 드래그앤드롭 재초기화
+        if (typeof reinitializeRowDragDrop === 'function') {
+          reinitializeRowDragDrop();
+          console.log('상세 모달 닫기 후 행 드래그앤드롭 재초기화 완료');
         }
       }, 200); // 테이블 새로고침 완료 후 200ms 지연
       
@@ -2707,19 +2732,17 @@ function saveSalesInput(rowId, fieldName) {
     const eok = parseInt(eokInput.value) || 0;
     const cheonman = parseInt(cheonmanInput.value) || 0;
     
-    // 새로운 API 사용
-    fetch('/sales/update_sales_field/', {
+    // 총 금액 계산 (억 * 100000000 + 천만 * 10000000)
+    const totalAmount = eok * 100000000 + cheonman * 10000000;
+    
+    // update_row_field API 사용 (종속된 행들 업데이트 포함)
+    fetch('/sales/update_row_field/', {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded',
             'X-CSRFToken': getCsrfToken()
         },
-        body: JSON.stringify({
-            row_id: rowId,
-            field_name: fieldName,
-            eok: eok,
-            cheonman: cheonman
-        })
+        body: 'id=' + encodeURIComponent(rowId) + '&field=' + encodeURIComponent(fieldName) + '&value=' + encodeURIComponent(totalAmount)
     })
     .then(response => response.json())
     .then(data => {
@@ -2729,11 +2752,12 @@ function saveSalesInput(rowId, fieldName) {
             // 컨테이너 복원
             const container = document.querySelector(`[data-field="${fieldName}"]`);
             if (container) {
-                container.innerHTML = data.formatted_amount || '0원';
-                container.setAttribute('data-raw', data.total_amount);
+                const formattedAmount = formatToKoreanCurrency(totalAmount);
+                container.innerHTML = formattedAmount;
+                container.setAttribute('data-raw', totalAmount);
                 
                 // 값이 있으면 빨간 테두리 제거
-                if (data.total_amount > 0) {
+                if (totalAmount > 0) {
                     highlightRequiredField(container, false);
                 }
             }
@@ -2741,6 +2765,11 @@ function saveSalesInput(rowId, fieldName) {
             // 테이블과 칸반보드 새로고침
             if (typeof refreshTable === 'function') {
                 refreshTable();
+            }
+            
+            // 종속된 행들 업데이트
+            if (typeof updateDependentRows === 'function') {
+                updateDependentRows(rowId, fieldName, totalAmount);
             }
         } else {
             console.error('매출 업데이트 실패:', data.error);
@@ -2834,6 +2863,13 @@ function detailUpdateRowField(rowId, field, value) {
             updateTableCell(rowId, field, value);
         }
         
+        // 매출 관련 필드인 경우 종속된 행들 업데이트
+        if (field === '매출' || field.includes('매출')) {
+            if (typeof updateDependentRows === 'function') {
+                updateDependentRows(rowId, field, value);
+            }
+        }
+        
         // F/U 일정 필드인 경우 캘린더도 새로고침
         if(field === 'F/U 일정' && window.calendar) {
             window.calendar.refetchEvents();
@@ -2893,7 +2929,6 @@ function recreateDuplicateButtons() {
             return;
         }
         
-        
         // drag-cell 찾기
         const dragCell = row.querySelector('.drag-cell');
         if (!dragCell) {
@@ -2901,15 +2936,14 @@ function recreateDuplicateButtons() {
             return;
         }
         
-        // button-container 찾기 또는 생성
-        let buttonContainer = dragCell.querySelector('.button-container');
+        // cell-button-container 찾기 또는 생성
+        let buttonContainer = dragCell.querySelector('.cell-button-container');
         if (!buttonContainer) {
             buttonContainer = document.createElement('div');
-            buttonContainer.className = 'button-container';
+            buttonContainer.className = 'cell-button-container';
             buttonContainer.style.cssText = `
                 display: flex;
                 align-items: center;
-                justify-content: center;
                 gap: 6px;
                 flex-wrap: nowrap;
                 height: 100%;
@@ -2917,163 +2951,65 @@ function recreateDuplicateButtons() {
             dragCell.appendChild(buttonContainer);
         }
         
-        // 기존 버튼들 제거
-        buttonContainer.innerHTML = '';
+        // 기존 버튼들 제거 (체크박스는 유지)
+        const existingButtons = buttonContainer.querySelectorAll('.delete-row-btn, .duplicate-row-btn, .drag-handle');
+        existingButtons.forEach(btn => btn.remove());
         
         // 삭제 버튼 생성
         const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'delete-row-btn';
+        deleteBtn.className = 'delete-row-btn action-btn';
         deleteBtn.setAttribute('onclick', `deleteRow('${rowId}')`);
         deleteBtn.setAttribute('title', '행 삭제');
         deleteBtn.innerHTML = '×';
-        deleteBtn.style.cssText = `
-            background: #dc3545;
-            color: white;
-            border: none;
-            border-radius: 3px;
-            padding: 3px 6px;
-            font-size: 11px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            min-width: 20px;
-            height: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            opacity: 0;
-        `;
         buttonContainer.appendChild(deleteBtn);
         
         // 복제 버튼 생성
         const duplicateBtn = document.createElement('button');
-        duplicateBtn.className = 'duplicate-row-btn';
+        duplicateBtn.className = 'duplicate-row-btn action-btn';
         duplicateBtn.setAttribute('onclick', `duplicateRow('${rowId}')`);
         duplicateBtn.setAttribute('title', '행 복제');
         duplicateBtn.innerHTML = '📋';
-        duplicateBtn.style.cssText = `
-            background: #28a745;
-            color: white;
-            border: none;
-            border-radius: 3px;
-            padding: 3px 6px;
-            font-size: 11px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            min-width: 20px;
-            height: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            opacity: 0;
-        `;
         buttonContainer.appendChild(duplicateBtn);
         
         // 드래그 핸들 생성
         const dragHandle = document.createElement('span');
         dragHandle.className = 'drag-handle';
         dragHandle.innerHTML = '⋮⋮⋮';
-        dragHandle.style.cssText = `
-            font-size: 16px;
-            color: #999;
-            cursor: move;
-            user-select: none;
-            padding: 2px;
-            border-radius: 3px;
-            transition: all 0.2s ease;
-            opacity: 0;
-        `;
         buttonContainer.appendChild(dragHandle);
-        
-        
-        // 상세보기 버튼 이벤트 재바인딩
-        const moreBtn = row.querySelector('.more-btn');
-        if (moreBtn) {
-            if (!moreBtn.hasAttribute('data-event-bound')) {
-                moreBtn.setAttribute('data-event-bound', 'true');
-                moreBtn.onclick = function(e) {
-                    e.stopPropagation();
-                    const tr = this.closest('tr');
-                    const id = tr.getAttribute('data-id') || tr.getAttribute('data-row-id');
-                    if (!id) { 
-                        alert('ID 정보가 없습니다.'); 
-                        return; 
-                    }
-                    console.log(`상세보기 버튼 클릭: ID = ${id}`);
-                    fetch('/sales/get_row_details/' + id + '/')
-                        .then(r => r.json())
-                        .then(function(data) {
-                            if (data.success) showDetailModal(data.row_data, data.row_id);
-                            else alert('상세정보 불러오기 실패: ' + (data.error || ''));
-                        })
-                        .catch(function(err) {
-                            alert('상세정보 불러오기 실패: 네트워크 오류\n' + err);
-                            console.error(err);
-                        });
-                };
-            } else {
-                console.log(`행 ${index}: 상세보기 버튼 이벤트가 이미 바인딩되어 있습니다.`);
-            }
-        } else {
-            console.log(`행 ${index}: 상세보기 버튼을 찾을 수 없습니다.`);
-            // name-container 구조 확인
-            const nameContainer = row.querySelector('.name-container');
-            if (nameContainer) {
-                console.log(`행 ${index}: name-container 발견`);
-                const moreBtnWrapper = nameContainer.querySelector('.more-btn-wrapper');
-                if (moreBtnWrapper) {
-                    console.log(`행 ${index}: more-btn-wrapper 발견`);
-                    const existingMoreBtn = moreBtnWrapper.querySelector('.more-btn');
-                    if (existingMoreBtn) {
-                        console.log(`행 ${index}: 기존 상세보기 버튼 발견`);
-                        if (!existingMoreBtn.hasAttribute('data-event-bound')) {
-                            existingMoreBtn.setAttribute('data-event-bound', 'true');
-                            existingMoreBtn.onclick = function(e) {
-                                e.stopPropagation();
-                                const tr = this.closest('tr');
-                                const id = tr.getAttribute('data-id') || tr.getAttribute('data-row-id');
-                                if (!id) { 
-                                    alert('ID 정보가 없습니다.'); 
-                                    return; 
-                                }
-                                console.log(`상세보기 버튼 클릭: ID = ${id}`);
-                                fetch('/sales/get_row_details/' + id + '/')
-                                    .then(r => r.json())
-                                    .then(function(data) {
-                                        if (data.success) showDetailModal(data.row_data, data.row_id);
-                                        else alert('상세정보 불러오기 실패: ' + (data.error || ''));
-                                    })
-                                    .catch(function(err) {
-                                        alert('상세정보 불러오기 실패: 네트워크 오류\n' + err);
-                                        console.error(err);
-                                    });
-                            };
-                            console.log(`행 ${index}: 상세보기 버튼 이벤트 바인딩 완료`);
-                        }
-                    } else {
-                        console.log(`행 ${index}: 상세보기 버튼이 없습니다.`);
-                    }
-                } else {
-                    console.log(`행 ${index}: more-btn-wrapper가 없습니다.`);
-                }
-            } else {
-                console.log(`행 ${index}: name-container가 없습니다.`);
-            }
-        }
     });
     
     console.log('recreateDuplicateButtons 함수 완료');
+    
+    // 체크박스와 상세보기 버튼 이벤트 재바인딩
+    bindCheckboxEvents();
+    
+    // 상세보기 버튼 이벤트 바인딩 (지연 실행)
+    setTimeout(() => {
+        if (typeof bindDetailButtonEvents === 'function') {
+            console.log('recreateDuplicateButtons에서 상세보기 버튼 이벤트 바인딩 시작...');
+            bindDetailButtonEvents();
+            console.log('recreateDuplicateButtons에서 상세보기 버튼 이벤트 바인딩 완료');
+        } else {
+            console.log('bindDetailButtonEvents 함수를 찾을 수 없습니다.');
+        }
+    }, 100);
     
     // 드래그 기능 다시 초기화
     if (typeof Sortable !== 'undefined') {
         const tbody = document.getElementById('entryTbody');
         if (tbody) {
-            // 기존 Sortable 인스턴스가 있다면 제거
+            // 기존 Sortable 인스턴스들이 있다면 제거
             if (window.tableSortable) {
                 window.tableSortable.destroy();
+                window.tableSortable = null;
+            }
+            if (window.rowSortable) {
+                window.rowSortable.destroy();
+                window.rowSortable = null;
             }
             
-            // 새로운 Sortable 인스턴스 생성
-            window.tableSortable = new Sortable(tbody, {
+            // 새로운 Sortable 인스턴스 생성 (window.rowSortable으로 통일)
+            window.rowSortable = new Sortable(tbody, {
                 handle: '.drag-handle',
                 animation: 150,
                 onEnd: function (evt) {
@@ -3356,6 +3292,264 @@ function closeFilePreviewModal() {
     const modal = document.getElementById('filePreviewModal');
     if (modal) {
         modal.remove();
+    }
+}
+
+// 체크박스 이벤트 바인딩 함수
+function bindCheckboxEvents() {
+    console.log('체크박스 이벤트 바인딩 시작');
+    
+    // 전체 선택 체크박스
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    if (selectAllCheckbox) {
+        selectAllCheckbox.onchange = function() {
+            const isChecked = this.checked;
+            const rowCheckboxes = document.querySelectorAll('.row-checkbox');
+            
+            rowCheckboxes.forEach(checkbox => {
+                checkbox.checked = isChecked;
+            });
+            
+            updateBulkDeleteButton();
+        };
+        console.log('전체 선택 체크박스 이벤트 바인딩 완료');
+    }
+    
+    // 개별 행 체크박스
+    const rowCheckboxes = document.querySelectorAll('.row-checkbox');
+    rowCheckboxes.forEach(checkbox => {
+        checkbox.onchange = function() {
+            updateBulkDeleteButton();
+            
+            // 모든 체크박스가 선택되었는지 확인
+            const allCheckboxes = document.querySelectorAll('.row-checkbox');
+            const checkedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
+            
+            if (selectAllCheckbox) {
+                selectAllCheckbox.checked = allCheckboxes.length === checkedCheckboxes.length;
+                selectAllCheckbox.indeterminate = checkedCheckboxes.length > 0 && checkedCheckboxes.length < allCheckboxes.length;
+            }
+        };
+    });
+    
+    console.log(`개별 체크박스 ${rowCheckboxes.length}개 이벤트 바인딩 완료`);
+}
+
+// 상세보기 버튼 이벤트 바인딩 함수
+function bindDetailButtonEvents() {
+    console.log('=== bindDetailButtonEvents 함수 시작 ===');
+    
+    // 회사명 셀의 상세보기 버튼들
+    const moreButtons = document.querySelectorAll('td[data-field="회사명"] .more-btn');
+    console.log(`찾은 상세보기 버튼 개수: ${moreButtons.length}`);
+    
+    if (moreButtons.length === 0) {
+        console.log('상세보기 버튼을 찾을 수 없습니다. DOM 구조 확인 필요.');
+        // DOM 구조 디버깅
+        const companyCells = document.querySelectorAll('td[data-field="회사명"]');
+        console.log(`회사명 셀 개수: ${companyCells.length}`);
+        companyCells.forEach((cell, index) => {
+            const nameContainer = cell.querySelector('.name-container');
+            const moreBtn = cell.querySelector('.more-btn');
+            console.log(`회사명 셀 ${index}:`, {
+                hasNameContainer: !!nameContainer,
+                hasMoreBtn: !!moreBtn,
+                cellHTML: cell.innerHTML.substring(0, 100) + '...'
+            });
+        });
+        return;
+    }
+    
+    moreButtons.forEach((btn, index) => {
+        console.log(`상세보기 버튼 ${index} 바인딩 중...`);
+        console.log(`버튼 ${index} 정보:`, {
+            element: btn,
+            parentTr: btn.closest('tr'),
+            rowId: btn.closest('tr')?.getAttribute('data-id') || btn.closest('tr')?.getAttribute('data-row-id'),
+            computedStyle: window.getComputedStyle(btn),
+            display: window.getComputedStyle(btn).display,
+            visibility: window.getComputedStyle(btn).visibility,
+            pointerEvents: window.getComputedStyle(btn).pointerEvents
+        });
+        
+        // 버튼이 클릭 가능하도록 스타일 설정
+        btn.style.cursor = 'pointer';
+        btn.style.pointerEvents = 'auto';
+        btn.style.userSelect = 'none';
+        
+        // 기존 이벤트 제거
+        btn.onclick = null;
+        
+        // 새 이벤트 바인딩
+        btn.onclick = function(e) {
+            console.log(`상세보기 버튼 ${index} 클릭됨!`);
+            e.stopPropagation();
+            e.preventDefault();
+            
+            const tr = this.closest('tr');
+            const id = tr.getAttribute('data-id') || tr.getAttribute('data-row-id');
+            console.log(`클릭된 행 ID: ${id}`);
+            
+            if (!id) { 
+                console.error('ID 정보가 없습니다.');
+                alert('ID 정보가 없습니다.'); 
+                return; 
+            }
+            
+            console.log(`상세보기 버튼 클릭: ID = ${id}`);
+            console.log('fetch 요청 시작...');
+            
+            fetch('/sales/get_row_details/' + id + '/')
+                .then(r => {
+                    console.log('fetch 응답 받음:', r.status);
+                    return r.json();
+                })
+                .then(function(data) {
+                    console.log('JSON 파싱 완료:', data);
+                    if (data.success) {
+                        console.log('showDetailModal 호출...');
+                        showDetailModal(data.row_data, data.row_id);
+                    } else {
+                        console.error('상세정보 불러오기 실패:', data.error);
+                        alert('상세정보 불러오기 실패: ' + (data.error || ''));
+                    }
+                })
+                .catch(function(err) {
+                    console.error('상세정보 불러오기 실패:', err);
+                    alert('상세정보 불러오기 실패: 네트워크 오류\n' + err);
+                });
+        };
+        
+        // 추가로 addEventListener도 사용
+        btn.addEventListener('click', function(e) {
+            console.log(`상세보기 버튼 ${index} addEventListener 클릭됨!`);
+            e.stopPropagation();
+            e.preventDefault();
+            
+            const tr = this.closest('tr');
+            const id = tr.getAttribute('data-id') || tr.getAttribute('data-row-id');
+            console.log(`addEventListener 클릭된 행 ID: ${id}`);
+            
+            if (!id) { 
+                console.error('ID 정보가 없습니다.');
+                alert('ID 정보가 없습니다.'); 
+                return; 
+            }
+            
+            console.log(`addEventListener 상세보기 버튼 클릭: ID = ${id}`);
+            console.log('addEventListener fetch 요청 시작...');
+            
+            fetch('/sales/get_row_details/' + id + '/')
+                .then(r => {
+                    console.log('addEventListener fetch 응답 받음:', r.status);
+                    return r.json();
+                })
+                .then(function(data) {
+                    console.log('addEventListener JSON 파싱 완료:', data);
+                    if (data.success) {
+                        console.log('addEventListener showDetailModal 호출...');
+                        showDetailModal(data.row_data, data.row_id);
+                    } else {
+                        console.error('addEventListener 상세정보 불러오기 실패:', data.error);
+                        alert('상세정보 불러오기 실패: ' + (data.error || ''));
+                    }
+                })
+                .catch(function(err) {
+                    console.error('addEventListener 상세정보 불러오기 실패:', err);
+                    alert('상세정보 불러오기 실패: 네트워크 오류\n' + err);
+                });
+        });
+        
+        console.log(`상세보기 버튼 ${index} 이벤트 바인딩 완료`);
+    });
+    
+    console.log(`상세보기 버튼 ${moreButtons.length}개 이벤트 바인딩 완료`);
+    console.log('=== bindDetailButtonEvents 함수 완료 ===');
+}
+
+// 종속된 행들을 찾아서 업데이트하는 함수
+function updateDependentRows(updatedRowId, fieldName, value) {
+    console.log('종속된 행들 업데이트 시작:', {updatedRowId, fieldName, value});
+    
+    // 드롭다운 필드인지 확인
+    const dropdownFields = (window.ATTR_FIELDS || [])
+        .filter(attr => attr.attributeType_name === 'dropdown')
+        .map(attr => attr.name);
+    
+    const isDropdownField = dropdownFields.includes(fieldName);
+    
+    // 모든 필드에 대해 종속된 행들 찾기 (매출 관련 필드 제한 제거)
+    // 서버에서 종속된 행들 정보 가져오기
+    fetch('/sales/get_dependent_rows/', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'row_id=' + encodeURIComponent(updatedRowId) + '&field=' + encodeURIComponent(fieldName)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.dependent_rows) {
+            console.log('종속된 행들:', data.dependent_rows);
+            
+            // 각 종속된 행의 셀 업데이트
+            data.dependent_rows.forEach(depRow => {
+                if (depRow.row_id && depRow.field && depRow.value !== undefined) {
+                    console.log('종속된 행 업데이트:', depRow);
+                    
+                    // 드롭다운 필드인 경우 옵션 정보를 가져와서 처리
+                    let displayValue = depRow.value;
+                    if (isDropdownField && depRow.value) {
+                        // 값이 숫자인 경우에만 ID를 이름으로 변환
+                        if (!isNaN(depRow.value)) {
+                            // 드롭다운 옵션 정보 가져와서 ID를 이름으로 변환
+                            fetch('/sales/dropdown_options/?field=' + encodeURIComponent(fieldName))
+                                .then(response => response.json())
+                                .then(optionData => {
+                                    if (optionData.options) {
+                                        const option = optionData.options.find(opt => opt.id == depRow.value);
+                                        if (option) {
+                                            displayValue = option.option;
+                                        }
+                                    }
+                                    
+                                    if (typeof updateTableCell === 'function') {
+                                        updateTableCell(depRow.row_id, depRow.field, displayValue);
+                                    }
+                                })
+                                .catch(error => {
+                                    console.error('드롭다운 옵션 정보 가져오기 실패:', error);
+                                    // 실패 시 원래 값으로 업데이트
+                                    if (typeof updateTableCell === 'function') {
+                                        updateTableCell(depRow.row_id, depRow.field, depRow.value);
+                                    }
+                                });
+                        } else {
+                            // 값이 이미 텍스트인 경우 그대로 사용
+                            if (typeof updateTableCell === 'function') {
+                                updateTableCell(depRow.row_id, depRow.field, displayValue);
+                            }
+                        }
+                    } else {
+                        // 일반 필드인 경우 그대로 사용
+                        if (typeof updateTableCell === 'function') {
+                            updateTableCell(depRow.row_id, depRow.field, displayValue);
+                        }
+                    }
+                }
+            });
+        } else {
+            console.log('종속된 행이 없거나 오류 발생:', data);
+        }
+    })
+    .catch(error => {
+        console.error('종속된 행들 업데이트 실패:', error);
+    });
+    
+    // 드롭다운 필드인 경우 관련 셀들 동기화
+    if (isDropdownField) {
+        // 드롭다운 옵션 동기화는 기존 syncTableAndKanban 함수에서 처리
+        if (typeof syncTableAndKanban === 'function') {
+            syncTableAndKanban(fieldName);
+        }
     }
 }
 

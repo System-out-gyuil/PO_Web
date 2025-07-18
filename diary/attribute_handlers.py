@@ -245,13 +245,13 @@ def get_hidden_attributes(request):
 
 @require_GET
 def get_all_attributes(request):
-    """detail=False인 모든 속성(필수 포함)을 반환하는 API"""
+    """모든 속성(필수 포함, detail=True/False 모두)을 반환하는 API"""
     try:
          
         user_id = request.session.get('diary_member_id')
 
         user = User.objects.get(id=user_id)
-        attributes = Attribute.objects.filter(user=user, detail=False).order_by('sort_order', 'id')
+        attributes = Attribute.objects.filter(user=user).order_by('sort_order', 'id')
         attributes_data = []
         for attr in attributes:
             attributes_data.append({
@@ -261,7 +261,8 @@ def get_all_attributes(request):
                 'assential': attr.assential,
                 'view_select': attr.view_select,
                 'cascade': attr.cascade,  # cascade 필드 추가
-                'sort_order': attr.sort_order
+                'sort_order': attr.sort_order,
+                'detail': attr.detail  # detail 필드 추가
             })
         return JsonResponse({'success': True, 'attributes': attributes_data})
     except Exception as e:
@@ -277,11 +278,10 @@ def get_dropdown_attributes(request):
         # URL 파라미터에서 상태 ID 가져오기
         status_id = request.GET.get('status_id', 'all')
         
-        # 기본 속성 쿼리 (view_select 필터링 제거)
+        # 기본 속성 쿼리 (view_select 필터링 제거, detail 필터링 제거)
         base_dropdown_attributes = Attribute.objects.filter(
             user=user, 
-            attributeType__name='dropdown',
-            detail=False
+            attributeType__name='dropdown'
         ).order_by('-assential', 'name')
         
         # 상태별 필터링 적용

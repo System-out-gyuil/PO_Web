@@ -121,6 +121,15 @@ function formatToKoreanCurrency(amount) {
       result += '만';
   }
   
+  // 10,000 미만의 값은 그대로 표시
+  if (remaining > 0 && remaining < 10000) {
+      if (result) {
+          result += remaining;
+      } else {
+          result = remaining.toString();
+      }
+  }
+  
   return result + '원';
 }
 

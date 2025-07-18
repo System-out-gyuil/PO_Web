@@ -12,7 +12,7 @@
             position: absolute;
             top: 20px;
             right: 20px;
-            z-index: 1000;
+            z-index: 999;
         }
         
         .logout-btn {
@@ -556,9 +556,17 @@
                                     {% with option=dropdown_value.selected_options.0 %}
                                         <div class="dropdown-pill" style="background:{{ option.color|default:''|to_rgba:'0.18' }}; color:#333; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">{{ option.label }}</div>
                                     {% endwith %}
-                                {% else %}
+                                {% elif dropdown_value.label %}
                                     <div class="dropdown-pill" style="background:{{ dropdown_value.color|default:''|to_rgba:'0.18' }}; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">
-                                        {{ dropdown_value.label|default:'선택 없음' }}
+                                        {{ dropdown_value.label }}
+                                    </div>
+                                {% elif dropdown_value.raw_value %}
+                                    <div class="dropdown-pill" style="background:#f8f9fa; color:#6c757d; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center; border:1px solid #dee2e6;">
+                                        {{ dropdown_value.raw_value }}
+                                    </div>
+                                {% else %}
+                                    <div class="dropdown-pill" style="background:#eee; color:#333; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center; border:1px solid #dee2e6;">
+                                        선택 없음
                                     </div>
                                 {% endif %}
                             </td>
@@ -1022,40 +1030,31 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 테이블 행 드래그앤드롭(SortableJS) 초기화
     if(typeof Sortable !== 'undefined') {
-        new Sortable(document.getElementById('entryTbody'), {
-            handle: '.drag-handle',
-            animation: 150,
-            onEnd: function (evt) {
-                // 순서 변경 시 서버에 반영
-                const ids = Array.from(document.querySelectorAll('#entryTbody tr[data-id]')).map(tr => tr.getAttribute('data-id'));
-                fetch('/sales/reorder/', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({order: ids})
-                }).then(res => res.json()).then(data => {
-                    if(!data.success) alert('순서 저장 실패: '+data.error);
-                }).catch(() => alert('순서 저장 중 오류 발생'));
+        const tbody = document.getElementById('entryTbody');
+        if (tbody) {
+            // 기존 Sortable 인스턴스가 있다면 제거
+            if (window.rowSortable) {
+                window.rowSortable.destroy();
             }
-        });
-    }
-    
-    // 행 드래그앤드롭 전역 변수로 저장
-    if(typeof Sortable !== 'undefined') {
-        window.rowSortable = new Sortable(document.getElementById('entryTbody'), {
-            handle: '.drag-handle',
-            animation: 150,
-            onEnd: function (evt) {
-                // 순서 변경 시 서버에 반영
-                const ids = Array.from(document.querySelectorAll('#entryTbody tr[data-id]')).map(tr => tr.getAttribute('data-id'));
-                fetch('/sales/reorder/', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({order: ids})
-                }).then(res => res.json()).then(data => {
-                    if(!data.success) alert('순서 저장 실패: '+data.error);
-                }).catch(() => alert('순서 저장 중 오류 발생'));
-            }
-        });
+            
+            // 새로운 Sortable 인스턴스 생성
+            window.rowSortable = new Sortable(tbody, {
+                handle: '.drag-handle',
+                animation: 150,
+                onEnd: function (evt) {
+                    // 순서 변경 시 서버에 반영
+                    const ids = Array.from(document.querySelectorAll('#entryTbody tr[data-id]')).map(tr => tr.getAttribute('data-id'));
+                    fetch('/sales/reorder/', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({order: ids})
+                    }).then(res => res.json()).then(data => {
+                        if(!data.success) alert('순서 저장 실패: '+data.error);
+                    }).catch(() => alert('순서 저장 중 오류 발생'));
+                }
+            });
+            console.log('테이블 행 드래그앤드롭 초기화 완료');
+        }
     }
     
     // 상세 모달 외부 클릭 시 닫기
@@ -1065,26 +1064,21 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // 기존 행들의 more 버튼 이벤트 바인딩
-    document.querySelectorAll('td[data-field="회사명"] .more-btn').forEach(function(btn){
-        btn.onclick = function(e){
-            e.stopPropagation();
-            const tr = btn.closest('tr');
-            const id = tr.getAttribute('data-id');
-            if(!id) { alert('ID 정보가 없습니다.'); return; }
-            // 새로운 Row 시스템의 get_row_details 엔드포인트 사용
-            fetch('/sales/get_row_details/'+id+'/')
-              .then(r => r.json())
-              .then(function(data){
-                  if(data.success) showDetailModal(data.row_data, data.row_id);
-                  else alert('상세정보 불러오기 실패: '+(data.error||''));
-              })
-              .catch(function(err){
-                  alert('상세정보 불러오기 실패: 네트워크 오류\n' + err);
-                  console.error(err);
-              });
-        };
-    });
+    // 상세보기 버튼 이벤트 바인딩
+    setTimeout(() => {
+        if (typeof bindDetailButtonEvents === 'function') {
+            console.log('페이지 로드 시 상세보기 버튼 이벤트 바인딩 시작...');
+            bindDetailButtonEvents();
+            console.log('페이지 로드 시 상세보기 버튼 이벤트 바인딩 완료');
+        } else {
+            console.log('bindDetailButtonEvents 함수를 찾을 수 없습니다.');
+        }
+    }, 500);
+
+    // 체크박스와 상세보기 버튼 이벤트 바인딩
+    if (typeof bindCheckboxEvents === 'function') {
+        bindCheckboxEvents();
+    }
 
     // 페이지 로드 시 현재 상태 탭 활성화
     const currentStatusId = '{{ current_status_id|escapejs }}';
@@ -1829,13 +1823,17 @@ function displayCascadeAttributes(attributes) {
         const cascadeTitle = attr.cascade ? 'Cascade 비활성화' : 'Cascade 활성화';
         const cascadeButtonText = attr.cascade ? '비활성화' : '활성화';
         const cascadeButtonColor = attr.cascade ? '#dc3545' : '#28a745';
+        const detailIcon = attr.detail ? '📋' : '📝';
+        const detailText = attr.detail ? ' (상세)' : ' (기본)';
         
         html += `
             <div class="cascade-attribute-item" style="display:flex;justify-content:space-between;align-items:center;padding:12px;border:1px solid #e9ecef;border-radius:6px;margin-bottom:8px;background:#f8f9fa;">
                 <div style="display:flex;align-items:center;gap:10px;">
                     <span style="font-size:16px;">${cascadeIcon}</span>
                     <div>
-                        <div style="font-weight:bold;color:#495057;">${attr.name}</div>
+                        <div style="font-weight:bold;color:#495057;">
+                            ${attr.name}${detailIcon}${detailText}
+                        </div>
                         <div style="font-size:12px;color:#6c757d;">${typeIcon} ${attr.attributeType_name || '텍스트'}</div>
                         <div style="font-size:11px;color:${attr.cascade ? '#28a745' : '#6c757d'};">
                             ${attr.cascade ? '🔄 Cascade 활성화됨' : '⏸️ Cascade 비활성화됨'}
@@ -1932,6 +1930,8 @@ function displayAllAttributes(attributes) {
         const eyeTitle = attr.view_select ? '숨기기' : '보이기';
         const cascadeIcon = attr.cascade ? '🔄' : '';
         const cascadeText = attr.cascade ? ' (Cascade)' : '';
+        const detailIcon = attr.detail ? '📋' : '📝';
+        const detailText = attr.detail ? ' (상세)' : ' (기본)';
         
         html += `
             <div class="hidden-attribute-item" style="display:flex;justify-content:space-between;align-items:center;padding:12px;border:1px solid #e9ecef;border-radius:6px;margin-bottom:8px;background:#f8f9fa;">
@@ -1939,7 +1939,7 @@ function displayAllAttributes(attributes) {
                     <span style="font-size:16px;">${eyeIcon}</span>
                     <div>
                         <div style="font-weight:bold;color:#495057;">
-                            ${attr.name}${cascadeIcon}${cascadeText}
+                            ${attr.name}${detailIcon}${detailText}${cascadeIcon}${cascadeText}
                         </div>
                         <div style="font-size:12px;color:#6c757d;">${typeIcon} ${attr.attributeType_name || '텍스트'}</div>
                     </div>

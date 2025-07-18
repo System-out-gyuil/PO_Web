@@ -29,6 +29,7 @@ urlpatterns = [
     path('update/', views.update_entry, name='update_entry'),
     path('create_new_row/', views.create_new_row, name='create_new_row'),
     path('update_row_field/', views.update_row_field, name='update_row_field'),
+    path('get_dependent_rows/', views.get_dependent_rows, name='get_dependent_rows'),
     path('update_sales_field/', views.update_sales_field, name='update_sales_field'),
     path('dropdown_options/', views.dropdown_options, name='dropdown_options'),
     path('add_attribute/', add_attribute, name='add_attribute'),
@@ -94,6 +95,7 @@ urlpatterns = [
     path('get_dropdown_attributes/', get_dropdown_attributes, name='get_dropdown_attributes'),
     
     path('save_column_width/', views.save_column_width, name='save_column_width'),
+    path('get_column_widths/', views.get_column_widths, name='get_column_widths'),
     
     # 블로그 파일 업로드 관련 API
     path('upload_blog_file/', upload_blog_file, name='upload_blog_file'),

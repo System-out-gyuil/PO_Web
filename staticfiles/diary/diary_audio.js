@@ -155,7 +155,8 @@ function updateAudioFileManagement(audioFileValue) {
               
               if (item.type === 'audio') {
                   console.log('audio 아이템 렌더링:', item);
-                  const fileElement = createAudioFileElement(item, index);
+                  //   const fileElement = createAudioFileElement(item, index);
+                  const fileElement = createDocumentFileElement(item, index);
                   sortableContainer.appendChild(fileElement);
               } else if (item.type === 'image') {
                   console.log('image 아이템 렌더링:', item);
@@ -219,10 +220,6 @@ function showNoContentMessage(audioFilesList, noAudioFilesMessage) {
         noAudioFilesMessage.innerHTML = `
             <div style="text-align: center; padding: 40px 20px; color: #666;">
                 <div style="font-size: 48px; margin-bottom: 15px;">📝</div>
-                <div style="font-size: 16px; font-weight: bold; margin-bottom: 8px;">음성파일과 텍스트 노트가 없습니다</div>
-                <div style="font-size: 14px; color: #888; margin-bottom: 24px;">
-                    음성파일을 업로드하거나 텍스트 노트를 추가해보세요
-                </div>
                 <div style="font-size: 12px; color: #999; margin-bottom: 24px; padding: 15px; border: 2px dashed #ddd; border-radius: 8px; background: #fafafa;">
                     💡 파일을 여기에 드래그 앤 드롭하거나 Ctrl+V로 붙여넣기하여 업로드할 수도 있습니다
                 </div>
@@ -256,10 +253,6 @@ function showNoContentMessage(audioFilesList, noAudioFilesMessage) {
       messageDiv.innerHTML = `
           <div style="text-align: center; padding: 40px 20px; color: #666;">
                 <div style="font-size: 48px; margin-bottom: 15px;">📝</div>
-                <div style="font-size: 16px; font-weight: bold; margin-bottom: 8px;">음성파일과 텍스트 노트가 없습니다</div>
-                <div style="font-size: 14px; color: #888; margin-bottom: 24px;">
-                    음성파일을 업로드하거나 텍스트 노트를 추가해보세요
-                </div>
                 <div style="font-size: 12px; color: #999; margin-bottom: 24px; padding: 15px; border: 2px dashed #ddd; border-radius: 8px; background: #fafafa;">
                     💡 파일을 여기에 드래그 앤 드롭하거나 Ctrl+V로 붙여넣기하여 업로드할 수도 있습니다
                 </div>
@@ -957,7 +950,8 @@ function handleMultiFileUpload(fileInput) {
   if (!file) return;
   // 오디오는 기존 로직 사용
   if (file.type.startsWith('audio/')) {
-    handleAudioFileUpload(file, 0); // insertIndex를 0으로 설정
+    // handleAudioFileUpload(file, 0); // insertIndex를 0으로 설정
+    handleGeneralFileUpload(file, 0); // insertIndex를 0으로 설정
     return;
   }
   // 이미지/문서/기타 파일 처리
@@ -2202,7 +2196,8 @@ function handleDroppedFiles(files) {
         // 파일 타입 확인
         if (file.type.startsWith('audio/')) {
             // 오디오 파일 처리
-            handleAudioFileUpload(file, 0);
+            // handleAudioFileUpload(file, 0);
+            handleGeneralFileUpload(file, 0);
             uploadedCount++;
         } else {
             // 일반 파일 처리

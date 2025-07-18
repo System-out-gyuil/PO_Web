@@ -14,6 +14,7 @@ from datetime import datetime
 import json
 import logging
 from django.http import JsonResponse
+from .cascade_handlers import sync_cascade_attributes
 
 logger = logging.getLogger(__name__)
 
@@ -166,8 +167,25 @@ def upload_file(request):
                 existing_files.append(new_file_data)
                 
                 # 업데이트된 파일 목록을 데이터베이스에 저장
-                attr_value.value = json.dumps(existing_files, ensure_ascii=False)
+                updated_value = json.dumps(existing_files, ensure_ascii=False)
+                attr_value.value = updated_value
                 attr_value.save()
+                
+                # Cascade 기능: cascade가 true인 속성이 수정되면 원본 행과 복제된 행들을 동기화
+                if attribute.cascade:
+                    print(f"=== Cascade 동기화 시작 (upload_file) ===")
+                    print(f"속성 '{field_name}'의 cascade 값: {attribute.cascade}")
+                    print(f"수정된 행 ID: {row_id}")
+                    print(f"새 값: {updated_value}")
+                    
+                    synced_count = sync_cascade_attributes(request, row_id, field_name, updated_value)
+                    if synced_count > 0:
+                        print(f"Cascade 동기화 완료: {field_name} 속성이 {synced_count}개 행에 동기화됨")
+                    else:
+                        print(f"Cascade 동기화 실패 또는 동기화할 행이 없음")
+                    print(f"=== Cascade 동기화 종료 (upload_file) ===")
+                else:
+                    print(f"속성 '{field_name}'의 cascade 값: {attribute.cascade} - 동기화하지 않음")
                 
                 return JsonResponse({
                     'success': True,
@@ -310,10 +328,43 @@ def delete_file(request):
                                 
                                 # 남은 파일이 있으면 업데이트, 없으면 삭제
                                 if files_data:
-                                    attribute_value.value = json.dumps(files_data, ensure_ascii=False)
+                                    updated_value = json.dumps(files_data, ensure_ascii=False)
+                                    attribute_value.value = updated_value
                                     attribute_value.save()
+                                    
+                                    # Cascade 기능: cascade가 true인 속성이 수정되면 원본 행과 복제된 행들을 동기화
+                                    if attribute.cascade:
+                                        print(f"=== Cascade 동기화 시작 (delete_file - 특정 파일) ===")
+                                        print(f"속성 '{field_name}'의 cascade 값: {attribute.cascade}")
+                                        print(f"수정된 행 ID: {row_id}")
+                                        print(f"새 값: {updated_value}")
+                                        
+                                        synced_count = sync_cascade_attributes(request, row_id, field_name, updated_value)
+                                        if synced_count > 0:
+                                            print(f"Cascade 동기화 완료: {field_name} 속성이 {synced_count}개 행에 동기화됨")
+                                        else:
+                                            print(f"Cascade 동기화 실패 또는 동기화할 행이 없음")
+                                        print(f"=== Cascade 동기화 종료 (delete_file - 특정 파일) ===")
+                                    else:
+                                        print(f"속성 '{field_name}'의 cascade 값: {attribute.cascade} - 동기화하지 않음")
                                 else:
                                     attribute_value.delete()
+                                    
+                                    # Cascade 기능: cascade가 true인 속성이 수정되면 원본 행과 복제된 행들을 동기화
+                                    if attribute.cascade:
+                                        print(f"=== Cascade 동기화 시작 (delete_file - 모든 파일 삭제) ===")
+                                        print(f"속성 '{field_name}'의 cascade 값: {attribute.cascade}")
+                                        print(f"수정된 행 ID: {row_id}")
+                                        print(f"새 값: ''")
+                                        
+                                        synced_count = sync_cascade_attributes(request, row_id, field_name, '')
+                                        if synced_count > 0:
+                                            print(f"Cascade 동기화 완료: {field_name} 속성이 {synced_count}개 행에 동기화됨")
+                                        else:
+                                            print(f"Cascade 동기화 실패 또는 동기화할 행이 없음")
+                                        print(f"=== Cascade 동기화 종료 (delete_file - 모든 파일 삭제) ===")
+                                    else:
+                                        print(f"속성 '{field_name}'의 cascade 값: {attribute.cascade} - 동기화하지 않음")
                                 
                                 return JsonResponse({
                                     'success': True,
@@ -351,6 +402,22 @@ def delete_file(request):
                             
                             # AttributeValue 삭제
                             attribute_value.delete()
+                            
+                            # Cascade 기능: cascade가 true인 속성이 수정되면 원본 행과 복제된 행들을 동기화
+                            if attribute.cascade:
+                                print(f"=== Cascade 동기화 시작 (delete_file - 모든 파일) ===")
+                                print(f"속성 '{field_name}'의 cascade 값: {attribute.cascade}")
+                                print(f"수정된 행 ID: {row_id}")
+                                print(f"새 값: ''")
+                                
+                                synced_count = sync_cascade_attributes(request, row_id, field_name, '')
+                                if synced_count > 0:
+                                    print(f"Cascade 동기화 완료: {field_name} 속성이 {synced_count}개 행에 동기화됨")
+                                else:
+                                    print(f"Cascade 동기화 실패 또는 동기화할 행이 없음")
+                                print(f"=== Cascade 동기화 종료 (delete_file - 모든 파일) ===")
+                            else:
+                                print(f"속성 '{field_name}'의 cascade 값: {attribute.cascade} - 동기화하지 않음")
                             
                             return JsonResponse({
                                 'success': True,
