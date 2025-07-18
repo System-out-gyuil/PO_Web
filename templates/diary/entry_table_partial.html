@@ -367,6 +367,25 @@ th.resizing {
 if (typeof reinitializeColumnResizer === 'function') {
     setTimeout(() => {
         reinitializeColumnResizer();
+        
+        // 저장된 컬럼 max-width 값들 복원
+        const headers = document.querySelectorAll('#entryTable thead th[data-column]');
+        headers.forEach((header) => {
+            const attrName = header.getAttribute('data-column');
+            if (attrName) {
+                const savedMaxWidth = localStorage.getItem(`column_max_width_${attrName}`);
+                if (savedMaxWidth) {
+                    const cells = document.querySelectorAll(`#entryTable td[data-field="${attrName}"]`);
+                    cells.forEach(cell => {
+                        cell.style.maxWidth = savedMaxWidth + 'px';
+                        cell.style.overflow = 'hidden';
+                        cell.style.textOverflow = 'ellipsis';
+                        cell.style.whiteSpace = 'nowrap';
+                    });
+                    console.log(`리렌더링 후 max-width 복원: ${attrName} = ${savedMaxWidth}px`);
+                }
+            }
+        });
     }, 200);
 }
 </script>
