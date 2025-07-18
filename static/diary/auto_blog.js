@@ -6,7 +6,7 @@ function createBlogModal() {
         <div id="blogModal" class="blog-modal" style="display: none;">
             <div class="blog-modal-content">
                 <div class="blog-modal-header">
-                    <h3>블로그 파일 업로드</h3>
+                    <h3>네이버 블로그 글쓰기</h3>
                     <span class="blog-modal-close" onclick="closeBlogModal()">&times;</span>
                 </div>
                 <div class="blog-modal-body">
@@ -64,7 +64,7 @@ function createBlogModal() {
                     <div class="login-settings" style="margin-top: 20px;">
                         <h4 style="margin-bottom: 15px; color: #495057; font-size: 16px;">네이버 로그인 설정 (선택사항)</h4>
                         <small style="color: #6c757d; font-size: 12px; display: block; margin-bottom: 10px;">
-                            입력하지 않으면 네이버 창에서 직접 로그인하세요.
+                            입력하지 않아도 네이버 창에서 수동으로 로그인 가능합니다.
                         </small>
                         
                         <div class="setting-row" style="margin-bottom: 15px;">

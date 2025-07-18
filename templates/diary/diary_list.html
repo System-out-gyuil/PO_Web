@@ -7,6 +7,36 @@
     <title>영업 관리표</title>
     <link rel="stylesheet" href="{% static 'diary/diary_styles.css' %}">
     <style>
+        /* 로그아웃 버튼 스타일 */
+        .logout-container {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        
+        .logout-btn {
+            padding: 8px 16px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        
+        .logout-btn:hover {
+            background: #c82333;
+            transform: translateY(-1px);
+        }
+        
+        /* 컨테이너 상대 위치 설정 */
+        .container {
+            position: relative;
+        }
+        
         /* 다중 선택 관련 스타일 */
         .row-checkbox {
             margin-right: 8px;
@@ -414,6 +444,11 @@
 </head>
 <body>
 <div class="container">
+    <!-- 로그아웃 버튼 -->
+    <div class="logout-container">
+        <button class="logout-btn" onclick="logout()">로그아웃</button>
+    </div>
+    
     <h1>영업 관리표</h1>
     
     <!-- 필터 컨트롤 -->
@@ -670,14 +705,14 @@
           <div style="display:flex;justify-content:space-between;align-items:center;">
             <h3>영업노트</h3>
             <div>
-                <button onclick="addTextArea()" 
+                {% comment %} <button onclick="addTextArea()" 
                         style="padding: 8px 12px; background:rgb(168, 194, 174); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
                 + 텍스트 추가
                 </button>
                 <button onclick="showNewAudioUpload()" 
                         style="padding: 8px 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
                 + 파일 추가
-                </button>
+                </button> {% endcomment %}
             </div>
           </div>
           
@@ -1252,10 +1287,13 @@ function selectModalDropdownOption(rowId, fieldName, optionId, optionText, eleme
 
 // 모달용 새 드롭다운 옵션 추가 함수 (일반 드롭다운 속성용)
 function addNewModalDropdownOption(rowId, fieldName, newOption, element) {
+    // 랜덤 색상 생성
+    const randomColor = generateRandomColor();
+    
     fetch('/sales/dropdown_options/?field=' + encodeURIComponent(fieldName), {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: 'name=' + encodeURIComponent(newOption)
+        body: 'name=' + encodeURIComponent(newOption) + '&color=' + encodeURIComponent(randomColor)
     })
     .then(r => r.json())
     .then(function(data) {
@@ -2778,6 +2816,33 @@ function addNewModalDropdownOption(rowId, fieldName, newOption, element) {
             alert('옵션 추가 실패: ' + (data.error || ''));
         }
     });
+}
+
+// 로그아웃 함수
+function logout() {
+    if (confirm('로그아웃하시겠습니까?')) {
+        // 서버에 로그아웃 요청
+        fetch('/sales/logout/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // 로그인 페이지로 리다이렉트
+                window.location.href = '/sales/login/';
+            } else {
+                alert('로그아웃 중 오류가 발생했습니다: ' + (data.error || ''));
+            }
+        })
+        .catch(error => {
+            console.error('로그아웃 오류:', error);
+            alert('로그아웃 중 오류가 발생했습니다.');
+        });
+    }
 }
 </script>
 

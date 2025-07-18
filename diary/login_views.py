@@ -87,16 +87,16 @@ class SignupView(View):
         # 원하는 순서대로 속성명 정의
         desired_order = [
             '회사명',      # 1. baseattribute
-            '지역',        # 2. baseattribute
             '매출',        # 3. baseattribute
-            '기대출',      # 4. baseattributedetail
             '신용점수',    # 5. baseattribute
+            '업종',        # 8. baseattribute
+            '지역',        # 2. baseattribute
+            '기대출',      # 4. baseattributedetail
             '개업년월',    # 6. baseattribute
             '나이',        # 7. baseattribute
-            '업종',        # 8. baseattribute
             '경력',        # 9. baseattribute
             '직원수',      # 10. baseattribute
-            '추천자금'
+            '추천자금',
         ]
         
         # sort_order를 위한 카운터
@@ -176,3 +176,26 @@ class SignupView(View):
 class LogoutView(View):
     def get(self, request):
         return render(request, 'diary/logout.html')
+    
+    def post(self, request):
+        try:
+            # 세션에서 diary_member_id 제거
+            if 'diary_member_id' in request.session:
+                del request.session['diary_member_id']
+            
+            # diary_authenticated도 제거
+            if 'diary_authenticated' in request.session:
+                del request.session['diary_authenticated']
+            
+            # 세션 저장
+            request.session.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': '로그아웃되었습니다.'
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            })

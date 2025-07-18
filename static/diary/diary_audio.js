@@ -219,10 +219,6 @@ function showNoContentMessage(audioFilesList, noAudioFilesMessage) {
         noAudioFilesMessage.innerHTML = `
             <div style="text-align: center; padding: 40px 20px; color: #666;">
                 <div style="font-size: 48px; margin-bottom: 15px;">📝</div>
-                <div style="font-size: 16px; font-weight: bold; margin-bottom: 8px;">음성파일과 텍스트 노트가 없습니다</div>
-                <div style="font-size: 14px; color: #888; margin-bottom: 24px;">
-                    음성파일을 업로드하거나 텍스트 노트를 추가해보세요
-                </div>
                 <div style="font-size: 12px; color: #999; margin-bottom: 24px; padding: 15px; border: 2px dashed #ddd; border-radius: 8px; background: #fafafa;">
                     💡 파일을 여기에 드래그 앤 드롭하거나 Ctrl+V로 붙여넣기하여 업로드할 수도 있습니다
                 </div>
@@ -256,10 +252,6 @@ function showNoContentMessage(audioFilesList, noAudioFilesMessage) {
       messageDiv.innerHTML = `
           <div style="text-align: center; padding: 40px 20px; color: #666;">
                 <div style="font-size: 48px; margin-bottom: 15px;">📝</div>
-                <div style="font-size: 16px; font-weight: bold; margin-bottom: 8px;">음성파일과 텍스트 노트가 없습니다</div>
-                <div style="font-size: 14px; color: #888; margin-bottom: 24px;">
-                    음성파일을 업로드하거나 텍스트 노트를 추가해보세요
-                </div>
                 <div style="font-size: 12px; color: #999; margin-bottom: 24px; padding: 15px; border: 2px dashed #ddd; border-radius: 8px; background: #fafafa;">
                     💡 파일을 여기에 드래그 앤 드롭하거나 Ctrl+V로 붙여넣기하여 업로드할 수도 있습니다
                 </div>
