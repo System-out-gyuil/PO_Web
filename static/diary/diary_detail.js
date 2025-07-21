@@ -441,7 +441,10 @@ function showDetailModal(rowData, rowId) {
                                 filesHtml += `
                                     <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding: 8px; border: 1px solid #e9ecef; border-radius: 4px; background: #f8f9fa;">
                                         <span style="flex: 1; font-size: 14px;">🎵 ${displayFileName}</span>
-                                        <audio controls src="${fileInfo.download_url || fileInfo.url}" style="width: 200px; height: 32px;"></audio>
+                                        <button onclick="showFilePreviewModal(${JSON.stringify({...fileInfo, id: fileId, field_name: attr.name, row_id: rowId}).replace(/\"/g, '&quot;')})"
+                                                style="padding: 4px 8px; background: #ffc107; color: #333; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                            미리보기
+                                        </button>
                                         <button onclick="window.open('${fileInfo.download_url}', '_blank')"
                                                 style="padding: 4px 8px; background: #17a2b8; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
                                             다운로드
@@ -2540,7 +2543,10 @@ function updateFileFieldInModalAfterDelete(rowId, fieldName) {
                                     filesHtml += `
                                         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding: 8px; border: 1px solid #e9ecef; border-radius: 4px; background: #f8f9fa;">
                                             <span style="flex: 1; font-size: 14px;">🎵 ${displayFileName}</span>
-                                            <audio controls src="${fileInfo.download_url || fileInfo.url}" style="width: 200px; height: 32px;"></audio>
+                                            <button onclick="showFilePreviewModal(${JSON.stringify({...fileInfo, id: fileId, field_name: attr.name, row_id: rowId}).replace(/\"/g, '&quot;')})"
+                                                    style="padding: 4px 8px; background: #ffc107; color: #333; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                                미리보기
+                                            </button>
                                             <button onclick="window.open('${fileInfo.download_url}', '_blank')"
                                                     style="padding: 4px 8px; background: #17a2b8; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
                                                 다운로드
@@ -3591,5 +3597,66 @@ function updateDependentRows(updatedRowId, fieldName, value) {
     .catch(error => {
         console.error('종속된 행들 업데이트 실패:', error);
     });
+}
+
+// 오디오 미리보기 함수
+function showAudioPreview(audioUrl, fileName) {
+    // 기존 미리보기 모달이 있으면 제거
+    const existingModal = document.getElementById('audioPreviewModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // 새 모달 생성
+    const modal = document.createElement('div');
+    modal.id = 'audioPreviewModal';
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 10000;
+    `;
+    
+    modal.innerHTML = `
+        <div style="position: relative; width: 90%; max-width: 500px; background: white; border-radius: 8px; overflow: hidden;">
+            <!-- 헤더 -->
+            <div style="position: absolute; top: 0; left: 0; right: 0; height: 60px; background: #f8f9fa; border-bottom: 1px solid #dee2e6; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; z-index: 10;">
+                <div style="font-size: 16px; font-weight: bold; color: #333;">🎵 ${fileName}</div>
+                <button onclick="closeAudioPreviewModal()" 
+                        style="background: #dc3545; color: white; border: none; border-radius: 4px; padding: 8px 16px; cursor: pointer; font-size: 14px;">
+                    닫기
+                </button>
+            </div>
+            
+            <!-- 오디오 콘텐츠 -->
+            <div style="position: absolute; top: 60px; left: 0; right: 0; bottom: 0; padding: 40px; display: flex; align-items: center; justify-content: center;">
+                <audio controls src="${audioUrl}" style="width: 100%; max-width: 400px;">
+                    Your browser does not support the audio element.
+                </audio>
+            </div>
+        </div>
+    `;
+    
+    modal.onclick = function(e) {
+        if (e.target === modal) {
+            closeAudioPreviewModal();
+        }
+    };
+    
+    document.body.appendChild(modal);
+}
+
+// 오디오 미리보기 모달 닫기 함수
+function closeAudioPreviewModal() {
+    const modal = document.getElementById('audioPreviewModal');
+    if (modal) {
+        modal.remove();
+    }
 }
 

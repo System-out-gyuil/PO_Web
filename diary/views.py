@@ -3867,3 +3867,4 @@ def get_dependent_rows(request):
             return JsonResponse({'success': False, 'error': str(e)})
     
     return JsonResponse({'success': False, 'error': 'POST 요청만 지원합니다'})
+

@@ -11,6 +11,7 @@ from .attribute_handlers import delete_attribute_value, toggle_attribute_visibil
 from .audio_handler import upload_audio_file, get_audio_files_by_date, delete_audio_file, update_audio_file_order
 from .cascade_handlers import toggle_cascade_attribute, get_cascade_attributes_list
 from .auto_blog import upload_blog_file, get_blog_files
+from .detail_openai import ai_chat, ai_chat_cache_clear
 
 urlpatterns = [
     path('', DiaryMainView.as_view(), name='diary_main'),
@@ -100,4 +101,8 @@ urlpatterns = [
     # 블로그 파일 업로드 관련 API
     path('upload_blog_file/', upload_blog_file, name='upload_blog_file'),
     path('get_blog_files/', get_blog_files, name='get_blog_files'),
+    
+    # AI 채팅 관련 API
+    path('ai_chat/', ai_chat, name='ai_chat'),
+    path('ai_chat_cache_clear/', ai_chat_cache_clear, name='ai_chat_cache_clear'),
 ] 
