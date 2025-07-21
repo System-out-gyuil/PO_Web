@@ -42,7 +42,7 @@ class Command(BaseCommand):
         }
 
         try:
-            response = requests.get(url, params=params, timeout=30)
+            response = requests.get(url, params=params, timeout=60)
             response.raise_for_status()
             items = response.json().get("jsonArray", [])
 
@@ -125,7 +125,7 @@ class Command(BaseCommand):
         return re.sub(r"[^\w가-힣._]+", "_", name).strip("_")
 
     def download_file(self, url, file_name):
-        response = requests.get(url, stream=True, timeout=15)
+        response = requests.get(url, stream=True, timeout=60)
         response.raise_for_status()
 
         save_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "files"))
@@ -204,7 +204,7 @@ class Command(BaseCommand):
                 "--convert-to", "pdf:writer_pdf_Export",
                 hwp_path,
                 "--outdir", output_dir
-            ], stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30)
+            ], stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60)
 
             print("🖥️ libreoffice stdout:", result.stdout.decode())
 

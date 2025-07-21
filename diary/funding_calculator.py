@@ -197,37 +197,24 @@ class PolicyFundRecommendationEngineV2:
             return None
         
         current_kibo_general = existing_funds.get('kibo_general', 0)
-        current_kibo_ip = existing_funds.get('kibo_ip', 0)
-        total_current_kibo = current_kibo_general + current_kibo_ip
         
         print(f"현재 기보 일반보증: {current_kibo_general:,}원")
-        print(f"현재 기보 IP보증: {current_kibo_ip:,}원")
-        print(f"현재 기보 총액: {total_current_kibo:,}원")
         
         # 기보 제외한 기타 기대출 계산
-        other_debt = company_data.get('existing_debt', 0) - total_current_kibo
+        other_debt = company_data.get('existing_debt', 0) - current_kibo_general
         print(f"기타 부채: {other_debt:,}원")
         
         # 현재 가능한 총 기보 한도 계산
-        annual_revenue = company_data.get('annual_revenue', 500_000_000)
-        ip_total_possible = (annual_revenue * 0.30) - other_debt
         general_total_possible = 100_000_000 - other_debt
         
-        print(f"IP보증 가능 총액: {ip_total_possible:,}원")
         print(f"일반보증 가능 총액: {general_total_possible:,}원")
         
-        # IP vs 일반보증 중 더 유리한 것 선택
-        if ip_total_possible > general_total_possible and (ip_total_possible - general_total_possible) > self.THRESHOLD_20M:
-            max_possible = self._round_up_to_50m_unit_always(ip_total_possible)
-            optimal_type = 'IP보증'
-            print(f"IP보증 선택 (차이: {(ip_total_possible - general_total_possible):,}원)")
-        else:
-            max_possible = self._round_up_to_50m_unit_always(general_total_possible)
-            optimal_type = '일반보증'
-            print(f"일반보증 선택")
+        max_possible = self._round_up_to_50m_unit_always(general_total_possible)
+        optimal_type = '일반보증'
+        print(f"일반보증 선택")
         
         # 추가 가능 금액 계산
-        additional_amount = max_possible - total_current_kibo
+        additional_amount = max_possible - current_kibo_general
         print(f"추가 가능 금액: {additional_amount:,}원")
         
         if additional_amount <= 0:
@@ -235,19 +222,12 @@ class PolicyFundRecommendationEngineV2:
             return None
         
         # 기존 사용 상황에 따른 추천 전략
-        if current_kibo_general > 0 and current_kibo_ip == 0:
-            if optimal_type == 'IP보증' and additional_amount >= 50_000_000:
-                fund_name = '기보_IP보증_전환'
-                note = f'일반보증({current_kibo_general//10000000}천만원)을 IP보증으로 전환하여 총 {max_possible//10000000}천만원 가능'
-            else:
-                fund_name = '기보_일반보증_증액'
-                note = f'기존 일반보증 {additional_amount//10000000}천만원 증액 가능'
-        elif current_kibo_ip > 0 and current_kibo_general == 0:
-            fund_name = '기보_IP보증_증액'
-            note = f'기존 IP보증 {additional_amount//10000000}천만원 증액 가능'
+        if current_kibo_general > 0:
+            fund_name = '기보_일반보증_증액'
+            note = f'기존 일반보증 {additional_amount//10000000}천만원 증액 가능'
         else:
-            fund_name = f'기보_{optimal_type}'
-            note = f'신규 {optimal_type} {max_possible//10000000}천만원 가능'
+            fund_name = '기보_일반보증'
+            note = f'신규 일반보증 {max_possible//10000000}천만원 가능'
         
         exclusion_note = '제조업 우선 원칙으로 신보 제외' if industry == '제조업' else None
         

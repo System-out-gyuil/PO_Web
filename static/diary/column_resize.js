@@ -6,7 +6,7 @@ class ColumnResizer {
         this.currentColumn = null;
         this.startX = 0;
         this.startWidth = 0;
-        this.minWidth = 80; // 최소 너비
+        this.minWidth = 180; // 최소 너비
         this.animationFrameId = null;
         this.resizeTimeout = null;
         this.columnWidths = new Map(); // 컬럼별 너비 저장
@@ -213,6 +213,11 @@ class ColumnResizer {
         // 컬럼 최대 너비 계산 및 적용
         const newMaxWidth = this.calculateColumnMaxWidth(newWidth);
         this.applyColumnMaxWidth(this.currentColumn.getAttribute('data-column'), newMaxWidth);
+        
+        // 제목 자동 조정을 위한 이벤트 발생
+        this.currentColumn.dispatchEvent(new CustomEvent('columnResized', {
+            detail: { width: newWidth }
+        }));
         
         // 가이드 라인 위치 업데이트
         this.updateGuideLine(newWidth);

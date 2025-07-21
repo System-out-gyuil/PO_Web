@@ -17,9 +17,6 @@ def add_attribute(request):
         if not attr_type:
             return JsonResponse({'success': False, 'error': '속성 타입이 필요합니다.'})
         
-        # 속성명 중복 확인
-        if Attribute.objects.filter(name=name).exists():
-            return JsonResponse({'success': False, 'error': '이미 존재하는 속성명입니다.'})
         
         try:
             # 사용자 가져오기
@@ -35,13 +32,24 @@ def add_attribute(request):
             max_sort_order = Attribute.objects.aggregate(Max('sort_order'))['sort_order__max']
             next_sort_order = (max_sort_order or 0) + 1
             
+            # 모든 status id 가져오기
+            from diary.models import DropdownAttribute
+            attribute_id = Attribute.objects.filter(user_id=user, name='상태').first()
+            print(attribute_id)
+            all_statuses = DropdownAttribute.objects.filter(attribute_id=attribute_id)
+            print(all_statuses)
+            # view_select 딕셔너리 생성 - 모든 status id에 대해 true 설정
+            view_select_dict = {"0": True}  # 전체 탭
+            for status in all_statuses:
+                view_select_dict[str(status.id)] = True
+            
             # 새 속성 생성
             attribute = Attribute.objects.create(
                 name=name,
                 user=user,
                 attributeType=attribute_type,
                 sort_order=next_sort_order,
-                view_select=True
+                view_select=view_select_dict
             )
             
             return JsonResponse({

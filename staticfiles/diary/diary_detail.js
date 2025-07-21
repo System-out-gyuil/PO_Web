@@ -2443,6 +2443,7 @@ function updateFileFieldInModal(rowId, fieldName, fileInfo) {
                 <input type="file" 
                     id="file_${fieldName}_${rowId}" 
                     style="display: none;"
+                    multiple
                     onchange="uploadFile('${rowId}', '${fieldName}', this)">
             </div>
         `;
@@ -2732,10 +2733,37 @@ function saveSalesInput(rowId, fieldName) {
     const eok = parseInt(eokInput.value) || 0;
     const cheonman = parseInt(cheonmanInput.value) || 0;
     
-    // 총 금액 계산 (억 * 100000000 + 천만 * 10000000)
-    const totalAmount = eok * 100000000 + cheonman * 10000000;
+    // 기존 값 가져오기
+    const container = document.querySelector(`[data-field="${fieldName}"]`);
+    let originalValue = 0;
+    if (container && container.getAttribute('data-raw')) {
+        originalValue = parseInt(container.getAttribute('data-raw')) || 0;
+    }
     
-    // update_row_field API 사용 (종속된 행들 업데이트 포함)
+    // 기존 값에서 억과 천만 단위를 제외한 나머지 부분 추출 (백만 단위 이하만)
+    const remainingAmount = originalValue % 1000000; // 백만 단위 이하만 추출
+    
+    // 새로운 총 금액 계산 (새로운 억 * 100000000 + 새로운 천만 * 10000000 + 기존 나머지)
+    const totalAmount = eok * 100000000 + cheonman * 10000000 + remainingAmount;
+    
+    // 즉시 UI 업데이트 (사용자 경험 향상)
+    if (container) {
+        const formattedAmount = formatToKoreanCurrency(totalAmount);
+        container.innerHTML = formattedAmount;
+        container.setAttribute('data-raw', totalAmount);
+        
+        // 값이 있으면 빨간 테두리 제거
+        if (totalAmount > 0) {
+            highlightRequiredField(container, false);
+        }
+    }
+    
+    // 테이블 셀도 즉시 업데이트 (모달 외부 테이블)
+    if (typeof updateTableCell === 'function') {
+        updateTableCell(rowId, fieldName, totalAmount);
+    }
+    
+    // 백그라운드에서 서버 업데이트 (비동기)
     fetch('/sales/update_row_field/', {
         method: 'POST',
         headers: {
@@ -2749,36 +2777,32 @@ function saveSalesInput(rowId, fieldName) {
         if (data.success) {
             console.log('매출 정보가 업데이트되었습니다.');
             
-            // 컨테이너 복원
-            const container = document.querySelector(`[data-field="${fieldName}"]`);
-            if (container) {
-                const formattedAmount = formatToKoreanCurrency(totalAmount);
-                container.innerHTML = formattedAmount;
-                container.setAttribute('data-raw', totalAmount);
-                
-                // 값이 있으면 빨간 테두리 제거
-                if (totalAmount > 0) {
-                    highlightRequiredField(container, false);
-                }
-            }
-            
-            // 테이블과 칸반보드 새로고침
-            if (typeof refreshTable === 'function') {
-                refreshTable();
-            }
-            
-            // 종속된 행들 업데이트
+            // 종속된 행들만 업데이트 (전체 테이블 새로고침 대신)
             if (typeof updateDependentRows === 'function') {
                 updateDependentRows(rowId, fieldName, totalAmount);
             }
         } else {
             console.error('매출 업데이트 실패:', data.error);
             showNotification('매출 정보 업데이트에 실패했습니다.', 'error');
+            
+            // 실패 시 원래 값으로 복원
+            if (container && originalValue) {
+                const formattedAmount = formatToKoreanCurrency(originalValue);
+                container.innerHTML = formattedAmount;
+                container.setAttribute('data-raw', originalValue);
+            }
         }
     })
     .catch(error => {
         console.error('매출 업데이트 오류:', error);
         showNotification('매출 정보 업데이트 중 오류가 발생했습니다.', 'error');
+        
+        // 오류 시 원래 값으로 복원
+        if (container && originalValue) {
+            const formattedAmount = formatToKoreanCurrency(originalValue);
+            container.innerHTML = formattedAmount;
+            container.setAttribute('data-raw', originalValue);
+        }
     });
 }
 
@@ -2873,6 +2897,17 @@ function detailUpdateRowField(rowId, field, value) {
         // F/U 일정 필드인 경우 캘린더도 새로고침
         if(field === 'F/U 일정' && window.calendar) {
             window.calendar.refetchEvents();
+        }
+        
+        // datetime 타입 필드인 경우 캘린더 리렌더링
+        const fieldElement = document.querySelector(`td[data-field="${field}"]`);
+        if (fieldElement && fieldElement.getAttribute('data-type') === 'datetime' && window.calendar) {
+            window.calendar.refetchEvents();
+        }
+        
+        // 모든 datetime 필드 변경 시 캘린더 리렌더링
+        if (typeof refreshCalendar === 'function') {
+            refreshCalendar();
         }
         
         // datetime 타입 속성이 수정된 경우 캘린더 설정 새로고침
@@ -3471,6 +3506,12 @@ function bindDetailButtonEvents() {
 function updateDependentRows(updatedRowId, fieldName, value) {
     console.log('종속된 행들 업데이트 시작:', {updatedRowId, fieldName, value});
     
+    // 매출 필드인 경우 종속된 행 업데이트를 건너뛰기 (성능 최적화)
+    if (fieldName === '매출' || fieldName.includes('매출')) {
+        console.log('매출 필드는 종속된 행 업데이트를 건너뜁니다.');
+        return;
+    }
+    
     // 드롭다운 필드인지 확인
     const dropdownFields = (window.ATTR_FIELDS || [])
         .filter(attr => attr.attributeType_name === 'dropdown')
@@ -3478,7 +3519,6 @@ function updateDependentRows(updatedRowId, fieldName, value) {
     
     const isDropdownField = dropdownFields.includes(fieldName);
     
-    // 모든 필드에 대해 종속된 행들 찾기 (매출 관련 필드 제한 제거)
     // 서버에서 종속된 행들 정보 가져오기
     fetch('/sales/get_dependent_rows/', {
         method: 'POST',
@@ -3490,52 +3530,56 @@ function updateDependentRows(updatedRowId, fieldName, value) {
         if (data.success && data.dependent_rows) {
             console.log('종속된 행들:', data.dependent_rows);
             
-            // 각 종속된 행의 셀 업데이트
-            data.dependent_rows.forEach(depRow => {
-                if (depRow.row_id && depRow.field && depRow.value !== undefined) {
-                    console.log('종속된 행 업데이트:', depRow);
-                    
-                    // 드롭다운 필드인 경우 옵션 정보를 가져와서 처리
-                    let displayValue = depRow.value;
-                    if (isDropdownField && depRow.value) {
-                        // 값이 숫자인 경우에만 ID를 이름으로 변환
-                        if (!isNaN(depRow.value)) {
-                            // 드롭다운 옵션 정보 가져와서 ID를 이름으로 변환
-                            fetch('/sales/dropdown_options/?field=' + encodeURIComponent(fieldName))
-                                .then(response => response.json())
-                                .then(optionData => {
-                                    if (optionData.options) {
-                                        const option = optionData.options.find(opt => opt.id == depRow.value);
-                                        if (option) {
-                                            displayValue = option.option;
-                                        }
-                                    }
-                                    
-                                    if (typeof updateTableCell === 'function') {
-                                        updateTableCell(depRow.row_id, depRow.field, displayValue);
-                                    }
-                                })
-                                .catch(error => {
-                                    console.error('드롭다운 옵션 정보 가져오기 실패:', error);
-                                    // 실패 시 원래 값으로 업데이트
-                                    if (typeof updateTableCell === 'function') {
-                                        updateTableCell(depRow.row_id, depRow.field, depRow.value);
-                                    }
-                                });
-                        } else {
-                            // 값이 이미 텍스트인 경우 그대로 사용
-                            if (typeof updateTableCell === 'function') {
-                                updateTableCell(depRow.row_id, depRow.field, displayValue);
-                            }
-                        }
-                    } else {
-                        // 일반 필드인 경우 그대로 사용
+            // 드롭다운 필드가 아닌 경우 즉시 업데이트
+            if (!isDropdownField) {
+                data.dependent_rows.forEach(depRow => {
+                    if (depRow.row_id && depRow.field && depRow.value !== undefined) {
+                        console.log('종속된 행 업데이트:', depRow);
                         if (typeof updateTableCell === 'function') {
-                            updateTableCell(depRow.row_id, depRow.field, displayValue);
+                            updateTableCell(depRow.row_id, depRow.field, depRow.value);
                         }
                     }
-                }
-            });
+                });
+                return;
+            }
+            
+            // 드롭다운 필드인 경우 옵션 정보를 한 번에 가져와서 처리
+            if (isDropdownField) {
+                fetch('/sales/dropdown_options/?field=' + encodeURIComponent(fieldName))
+                    .then(response => response.json())
+                    .then(optionData => {
+                        const options = optionData.options || [];
+                        
+                        data.dependent_rows.forEach(depRow => {
+                            if (depRow.row_id && depRow.field && depRow.value !== undefined) {
+                                console.log('종속된 행 업데이트:', depRow);
+                                
+                                let displayValue = depRow.value;
+                                if (depRow.value && !isNaN(depRow.value)) {
+                                    const option = options.find(opt => opt.id == depRow.value);
+                                    if (option) {
+                                        displayValue = option.option;
+                                    }
+                                }
+                                
+                                if (typeof updateTableCell === 'function') {
+                                    updateTableCell(depRow.row_id, depRow.field, displayValue);
+                                }
+                            }
+                        });
+                    })
+                    .catch(error => {
+                        console.error('드롭다운 옵션 정보 가져오기 실패:', error);
+                        // 실패 시 원래 값으로 업데이트
+                        data.dependent_rows.forEach(depRow => {
+                            if (depRow.row_id && depRow.field && depRow.value !== undefined) {
+                                if (typeof updateTableCell === 'function') {
+                                    updateTableCell(depRow.row_id, depRow.field, depRow.value);
+                                }
+                            }
+                        });
+                    });
+            }
         } else {
             console.log('종속된 행이 없거나 오류 발생:', data);
         }
@@ -3543,13 +3587,5 @@ function updateDependentRows(updatedRowId, fieldName, value) {
     .catch(error => {
         console.error('종속된 행들 업데이트 실패:', error);
     });
-    
-    // 드롭다운 필드인 경우 관련 셀들 동기화
-    if (isDropdownField) {
-        // 드롭다운 옵션 동기화는 기존 syncTableAndKanban 함수에서 처리
-        if (typeof syncTableAndKanban === 'function') {
-            syncTableAndKanban(fieldName);
-        }
-    }
 }
 

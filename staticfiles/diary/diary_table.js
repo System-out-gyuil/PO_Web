@@ -195,6 +195,11 @@ function hexToRgba(hex, alpha) {
                               // 종속된 행들 찾아서 업데이트
                               updateDependentRows(id, type, newValue);
                               
+                              // datetime 필드인 경우 캘린더 리렌더링
+                              if (dataType === 'datetime' && window.calendar) {
+                                  window.calendar.refetchEvents();
+                              }
+                              
                               // 필요시 테이블/보드 갱신
                               refreshCalendarSettings();
                           }).catch(function(error) {
@@ -261,6 +266,14 @@ function hexToRgba(hex, alpha) {
                                   
                                   // 종속된 행들 찾아서 업데이트
                                   updateDependentRows(id, type, newValue);
+                                  
+                                  // datetime 필드인 경우 캘린더 리렌더링
+                                  if (dataType === 'datetime' && window.calendar) {
+                                      window.calendar.refetchEvents();
+                                  }
+                                  
+                                  // 필요시 테이블/보드 갱신
+                                  refreshCalendarSettings();
                               }).catch(function(error) {
                                   console.error('업데이트 중 오류:', error);
                                   alert('업데이트 중 오류가 발생했습니다.');
@@ -294,6 +307,7 @@ function hexToRgba(hex, alpha) {
                               (regionValue.querySelector('.name-text')?.innerText.trim() || '') : 
                               regionValue.innerText.trim()) : '';
                       openDropdown(td, 'region', id, currentValue, regionText);
+
                   } else if(dataType === 'region_detail' || type === '상세지역') {
                       console.log('상세지역 드롭다운 처리');
                       const regionTd = td.parentElement.querySelector('td[data-field="지역"]');
@@ -301,17 +315,20 @@ function hexToRgba(hex, alpha) {
                           (regionTd.getAttribute('data-field') === '회사명' ? 
                               (regionTd.querySelector('.name-text')?.innerText.trim() || '') : 
                               regionTd.innerText.trim()) : '';
+                      
                       const currentValue = (type === '회사명') ? 
                           (td.querySelector('.name-text')?.innerText.trim() || '') : 
                           td.innerText.trim();
                       console.log('상세지역 드롭다운 파라미터:', {regionValue, currentValue, id});
                       // openDropdown(td, type, id, currentId, currentSubregion) 형식에 맞춰 호출
                       openDropdown(td, 'region_detail', id, regionValue, currentValue);
+
                   } else if(dataType === 'dropdown') {
                       console.log('일반 드롭다운 처리');
                       openDropdown(td, type, id, td.getAttribute('data-value'));
                   }
               };
+
           } else {
               td.onclick = function() {
                   if (td.querySelector('input')) return;
@@ -338,7 +355,16 @@ function hexToRgba(hex, alpha) {
                           };
                       }
                       td.onclick = function(e) {
-                          if (e.target.classList.contains('more-btn')) return;
+                          // more-btn을 클릭한 경우 상세보기 모달로 처리하지 않음
+                          if (e.target.classList.contains('more-btn') || e.target.closest('.more-btn')) {
+                              return;
+                          }
+                          
+                          // name-text를 클릭한 경우에만 편집 모드로 진입
+                          if (!e.target.classList.contains('name-text') && !e.target.closest('.name-text')) {
+                              return;
+                          }
+                          
                           if (td.querySelector('input')) return;
                           td.style.width = td.offsetWidth + 'px';
                           const nameDiv = td.querySelector('.name-text');
@@ -383,7 +409,16 @@ function hexToRgba(hex, alpha) {
                               }
                               // td.onclick도 재바인딩 (more-btn 체크)
                               td.onclick = function(e) {
-                                  if (e.target.classList.contains('more-btn')) return;
+                                  // more-btn을 클릭한 경우 상세보기 모달로 처리하지 않음
+                                  if (e.target.classList.contains('more-btn') || e.target.closest('.more-btn')) {
+                                      return;
+                                  }
+                                  
+                                  // name-text를 클릭한 경우에만 편집 모드로 진입
+                                  if (!e.target.classList.contains('name-text') && !e.target.closest('.name-text')) {
+                                      return;
+                                  }
+                                  
                                   if (td.querySelector('input')) return;
                                   td.style.width = td.offsetWidth + 'px';
                                   const nameDiv = td.querySelector('.name-text');
@@ -423,6 +458,14 @@ function hexToRgba(hex, alpha) {
                                               
                                               // 종속된 행들 찾아서 업데이트
                                               updateDependentRows(id, '회사명', newValue);
+                                              
+                                              // datetime 필드인 경우 캘린더 리렌더링
+                                              if (dataType === 'datetime' && window.calendar) {
+                                                  window.calendar.refetchEvents();
+                                              }
+                                              
+                                              // 필요시 테이블/보드 갱신
+                                              refreshCalendarSettings();
                                           }).catch(function(error) {
                                               console.error('업데이트 중 오류:', error);
                                               alert('업데이트 중 오류가 발생했습니다.');
@@ -460,6 +503,14 @@ function hexToRgba(hex, alpha) {
                                       
                                       // 종속된 행들 찾아서 업데이트
                                       updateDependentRows(id, '회사명', newValue);
+                                      
+                                      // datetime 필드인 경우 캘린더 리렌더링
+                                      if (dataType === 'datetime' && window.calendar) {
+                                          window.calendar.refetchEvents();
+                                      }
+                                      
+                                      // 필요시 테이블/보드 갱신
+                                      refreshCalendarSettings();
                                   }).catch(function(error) {
                                       console.error('업데이트 중 오류:', error);
                                       alert('업데이트 중 오류가 발생했습니다.');
@@ -534,6 +585,14 @@ function hexToRgba(hex, alpha) {
                                   
                                   // 종속된 행들 찾아서 업데이트
                                   updateDependentRows(id, type, newValue);
+                                  
+                                  // datetime 필드인 경우 캘린더 리렌더링
+                                  if (dataType === 'datetime' && window.calendar) {
+                                      window.calendar.refetchEvents();
+                                  }
+                                  
+                                  // 필요시 테이블/보드 갱신
+                                  refreshCalendarSettings();
                               }).catch(function(error) {
                                   console.error('업데이트 중 오류:', error);
                                   alert('업데이트 중 오류가 발생했습니다.');
@@ -709,6 +768,16 @@ function hexToRgba(hex, alpha) {
       // 실시간 동기화 (캘린더만)
       if (field === 'F/U 일정' && window.calendar) {
           window.calendar.refetchEvents();
+      }
+      
+      // datetime 타입 필드인 경우 캘린더 리렌더링
+      if (cell.getAttribute('data-type') === 'datetime' && window.calendar) {
+          window.calendar.refetchEvents();
+      }
+      
+      // 모든 datetime 필드 변경 시 캘린더 리렌더링
+      if (typeof refreshCalendar === 'function') {
+          refreshCalendar();
       }
   }
   
@@ -1145,6 +1214,12 @@ function hexToRgba(hex, alpha) {
                   if (field === 'F/U 일정' && window.calendar) {
                       window.calendar.refetchEvents();
                   }
+                  
+                  // datetime 타입 필드인 경우 캘린더 리렌더링
+                  const fieldElement = tr.querySelector(`td[data-field="${field}"]`);
+                  if (fieldElement && fieldElement.getAttribute('data-type') === 'datetime' && window.calendar) {
+                      window.calendar.refetchEvents();
+                  }
               }
           }).catch(function(error) {
               console.error(`새 행 생성 중 오류:`, error);
@@ -1174,6 +1249,12 @@ function hexToRgba(hex, alpha) {
                   
                   // F/U 일정 필드인 경우 캘린더 새로고침
                   if (field === 'F/U 일정' && window.calendar) {
+                      window.calendar.refetchEvents();
+                  }
+                  
+                  // datetime 타입 필드인 경우 캘린더 리렌더링
+                  const fieldElement = tr.querySelector(`td[data-field="${field}"]`);
+                  if (fieldElement && fieldElement.getAttribute('data-type') === 'datetime' && window.calendar) {
                       window.calendar.refetchEvents();
                   }
               } else {
@@ -1730,6 +1811,12 @@ function hexToRgba(hex, alpha) {
           
           // F/U 일정 필드인 경우 캘린더도 새로고침
           if (fieldName === 'F/U 일정' && window.calendar) {
+              window.calendar.refetchEvents();
+          }
+          
+          // datetime 타입 필드인 경우 캘린더 리렌더링
+          const fieldElement = document.querySelector(`td[data-field="${fieldName}"]`);
+          if (fieldElement && fieldElement.getAttribute('data-type') === 'datetime' && window.calendar) {
               window.calendar.refetchEvents();
           }
           
@@ -2394,7 +2481,7 @@ function bulkDeleteRows() {
         color: white;
         padding: 15px;
         border-radius: 6px;
-        z-index: 1000
+        z-index: 1000;
         font-size: 14px;
     `;
     loadingNotification.textContent = `${selectedRowIds.length}개 행을 삭제하는 중...`;
@@ -2420,13 +2507,16 @@ function bulkDeleteRows() {
                 color: white;
                 padding: 15px 20px;
                 border-radius: 6px;
-                z-index: 1000
+                z-index: 1000;
                 font-size: 14px;
             `;
             resultNotification.textContent = resultMessage;
             document.body.appendChild(resultNotification);
             
             setTimeout(() => resultNotification.remove(), 3000);
+            
+            // 즉시 체크박스 상태 초기화 및 삭제 버튼 숨기기
+            resetCheckboxes();
             
             // 테이블 새로고침
             refreshTable();
@@ -2438,12 +2528,6 @@ function bulkDeleteRows() {
             
             // 캘린더 업데이트
             refreshCalendar();
-            
-            // 전체 선택 체크박스 초기화
-            const selectAllCheckbox = document.getElementById('selectAllCheckbox');
-            if (selectAllCheckbox) {
-                selectAllCheckbox.checked = false;
-            }
             
             return;
         }
@@ -2513,9 +2597,6 @@ function refreshTable() {
         .then(html => {
             document.getElementById('tableView').innerHTML = html;
             
-            // 체크박스 상태 초기화
-            resetCheckboxes();
-            
             // 필요시 테이블 관련 이벤트 재바인딩
             if (typeof bindTableCellEvents === 'function') bindTableCellEvents();
             
@@ -2539,3 +2620,28 @@ function refreshTable() {
             console.error('테이블 새로고침 오류:', error);
         });
 }
+
+// 컬럼 리사이즈 이벤트 감지 및 제목 자동 조정
+function initializeColumnResizeListener() {
+    document.addEventListener('columnResized', function(e) {
+        const column = e.target;
+        const width = e.detail.width;
+        
+        // 해당 컬럼의 제목 요소들 찾기
+        const headerContent = column.querySelector('.header-content');
+        if (headerContent) {
+            // 제목 텍스트 요소들 조정
+            const titleElements = headerContent.querySelectorAll('.attribute-name-text, span');
+            titleElements.forEach(element => {
+                // 최대 너비를 컬럼 너비에 맞게 조정 (패딩과 버튼 공간 고려)
+                const maxTitleWidth = Math.max(width - 60, 20); // 최소 20px 보장
+                element.style.maxWidth = maxTitleWidth + 'px';
+            });
+        }
+    });
+}
+
+// 페이지 로드 시 컬럼 리사이즈 리스너 초기화
+document.addEventListener('DOMContentLoaded', function() {
+    initializeColumnResizeListener();
+});

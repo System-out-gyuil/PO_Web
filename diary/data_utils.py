@@ -74,7 +74,7 @@ def calculate_business_years(opening_date_str, years_ago=None):
         return None
     
 def formatToKoreanCurrency(amount):
-    """숫자를 한국어 통화 단위로 변환"""
+    """숫자를 한국어 통화 단위로 변환 (to_korean_currency 필터와 동일한 포맷)"""
     if not amount or amount == 0:
         return '0원'
     
@@ -83,44 +83,45 @@ def formatToKoreanCurrency(amount):
         return '0원'
     
     result = ''
+    remaining = amount
     
     # 억 단위 처리
-    if amount >= 100000000:
-        eok = amount // 100000000
-        result += f'{eok}억'
-        amount = amount % 100000000
+    if remaining >= 100000000:
+        eok = remaining // 100000000
+        result += str(eok) + '억'
+        remaining = remaining % 100000000
     
-    # 천만 단위 처리
-    if amount >= 10000000:
-        cheonman = amount // 10000000
+    # 천만 단위 처리 (천으로 표시)
+    if remaining >= 10000000:
+        cheon = remaining // 10000000
         if result:
-            result += f' {cheonman}천'
-        else:
-            result = f'{cheonman}천'
-        amount = amount % 10000000
+            result += ' '
+        result += str(cheon) + '천'
+        remaining = remaining % 10000000
     
     # 백만 단위 처리
-    if amount >= 1000000:
-        baekman = amount // 1000000
+    if remaining >= 1000000:
+        baek = remaining // 1000000
         if result:
-            result += f' {baekman}백'
-        else:
-            result = f'{baekman}백'
-        amount = amount % 1000000
+            result += ' '
+        result += str(baek) + '백'
+        remaining = remaining % 1000000
     
-    # 만 단위 처리
-    if amount >= 10000:
-        man = amount // 10000
-        if result:
-            result += f'{man}만'
+    # 만 단위가 남아있으면 추가 (단, 앞에 억/천/백이 없을 때만)
+    if remaining >= 10000:
+        if not result:  # 앞에 억/천/백이 없을 때만
+            result = str(remaining // 10000) + '만'
         else:
-            result = f'{man}만'
+            # 앞에 억/천/백이 있을 때는 만 단위가 0이 아닐 때만 추가
+            if remaining // 10000 > 0:
+                result += str(remaining // 10000) + '만'
+        remaining = remaining % 10000
     
     # 10,000 미만의 값은 그대로 표시
-    if amount > 0 and amount < 10000:
+    if remaining > 0 and remaining < 10000:
         if result:
-            result += str(amount)
+            result += str(remaining)
         else:
-            result = str(amount)
+            result = str(remaining)
     
     return result + '원'

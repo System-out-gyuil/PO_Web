@@ -322,6 +322,16 @@ td[data-field="회사명"] .name-text {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    cursor: text;
+    padding: 2px 4px;
+    border-radius: 3px;
+    transition: background-color 0.2s ease;
+}
+
+td[data-field="회사명"] .name-text:focus {
+    background-color: #fff;
+    border: 1px solid #007bff;
+    outline: none;
 }
 td[data-field="회사명"] .more-btn-wrapper {
     flex: 0 0 auto;
@@ -695,6 +705,8 @@ td[data-field] {
     flex-wrap: nowrap;
     gap: 2px;
     min-height: 20px;
+    width: 100%;
+    overflow: hidden;
 }
 
 .header-content > span {
@@ -704,6 +716,7 @@ td[data-field] {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    max-width: 100%;
 }
 
 .header-buttons {
@@ -1080,8 +1093,10 @@ tr:hover .drag-handle {
 .attribute-name-editable {
     display: flex;
     align-items: center;
-    gap: 5px;
-    cursor: pointer;
+    justify-content: space-between;
+    width: 100%;
+    min-width: 0;
+    flex: 1;
 }
 
 
@@ -1090,12 +1105,11 @@ tr:hover .drag-handle {
     background: none;
     border: none;
     cursor: pointer;
-    font-size: 12px;
-    color: #6c757d;
-    padding: 2px;
-    border-radius: 3px;
+    font-size: 10px;
     opacity: 0;
     transition: opacity 0.2s ease;
+    flex-shrink: 0;
+    margin-left: 2px;
 }
 
 .attribute-name-editable:hover .edit-attribute-name-btn {
@@ -1103,26 +1117,22 @@ tr:hover .drag-handle {
 }
 
 .edit-attribute-name-btn:hover {
-    background-color: #e9ecef;
-    color: #495057;
+    opacity: 1;
 }
 
 .attribute-name-input {
+    width: 100%;
     border: 1px solid #007bff;
-    border-radius: 4px;
-    padding: 4px 8px;
-    font-size: 14px;
-    font-weight: 500;
-    color: #495057;
+    border-radius: 3px;
+    padding: 2px 4px;
+    font-size: 12px;
     background: white;
-    min-width: 80px;
-    max-width: 200px;
 }
 
 .attribute-name-input:focus {
     outline: none;
     border-color: #0056b3;
-    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
 }
 
 .attribute-name-save-btn {
@@ -1131,9 +1141,9 @@ tr:hover .drag-handle {
     border: none;
     border-radius: 3px;
     padding: 2px 6px;
-    font-size: 11px;
+    font-size: 10px;
     cursor: pointer;
-    margin-left: 3px;
+    margin-left: 2px;
 }
 
 .attribute-name-save-btn:hover {
@@ -1146,7 +1156,7 @@ tr:hover .drag-handle {
     border: none;
     border-radius: 3px;
     padding: 2px 6px;
-    font-size: 11px;
+    font-size: 10px;
     cursor: pointer;
     margin-left: 2px;
 }
@@ -1260,4 +1270,53 @@ tr:hover .drag-handle {
 
 .drag-handle:hover {
     background-color: #e9ecef;
+}
+
+.attribute-name-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+    max-width: 100%;
+}
+
+/* 컬럼 제목 자동 조정 스타일 */
+th {
+    position: relative;
+    overflow: hidden;
+}
+
+th .header-content {
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+th .header-content > span,
+th .attribute-name-text {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: max-width 0.2s ease;
+}
+
+/* 컬럼 리사이즈 중 제목 조정 */
+th.resizing .header-content > span,
+th.resizing .attribute-name-text {
+    transition: max-width 0.1s ease;
+}
+
+/* 필수 컬럼과 비필수 컬럼 구분 */
+.attribute-header[data-essential="true"] .header-content > span {
+    font-weight: 600;
+    color: #495057;
+}
+
+.attribute-header[data-essential="false"] .header-content > span {
+    font-weight: 500;
+    color: #6c757d;
 }

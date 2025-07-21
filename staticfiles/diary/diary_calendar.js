@@ -4,6 +4,13 @@ let calendarSettings = {
     content_fields: ['회사명', '미팅', '영업진행']
 };
 
+// 캘린더 리렌더링 함수
+function refreshCalendar() {
+    if (window.calendar && typeof window.calendar.refetchEvents === 'function') {
+        window.calendar.refetchEvents();
+    }
+}
+
 // 완전 랜덤 16진수 색상 함수
 function randomColor() {
     return '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');

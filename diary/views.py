@@ -1859,15 +1859,35 @@ def get_funding_recommendation(request):
         # 공고 추천 데이터 준비
         recommended_notices = []
         pblanc_ids = []
-        
+        biz_reception = ""
+
         for biz in biz_data:
+            print(f'biz.reception_start : {biz.reception_start}')
+            print(f'biz.reception_end : {biz.reception_end}')
+            
+            # DateField 객체를 문자열로 변환하여 비교
+            start_str = str(biz.reception_start) if biz.reception_start else '1900-01-01'
+            end_str = str(biz.reception_end) if biz.reception_end else '9999-12-31'
+            
+            if start_str == '1900-01-01' and end_str == '9999-12-31':
+                biz_reception = "상시접수"
+            elif start_str == '1900-01-01' and end_str != '9999-12-31':
+                biz_reception = f"{end_str} 까지 접수"
+            elif start_str != '1900-01-01' and end_str == '9999-12-31':
+                biz_reception = f"{start_str} 부터 자금 소진시까지 접수"
+            else:
+                biz_reception = f"{start_str} ~ {end_str}"
+            
+            print(f'biz_reception : {biz_reception}')
+
+
             print(f'biz_data : {biz.pblanc_id}')
             pblanc_ids.append(biz.pblanc_id)
             recommended_notices.append({
                 'pblanc_id': biz.pblanc_id,
                 'title': biz.title,
                 'institution': biz.institution_name,
-                'apply_period': f"{biz.reception_start} ~ {biz.reception_end}" if biz.reception_start and biz.reception_end else "상시접수",
+                'apply_period': biz_reception,
                 'support_amount': biz.support_field if biz.support_field else "지원규모 미정"
             })
 
@@ -2230,6 +2250,7 @@ def delete_row(request):
         return JsonResponse({'success': False, 'error': 'Invalid JSON'})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
+    
 @csrf_exempt
 def get_recommended_notices(request):
     """저장된 pblanc_ids를 이용해 공고 정보를 반환하는 API"""
@@ -2560,6 +2581,7 @@ def entry_table_partial(request):
                                 'label': dropdown_attr.option,
                                 'color': dropdown_attr.color
                             })
+                    
                     
                     if selected_options:
                         # 첫 번째 옵션의 색상을 기본 색상으로 사용

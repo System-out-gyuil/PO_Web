@@ -62,6 +62,17 @@ function bindKanbanSortable() {
                           window.calendar.refetchEvents();
                       }
                       
+                      // datetime 타입 필드인 경우 캘린더 리렌더링
+                      const fieldElement = document.querySelector(`td[data-field="${currentKanbanAttr}"]`);
+                      if (fieldElement && fieldElement.getAttribute('data-type') === 'datetime' && window.calendar) {
+                          window.calendar.refetchEvents();
+                      }
+                      
+                      // 모든 datetime 필드 변경 시 캘린더 리렌더링
+                      if (typeof refreshCalendar === 'function') {
+                          refreshCalendar();
+                      }
+                      
                       // 1초 후 원래 스타일로 복원
                       setTimeout(() => {
                           evt.item.style.border = '';
@@ -262,7 +273,7 @@ function updateModalDropdownValue(fieldName, newValue) {
     });
 }
 
-// 한국 통화 형식으로 변환하는 함수 (Django to_korean_currency 필터와 동일)
+// 한국 통화 형식으로 변환하는 함수 (백만 단위 기준)
 function formatKoreanCurrency(value) {
     if (!value) return '0원';
     
@@ -281,6 +292,9 @@ function formatKoreanCurrency(value) {
         
         let result = '';
         let remaining = num;
+        
+        // 백만 단위 이상인지 확인
+        const isOverBaekman = remaining >= 1000000;
         
         // 억 단위 처리
         if (remaining >= 100000000) {
@@ -309,13 +323,22 @@ function formatKoreanCurrency(value) {
             remaining = remaining % 1000000;
         }
         
-        // 만 단위가 남아있으면 추가
+        // 백만 단위 이상이면 여기서 끝
+        if (isOverBaekman) {
+            return result + '만원';
+        }
+        
+        // 백만 단위 이하일 때는 만 단위까지 표시
         if (remaining >= 10000) {
-            if (result) {
-                result += '만';
-            } else {
+            if (!result) {  // 앞에 억/천/백이 없을 때만
                 result = Math.floor(remaining / 10000) + '만';
+            } else {
+                // 앞에 억/천/백이 있을 때는 만 단위가 0이 아닐 때만 추가
+                if (Math.floor(remaining / 10000) > 0) {
+                    result += Math.floor(remaining / 10000) + '만';
+                }
             }
+            remaining = remaining % 10000;
         }
         
         // 10,000 미만의 값은 그대로 표시

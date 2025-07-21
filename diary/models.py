@@ -86,7 +86,7 @@ class Attribute(models.Model):
     sort_order = models.IntegerField(default=0, db_index=True)
     view_select = models.JSONField(default=dict)
     cascade = models.BooleanField(default=False)
-    width = models.IntegerField(default=150)
+    width = models.IntegerField(default=180)
 
     class Meta:
         ordering = ['sort_order', 'id']  # sort_order 필드로 기본 정렬
