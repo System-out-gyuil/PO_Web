@@ -948,12 +948,21 @@ function addFileCell() {
 function handleMultiFileUpload(fileInput) {
   const file = fileInput.files[0];
   if (!file) return;
-  // 오디오는 기존 로직 사용
+  
+  // 업로드 중 상태 확인
+  if (window.isUploading) {
+    console.log('이미 업로드 중입니다. 중복 요청을 무시합니다.');
+    return;
+  }
+  
+  // 오디오는 기존 로직 사용 - 중복 요청 방지를 위해 handleGeneralFileUpload만 호출
   if (file.type.startsWith('audio/')) {
-    // handleAudioFileUpload(file, 0); // insertIndex를 0으로 설정
     handleGeneralFileUpload(file, 0); // insertIndex를 0으로 설정
     return;
   }
+  
+  window.isUploading = true;
+  
   // 이미지/문서/기타 파일 처리
   if (!window.audioFileData) window.audioFileData = { data: {} };
   const dataDict = window.audioFileData;
@@ -973,6 +982,8 @@ function handleMultiFileUpload(fileInput) {
   })
   .then(r => r.json())
   .then(data => {
+    window.isUploading = false; // 업로드 완료
+    
     if (data.success && data.file_info) {
       dataDict.data[newId] = {
         id: newId,
@@ -996,6 +1007,7 @@ function handleMultiFileUpload(fileInput) {
     }
   })
   .catch(err => {
+    window.isUploading = false; // 업로드 완료 (에러 시에도)
     alert('파일 업로드 중 오류: ' + err);
   });
 }
@@ -1375,6 +1387,14 @@ function handleAudioFileUpload(file, insertIndex) {
 
 // 일반 파일 업로드 처리 함수
 function handleGeneralFileUpload(file, insertIndex) {
+    // 업로드 중 상태 확인
+    if (window.isUploading) {
+        console.log('이미 업로드 중입니다. 중복 요청을 무시합니다.');
+        return;
+    }
+    
+    window.isUploading = true;
+    
     const formData = new FormData();
     formData.append('file', file);
     formData.append('row_id', window.currentDetailRowId);
@@ -1385,6 +1405,8 @@ function handleGeneralFileUpload(file, insertIndex) {
     })
     .then(response => response.json())
     .then(data => {
+        window.isUploading = false; // 업로드 완료
+        
         if (data.success && data.file_info) {
             console.log('일반 파일 업로드 성공');
             
@@ -1400,6 +1422,7 @@ function handleGeneralFileUpload(file, insertIndex) {
         }
     })
     .catch(error => {
+        window.isUploading = false; // 업로드 완료 (에러 시에도)
         console.error('일반 파일 업로드 중 오류:', error);
         alert('파일 업로드 중 오류가 발생했습니다.');
     });

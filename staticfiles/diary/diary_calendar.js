@@ -4,6 +4,78 @@ let calendarSettings = {
     content_fields: ['회사명', '미팅', '영업진행']
 };
 
+// 한국어 단위로 변환하는 함수 (백만 단위 기준)
+function formatToKoreanCurrency(amount) {
+    if (!amount || amount === 0) return '0원';
+    
+    const numAmount = typeof amount === 'string' ? parseInt(amount.replace(/[^\d]/g, '')) : amount;
+    if (isNaN(numAmount) || numAmount === 0) return '0원';
+    
+    let result = '';
+    let remaining = numAmount;
+    
+    // 백만 단위 이상인지 확인
+    const isOverBaekman = remaining >= 1000000;
+    
+    // 억 단위 처리
+    if (remaining >= 100000000) {
+        const eok = Math.floor(remaining / 100000000);
+        result += eok + '억';
+        remaining = remaining % 100000000;
+    }
+    
+    // 천만 단위 처리 (천으로 표시)
+    if (remaining >= 10000000) {
+        const cheon = Math.floor(remaining / 10000000);
+        result += ' ' + cheon + '천';
+        remaining = remaining % 10000000;
+    }
+    
+    // 백만 단위 처리
+    if (remaining >= 1000000) {
+        const baek = Math.floor(remaining / 1000000);
+        result += ' ' + baek + '백';
+        remaining = remaining % 1000000;
+    }
+    
+    // 천만이나 백만 단위가 있으면 '만원'으로 끝냄
+    if (result.includes('천') || result.includes('백')) {
+        return result + '만원';
+    }
+    // 억 단위만 있으면 '원'으로 끝냄
+    else if (result && result.includes('억')) {
+        return result + '원';
+    }
+    // 백만 단위 이상이면 '만원'으로 끝냄
+    else if (isOverBaekman) {
+        return result + '만원';
+    }
+    
+    // 백만 단위 이하일 때는 만 단위까지 표시
+    if (remaining >= 10000) {
+        if (!result) {  // 앞에 억/천/백이 없을 때만
+            result = Math.floor(remaining / 10000) + '만';
+        } else {
+            // 앞에 억/천/백이 있을 때는 만 단위가 0이 아닐 때만 추가
+            if (Math.floor(remaining / 10000) > 0) {
+                result += Math.floor(remaining / 10000) + '만';
+            }
+        }
+        remaining = remaining % 10000;
+    }
+    
+    // 10,000 미만의 값은 그대로 표시
+    if (remaining > 0 && remaining < 10000) {
+        if (result) {
+            result += remaining;
+        } else {
+            result = remaining.toString();
+        }
+    }
+    
+    return result + '원';
+}
+
 // 캘린더 리렌더링 함수
 function refreshCalendar() {
     if (window.calendar && typeof window.calendar.refetchEvents === 'function') {
@@ -565,6 +637,12 @@ function initializeCalendarWithSettings() {
                     // 개업년월 필드인 경우 특별 처리
                     if (field === '개업년월') {
                         fieldValue = formatBusinessOpeningDate(fieldValue);
+                    }
+                    // 매출 관련 필드인 경우 한국어 숫자 형식으로 변환
+                    else if (field.includes('매출') || field.includes('매출액') || field.includes('매출금') || field.includes('매출액') || field.includes('매출금액')) {
+                        if (fieldValue && fieldValue !== '0' && fieldValue !== '') {
+                            fieldValue = formatToKoreanCurrency(fieldValue);
+                        }
                     }
                     
                     return `

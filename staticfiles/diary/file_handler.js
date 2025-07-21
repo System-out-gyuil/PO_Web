@@ -63,7 +63,7 @@ function showFilePreview(fileId, fileInfo, rowId, fieldName) {
     document.body.appendChild(modal);
     
     // 새로운 S3 서명된 URL 요청
-    fetch(`/sales/get_file_preview_url/${rowId}/${fieldName}/`, {
+    fetch(`/sales/get_file_preview_url/${rowId}/${fieldName}/?file_id=${encodeURIComponent(fileId)}`, {
         method: 'GET',
         headers: {
             'X-CSRFToken': getCsrfToken()
@@ -74,15 +74,31 @@ function showFilePreview(fileId, fileInfo, rowId, fieldName) {
         console.log('API 응답:', data); // 디버깅용 로그 추가
         console.log('API 응답 타입:', typeof data); // 타입 확인
         console.log('API 응답이 배열인가:', Array.isArray(data)); // 배열 여부 확인
+        console.log('찾고 있는 fileId:', fileId); // 찾고 있는 파일 ID
         
-        // data가 리스트인 경우 첫 번째 항목 사용
+        // data가 리스트인 경우 특정 fileId에 해당하는 파일 찾기
         if (Array.isArray(data)) {
             console.log('배열 길이:', data.length);
-            if (data.length > 0) {
-                console.log('첫 번째 항목:', data[0]);
-                data = data[0];
+            console.log('배열 내용:', data);
+            
+            // fileId에 해당하는 파일 찾기
+            const targetFile = data.find(file => 
+                file.id === fileId || 
+                file.stored_filename === fileId || 
+                file.original_filename === fileId ||
+                file.filename === fileId
+            );
+            
+            if (targetFile) {
+                console.log('찾은 파일:', targetFile);
+                data = targetFile;
             } else {
-                throw new Error('파일 정보가 없습니다.');
+                console.log('해당 fileId를 찾을 수 없음, 첫 번째 파일 사용');
+                if (data.length > 0) {
+                    data = data[0];
+                } else {
+                    throw new Error('파일 정보가 없습니다.');
+                }
             }
         }
         
