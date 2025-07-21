@@ -969,10 +969,12 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
             // 드롭다운 항목들 생성
             let html = '';
             data.options.forEach(function(option) {
-                const isSelected = option.option === currentValue;
+                const label = option.option || option.name; // option 또는 name 필드 사용
+                if (!label) return; // 값이 없으면 스킵
+                const isSelected = label === currentValue;
                 const backgroundColor = option.color ? hexToRgba(option.color, 0.18) : 'white';
                 html += `
-                  <div class="dropdown-item" data-option-id="${option.id}" data-option-text="${option.option}" data-color="${option.color||''}"
+                  <div class="dropdown-item" data-option-id="${option.id}" data-option-text="${label}" data-color="${option.color||''}"
                        style="padding: 8px 12px; 
                               cursor: pointer; 
                               border-bottom: 1px solid #f0f0f0;
@@ -980,7 +982,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                               color: #333;
                               ${isSelected ? 'border-left: 3px solid #007bff; font-weight: bold;' : ''}
                               transition: background-color 0.2s;">
-                    ${option.option}
+                    ${label}
                   </div>
                 `;
             });

@@ -527,6 +527,7 @@ function showDetailModal(rowData, rowId) {
                         fetch('/sales/dropdown_options/?field=' + encodeURIComponent(attr.name))
                             .then(r => r.json())
                             .then(data => {
+                                console.log('dropdown_options 데이터:', data);
                                 if (data.options) {
                                     const opt = data.options.find(o => o.option === value);
                                     const btn = document.getElementById(`modal-dropdown-btn-${rowId}-${attr.name}`);
