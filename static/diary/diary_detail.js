@@ -408,12 +408,19 @@ function showDetailModal(rowData, rowId) {
                         filesData.forEach((fileInfo, index) => {
                             const displayFileName = fileInfo.original_filename || fileInfo.stored_filename || fileInfo.filename || 'unknown';
                             
+                            // 디버깅: 각 파일 정보 로그
+                            console.log(`파일 ${index}:`, fileInfo);
+                            console.log(`파일 ${index} displayFileName:`, displayFileName);
+                            
+                            // 파일의 고유 ID 생성 (기존 ID가 없으면 stored_filename 사용)
+                            const fileId = fileInfo.id || fileInfo.stored_filename || `file_${index}`;
+                            
                             // 파일 타입별 처리
                             if (fileInfo.type === 'img' || fileInfo.content_type?.startsWith('image/')) {
                                 filesHtml += `
                                     <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding: 8px; border: 1px solid #e9ecef; border-radius: 4px; background: #f8f9fa;">
                                         <span style="flex: 1; font-size: 14px;">📄 ${displayFileName}</span>
-                                        <button onclick="showFilePreviewModal(${JSON.stringify({...fileInfo, field_name: attr.name, row_id: rowId}).replace(/\"/g, '&quot;')})"
+                                        <button onclick="showFilePreviewModal(${JSON.stringify({...fileInfo, id: fileId, field_name: attr.name, row_id: rowId}).replace(/\"/g, '&quot;')})"
                                                 style="padding: 4px 8px; background: #ffc107; color: #333; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
                                             미리보기
                                         </button>
@@ -432,23 +439,20 @@ function showDetailModal(rowData, rowId) {
                                 `;
                             } else if (fileInfo.type === 'audio') {
                                 filesHtml += `
-                                    <div style="margin-bottom: 12px; padding: 8px; border: 1px solid #e9ecef; border-radius: 4px; background: #f8f9fa;">
-                                        <div style="margin-bottom: 8px;">
-                                            <audio controls src="${fileInfo.download_url || fileInfo.url}" style="width: 100%;"></audio>
-                                        </div>
-                                        <div style="display: flex; gap: 6px;">
-                                            <button onclick="window.open('${fileInfo.download_url}', '_blank')"
-                                                    style="padding: 4px 8px; background: #17a2b8; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
-                                                다운로드
-                                            </button>
-                                            <button class="delete-file-btn" 
-                                                    data-row-id="${rowId}" 
-                                                    data-field-name="${attr.name}" 
-                                                    data-file-index="${index}"
-                                                    style="padding: 4px 8px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
-                                                삭제
-                                            </button>
-                                        </div>
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding: 8px; border: 1px solid #e9ecef; border-radius: 4px; background: #f8f9fa;">
+                                        <span style="flex: 1; font-size: 14px;">🎵 ${displayFileName}</span>
+                                        <audio controls src="${fileInfo.download_url || fileInfo.url}" style="width: 200px; height: 32px;"></audio>
+                                        <button onclick="window.open('${fileInfo.download_url}', '_blank')"
+                                                style="padding: 4px 8px; background: #17a2b8; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                            다운로드
+                                        </button>
+                                        <button class="delete-file-btn" 
+                                                data-row-id="${rowId}" 
+                                                data-field-name="${attr.name}" 
+                                                data-file-index="${index}"
+                                                style="padding: 4px 8px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                            삭제
+                                        </button>
                                     </div>
                                 `;
                             } else {
@@ -456,7 +460,7 @@ function showDetailModal(rowData, rowId) {
                                 filesHtml += `
                                     <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding: 8px; border: 1px solid #e9ecef; border-radius: 4px; background: #f8f9fa;">
                                         <span style="flex: 1; font-size: 14px;">📄 ${displayFileName}</span>
-                                        <button onclick="showFilePreviewModal(${JSON.stringify({...fileInfo, field_name: attr.name, row_id: rowId}).replace(/\"/g, '&quot;')})"
+                                        <button onclick="showFilePreviewModal(${JSON.stringify({...fileInfo, id: fileId, field_name: attr.name, row_id: rowId}).replace(/\"/g, '&quot;')})"
                                                 style="padding: 4px 8px; background: #ffc107; color: #333; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
                                             미리보기
                                         </button>
@@ -2534,20 +2538,20 @@ function updateFileFieldInModalAfterDelete(rowId, fieldName) {
                                     `;
                                 } else if (fileInfo.type === 'audio') {
                                     filesHtml += `
-                                        <div style="margin-bottom: 12px; padding: 8px; border: 1px solid #e9ecef; border-radius: 4px; background: #f8f9fa;">
-                                            <div style="margin-bottom: 8px;">
-                                                <audio controls src="${fileInfo.download_url || fileInfo.url}" style="width: 100%;"></audio>
-                                            </div>
-                                            <div style="display: flex; gap: 6px;">
-                                                <button onclick="window.open('${fileInfo.download_url}', '_blank')"
-                                                        style="padding: 4px 8px; background: #17a2b8; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
-                                                    다운로드
-                                                </button>
-                                                <button onclick="deleteFile('${rowId}', '${fieldName}', '${index}')"
-                                                        style="padding: 4px 8px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
-                                                    삭제
-                                                </button>
-                                            </div>
+                                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding: 8px; border: 1px solid #e9ecef; border-radius: 4px; background: #f8f9fa;">
+                                            <span style="flex: 1; font-size: 14px;">🎵 ${displayFileName}</span>
+                                            <audio controls src="${fileInfo.download_url || fileInfo.url}" style="width: 200px; height: 32px;"></audio>
+                                            <button onclick="window.open('${fileInfo.download_url}', '_blank')"
+                                                    style="padding: 4px 8px; background: #17a2b8; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                                다운로드
+                                            </button>
+                                            <button class="delete-file-btn" 
+                                                    data-row-id="${rowId}" 
+                                                    data-field-name="${attr.name}" 
+                                                    data-file-index="${index}"
+                                                    style="padding: 4px 8px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                                삭제
+                                            </button>
                                         </div>
                                     `;
                                 } else {

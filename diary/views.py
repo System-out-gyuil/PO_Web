@@ -2722,7 +2722,12 @@ def upload_note_file(request):
         user = User.objects.get(id=user_id)
         row = Row.objects.get(id=row_id, user=user)
         attr = Attribute.objects.get(name='음성파일', user=user)
-        attr_value, _ = AttributeValue.objects.get_or_create(row=row, attribute=attr)
+        
+        # 중복 데이터 문제 해결: get_or_create 대신 filter().first() 사용
+        attr_value = AttributeValue.objects.filter(row=row, attribute=attr).first()
+        if not attr_value:
+            attr_value = AttributeValue.objects.create(row=row, attribute=attr, value='{"data": {}}')
+        
         # 기존 값이 있으면 파싱, 없으면 빈 dict
         try:
             value_dict = json.loads(attr_value.value) if attr_value.value else {"data": {}}
@@ -3052,6 +3057,10 @@ def get_file_preview_url(request, row_id, field_name):
     """단일 파일 필드(영업노트 방식) presigned URL 반환"""
     try:
         print(f'row_id: {row_id}, field_name: {field_name}')
+        
+        # file_id 파라미터 추가
+        file_id = request.GET.get('file_id')
+        print(f'file_id: {file_id}')
          
         user_id = request.session.get('diary_member_id')
 
@@ -3059,16 +3068,40 @@ def get_file_preview_url(request, row_id, field_name):
         row = Row.objects.get(id=row_id, user=user)
         attr = Attribute.objects.get(name=field_name, user=user)
         attr_value = AttributeValue.objects.get(row=row, attribute=attr)
-        file_info = json.loads(attr_value.value)
+        file_data = json.loads(attr_value.value)
 
-        print(f'file_info: {file_info}')
+        print(f'file_data: {file_data}')
         
-        # file_info가 리스트인 경우 첫 번째 항목 사용
-        if isinstance(file_info, list):
-            if len(file_info) > 0:
-                file_info = file_info[0]
+        # file_data가 리스트인 경우 file_id에 해당하는 파일 찾기
+        if isinstance(file_data, list):
+            if file_id:
+                # file_id에 해당하는 파일 찾기
+                target_file = None
+                for file_info in file_data:
+                    if (file_info.get('id') == file_id or 
+                        file_info.get('stored_filename') == file_id or
+                        file_info.get('original_filename') == file_id):
+                        target_file = file_info
+                        break
+                
+                if target_file:
+                    file_info = target_file
+                    print(f'찾은 파일: {file_info}')
+                else:
+                    print(f'file_id {file_id}에 해당하는 파일을 찾을 수 없음, 첫 번째 파일 사용')
+                    if len(file_data) > 0:
+                        file_info = file_data[0]
+                    else:
+                        return JsonResponse({'success': False, 'error': '파일 정보가 없습니다.'})
             else:
-                return JsonResponse({'success': False, 'error': '파일 정보가 없습니다.'})
+                # file_id가 없으면 첫 번째 파일 사용
+                if len(file_data) > 0:
+                    file_info = file_data[0]
+                else:
+                    return JsonResponse({'success': False, 'error': '파일 정보가 없습니다.'})
+        else:
+            # 단일 파일인 경우
+            file_info = file_data
         
         s3_key = file_info.get('s3_key')
         if not s3_key:
