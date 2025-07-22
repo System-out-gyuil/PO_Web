@@ -190,6 +190,8 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                                 window._modalAfterUpdateAll(id); 
                                 window._modalAfterUpdateAll = null; 
                             }
+                            // 칸반보드 새로고침
+                            triggerKanbanRefreshIfNeeded();
                         } else {
                             throw new Error(data.error || '업데이트 실패');
                         }
@@ -354,6 +356,8 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                                 window._modalAfterUpdateAll(id); 
                                 window._modalAfterUpdateAll = null; 
                             }
+                            // 칸반보드 새로고침
+                            triggerKanbanRefreshIfNeeded();
                         } else {
                             throw new Error(data.error || '업데이트 실패');
                         }
@@ -608,6 +612,8 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                                         updateDependentRows(id, type, optionId);
                                         
                                         syncTableAndKanban(type);
+                                        // 칸반보드 새로고침
+                                        triggerKanbanRefreshIfNeeded();
                                     } else {
                                         throw new Error(data.error || '업데이트 실패');
                                     }
@@ -1115,12 +1121,23 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
             const currentKanbanAttr = document.getElementById('kanbanAttributeSelect') ? 
                 document.getElementById('kanbanAttributeSelect').value : 
                 window.SELECTED_KANBAN_ATTR || window.kanbanAttribute;
-                
+            let shouldRefreshKanban = false;
             if (currentKanbanAttr && fieldName === currentKanbanAttr) {
-                if (typeof refreshKanban === 'function') {
-                    refreshKanban();
-                }
+                shouldRefreshKanban = true;
             }
+            // 조건부 필터에 사용된 속성도 새로고침
+            if (
+                window.kanbanSettings &&
+                Array.isArray(window.kanbanSettings.filters) &&
+                window.kanbanSettings.filters.some(f => f.attribute === fieldName)
+            ) {
+                shouldRefreshKanban = true;
+            }
+            if (shouldRefreshKanban && typeof refreshKanban === 'function') {
+                refreshKanban();
+            }
+            // 칸반보드 새로고침
+            triggerKanbanRefreshIfNeeded();
         } else {
             console.error('모달 드롭다운 업데이트 실패:', data.error);
             showNotification('업데이트 실패: ' + data.error, 'error');
@@ -1500,4 +1517,27 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
         console.error('상세지역 드롭다운 로딩 오류:', error);
         alert('상세지역 정보를 불러오는 중 오류가 발생했습니다.');
       });
+  }
+  
+  // 드롭다운 셀 값 변경 후 항상 칸반보드 새로고침 (최적화: debounce)
+  function triggerKanbanRefreshIfNeeded() {
+      let currentAttr = document.getElementById('kanbanAttributeSelect')?.value;
+      if (!currentAttr) {
+          currentAttr = window.kanbanSettings?.main_attr;
+      }
+      if (!currentAttr || currentAttr === 'undefined') return;
+      if (!window._kanbanRefreshTimeout) {
+          window._kanbanRefreshTimeout = null;
+      }
+      if (window._kanbanRefreshTimeout) {
+          clearTimeout(window._kanbanRefreshTimeout);
+      }
+      window._kanbanRefreshTimeout = setTimeout(() => {
+          window._kanbanRefreshTimeout = null;
+          if (!window._kanbanRefreshing) {
+              window._kanbanRefreshing = true;
+              refreshKanban();
+              setTimeout(() => { window._kanbanRefreshing = false; }, 500);
+          }
+      }, 80);
   }

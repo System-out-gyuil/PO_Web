@@ -315,5 +315,40 @@
     });
   </script>
 
+  <script>
+    // 페이지 로드 시 로그인 상태 확인
+    document.addEventListener('DOMContentLoaded', function() {
+      checkLoginStatus();
+    });
+    
+    // 뒤로가기/앞으로가기 시에도 로그인 상태 확인
+    window.addEventListener('pageshow', function(event) {
+      // 뒤로가기로 페이지가 로드된 경우
+      if (event.persisted) {
+        checkLoginStatus();
+      }
+    });
+    
+    // 로그인 상태 확인 함수
+    function checkLoginStatus() {
+      fetch('/sales/check_login_status/', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.is_authenticated) {
+          // 이미 로그인된 경우 다이어리 페이지로 리다이렉트
+          window.location.href = '/sales/diary/';
+        }
+      })
+      .catch(error => {
+        console.error('로그인 상태 확인 오류:', error);
+      });
+    }
+  </script>
+
 </body>
 </html>

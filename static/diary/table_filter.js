@@ -289,7 +289,8 @@ function updateSortButtonStates(activeColumn = null, activeDirection = null) {
   }
 }
 
-function updateFilterStatus() {
+function updateFilterStatus(someObj) {
+    if (!someObj) return;
   const statusElement = document.getElementById('filterStatus');
   if (!statusElement) return;
 

@@ -71,6 +71,26 @@ from .data_utils import parse_korean_currency, parse_sales_amount, parse_busines
 
 logger = logging.getLogger(__name__)
 
+# 로그인 상태 확인 뷰
+@require_GET
+def check_login_status(request):
+    """로그인 상태를 확인하는 API"""
+    try:
+        # 세션에서 로그인 상태 확인
+        is_authenticated = request.session.get('diary_authenticated', False)
+        
+        return JsonResponse({
+            'is_authenticated': is_authenticated,
+            'success': True
+        })
+    except Exception as e:
+        logger.error(f'로그인 상태 확인 오류: {e}')
+        return JsonResponse({
+            'is_authenticated': False,
+            'success': False,
+            'error': str(e)
+        })
+
 # 다이어리 목록 및 작성 폼
 
 
@@ -78,17 +98,30 @@ logger = logging.getLogger(__name__)
 def diary_list(request):
     host = request.get_host()
     if 'namatji.com' in host:
-        return redirect('diary_main')
+        return redirect('login')
 
+    # 로그인 상태 확인 강화
     if not request.session.get('diary_authenticated'):
-        return redirect('diary_login')
+        return redirect('login')
+    
+    # 사용자 ID 확인
+    user_id = request.session.get('diary_member_id')
+    if not user_id:
+        return redirect('login')
+    
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        # 사용자가 존재하지 않는 경우 세션 정리 후 로그인 페이지로 리다이렉트
+        request.session.flush()
+        return redirect('login')
     
     user_id = request.session.get('diary_member_id')
     user = User.objects.get(id=user_id)
     
     # URL 파라미터에서 상태 ID 가져오기
-    status_id = request.GET.get('status_id')
-    if status_id is None:
+    status_id = request.GET.get('status_id', 'all')
+    if not status_id or status_id in ['undefined', 'null', None, '']:
         status_id = 'all'
     
     # detail 필터링 추가: 기본적으로 detail=False인 속성만 표시
@@ -188,8 +221,7 @@ def diary_list(request):
                             'selected_options': [],
                             'multi_select': True
                         }
-                except json.JSONDecodeError as e:
-                    print(f"  JSON 파싱 실패: {e}")
+                except json.JSONDecodeError:
                     row_values[attr.name] = {
                         'label': value,
                         'color': '',
@@ -197,136 +229,87 @@ def diary_list(request):
                         'selected_options': [],
                         'multi_select': True
                     }
-            elif attr.attributeType and attr.attributeType.name == 'file' and value:
-                # 파일 타입인 경우
-                file_info = json.loads(value)
-                original_filename = file_info.get('original_filename', '파일')
-                
-                row_values[attr.name] = {
-                    'type': 'file',
-                    'label': original_filename,
-                    'download_url': file_info.get('download_url', ''),
-                    'file_size': file_info.get('file_size', 0),
-                    'content_type': file_info.get('content_type', ''),
-                    'original_filename': original_filename
-                }
-            elif attr.attributeType and attr.attributeType.name == 'datetime' and value:
-                # datetime 타입의 경우 날짜 포맷 적용
-                try:
-                    # 값이 이미 datetime 객체인지 확인
-                    if isinstance(value, str):
-                        # 문자열인 경우 파싱 시도
-                        if 'T' in value or ' ' in value:
-                            # datetime 형식
-                            dt = datetime.fromisoformat(value.replace('T', ' ').split('.')[0])
-                        else:
-                            # date 형식
-                            dt = datetime.strptime(value, '%Y-%m-%d')
-                        formatted_value = dt.strftime('%Y-%m-%d')
-                    else:
-                        # datetime 객체인 경우
-                        formatted_value = value.strftime('%Y-%m-%d')
-                    row_values[attr.name] = {'label': formatted_value, 'color': ''}
-                except:
-                    # 파싱 실패 시 원본 값 사용
-                    row_values[attr.name] = {'label': value, 'color': ''}
             else:
-                row_values[attr.name] = {'label': value, 'color': ''}
+                row_values[attr.name] = {
+                    'label': value,
+                    'color': '',
+                    'raw_value': value
+                }
         
         rows_data.append({
             'id': row.id,
             'values': row_values
         })
     
-    # 칸반보드용 dropdown 속성들 가져오기 (필터링된 속성 중에서)
-    # 리스트에서 dropdown 타입만 필터링
-    dropdown_attributes = [attr for attr in user_attributes if attr.attributeType and attr.attributeType.name == 'dropdown']
-    dropdown_attributes.sort(key=lambda x: (-x.assential, x.name))
+    # 컬럼 너비 정보 가져오기
+    column_widths = {}
+    try:
+        column_widths_data = request.session.get('column_widths', {})
+        if isinstance(column_widths_data, str):
+            column_widths = json.loads(column_widths_data)
+        else:
+            column_widths = column_widths_data
+    except:
+        column_widths = {}
     
-    # 칸반보드 데이터 생성 - 기본적으로 '영업진행' 속성 사용, 없으면 첫 번째 dropdown 속성 사용
-    board = []
-    selected_kanban_attr = request.GET.get('kanban_attr', '영업진행')
-    kanban_attr = next((attr for attr in user_attributes if attr.name == selected_kanban_attr and attr.attributeType and attr.attributeType.name == 'dropdown'), None)
+    # 숨겨진 속성 정보 가져오기
+    hidden_attributes = []
+    try:
+        hidden_attributes_data = request.session.get('hidden_attributes', [])
+        if isinstance(hidden_attributes_data, str):
+            hidden_attributes = json.loads(hidden_attributes_data)
+        else:
+            hidden_attributes = hidden_attributes_data
+    except:
+        hidden_attributes = []
     
-    if not kanban_attr and dropdown_attributes:
-        kanban_attr = dropdown_attributes[0]
-        selected_kanban_attr = kanban_attr.name
+    # 상태 탭 정보 가져오기
+    status_tabs = []
+    try:
+        status_tabs_data = request.session.get('status_tabs', [])
+        if isinstance(status_tabs_data, str):
+            status_tabs = json.loads(status_tabs_data)
+        else:
+            status_tabs = status_tabs_data
+    except:
+        status_tabs = []
     
-    if kanban_attr:
-        # 선택된 속성의 드롭다운 옵션들 가져오기 (prefetch된 데이터 활용)
-        dropdown_options = kanban_attr.dropdown_attributes.all().order_by('order', 'id')
-        
-        for option in dropdown_options:
-            # 해당 상태를 가진 행들 찾기 (쿼리 최적화)
-            rows_with_status = Row.objects.filter(
-                user=user,
-                values__attribute=kanban_attr,
-                values__value=str(option.id)
-            ).prefetch_related(
-                'values__attribute',
-                'values__attribute__dropdown_attributes'
-            ).order_by('order', 'id')
-            
-            # 각 행의 데이터를 entry 형태로 변환
-            entries = []
-            for row in rows_with_status:
-                # 행의 속성값들 가져오기 (prefetch된 데이터 활용)
-                row_values = {}
-                for attr_value in row.values.all():
-                    if attr_value.attribute:
-                        row_values[attr_value.attribute.name] = attr_value.value
-                
-                # entry 객체 형태로 변환 (기존 DiaryEntry와 호환)
-                entry_data = {
-                    'id': row.id,
-                    'name': row_values.get('회사명', ''),
-                }
-                entries.append(entry_data)
-            
-            # 상태 정보를 SimpleNamespace로 변환
-            status_data = {
-                'id': option.id,
-                'name': option.option,
-                'color': option.color
+    # 캘린더 설정 정보 가져오기
+    calendar_settings = {}
+    try:
+        calendar_settings_data = request.session.get('calendar_settings', {})
+        if isinstance(calendar_settings_data, str):
+            calendar_settings = json.loads(calendar_settings_data)
+        else:
+            calendar_settings = calendar_settings_data
+    except:
+        calendar_settings = {}
+    
+    # 캐시 무효화를 위한 타임스탬프
+    cache_timestamp = int(time.time())
+    
+    context = {
+        'rows': rows_data,
+        'attributes': [
+            {
+                'name': attr.name,
+                'attributeType_name': attr.attributeType.name if attr.attributeType else '',
+                'assential': attr.assential,
+                'width': attr.width,
             }
-            
-            board.append({
-                'status': SimpleNamespace(**status_data),
-                'entries': entries
-            })
-
-    # attributes를 list of dict로 json.dumps
-    attributes_list = [{'id': attr.id, 'name': attr.name, 'attributeType__name': attr.attributeType.name if attr.attributeType else None, 'assential': attr.assential, 'width': attr.width} for attr in attributes]
-    # dict -> SimpleNamespace, attributeType__name -> attributeType_name
-    attributes_obj_list = [SimpleNamespace(**{k.replace('attributeType__name', 'attributeType_name'): v for k, v in d.items()}) for d in attributes_list]
-    attributes_json = json.dumps(attributes_list, ensure_ascii=False)
+            for attr in user_attributes
+        ],
+        'all_attributes': attributes,
+        'column_widths': column_widths,
+        'hidden_attributes': hidden_attributes,
+        'status_tabs': status_tabs,
+        'calendar_settings': calendar_settings,
+        'cache_timestamp': cache_timestamp,
+        'status_id': status_id,
+        'show_detail': show_detail
+    }
     
-    # dropdown 속성별 옵션 딕셔너리 생성 (필터링된 Attribute 기반)
-    dropdown_attrs = [attr for attr in user_attributes if attr.attributeType and attr.attributeType.name == 'dropdown']
-    dropdown_options_dict = {}
-    for attr in dropdown_attrs:
-        # prefetch된 데이터 활용
-        options = list(attr.dropdown_attributes.values('id', 'option', 'color'))
-        dropdown_options_dict[attr.name] = options
-
-    # dropdown 속성들을 JSON으로 전달 (필터링된 것만)
-    dropdown_attributes_json = json.dumps([
-        {'name': attr.name, 'id': attr.id} 
-        for attr in dropdown_attributes
-    ], ensure_ascii=False)
-
-    print(f"rows: {rows}")
-    return render(request, 'diary/diary_list.html', {
-        'attributes': attributes_obj_list,  # 템플릿 반복문용
-        'attributes_json': attributes_json,  # JS용
-        'dropdown_options': json.dumps(dropdown_options_dict, ensure_ascii=False),
-        'dropdown_attributes': dropdown_attributes,  # 칸반 필터용
-        'dropdown_attributes_json': dropdown_attributes_json,  # JS용
-        'selected_kanban_attr': selected_kanban_attr,  # 현재 선택된 칸반 속성
-        'rows': rows_data,  # 실제 데이터 행들
-        'board': board,  # 칸반보드 데이터
-        'current_status_id': status_id,  # 현재 선택된 상태 ID
-    })
+    return render(request, 'diary/diary_list.html', context)
 
 @require_GET
 def fu_events(request):
@@ -2506,6 +2489,8 @@ def entry_table_partial(request):
     
     # URL 파라미터에서 상태 ID 가져오기
     status_id = request.GET.get('status_id', 'all')
+    if not status_id or status_id in ['undefined', 'null', None, '']:
+        status_id = 'all'
     
     # 기본 속성 쿼리
     base_attributes = Attribute.objects.filter(user=user, detail=False).select_related('attributeType').order_by('sort_order', 'id')
@@ -2650,12 +2635,19 @@ def entry_table_partial(request):
             'values': row_values
         })
     
-    attributes_list = [{'name': attr.name, 'attributeType__name': attr.attributeType.name if attr.attributeType else None, 'assential': attr.assential, 'width': attr.width} for attr in user_attributes]
-    attributes_obj_list = [SimpleNamespace(**{k.replace('attributeType__name', 'attributeType_name'): v for k, v in d.items()}) for d in attributes_list]
-    
+    attributes_list = [
+        {
+            'name': attr.name,
+            'attributeType_name': attr.attributeType.name if attr.attributeType else '',
+            'assential': attr.assential,
+            'width': attr.width,
+        }
+        for attr in user_attributes
+    ]
+
     # 캐시 헤더 추가로 브라우저 캐싱 활성화
     response = render(request, 'diary/entry_table_partial.html', {
-        'attributes': attributes_obj_list,
+        'attributes': attributes_list,
         'rows': rows_data,
     })
     response['Cache-Control'] = 'public, max-age=30'  # 30초 캐시

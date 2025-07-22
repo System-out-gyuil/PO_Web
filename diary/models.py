@@ -109,28 +109,21 @@ class CalendarSettings(models.Model):
     def __str__(self):
         return f"{self.user.name}의 캘린더 설정"
 
-    def get_content_fields_list(self):
-        """content_fields를 리스트로 반환"""
-        if isinstance(self.content_fields, str):
-            try:
-                return json.loads(self.content_fields)
-            except json.JSONDecodeError:
-                return []
-        return self.content_fields or []
 
-    def set_content_fields_list(self, fields_list):
-        """content_fields를 리스트로 설정"""
-        if isinstance(fields_list, list):
-            self.content_fields = fields_list
-        else:
-            self.content_fields = []
+class KanbanSettings(models.Model):
+    """칸반보드 설정을 위한 모델"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='kanban_settings')
+    settings = models.JSONField(default=dict)  # {main_attr: str, filters: [...], custom_rules: [...]}
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
-    def get_settings_dict(self):
-        """설정을 딕셔너리 형태로 반환"""
-        return {
-            'date_field': self.date_field.name if self.date_field else None,
-            'content_fields': self.get_content_fields_list()
-        }
+    class Meta:
+        unique_together = ['user']  # 사용자당 하나의 설정만 허용
+        verbose_name = '칸반보드 설정'
+        verbose_name_plural = '칸반보드 설정'
+
+    def __str__(self):
+        return f"{self.user.name}의 칸반보드 설정"
     
 class Row(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)

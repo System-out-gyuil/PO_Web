@@ -6,7 +6,7 @@ from .main_views import DiaryMainView
 from .file_handler import upload_file, delete_file, download_file
 from .calendar_handlers import get_datetime_attributes, get_calendar_settings, save_calendar_settings, calendar_events
 from .excel_handlers import preview_excel, upload_excel
-from .kanban_handlers import update_kanban_option_order, get_kanban_data
+from .kanban_handlers import update_kanban_option_order, get_kanban_data, get_kanban_settings, save_kanban_settings, get_dropdown_attributes_for_kanban
 from .attribute_handlers import delete_attribute_value, toggle_attribute_visibility, update_attribute_visibility, get_dropdown_attributes, add_attribute, delete_attribute
 from .audio_handler import upload_audio_file, get_audio_files_by_date, delete_audio_file, update_audio_file_order
 from .cascade_handlers import toggle_cascade_attribute, get_cascade_attributes_list
@@ -18,6 +18,7 @@ urlpatterns = [
     path('login/', LoginView.as_view(), name='login'),
     path('logout/', LogoutView.as_view(), name='logout'),
     path('signup/', SignupView.as_view(), name='signup'),
+    path('check_login_status/', views.check_login_status, name='check_login_status'),
     path('diary/', views.diary_list, name='diary_list'),
     path('fu_events/', views.fu_events, name='fu_events'),
     path('fu_memo/<int:entry_id>/', views.fu_memo, name='fu_memo'),
@@ -89,6 +90,11 @@ urlpatterns = [
 
     # 칸반보드 관련 처리
     path('update_kanban_option_order/', update_kanban_option_order, name='update_kanban_option_order'),
+    
+    # 칸반보드 설정 관련 API
+    path('get_kanban_settings/', get_kanban_settings, name='get_kanban_settings'),
+    path('save_kanban_settings/', save_kanban_settings, name='save_kanban_settings'),
+    path('get_dropdown_attributes_for_kanban/', get_dropdown_attributes_for_kanban, name='get_dropdown_attributes_for_kanban'),
 
     # 속성관리
     path('get_all_attributes/', views.get_all_attributes, name='get_all_attributes'),

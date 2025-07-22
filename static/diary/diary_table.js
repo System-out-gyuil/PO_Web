@@ -790,7 +790,18 @@ function hexToRgba(hex, alpha) {
       const scrollTop = tableView ? tableView.scrollTop : 0;
       const scrollLeft = tableView ? tableView.scrollLeft : 0;
       
-      fetch('/sales/entry_table_partial/')
+      // status_id를 항상 올바르게 전달
+      const url = new URL('/sales/entry_table_partial/', window.location.origin);
+      if (
+        window.currentStatusTab !== null &&
+        window.currentStatusTab !== undefined &&
+        window.currentStatusTab !== 'undefined' &&
+        window.currentStatusTab !== 'null'
+      ) {
+          url.searchParams.set('status_id', window.currentStatusTab);
+      }
+      
+      fetch(url)
       .then(r => {
           console.log('fetch 응답 상태:', r.status);
           if (!r.ok) {
@@ -1803,11 +1814,23 @@ function hexToRgba(hex, alpha) {
           }
           
           // 칸반보드가 활성화되어 있고 업데이트된 필드가 현재 칸반보드 속성과 일치하는 경우에만 새로고침
+          let shouldRefreshKanban = false;
           if (window.kanbanAttribute && fieldName === window.kanbanAttribute) {
-              if (typeof refreshKanban === 'function') {
+              shouldRefreshKanban = true;
+          }
+          // 조건부 필터에 사용된 속성도 새로고침 (ensure settings loaded)
+          ensureKanbanSettingsLoaded().then(() => {
+              if (
+                  window.kanbanSettings &&
+                  Array.isArray(window.kanbanSettings.filters) &&
+                  window.kanbanSettings.filters.some(f => f.attribute === fieldName)
+              ) {
+                  shouldRefreshKanban = true;
+              }
+              if (shouldRefreshKanban && typeof refreshKanban === 'function') {
                   refreshKanban();
               }
-          }
+          });
           
           // F/U 일정 필드인 경우 캘린더도 새로고침
           if (fieldName === 'F/U 일정' && window.calendar) {
@@ -2645,3 +2668,37 @@ function initializeColumnResizeListener() {
 document.addEventListener('DOMContentLoaded', function() {
     initializeColumnResizeListener();
 });
+
+// Helper: Ensure kanbanSettings is loaded before using
+async function ensureKanbanSettingsLoaded() {
+    if (!window.kanbanSettings || !window.kanbanSettings.filters) {
+        try {
+            const resp = await fetch('/sales/get_kanban_settings/');
+            const data = await resp.json();
+            if (data.success && data.settings) {
+                window.kanbanSettings = data.settings;
+            }
+        } catch (e) { /* ignore */ }
+    }
+}
+
+// ... existing code ...
+          // 칸반보드: 어떤 드롭다운 속성이든 변경 시 항상 새로고침 (최적화: 중복 호출 방지)
+          if (typeof refreshKanban === 'function') {
+              if (!window._kanbanRefreshTimeout) {
+                  window._kanbanRefreshTimeout = null;
+              }
+              if (window._kanbanRefreshTimeout) {
+                  clearTimeout(window._kanbanRefreshTimeout);
+              }
+              // debounce: 100ms 내 중복 호출 방지
+              window._kanbanRefreshTimeout = setTimeout(() => {
+                  window._kanbanRefreshTimeout = null;
+                  if (!window._kanbanRefreshing) {
+                      window._kanbanRefreshing = true;
+                      refreshKanban();
+                      setTimeout(() => { window._kanbanRefreshing = false; }, 500);
+                  }
+              }, 80);
+          }
+// ... existing code ...

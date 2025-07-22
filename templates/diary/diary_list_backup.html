@@ -422,10 +422,10 @@
         }
     </style>
     <script>
-        window.ATTR_FIELDS = JSON.parse('{{ attributes_json|default:"[]"|escapejs }}');
-        window.DROPDOWN_OPTIONS = JSON.parse('{{ dropdown_options|default:"{}"|escapejs }}');
-        window.DROPDOWN_ATTRIBUTES = JSON.parse('{{ dropdown_attributes_json|default:"[]"|escapejs }}');
-        window.SELECTED_KANBAN_ATTR = '{{ selected_kanban_attr|default:""|escapejs }}';
+        window.ATTR_FIELDS = JSON.parse('{{ attributes_json|escapejs }}');
+        window.DROPDOWN_OPTIONS = JSON.parse('{{ dropdown_options|escapejs }}');
+        window.DROPDOWN_ATTRIBUTES = JSON.parse('{{ dropdown_attributes_json|escapejs }}');
+        window.SELECTED_KANBAN_ATTR = '{{ selected_kanban_attr|escapejs }}';
         
         // 정렬/필터 상태 관리
         window.currentSort = { column: null, direction: null };
@@ -440,42 +440,6 @@
         window.currentModalStatusId = 'all';
         window.statusOptions = [];
         window.allAttributes = [];
-        
-        // 로그인 상태 확인 함수
-        function checkLoginStatus() {
-            fetch('/sales/check_login_status/', {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCsrfToken()
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (!data.is_authenticated) {
-                    // 로그인되지 않은 경우 로그인 페이지로 리다이렉트
-                    window.location.href = '/sales/login/';
-                }
-            })
-            .catch(error => {
-                console.error('로그인 상태 확인 오류:', error);
-                // 오류 발생 시에도 로그인 페이지로 리다이렉트
-                window.location.href = '/sales/login/';
-            });
-        }
-        
-        // 페이지 로드 시 로그인 상태 확인
-        document.addEventListener('DOMContentLoaded', function() {
-            checkLoginStatus();
-        });
-        
-        // 뒤로가기/앞으로가기 시에도 로그인 상태 확인
-        window.addEventListener('pageshow', function(event) {
-            // 뒤로가기로 페이지가 로드된 경우
-            if (event.persisted) {
-                checkLoginStatus();
-            }
-        });
     </script>
 </head>
 <body>
@@ -670,9 +634,19 @@
     <!-- 칸반보드 필터 UI -->
     <div id="kanbanFilterSection" style="margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
         <div style="display: flex; align-items: center; gap: 15px; flex-direction: column;">
-            <div style="display: flex; flex-direction: row; width: 100%; align-items: center; justify-content: flex-end;">
-                <button id="kanbanSettingsBtn" onclick="showKanbanSettingsModal()" style="padding:8px 16px;background:#007bff;color:white;border:none;border-radius:4px;cursor:pointer;font-size:14px;">⚙️ 칸반보드 설정</button>
+            <div style="display: flex;  flex-direction: row; width: 100%; align-items: center; justify-content: center;">
+                <label style="font-weight: bold; color: #495057; width: 10%;">칸반보드 필터:</label>
+                <select id="kanbanAttributeSelect" style=" width: 90%; padding: 8px 12px; border: 1px solid #ced4da; border-radius: 4px; background: white; min-width: 150px;">
+                    {% for attr in dropdown_attributes %}
+                        <option value="{{ attr.name }}" {% if attr.name == selected_kanban_attr %}selected{% endif %}>
+                            {{ attr.name }}
+                        </option>
+                    {% endfor %}
+                </select>
             </div>
+            {% comment %} <button id="refreshKanbanBtn" class="add-btn" style="padding: 8px 16px; font-size: 14px;">
+                🔄 새로고침
+            </button> {% endcomment %}
             <div id="kanbanLoadingIndicator" style="display: none; color: #6c757d; font-size: 14px;">
                 <span>로딩 중...</span>
             </div>
@@ -1160,7 +1134,6 @@
 <script src="{% static 'diary/dropdown_manager.js' %}"></script>
 <script src="{% static 'diary/diary_table.js' %}"></script>
 <script src="{% static 'diary/diary_canban.js' %}"></script>
-<script src="{% static 'diary/diary_kanban_settings.js' %}"></script>
 <script src="{% static 'diary/diary_detail.js' %}"></script>
 <script src="{% static 'diary/diary_calendar.js' %}"></script>
 <script src="{% static 'diary/diary_audio.js' %}"></script>
@@ -1595,8 +1568,6 @@ function selectModalDropdownOption(rowId, fieldName, optionId, optionText, eleme
             
             // 모든 필드 변경 시 캘린더 업데이트
             refreshCalendar();
-            // 칸반보드 새로고침
-            if (window.triggerKanbanRefreshIfNeeded) window.triggerKanbanRefreshIfNeeded();
         } else {
             alert('수정 실패: ' + (data.error || ''));
         }
@@ -3217,18 +3188,6 @@ function logout() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // 브라우저 캐시 정리
-                if ('caches' in window) {
-                    caches.keys().then(function(names) {
-                        for (let name of names) {
-                            caches.delete(name);
-                        }
-                    });
-                }
-                
-                // 세션 스토리지 정리
-                sessionStorage.clear();
-                
                 // 로그인 페이지로 리다이렉트
                 window.location.href = '/sales/login/';
             } else {

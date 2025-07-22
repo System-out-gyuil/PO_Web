@@ -845,6 +845,7 @@ function selectModalRegionOption(rowId, regionText, element) {
                               refreshKanban();
                           }
                       }
+                      window.triggerKanbanRefreshIfNeeded();
                   }
               });
           } else {
@@ -918,6 +919,7 @@ function selectModalSubregionOption(rowId, subregionText, element) {
                   refreshKanban();
               }
           }
+          window.triggerKanbanRefreshIfNeeded();
       } else {
           alert('수정 실패: ' + (data.error || ''));
       }
@@ -1475,6 +1477,7 @@ function proceedWithFundingRecommendation(rowId) {
                         console.error('백그라운드 모달 준비 오류:', error);
                     });
             }
+            window.triggerKanbanRefreshIfNeeded();
         } else {
             showNotification('추천자금 분석에 실패했습니다: ' + (data.error || '알 수 없는 오류'), 'error');
         }
@@ -2780,10 +2783,12 @@ function saveSalesInput(rowId, fieldName) {
     // 새로운 총 금액 계산 (새로운 억 * 100000000 + 새로운 천만 * 10000000 + 기존 나머지)
     const totalAmount = eok * 100000000 + cheonman * 10000000 + remainingAmount;
     
-    // 즉시 UI 업데이트 (사용자 경험 향상)
+    // 즉시 UI 업데이트 (사용자 경험 향상) - 억, 천만 단위 입력 형태 유지
     if (container) {
-        const formattedAmount = formatToKoreanCurrency(totalAmount);
-        container.innerHTML = formattedAmount;
+        // 새로운 억, 천만 값으로 입력 필드 업데이트
+        eokInput.value = eok;
+        cheonmanInput.value = cheonman;
+        
         container.setAttribute('data-raw', totalAmount);
         
         // 값이 있으면 빨간 테두리 제거
@@ -2821,8 +2826,10 @@ function saveSalesInput(rowId, fieldName) {
             
             // 실패 시 원래 값으로 복원
             if (container && originalValue) {
-                const formattedAmount = formatToKoreanCurrency(originalValue);
-                container.innerHTML = formattedAmount;
+                const originalEok = Math.floor(originalValue / 100000000);
+                const originalCheonman = Math.floor((originalValue % 100000000) / 10000000);
+                eokInput.value = originalEok;
+                cheonmanInput.value = originalCheonman;
                 container.setAttribute('data-raw', originalValue);
             }
         }
@@ -2833,8 +2840,10 @@ function saveSalesInput(rowId, fieldName) {
         
         // 오류 시 원래 값으로 복원
         if (container && originalValue) {
-            const formattedAmount = formatToKoreanCurrency(originalValue);
-            container.innerHTML = formattedAmount;
+            const originalEok = Math.floor(originalValue / 100000000);
+            const originalCheonman = Math.floor((originalValue % 100000000) / 10000000);
+            eokInput.value = originalEok;
+            cheonmanInput.value = originalCheonman;
             container.setAttribute('data-raw', originalValue);
         }
     });
@@ -2845,9 +2854,18 @@ function cancelSalesInput(rowId, fieldName) {
     const container = document.querySelector(`[data-field="${fieldName}"]`);
     if (container) {
         const originalValue = container.getAttribute('data-raw');
-        const displayValue = originalValue && !isNaN(parseInt(originalValue, 10)) ? 
-            formatToKoreanCurrency(parseInt(originalValue, 10)) : '0원';
-        container.innerHTML = displayValue;
+        const numericValue = originalValue && !isNaN(parseInt(originalValue, 10)) ? parseInt(originalValue, 10) : 0;
+        
+        // 원래 값으로 억, 천만 입력 필드 복원
+        const eokInput = document.getElementById('sales_eok_' + rowId);
+        const cheonmanInput = document.getElementById('sales_cheonman_' + rowId);
+        
+        if (eokInput && cheonmanInput) {
+            const originalEok = Math.floor(numericValue / 100000000);
+            const originalCheonman = Math.floor((numericValue % 100000000) / 10000000);
+            eokInput.value = originalEok;
+            cheonmanInput.value = originalCheonman;
+        }
     }
     
     // 전역 변수 정리
@@ -3915,5 +3933,30 @@ function closeAudioPreviewModal() {
     if (modal) {
         modal.remove();
     }
+}
+
+// 1. 전역에서 triggerKanbanRefreshIfNeeded가 없으면 import/정의
+if (typeof triggerKanbanRefreshIfNeeded === 'undefined') {
+    window.triggerKanbanRefreshIfNeeded = function() {
+        let currentAttr = document.getElementById('kanbanAttributeSelect')?.value;
+        if (!currentAttr) {
+            currentAttr = window.kanbanSettings?.main_attr;
+        }
+        if (!currentAttr || currentAttr === 'undefined') return;
+        if (!window._kanbanRefreshTimeout) {
+            window._kanbanRefreshTimeout = null;
+        }
+        if (window._kanbanRefreshTimeout) {
+            clearTimeout(window._kanbanRefreshTimeout);
+        }
+        window._kanbanRefreshTimeout = setTimeout(() => {
+            window._kanbanRefreshTimeout = null;
+            if (!window._kanbanRefreshing) {
+                window._kanbanRefreshing = true;
+                if (typeof refreshKanban === 'function') refreshKanban();
+                setTimeout(() => { window._kanbanRefreshing = false; }, 500);
+            }
+        }, 80);
+    };
 }
 

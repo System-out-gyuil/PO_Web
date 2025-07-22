@@ -159,6 +159,10 @@ function bindKanbanSortable() {
 
 // 칸반보드 필터 기능 추가
 function updateKanbanBoard(attrName) {
+  if (!attrName || attrName === 'undefined') {
+      alert('칸반보드 기준 속성을 먼저 설정하세요.');
+      return;
+  }
   const loadingIndicator = document.getElementById('kanbanLoadingIndicator');
   const boardView = document.getElementById('boardView');
   
@@ -234,9 +238,57 @@ function updateKanbanBoard(attrName) {
       });
 }
 
+// 칸반보드 설정 버튼 추가 함수
+function addKanbanSettingsButton() {
+    const kanbanSection = document.querySelector('#boardView');
+    if (!kanbanSection) return;
+    
+    // 이미 설정 버튼이 있는지 확인
+    if (document.getElementById('kanbanSettingsBtn')) return;
+    
+    // 설정 버튼 생성
+    const settingsBtn = document.createElement('button');
+    settingsBtn.id = 'kanbanSettingsBtn';
+    settingsBtn.innerHTML = '⚙️ 칸반보드 설정';
+    settingsBtn.style.cssText = `
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        padding: 8px 16px;
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        z-index: 100;
+    `;
+    settingsBtn.onclick = function() {
+        if (typeof showKanbanSettingsModal === 'function') {
+            showKanbanSettingsModal();
+        } else {
+            console.error('showKanbanSettingsModal 함수를 찾을 수 없습니다.');
+        }
+    };
+    
+    // 부모 요소에 상대 위치 설정
+    const parentElement = kanbanSection.parentElement;
+    if (parentElement) {
+        parentElement.style.position = 'relative';
+        parentElement.appendChild(settingsBtn);
+    }
+}
+
 // 칸반보드 새로고침 (현재 선택된 속성으로)
 function refreshKanban() {
-  const currentAttr = document.getElementById('kanbanAttributeSelect').value || window.SELECTED_KANBAN_ATTR;
+  let currentAttr = document.getElementById('kanbanAttributeSelect')?.value;
+  if (!currentAttr) {
+      currentAttr = window.kanbanSettings?.main_attr;
+  }
+  // 기준 속성이 없으면 아무것도 하지 않음 (모달/alert도 X)
+  if (!currentAttr || currentAttr === 'undefined') {
+      return;
+  }
   updateKanbanBoard(currentAttr);
 }
 
@@ -419,10 +471,32 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     enableKanbanColumnDragDrop();
+    addKanbanSettingsButton(); // 칸반보드 설정 버튼 추가
+    initializeKanbanBoard();
 });
+
+function initializeKanbanBoard() {
+    fetch('/sales/get_kanban_settings/')
+        .then(r => r.json())
+        .then(data => {
+            if (data.success && data.settings && data.settings.main_attr) {
+                window.kanbanSettings = data.settings;
+                updateKanbanBoard(data.settings.main_attr);
+            } else {
+                // 기준 속성이 없으면 설정 모달을 띄움
+                if (typeof showKanbanSettingsModal === 'function') {
+                    showKanbanSettingsModal();
+                }
+            }
+        });
+}
 
 // 칸반보드 필터 기능 추가 및 컬럼 드래그앤드롭 재바인딩
 function updateKanbanBoard(attrName) {
+    if (!attrName || attrName === 'undefined') {
+        // 기준 속성이 없으면 아무것도 하지 않음 (모달/alert도 X)
+        return;
+    }
     const loadingIndicator = document.getElementById('kanbanLoadingIndicator');
     const boardView = document.getElementById('boardView');
     
