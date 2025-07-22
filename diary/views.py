@@ -2694,6 +2694,20 @@ def upload_note_file(request):
             ExpiresIn=300
         )
         preview_url = download_url
+        
+        # 파일 해시 계산
+        import hashlib
+        file_hash = None
+        try:
+            hash_md5 = hashlib.md5()
+            file.seek(0)
+            for chunk in iter(lambda: file.read(4096), b""):
+                hash_md5.update(chunk)
+            file.seek(0)
+            file_hash = hash_md5.hexdigest()
+        except Exception as e:
+            print(f"파일 해시 계산 실패: {e}")
+        
         file_info = {
             'original_filename': file.name,
             'stored_filename': unique_filename,
@@ -2703,6 +2717,8 @@ def upload_note_file(request):
             'file_size': file.size,
             'content_type': file.content_type,
             'type': None,  # type 필드 추가
+            'file_hash': file_hash,  # 파일 해시 추가
+            'last_modified': file.last_modified if hasattr(file, 'last_modified') else None
         }
         # 파일 타입 판별
         if file.content_type.startswith('image/'):

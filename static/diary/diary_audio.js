@@ -416,16 +416,47 @@ function deleteAudioFileItem(fileId, filename) {
         alert('row_id 또는 file_id가 없습니다.');
         return;
     }
+    
     // fileInfo에서 s3_key 추출
     let s3Key = '';
+    let fileInfo = null;
     if (window.audioFileData && window.audioFileData.data && window.audioFileData.data[fileId]) {
-        s3Key = window.audioFileData.data[fileId].s3_key || '';
+        fileInfo = window.audioFileData.data[fileId];
+        s3Key = fileInfo.s3_key || '';
     }
+    
     if (!s3Key) {
         alert('s3_key가 없습니다. 파일 정보를 확인하세요.');
         return;
     }
+    
     if (!confirm('정말 삭제하시겠습니까?')) return;
+    
+    // 즉시 화면에서 파일 요소 제거
+    const fileElement = document.querySelector(`[data-file-id="${fileId}"]`);
+    if (fileElement) {
+        fileElement.remove();
+        console.log('화면에서 파일 요소 즉시 제거:', fileId);
+    }
+    
+    // AI 캐시 추적 - 오디오 파일 아이템 삭제 (서버 응답 전에 먼저 호출)
+    if (window.trackFileChange && fileInfo) {
+        // AI 캐시 매니저가 초기화되지 않은 경우 초기화
+        if (!window.aiCacheManager || window.aiCacheManager.currentRowCache?.rowId !== window.currentDetailRowId) {
+            console.log('오디오 파일 삭제 시 AI 캐시 매니저 초기화:', window.currentDetailRowId);
+            initializeAICacheManager();
+        }
+        
+        const trackInfo = {
+            original_filename: fileInfo.original_filename || filename,
+            fieldName: '음성파일',
+            fileId: fileId,
+            s3Key: s3Key
+        };
+        window.trackFileChange(window.currentDetailRowId, '음성파일', 'deleted', trackInfo);
+        console.log('AI 캐시에 오디오 파일 삭제 추적:', trackInfo);
+    }
+    
     fetch('/sales/delete_note_file/', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -434,10 +465,21 @@ function deleteAudioFileItem(fileId, filename) {
     .then(r => r.json())
     .then(data => {
         if (data.success) {
-            refreshAudioFileData();
+            console.log('서버에서 파일 삭제 성공:', fileId);
+            // 서버 성공 후 전체 데이터 새로고침 (선택사항)
+            // refreshAudioFileData();
         } else {
+            console.error('서버에서 파일 삭제 실패:', data.error);
             alert('파일 삭제 실패: ' + (data.error || ''));
+            // 실패 시 화면 복원 (필요시)
+            // refreshAudioFileData();
         }
+    })
+    .catch(error => {
+        console.error('파일 삭제 요청 실패:', error);
+        alert('파일 삭제 중 오류가 발생했습니다.');
+        // 오류 시 화면 복원 (필요시)
+        // refreshAudioFileData();
     });
 }
 
@@ -469,6 +511,24 @@ function deleteAudioFile(date, fileId) {
       return;
   }
   
+  // 즉시 화면에서 파일 요소 제거
+  const fileElement = document.querySelector(`[data-file-id="${fileId}"][data-date="${date}"]`);
+  if (fileElement) {
+      fileElement.remove();
+      console.log('화면에서 오디오 파일 요소 즉시 제거:', fileId, date);
+  }
+  
+  // AI 캐시 추적 - 오디오 파일 삭제 (서버 응답 전에 먼저 호출)
+  if (window.trackFileChange) {
+      const fileInfo = {
+          fieldName: '음성파일',
+          fileId: fileId,
+          date: date
+      };
+      window.trackFileChange(window.currentDetailRowId, '음성파일', 'deleted', fileInfo);
+      console.log('AI 캐시에 오디오 파일 삭제 추적:', fileInfo);
+  }
+  
   const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
   
   fetch('/sales/delete_audio_file/', {
@@ -482,8 +542,7 @@ function deleteAudioFile(date, fileId) {
   .then(response => response.json())
   .then(data => {
       if (data.success) {
-          alert('음성파일이 삭제되었습니다.');
-          refreshAudioFileData();
+          console.log('서버에서 오디오 파일 삭제 성공:', fileId, date);
           
           // 선택된 파일이 삭제된 경우 편집 영역 숨기기
           if (window.selectedAudioFile && 
@@ -496,14 +555,20 @@ function deleteAudioFile(date, fileId) {
               window.selectedAudioFile = null;
           }
           
-          refreshTable();
+          // 전체 데이터 새로고침 (선택사항)
+          // refreshAudioFileData();
       } else {
-          alert('삭제 실패: ' + (data.error || '알 수 없는 오류'));
+          console.error('서버에서 오디오 파일 삭제 실패:', data.error);
+          alert('음성파일 삭제 실패: ' + (data.error || ''));
+          // 실패 시 화면 복원 (필요시)
+          // refreshAudioFileData();
       }
   })
   .catch(error => {
-      console.error('음성파일 삭제 오류:', error);
-      alert('삭제 중 오류가 발생했습니다.');
+      console.error('오디오 파일 삭제 요청 실패:', error);
+      alert('음성파일 삭제 중 오류가 발생했습니다.');
+      // 오류 시 화면 복원 (필요시)
+      // refreshAudioFileData();
   });
 }
 
@@ -946,6 +1011,12 @@ function addFileCell() {
 
 // 파일 업로드 핸들러 (오디오는 기존 로직, 그 외는 type별로 dict 저장)
 function handleMultiFileUpload(fileInput) {
+  // AI 캐시 매니저가 초기화되지 않은 경우 초기화
+  if (!window.aiCacheManager || window.aiCacheManager.currentRowCache?.rowId !== window.currentDetailRowId) {
+      console.log('멀티 파일 업로드 시 AI 캐시 매니저 초기화:', window.currentDetailRowId);
+      initializeAICacheManager();
+  }
+
   const file = fileInput.files[0];
   if (!file) return;
   
@@ -997,6 +1068,45 @@ function handleMultiFileUpload(fileInput) {
         content_type: data.file_info.content_type
       };
       
+      // AI 캐시 추적 - 오디오 파일 추가
+      if (window.trackFileChange && data.file_info) {
+          const fileInfo = {
+              ...data.file_info,
+              file_hash: data.file_info.file_hash || `${file.name}_${file.size}_${file.lastModified}`,
+              last_modified: data.file_info.last_modified || file.lastModified,
+              file_size: data.file_info.file_size || file.size,
+              // 서버에서 받은 실제 파일 정보 추가
+              id: data.file_info.id,
+              s3_key: data.file_info.s3_key,
+              download_url: data.file_info.download_url,
+              preview_url: data.file_info.preview_url
+          };
+          
+          // 기존 파일과 비교하여 정확한 변경 타입 결정 (파일명+해시까지 비교)
+          const existingFiles = window.aiCacheManager?.fileChanges?.added || [];
+          const existingFile = existingFiles.find(f => 
+              f.fileInfo?.original_filename === file.name && 
+              f.fileInfo?.file_hash === fileInfo.file_hash &&
+              f.fieldName === '음성파일'
+          );
+          
+          if (existingFile) {
+              // 기존 파일이 있으면 수정으로 처리
+              window.trackFileChange(window.currentDetailRowId, '음성파일', 'modified', fileInfo);
+              console.log('AI 캐시에 오디오 파일 수정 추적 (기존 파일 존재):', fileInfo);
+          } else {
+              // 새 파일로 처리
+              window.trackFileChange(window.currentDetailRowId, '음성파일', 'added', fileInfo);
+              console.log('AI 캐시에 오디오 파일 추가 추적:', fileInfo);
+          }
+          
+          // 캐시 무효화 플래그 설정
+          if (window.aiCacheManager) {
+              window.aiCacheManager.cacheInvalidated = true;
+              console.log('AI 캐시 무효화 플래그 설정됨');
+          }
+      }
+      
       // 성공 알림
       showNotification('파일이 업로드되었습니다.', 'success');
       
@@ -1015,7 +1125,19 @@ function handleMultiFileUpload(fileInput) {
 // 노트 셀(파일/이미지/텍스트 등) 삭제 함수
 function deleteNoteCell(cellId) {
   if (!window.audioFileData || !window.audioFileData.data[cellId]) return;
+  
+  const fileData = window.audioFileData.data[cellId];
   delete window.audioFileData.data[cellId];
+  
+  // AI 캐시 추적 - 노트 셀 삭제
+  if (window.trackFileChange && fileData) {
+      window.trackFileChange(window.currentDetailRowId, '음성파일', 'deleted', {
+          fieldName: '음성파일',
+          cellId: cellId,
+          fileData: fileData
+      });
+      console.log('AI 캐시에 노트 셀 삭제 추적:', { cellId, fileData });
+  }
   
   // 성공 알림
   showNotification('항목이 삭제되었습니다.', 'success');
@@ -1352,6 +1474,12 @@ function createDocumentFileElement(fileData, index) {
 
 // 오디오 파일 업로드 처리 함수
 function handleAudioFileUpload(file, insertIndex) {
+    // AI 캐시 매니저가 초기화되지 않은 경우 초기화
+    if (!window.aiCacheManager || window.aiCacheManager.currentRowCache?.rowId !== window.currentDetailRowId) {
+        console.log('오디오 파일 업로드 시 AI 캐시 매니저 초기화:', window.currentDetailRowId);
+        initializeAICacheManager();
+    }
+
     const formData = new FormData();
     formData.append('audio_file', file);
     formData.append('row_id', window.currentDetailRowId);
@@ -1367,6 +1495,18 @@ function handleAudioFileUpload(file, insertIndex) {
     .then(data => {
         if (data.success) {
             console.log('오디오 파일 업로드 성공');
+            
+            // AI 캐시 추적 - 오디오 파일 추가
+            if (window.trackFileChange && data.file_info) {
+                const fileInfo = {
+                    ...data.file_info,
+                    file_hash: data.file_info.file_hash || `${file.name}_${file.size}_${file.lastModified}`,
+                    last_modified: data.file_info.last_modified || file.lastModified,
+                    file_size: data.file_info.file_size || file.size
+                };
+                window.trackFileChange(window.currentDetailRowId, '음성파일', 'added', fileInfo);
+                console.log('AI 캐시에 오디오 파일 추가 추적:', fileInfo);
+            }
             
             // 성공 알림
             showNotification('오디오 파일이 업로드되었습니다.', 'success');
@@ -1387,6 +1527,12 @@ function handleAudioFileUpload(file, insertIndex) {
 
 // 일반 파일 업로드 처리 함수
 function handleGeneralFileUpload(file, insertIndex) {
+    // AI 캐시 매니저가 초기화되지 않은 경우 초기화
+    if (!window.aiCacheManager || window.aiCacheManager.currentRowCache?.rowId !== window.currentDetailRowId) {
+        console.log('일반 파일 업로드 시 AI 캐시 매니저 초기화:', window.currentDetailRowId);
+        initializeAICacheManager();
+    }
+
     // 업로드 중 상태 확인
     if (window.isUploading) {
         console.log('이미 업로드 중입니다. 중복 요청을 무시합니다.');
@@ -1409,6 +1555,45 @@ function handleGeneralFileUpload(file, insertIndex) {
         
         if (data.success && data.file_info) {
             console.log('일반 파일 업로드 성공');
+            
+            // AI 캐시 추적 - 일반 파일 추가
+            if (window.trackFileChange && data.file_info) {
+                const fileInfo = {
+                    ...data.file_info,
+                    file_hash: data.file_info.file_hash || `${file.name}_${file.size}_${file.lastModified}`,
+                    last_modified: data.file_info.last_modified || file.lastModified,
+                    file_size: data.file_info.file_size || file.size,
+                    // 서버에서 받은 실제 파일 정보 추가
+                    id: data.file_info.id,
+                    s3_key: data.file_info.s3_key,
+                    download_url: data.file_info.download_url,
+                    preview_url: data.file_info.preview_url
+                };
+                
+                // 기존 파일과 비교하여 정확한 변경 타입 결정
+                const existingFiles = window.aiCacheManager?.fileChanges?.added || [];
+                const existingFile = existingFiles.find(f => 
+                    f.fileInfo?.original_filename === file.name && 
+                    f.fileInfo?.file_hash === fileInfo.file_hash &&
+                    f.fieldName === '음성파일'
+                );
+                
+                if (existingFile) {
+                    // 기존 파일이 있으면 수정으로 처리
+                    window.trackFileChange(window.currentDetailRowId, '음성파일', 'modified', fileInfo);
+                    console.log('AI 캐시에 일반 파일 수정 추적 (기존 파일 존재):', fileInfo);
+                } else {
+                    // 새 파일로 처리
+                    window.trackFileChange(window.currentDetailRowId, '음성파일', 'added', fileInfo);
+                    console.log('AI 캐시에 일반 파일 추가 추적:', fileInfo);
+                }
+                
+                // 캐시 무효화 플래그 설정
+                if (window.aiCacheManager) {
+                    window.aiCacheManager.cacheInvalidated = true;
+                    console.log('AI 캐시 무효화 플래그 설정됨');
+                }
+            }
             
             // 성공 알림
             showNotification('파일이 업로드되었습니다.', 'success');
@@ -1626,7 +1811,7 @@ function createAddPlaceholder(insertIndex) {
     // hover 시만 보이게
     placeholder.onmouseenter = () => { 
         placeholder.style.height = '80px';
-        placeholder.style.marginTop = '5px';
+        placeholder.style.marginTop = '0px';
         placeholder.style.marginBottom = '15px';
         btnContainer.style.display = 'flex';
     };
@@ -1808,6 +1993,20 @@ function deleteTextNote(noteId) {
     }).then(r=>r.json()).then(data=>{
         if(data.success) {
             console.log('텍스트 노트 삭제 성공');
+            
+            // AI 캐시 추적 - 텍스트 노트 삭제
+            if (window.trackFileChange) {
+                const textarea = noteElement.querySelector('textarea');
+                const textValue = textarea ? textarea.value : '';
+                window.trackFileChange(window.currentDetailRowId, '음성파일', 'deleted', {
+                    fieldName: '음성파일',
+                    noteId: noteId,
+                    textValue: textValue,
+                    type: 'text'
+                });
+                console.log('AI 캐시에 텍스트 노트 삭제 추적:', { noteId, textValue });
+            }
+            
             // 삭제된 요소 제거
             noteElement.remove();
         } else {

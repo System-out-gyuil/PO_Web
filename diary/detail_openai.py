@@ -7,7 +7,7 @@ import os
 import tempfile
 from datetime import datetime
 from config import OPEN_AI_API_KEY, AWS_S3_ACCESS_KEY, AWS_S3_SECRET_KEY, AWS_S3_BUCKET_NAME, AWS_S3_REGION
-from .models import Row, AttributeValue, Attribute
+from .models import Row, AttributeValue, Attribute, DropdownAttribute
 import pdfplumber
 import uuid
 import time
@@ -16,6 +16,7 @@ from PIL import Image
 import warnings
 import boto3
 from botocore.exceptions import ClientError
+import hashlib
 warnings.filterwarnings("ignore", category=UserWarning)
 
 logger = logging.getLogger(__name__)
@@ -32,6 +33,7 @@ def ai_chat(request):
         message = data.get('message', '').strip()
         row_id = data.get('row_id')  # 행 ID 추가
         force_refresh = data.get('force_refresh', False)  # 강제 새로고침 플래그
+        changes = data.get('changes', {})  # 변경사항 정보
         
         if not message:
             return JsonResponse({'success': False, 'error': '메시지가 비어있습니다'})
@@ -43,100 +45,211 @@ def ai_chat(request):
         # 행 데이터 가져오기 (캐싱 활용)
         row_data = {}
         file_texts = []
+        cache_updated = False
         
         if row_id:
             # 세션에서 캐시된 데이터 확인
             cache_key = f'ai_chat_row_{row_id}'
             cached_data = request.session.get(cache_key)
             
-            if cached_data and not force_refresh:
+            # 현재 시간 정의 (캐시 만료 체크용)
+            current_time = time.time()
+            
+            # 변경사항이 있는지 확인
+            has_changes = changes.get('cacheInvalidated', False) or \
+                         changes.get('fileChanges', {}).get('added', []) or \
+                         changes.get('fileChanges', {}).get('modified', []) or \
+                         changes.get('fileChanges', {}).get('deleted', [])
+            
+            print(f"변경사항 감지 결과:")
+            print(f"  cacheInvalidated: {changes.get('cacheInvalidated', False)}")
+            print(f"  added files: {len(changes.get('fileChanges', {}).get('added', []))}")
+            print(f"  modified files: {len(changes.get('fileChanges', {}).get('modified', []))}")
+            print(f"  deleted files: {len(changes.get('fileChanges', {}).get('deleted', []))}")
+            print(f"  has_changes: {has_changes}")
+            
+            # 삭제된 파일 상세 정보 로깅
+            deleted_files = changes.get('fileChanges', {}).get('deleted', [])
+            if deleted_files:
+                print(f"삭제된 파일 상세 정보:")
+                for i, deleted_file in enumerate(deleted_files):
+                    print(f"  삭제된 파일 {i + 1}: {deleted_file}")
+            
+            # 변경사항이 있거나 강제 새로고침이면 캐시 무시
+            if force_refresh:
+                print(f"강제 새로고침으로 인한 새로운 데이터 처리: 행 {row_id}")
+                cache_updated = True
+                cached_data = None  # 캐시 무시
+            elif has_changes and cached_data:
+                # 캐시가 있고 변경사항이 있는 경우 - 부분 업데이트만 수행
+                print(f"캐시 기반 부분 업데이트: 행 {row_id}")
+                cache_updated = True
+                # cached_data는 유지 (None으로 설정하지 않음)
+            elif has_changes and not cached_data:
+                # 캐시가 없고 변경사항이 있는 경우 - 새로운 데이터 처리
+                print(f"캐시 없음 + 변경사항으로 인한 새로운 데이터 처리: 행 {row_id}")
+                cache_updated = True
+                cached_data = None
+            elif cached_data:
                 # 캐시 만료 시간 체크 (30분)
                 cache_timestamp = cached_data.get('timestamp', 0)
-                current_time = time.time()
                 cache_age = current_time - cache_timestamp
                 
                 if cache_age < 1800:  # 30분 (1800초)
                     # 캐시된 데이터 사용
                     row_data = cached_data.get('row_data', {})
                     file_texts = cached_data.get('file_texts', [])
-                    print(f"[AI 캐시 HIT] row_id={row_id}")
-                    print(f"  row_data: {json.dumps(row_data, ensure_ascii=False, indent=2)}")
-                    for file_text in file_texts:
-                        print(f"  file_text: {file_text}")
-                    print(f"  캐시 timestamp: {cached_data.get('timestamp')}")
-                    print(f"캐시된 데이터 사용: 행 {row_id} (캐시 나이: {cache_age:.1f}초)")
+                    print(f"캐시된 데이터 사용: 행 {row_id}")
                 else:
-                    # 캐시 만료, 새로 생성
-                    print(f"캐시 만료됨: 행 {row_id} (캐시 나이: {cache_age:.1f}초)")
-                    if cache_key in request.session:
-                        del request.session[cache_key]
-                    cached_data = None
+                    # 캐시 만료 - 새로운 데이터 처리
+                    print(f"캐시 만료 - 새로운 데이터 처리: 행 {row_id}")
+                    cache_updated = True
+                    cached_data = None  # 캐시 무시
             else:
-                # 캐시가 없거나 강제 새로고침이면 새로 생성
-                if force_refresh:
-                    print(f"강제 새로고침: 행 {row_id}")
-                    if cache_key in request.session:
-                        del request.session[cache_key]
-                    cached_data = None
+                # 캐시가 없음 - 새로운 데이터 처리
+                print(f"캐시 없음 - 새로운 데이터 처리: 행 {row_id}")
+                cache_updated = True
+            
+            # 새로운 데이터 처리 (캐시가 없거나 무효화된 경우)
+            if not cached_data:
                 try:
                     row = Row.objects.get(id=row_id)
                     user = row.user
                     
-                    # 해당 행의 모든 속성값 가져오기
+                    # 해당 행의 모든 속성값 가져오기 (파일 제외)
                     attribute_values = AttributeValue.objects.filter(row=row)
                     
                     for attr_value in attribute_values:
                         attr_name = attr_value.attribute.name
                         attr_type = attr_value.attribute.attributeType.name
                         
-                        if attr_type == 'file':
-                            # 파일인 경우 텍스트 추출
-                            if attr_value.value:
-                                try:
-                                    # 파일 데이터 파싱
-                                    file_data = json.loads(attr_value.value) if isinstance(attr_value.value, str) else attr_value.value
-                                    
-                                    # 음성파일 속성인 경우 (data 구조)
-                                    if isinstance(file_data, dict) and 'data' in file_data:
-                                        for file_id, file_info in file_data['data'].items():
-                                            print(f'file_info: {file_info.get("type")}')
+                        # 파일 타입은 건너뛰고 나머지 데이터만 처리
+                        if attr_type != 'file':
+                            if attr_type == 'outstanding_debts':
+                                # 기대출 데이터 처리
+                                if attr_value.value:
+                                    try:
+                                        debt_data = json.loads(attr_value.value) if isinstance(attr_value.value, str) else attr_value.value
+                                        if isinstance(debt_data, dict):
+                                            debt_summary = []
+                                            for key, value in debt_data.items():
+                                                if value and value != 0:
+                                                    debt_summary.append(f"{key}: {value:,}만원")
+                                            if debt_summary:
+                                                row_data[attr_name] = " | ".join(debt_summary)
+                                    except Exception as e:
+                                        logger.error(f"기대출 데이터 처리 실패: {e}")
+                            
+                            elif attr_type == 'recommend':
+                                # 추천 데이터 처리
+                                if attr_value.value:
+                                    try:
+                                        recommend_data = json.loads(attr_value.value) if isinstance(attr_value.value, str) else attr_value.value
+                                        if isinstance(recommend_data, dict):
+                                            # 총 자금 정보
+                                            total_funds = recommend_data.get('총자금', 0)
+                                            if total_funds:
+                                                row_data[f"{attr_name}_총자금"] = f"{total_funds:,}원"
+                                            
+                                            # 자금들 정보
+                                            funds = recommend_data.get('자금들', {})
+                                            if funds:
+                                                fund_summary = []
+                                                for fund_name, amount in funds.items():
+                                                    if amount and amount > 0:
+                                                        fund_summary.append(f"{fund_name}: {amount:,}원")
+                                                if fund_summary:
+                                                    row_data[f"{attr_name}_자금들"] = " | ".join(fund_summary)
+                                            
+                                            # 상세정보
+                                            detail_info = recommend_data.get('상세정보', [])
+                                            if detail_info:
+                                                detail_summary = []
+                                                for detail in detail_info:
+                                                    fund_name = detail.get('fund_name', '')
+                                                    limit = detail.get('limit', 0)
+                                                    institution = detail.get('institution', '')
+                                                    if fund_name and limit:
+                                                        detail_summary.append(f"{fund_name}({institution}): {limit:,}원")
+                                                if detail_summary:
+                                                    row_data[f"{attr_name}_상세정보"] = " | ".join(detail_summary)
+                                    except Exception as e:
+                                        logger.error(f"추천 데이터 처리 실패: {e}")
+                            
+                            elif attr_type == 'dropdown':
+                                # 드롭다운 데이터 처리
+                                if attr_value.value:
+                                    try:
+                                        # DropdownAttribute 테이블에서 실제 이름 조회
+                                        dropdown_value = str(attr_value.value).strip()
+                                        if dropdown_value:
+                                            try:
+                                                dropdown_attr = DropdownAttribute.objects.get(
+                                                    attribute=attr_value.attribute,
+                                                    value=dropdown_value
+                                                )
+                                                row_data[attr_name] = dropdown_attr.name
+                                            except DropdownAttribute.DoesNotExist:
+                                                row_data[attr_name] = dropdown_value
+                                    except Exception as e:
+                                        logger.error(f"드롭다운 데이터 처리 실패: {e}")
+                                        row_data[attr_name] = attr_value.value
+                            
+                            elif attr_type == 'text':
+                                # 텍스트 데이터 처리
+                                if attr_value.value:
+                                    row_data[attr_name] = attr_value.value
+                            
+                            elif attr_type == 'number':
+                                # 숫자 데이터 처리
+                                if attr_value.value:
+                                    try:
+                                        num_value = float(attr_value.value)
+                                        row_data[attr_name] = f"{num_value:,}"
+                                    except:
+                                        row_data[attr_name] = attr_value.value
+                            
+                            elif attr_type == 'date':
+                                # 날짜 데이터 처리
+                                if attr_value.value:
+                                    row_data[attr_name] = attr_value.value
+                            
+                            elif attr_type == 'boolean':
+                                # 불린 데이터 처리
+                                if attr_value.value:
+                                    bool_value = attr_value.value.lower() if isinstance(attr_value.value, str) else str(attr_value.value)
+                                    if bool_value in ['true', '1', 'yes', 'on']:
+                                        row_data[attr_name] = "예"
+                                    elif bool_value in ['false', '0', 'no', 'off']:
+                                        row_data[attr_name] = "아니오"
+                                    else:
+                                        row_data[attr_name] = attr_value.value
+                            
+                            else:
+                                # 기타 타입
+                                if attr_value.value:
+                                    row_data[attr_name] = attr_value.value
+                    
+                    # 파일 데이터 처리
+                    file_texts = []
+                    
+                    # 파일 속성값들 처리
+                    file_attribute_values = AttributeValue.objects.filter(row=row, attribute__attributeType__name='file')
+                    
+                    for attr_value in file_attribute_values:
+                        attr_name = attr_value.attribute.name
+                        
+                        if attr_value.value:
+                            try:
+                                # 파일 데이터 파싱
+                                file_data = json.loads(attr_value.value) if isinstance(attr_value.value, str) else attr_value.value
+                                
+                                # 음성파일 속성인 경우 (data 구조)
+                                if isinstance(file_data, dict) and 'data' in file_data:
+                                    for file_id, file_info in file_data['data'].items():
+                                        print(f'file_info: {file_info.get("type")}')
 
-                                            if file_info.get('type') == 'file':
-                                                # 파일 크기 체크 (10MB 제한)
-                                                file_size = file_info.get('file_size', 0)
-                                                if file_size > 10 * 1024 * 1024:  # 10MB
-                                                    file_texts.append(f"[{attr_name} - {file_info.get('original_filename', '파일')}]: 파일이 너무 커서 텍스트 추출을 건너뜁니다.")
-                                                    continue
-                                                
-                                                try:
-                                                    file_path = None
-                                                    # S3 키가 있으면 직접 사용
-                                                    s3_key = file_info.get('s3_key')
-                                                    if s3_key:
-                                                        file_path = download_file_from_s3_key(s3_key)
-                                                    # S3 키가 없고 download_url이 있으면 사용
-                                                    elif file_info.get('download_url'):
-                                                        file_path = download_file_from_url(file_info['download_url'])
-                                                    
-                                                    if file_path and os.path.exists(file_path):
-                                                        file_text = extract_text_from_file(file_path)
-                                                        if file_text:
-                                                            file_texts.append(f"[{attr_name} - {file_info.get('original_filename', '파일')}]:\n{file_text}")
-                                                        # 임시 파일 정리
-                                                        try:
-                                                            os.remove(file_path)
-                                                        except:
-                                                            pass
-                                                except Exception as e:
-                                                    logger.error(f"음성파일 텍스트 추출 실패: {e}")
-
-                                            elif file_info.get('type') == 'text':
-                                                print(f'file_info: {file_info.get("text")}')
-                                                file_texts.append(file_info.get('text'))
-                                                
-                                    # 일반 파일 속성인 경우 (배열 구조)
-                                    elif isinstance(file_data, list):
-                                        for file_info in file_data:
+                                        if file_info.get('type') == 'file':
                                             # 파일 크기 체크 (10MB 제한)
                                             file_size = file_info.get('file_size', 0)
                                             if file_size > 10 * 1024 * 1024:  # 10MB
@@ -155,6 +268,7 @@ def ai_chat(request):
                                                 
                                                 if file_path and os.path.exists(file_path):
                                                     file_text = extract_text_from_file(file_path)
+                                                    file_hash = calculate_file_hash(file_path)
                                                     if file_text:
                                                         file_texts.append(f"[{attr_name} - {file_info.get('original_filename', '파일')}]:\n{file_text}")
                                                     # 임시 파일 정리
@@ -163,150 +277,206 @@ def ai_chat(request):
                                                     except:
                                                         pass
                                             except Exception as e:
-                                                logger.error(f"일반파일 텍스트 추출 실패: {e}")
-                                    
-                                    # 단일 파일 경로인 경우
-                                    else:
-                                        file_path = attr_value.value
-                                        if file_path.startswith('http'):
-                                            file_path = download_file_from_url(file_path)
-                                        
-                                        if file_path and os.path.exists(file_path):
-                                            file_text = extract_text_from_file(file_path)
-                                            if file_text:
-                                                file_texts.append(f"[{attr_name} 파일 내용]:\n{file_text}")
+                                                logger.error(f"음성파일 텍스트 추출 실패: {e}")
+
+                                        elif file_info.get('type') == 'text':
+                                            print(f'file_info: {file_info.get("text")}')
+                                            file_texts.append(file_info.get('text'))
                                             
-                                            # 임시 파일 정리
-                                            if attr_value.value.startswith('http'):
+                                # 일반 파일 속성인 경우 (배열 구조)
+                                elif isinstance(file_data, list):
+                                    for file_info in file_data:
+                                        # 파일 크기 체크 (10MB 제한)
+                                        file_size = file_info.get('file_size', 0)
+                                        if file_size > 10 * 1024 * 1024:  # 10MB
+                                            file_texts.append(f"[{attr_name} - {file_info.get('original_filename', '파일')}]: 파일이 너무 커서 텍스트 추출을 건너뜁니다.")
+                                            continue
+                                        
+                                        try:
+                                            file_path = None
+                                            # S3 키가 있으면 직접 사용
+                                            s3_key = file_info.get('s3_key')
+                                            if s3_key:
+                                                file_path = download_file_from_s3_key(s3_key)
+                                            # S3 키가 없고 download_url이 있으면 사용
+                                            elif file_info.get('download_url'):
+                                                file_path = download_file_from_url(file_info['download_url'])
+                                            
+                                            if file_path and os.path.exists(file_path):
+                                                file_text = extract_text_from_file(file_path)
+                                                file_hash = calculate_file_hash(file_path)
+                                                if file_text:
+                                                    file_texts.append(f"[{attr_name} - {file_info.get('original_filename', '파일')}]:\n{file_text}")
+                                                # 임시 파일 정리
                                                 try:
                                                     os.remove(file_path)
                                                 except:
                                                     pass
+                                        except Exception as e:
+                                            logger.error(f"일반파일 텍스트 추출 실패: {e}")
+                                
+                                # 단일 파일 경로인 경우
+                                else:
+                                    file_path = attr_value.value
+                                    if file_path.startswith('http'):
+                                        file_path = download_file_from_url(file_path)
+                                    
+                                    if file_path and os.path.exists(file_path):
+                                        file_text = extract_text_from_file(file_path)
+                                        file_hash = calculate_file_hash(file_path)
+                                        if file_text:
+                                            file_texts.append(f"[{attr_name} 파일 내용]:\n{file_text}")
+                                        
+                                        # 임시 파일 정리
+                                        if attr_value.value.startswith('http'):
+                                            try:
+                                                os.remove(file_path)
+                                            except:
+                                                pass
                                                             
-                                except Exception as e:
-                                    logger.error(f"파일 텍스트 추출 실패: {e}")
-                        
-                        elif attr_type == 'outstanding_debts':
-                            # 기대출 데이터 처리
-                            if attr_value.value:
-                                try:
-                                    debt_data = json.loads(attr_value.value) if isinstance(attr_value.value, str) else attr_value.value
-                                    if isinstance(debt_data, dict):
-                                        debt_summary = []
-                                        for key, value in debt_data.items():
-                                            if value and value != 0:
-                                                debt_summary.append(f"{key}: {value:,}만원")
-                                        if debt_summary:
-                                            row_data[attr_name] = " | ".join(debt_summary)
-                                except Exception as e:
-                                    logger.error(f"기대출 데이터 처리 실패: {e}")
-                        
-                        elif attr_type == 'recommend':
-                            # 추천 데이터 처리
-                            if attr_value.value:
-                                try:
-                                    recommend_data = json.loads(attr_value.value) if isinstance(attr_value.value, str) else attr_value.value
-                                    if isinstance(recommend_data, dict):
-                                        # 총 자금 정보
-                                        total_funds = recommend_data.get('총자금', 0)
-                                        if total_funds:
-                                            row_data[f"{attr_name}_총자금"] = f"{total_funds:,}원"
-                                        
-                                        # 자금들 정보
-                                        funds = recommend_data.get('자금들', {})
-                                        if funds:
-                                            fund_summary = []
-                                            for fund_name, amount in funds.items():
-                                                if amount and amount > 0:
-                                                    fund_summary.append(f"{fund_name}: {amount:,}원")
-                                            if fund_summary:
-                                                row_data[f"{attr_name}_자금들"] = " | ".join(fund_summary)
-                                        
-                                        # 상세정보
-                                        detail_info = recommend_data.get('상세정보', [])
-                                        if detail_info:
-                                            detail_summary = []
-                                            for detail in detail_info:
-                                                fund_name = detail.get('fund_name', '')
-                                                limit = detail.get('limit', 0)
-                                                institution = detail.get('institution', '')
-                                                if fund_name and limit:
-                                                    detail_summary.append(f"{fund_name}({institution}): {limit:,}원")
-                                            if detail_summary:
-                                                row_data[f"{attr_name}_상세정보"] = " | ".join(detail_summary)
-                                except Exception as e:
-                                    logger.error(f"추천 데이터 처리 실패: {e}")
-                        
-                        elif attr_type == 'dropdown':
-                            # 드롭다운 데이터 처리
-                            if attr_value.value:
-                                try:
-                                    dropdown_data = json.loads(attr_value.value) if isinstance(attr_value.value, str) else attr_value.value
-                                    if isinstance(dropdown_data, dict):
-                                        # 선택된 옵션의 라벨 표시
-                                        if 'label' in dropdown_data:
-                                            row_data[attr_name] = dropdown_data['label']
-                                        elif 'selected_options' in dropdown_data and dropdown_data['selected_options']:
-                                            options = []
-                                            for option in dropdown_data['selected_options']:
-                                                if 'label' in option:
-                                                    options.append(option['label'])
-                                            if options:
-                                                row_data[attr_name] = " | ".join(options)
-                                        else:
-                                            row_data[attr_name] = str(attr_value.value)
-                                    else:
-                                        row_data[attr_name] = str(attr_value.value)
-                                except Exception as e:
-                                    logger.error(f"드롭다운 데이터 처리 실패: {e}")
-                                    row_data[attr_name] = str(attr_value.value)
-                        
-                        elif attr_type == 'datetime':
-                            # 날짜 데이터 처리
-                            if attr_value.value:
-                                try:
-                                    # ISO 형식 날짜를 읽기 쉬운 형식으로 변환
-                                    date_obj = datetime.fromisoformat(attr_value.value.replace('Z', '+00:00'))
-                                    row_data[attr_name] = date_obj.strftime('%Y년 %m월 %d일')
-                                except Exception as e:
-                                    logger.error(f"날짜 데이터 처리 실패: {e}")
-                                    row_data[attr_name] = str(attr_value.value)
-                        
-                        elif attr_type == 'number':
-                            # 숫자 데이터 처리
-                            if attr_value.value:
-                                try:
-                                    num_value = float(attr_value.value)
-                                    if num_value >= 100000000:  # 1억 이상
-                                        row_data[attr_name] = f"{num_value/100000000:.1f}억원"
-                                    elif num_value >= 10000:  # 1만 이상
-                                        row_data[attr_name] = f"{num_value/10000:.0f}만원"
-                                    else:
-                                        row_data[attr_name] = f"{num_value:,}원"
-                                except Exception as e:
-                                    logger.error(f"숫자 데이터 처리 실패: {e}")
-                                    row_data[attr_name] = str(attr_value.value)
-                        
-                        else:
-                            # 일반 텍스트 데이터 (text, age, region, region_detail 등)
-                            if attr_value.value:
-                                row_data[attr_name] = str(attr_value.value)
+                            except Exception as e:
+                                logger.error(f"파일 텍스트 추출 실패: {e}")
                     
-                    # 캐시에 데이터 저장 (30분 유효)
+                    # 캐시 업데이트
                     cache_data = {
                         'row_data': row_data,
                         'file_texts': file_texts,
-                        'timestamp': time.time()
+                        'timestamp': current_time
                     }
                     request.session[cache_key] = cache_data
                     request.session.modified = True
                     
-                    print(f"새로운 데이터 캐시 생성: 행 {row_id}")
+                    print(f"[AI 캐시 업데이트] row_id={row_id}")
+                    print(f"  업데이트된 row_data: {json.dumps(row_data, ensure_ascii=False, indent=2)}")
+                    for file_text in file_texts:
+                        print(f"  업데이트된 file_text: {file_text}")
                     
                 except Row.DoesNotExist:
                     return JsonResponse({'success': False, 'error': '해당 행을 찾을 수 없습니다'})
                 except Exception as e:
                     logger.error(f"행 데이터 조회 실패: {e}")
+            else:
+                # 캐시가 있고 변경사항이 있는 경우 - 부분 업데이트만 수행
+                if has_changes:
+                    print(f"캐시 기반 부분 업데이트: 행 {row_id}")
+                    print(f"  캐시 데이터 존재: {cached_data is not None}")
+                    print(f"  변경사항 존재: {has_changes}")
+                    
+                    # 기존 캐시 데이터 사용
+                    row_data = cached_data.get('row_data', {})
+                    file_texts = cached_data.get('file_texts', [])
+                    
+                    print(f"  기존 file_texts 개수: {len(file_texts)}")
+                    for i, text in enumerate(file_texts):
+                        print(f"    기존 file_text {i + 1}: {text[:100]}...")
+                    
+                    # 파일 변경사항 처리
+                    file_changes = changes.get('fileChanges', {})
+                    
+                    # 삭제된 파일 처리
+                    deleted_files = file_changes.get('deleted', [])
+                    for deleted_file in deleted_files:
+                        field_name = deleted_file.get('fieldName')
+                        file_info = deleted_file.get('fileInfo', {})
+                        if field_name:
+                            print(f"파일 삭제 처리 시작: {field_name}")
+                            print(f"  삭제된 파일 정보: {file_info}")
+                            
+                            original_file_texts_count = len(file_texts)
+                            
+                            # 파일명이 있으면 해당 파일만 삭제
+                            if file_info and file_info.get('original_filename'):
+                                filename = file_info.get('original_filename')
+                                file_texts = [text for text in file_texts if not text.startswith(f"[{field_name} - {filename}")]
+                                print(f"  파일명 기반 삭제: {filename}")
+                            # 파일 해시가 있으면 해당 파일만 삭제
+                            elif file_info and file_info.get('file_hash'):
+                                file_hash = file_info.get('file_hash')
+                                # 해시 정보로는 직접 매칭이 어려우므로 해당 필드의 모든 파일 텍스트 제거
+                                file_texts = [text for text in file_texts if not text.startswith(f"[{field_name} -")]
+                                print(f"  해시 기반 삭제: {file_hash}")
+                            # fileId가 있으면 해당 파일만 삭제
+                            elif file_info and file_info.get('fileId'):
+                                file_id = file_info.get('fileId')
+                                # fileId로는 직접 매칭이 어려우므로 해당 필드의 모든 파일 텍스트 제거
+                                file_texts = [text for text in file_texts if not text.startswith(f"[{field_name} -")]
+                                print(f"  fileId 기반 삭제: {file_id}")
+                            else:
+                                # 기본적으로 해당 필드의 모든 파일 텍스트 제거
+                                file_texts = [text for text in file_texts if not text.startswith(f"[{field_name} -")]
+                                print(f"  필드 전체 삭제: {field_name}")
+                            
+                            removed_count = original_file_texts_count - len(file_texts)
+                            print(f"  제거된 파일 텍스트 수: {removed_count}")
+                            print(f"파일 삭제 처리 완료: {field_name}")
+                    
+                    # 추가된 파일들 처리
+                    added_files = file_changes.get('added', [])
+                    for added_file in added_files:
+                        field_name = added_file.get('fieldName')
+                        file_info = added_file.get('fileInfo', {})
+                        if field_name and file_info:
+                            try:
+                                print(f"파일 추가 처리 시작: {field_name}")
+                                print(f"  파일명: {file_info.get('original_filename', 'N/A')}")
+                                print(f"  해시: {file_info.get('file_hash', 'N/A')}")
+                                print(f"  크기: {file_info.get('file_size', 'N/A')}")
+                                
+                                # 새 파일 텍스트 추출
+                                file_text, file_hash = extract_file_text(field_name, file_info)
+                                if file_text:
+                                    file_texts.append(file_text)
+                                    print(f"파일 추가 처리: {field_name} - {file_info.get('original_filename', '파일')} (해시: {file_hash or 'N/A'})")
+                                else:
+                                    print(f"파일 추가 처리 실패: 텍스트 추출 실패")
+                            except Exception as e:
+                                logger.error(f"추가된 파일 텍스트 추출 실패: {e}")
+                                print(f"파일 추가 처리 중 오류: {e}")
+                    
+                    # 수정된 파일들 처리
+                    modified_files = file_changes.get('modified', [])
+                    for modified_file in modified_files:
+                        field_name = modified_file.get('fieldName')
+                        file_info = modified_file.get('fileInfo', {})
+                        if field_name and file_info:
+                            try:
+                                print(f"파일 수정 처리 시작: {field_name}")
+                                print(f"  파일명: {file_info.get('original_filename', 'N/A')}")
+                                print(f"  새 해시: {file_info.get('file_hash', 'N/A')}")
+                                
+                                # 기존 파일 텍스트 제거 (파일명 기반)
+                                original_file_texts_count = len(file_texts)
+                                file_texts = [text for text in file_texts if not text.startswith(f"[{field_name} - {file_info.get('original_filename', '')}")]
+                                removed_count = original_file_texts_count - len(file_texts)
+                                print(f"  제거된 파일 텍스트 수: {removed_count}")
+                                
+                                # 새 파일 텍스트 추출
+                                file_text, file_hash = extract_file_text(field_name, file_info)
+                                if file_text:
+                                    file_texts.append(file_text)
+                                    print(f"파일 수정 처리: {field_name} - {file_info.get('original_filename', '파일')} (해시: {file_hash or 'N/A'})")
+                                else:
+                                    print(f"파일 수정 처리 실패: 텍스트 추출 실패")
+                            except Exception as e:
+                                logger.error(f"수정된 파일 텍스트 추출 실패: {e}")
+                                print(f"파일 수정 처리 중 오류: {e}")
+                    
+                    # 캐시 업데이트
+                    cache_data = {
+                        'row_data': row_data,
+                        'file_texts': file_texts,
+                        'timestamp': current_time
+                    }
+                    request.session[cache_key] = cache_data
+                    request.session.modified = True
+                    cache_updated = True
+                    
+                    print(f"[AI 캐시 부분 업데이트] row_id={row_id}")
+                    print(f"  추가된 파일: {len(added_files)}개")
+                    print(f"  수정된 파일: {len(modified_files)}개")
+                    print(f"  삭제된 파일: {len(deleted_files)}개")
+                    for file_text in file_texts:
+                        print(f"  최종 file_text: {file_text}")
         
         # OpenAI API 호출
         headers = {
@@ -371,7 +541,8 @@ def ai_chat(request):
             ai_response = result['choices'][0]['message']['content'].strip()
             return JsonResponse({
                 'success': True,
-                'response': ai_response
+                'response': ai_response,
+                'cache_updated': cache_updated
             })
         else:
             error_msg = f"OpenAI API 오류: {response.status_code}"
@@ -392,6 +563,64 @@ def ai_chat(request):
     except Exception as e:
         logger.error(f"AI 채팅 오류: {str(e)}")
         return JsonResponse({'success': False, 'error': f'서버 오류: {str(e)}'})
+
+def calculate_file_hash(file_path):
+    """파일의 MD5 해시를 계산"""
+    try:
+        hash_md5 = hashlib.md5()
+        with open(file_path, "rb") as f:
+            for chunk in iter(lambda: f.read(4096), b""):
+                hash_md5.update(chunk)
+        return hash_md5.hexdigest()
+    except Exception as e:
+        logger.error(f"파일 해시 계산 실패: {e}")
+        return None
+
+def extract_file_text(field_name, file_info):
+    """파일 정보에서 텍스트 추출하는 헬퍼 함수"""
+    try:
+        # 파일 크기 체크 (10MB 제한)
+        file_size = file_info.get('file_size', 0)
+        if file_size > 10 * 1024 * 1024:  # 10MB
+            return f"[{field_name} - {file_info.get('original_filename', '파일')}]: 파일이 너무 커서 텍스트 추출을 건너뜁니다.", None
+        
+        file_path = None
+        # S3 키가 있으면 직접 사용
+        s3_key = file_info.get('s3_key')
+        if s3_key:
+            file_path = download_file_from_s3_key(s3_key)
+        # S3 키가 없고 download_url이 있으면 사용
+        elif file_info.get('download_url'):
+            file_path = download_file_from_url(file_info['download_url'])
+        
+        if file_path and os.path.exists(file_path):
+            file_text = extract_text_from_file(file_path)
+            file_hash = calculate_file_hash(file_path)
+            
+            if file_text:
+                result = f"[{field_name} - {file_info.get('original_filename', '파일')}]:\n{file_text}"
+                # 파일 해시 정보를 로그에 추가
+                if file_hash:
+                    print(f"파일 해시 계산 완료: {file_hash} - {file_info.get('original_filename', '파일')}")
+                return result, file_hash
+            else:
+                result = f"[{field_name} - {file_info.get('original_filename', '파일')}]: 텍스트 추출 실패"
+                if file_hash:
+                    print(f"파일 해시 계산 완료: {file_hash} - {file_info.get('original_filename', '파일')}")
+                return result, file_hash
+            
+            # 임시 파일 정리
+            try:
+                os.remove(file_path)
+            except:
+                pass
+            
+            return result, file_hash
+        else:
+            return f"[{field_name} - {file_info.get('original_filename', '파일')}]: 파일을 다운로드할 수 없습니다.", None
+    except Exception as e:
+        logger.error(f"파일 텍스트 추출 실패: {e}")
+        return f"[{field_name} - {file_info.get('original_filename', '파일')}]: 텍스트 추출 중 오류 발생", None
 
 @csrf_exempt
 def ai_chat_cache_clear(request):
@@ -479,6 +708,60 @@ def extract_text_from_file(file_path):
                 return extracted_text
             else:
                 return "HWP 파일 변환 실패"
+        elif file_path.endswith((".txt", ".md", ".markdown", ".rst", ".adoc")):
+            # 텍스트 파일과 마크다운 파일 처리
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                    return content.strip()
+            except UnicodeDecodeError:
+                # UTF-8로 읽기 실패시 다른 인코딩 시도
+                try:
+                    with open(file_path, 'r', encoding='cp949') as f:
+                        content = f.read()
+                        return content.strip()
+                except UnicodeDecodeError:
+                    try:
+                        with open(file_path, 'r', encoding='euc-kr') as f:
+                            content = f.read()
+                            return content.strip()
+                    except Exception as e:
+                        logger.error(f"텍스트 파일 인코딩 처리 실패: {e}")
+                        return f"텍스트 파일 읽기 실패: 인코딩 문제"
+            except Exception as e:
+                logger.error(f"텍스트 파일 읽기 실패: {e}")
+                return f"텍스트 파일 읽기 실패: {str(e)}"
+        elif file_path.endswith((".csv", ".tsv")):
+            # CSV/TSV 파일 처리
+            try:
+                import csv
+                delimiter = ',' if file_path.endswith('.csv') else '\t'
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    reader = csv.reader(f, delimiter=delimiter)
+                    rows = list(reader)
+                    if rows:
+                        # 헤더와 데이터를 텍스트로 변환
+                        result = []
+                        for i, row in enumerate(rows):
+                            if i == 0:  # 헤더
+                                result.append(f"헤더: {' | '.join(row)}")
+                            else:  # 데이터
+                                result.append(f"행 {i}: {' | '.join(row)}")
+                        return '\n'.join(result)
+                    else:
+                        return "빈 CSV/TSV 파일"
+            except Exception as e:
+                logger.error(f"CSV/TSV 파일 읽기 실패: {e}")
+                return f"CSV/TSV 파일 읽기 실패: {str(e)}"
+        elif file_path.endswith((".json", ".xml", ".yaml", ".yml")):
+            # 구조화된 데이터 파일 처리
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                    return f"구조화된 데이터 파일 내용:\n{content.strip()}"
+            except Exception as e:
+                logger.error(f"구조화된 데이터 파일 읽기 실패: {e}")
+                return f"구조화된 데이터 파일 읽기 실패: {str(e)}"
         return ""
     except Exception as e:
         logger.error(f"텍스트 추출 실패: {e}")

@@ -13,10 +13,26 @@ from botocore.exceptions import ClientError
 from datetime import datetime
 import json
 import logging
+import hashlib
 from django.http import JsonResponse
 from .cascade_handlers import sync_cascade_attributes
 
 logger = logging.getLogger(__name__)
+
+def calculate_file_hash(file_obj):
+    """파일의 MD5 해시를 계산"""
+    try:
+        hash_md5 = hashlib.md5()
+        # 파일 포인터를 처음으로 되돌림
+        file_obj.seek(0)
+        for chunk in iter(lambda: file_obj.read(4096), b""):
+            hash_md5.update(chunk)
+        # 파일 포인터를 다시 처음으로 되돌림 (다른 곳에서 사용할 수 있도록)
+        file_obj.seek(0)
+        return hash_md5.hexdigest()
+    except Exception as e:
+        logger.error(f"파일 해시 계산 실패: {e}")
+        return None
 
 @csrf_exempt
 def upload_file(request):
@@ -130,6 +146,9 @@ def upload_file(request):
                 elif file_extension in ['.mp4', '.avi', '.mov', '.wmv']:
                     file_type = 'video'
                 
+                # 파일 해시 계산
+                file_hash = calculate_file_hash(uploaded_file)
+                
                 # 새 파일 정보
                 new_file_data = {
                     'original_filename': uploaded_file.name,
@@ -141,7 +160,9 @@ def upload_file(request):
                     'file_size': uploaded_file.size,
                     'content_type': uploaded_file.content_type,
                     'type': file_type,  # 파일 타입 추가
-                    'upload_time': datetime.now().isoformat()  # 업로드 시간 추가
+                    'upload_time': datetime.now().isoformat(),  # 업로드 시간 추가
+                    'file_hash': file_hash,  # 파일 해시 추가
+                    'last_modified': uploaded_file.last_modified if hasattr(uploaded_file, 'last_modified') else None
                 }
                 
                 # AttributeValue에서 기존 파일 정보 가져오기

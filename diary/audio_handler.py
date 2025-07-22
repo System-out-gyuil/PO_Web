@@ -11,9 +11,25 @@ import uuid
 import os
 import json
 import logging
+import hashlib
 from django.http import JsonResponse
 
 logger = logging.getLogger(__name__)
+
+def calculate_file_hash(file_obj):
+    """파일의 MD5 해시를 계산"""
+    try:
+        hash_md5 = hashlib.md5()
+        # 파일 포인터를 처음으로 되돌림
+        file_obj.seek(0)
+        for chunk in iter(lambda: file_obj.read(4096), b""):
+            hash_md5.update(chunk)
+        # 파일 포인터를 다시 처음으로 되돌림 (다른 곳에서 사용할 수 있도록)
+        file_obj.seek(0)
+        return hash_md5.hexdigest()
+    except Exception as e:
+        logger.error(f"파일 해시 계산 실패: {e}")
+        return None
 
 # ----------------------------음성파일------------------------------------
 @csrf_exempt
@@ -279,6 +295,9 @@ def upload_audio_file(request):
             from datetime import datetime
             file_id = datetime.now().strftime('%H%M%S')  # HHMMSS 형식
             
+            # 파일 해시 계산
+            file_hash = calculate_file_hash(audio_file)
+            
             # 새로운 파일 데이터 생성 (order를 0으로 설정하여 맨 위에 표시)
             new_file_data = {
                 'original_filename': audio_file.name,
@@ -293,7 +312,9 @@ def upload_audio_file(request):
                 'gpt_summary': gpt_summary,
                 'upload_time': datetime.now().strftime('%H:%M:%S'),
                 'order': 0,  # 새로 업로드된 파일은 항상 맨 위에
-                'type': 'audio'  # 타입 구분을 위한 필드 추가
+                'type': 'audio',  # 타입 구분을 위한 필드 추가
+                'file_hash': file_hash,  # 파일 해시 추가
+                'last_modified': audio_file.last_modified if hasattr(audio_file, 'last_modified') else None
             }
             
             # 날짜별로 데이터 구조화
