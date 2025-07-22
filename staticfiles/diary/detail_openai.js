@@ -1,5 +1,19 @@
 // AI 대화 기능 관련 JavaScript
 
+// AI 캐시 관리 전역 변수
+window.aiCacheManager = {
+    // 현재 행의 캐시 정보
+    currentRowCache: null,
+    // 파일 변경사항 추적
+    fileChanges: {
+        added: [],
+        modified: [],
+        deleted: []
+    },
+    // 캐시 무효화 플래그
+    cacheInvalidated: false
+};
+
 // AI 대화 모달 열기
 function openAIChatModal() {
     const modal = document.getElementById('aiChatModal');
@@ -22,6 +36,9 @@ function openAIChatModalFromDetail() {
     if (window.currentDetailRowId) {
         console.log('AI 채팅 모달 열기 - 행 ID:', window.currentDetailRowId);
         
+        // AI 캐시 매니저 초기화
+        initializeAICacheManager();
+        
         // 현재 행 정보 표시
         displayCurrentRowInfo();
         
@@ -29,6 +46,115 @@ function openAIChatModalFromDetail() {
     } else {
         alert('현재 행 정보를 찾을 수 없습니다. 상세보기를 다시 열어주세요.');
     }
+}
+
+// AI 캐시 매니저 초기화
+function initializeAICacheManager() {
+    const rowId = window.currentDetailRowId;
+    if (!rowId) return;
+    
+    // 기존 캐시 정보가 있으면 유지, 없으면 초기화
+    if (!window.aiCacheManager || window.aiCacheManager.currentRowCache?.rowId !== rowId) {
+        window.aiCacheManager = {
+            currentRowCache: {
+                rowId: rowId,
+                lastUpdate: Date.now(),
+                fileHashes: {},
+                dataHash: null,
+                // 파일 변경사항 추적을 위한 추가 정보
+                initialFileCount: 0,
+                currentFileCount: 0
+            },
+            fileChanges: {
+                added: [],
+                modified: [],
+                deleted: []
+            },
+            cacheInvalidated: false
+        };
+        console.log('AI 캐시 매니저 새로 초기화 완료:', rowId);
+    } else {
+        console.log('AI 캐시 매니저 기존 데이터 유지:', rowId);
+        console.log('현재 변경사항:', {
+            added: window.aiCacheManager.fileChanges.added.length,
+            modified: window.aiCacheManager.fileChanges.modified.length,
+            deleted: window.aiCacheManager.fileChanges.deleted.length,
+            cacheInvalidated: window.aiCacheManager.cacheInvalidated
+        });
+        
+        // 기존 변경사항이 있으면 로깅
+        if (window.aiCacheManager.fileChanges.deleted.length > 0) {
+            console.log('유지되는 삭제된 파일들:');
+            window.aiCacheManager.fileChanges.deleted.forEach((file, index) => {
+                console.log(`  ${index + 1}: ${file.fieldName} - ${file.fileName || file.fileInfo?.original_filename}`);
+            });
+        }
+    }
+}
+
+// 파일 변경사항 추적 함수
+function trackFileChange(rowId, fieldName, changeType, fileInfo = null) {
+    if (!window.aiCacheManager || window.aiCacheManager.currentRowCache?.rowId !== rowId) {
+        console.log('AI 캐시 매니저가 초기화되지 않았거나 다른 행입니다:', rowId);
+        return; // 다른 행이거나 캐시 매니저가 초기화되지 않음
+    }
+
+    const fileHash = fileInfo?.file_hash || fileInfo?.hash || null;
+    const fileName = fileInfo?.original_filename || fileInfo?.filename || null;
+    const s3Key = fileInfo?.s3_key || null;
+
+    // 삭제 이벤트일 때, added/modified에서 해당 파일 제거
+    if (changeType === 'deleted') {
+        ['added', 'modified'].forEach(type => {
+            window.aiCacheManager.fileChanges[type] = window.aiCacheManager.fileChanges[type].filter(f => {
+                return !(
+                    (f.fileInfo?.original_filename === fileName) ||
+                    (fileHash && f.fileInfo?.file_hash === fileHash) ||
+                    (s3Key && f.fileInfo?.s3_key === s3Key)
+                );
+            });
+        });
+    }
+
+    const change = {
+        fieldName: fieldName,
+        timestamp: Date.now(),
+        fileInfo: fileInfo,
+        fileHash: fileHash,
+        fileName: fileName,
+        s3Key: s3Key,
+        // 서버 파일 정보
+        s3Key: fileInfo?.s3_key || null,
+        downloadUrl: fileInfo?.download_url || null,
+        previewUrl: fileInfo?.preview_url || null,
+        originalFilename: fileInfo?.original_filename || fileInfo?.filename || null
+    };
+
+    switch (changeType) {
+        case 'added':
+            window.aiCacheManager.fileChanges.added.push(change);
+            console.log(`파일 추가 추적: ${fieldName} - ${change.originalFilename || '알 수 없는 파일'}`);
+            break;
+        case 'modified':
+            window.aiCacheManager.fileChanges.modified.push(change);
+            console.log(`파일 수정 추적: ${fieldName} - ${change.originalFilename || '알 수 없는 파일'}`);
+            break;
+        case 'deleted':
+            window.aiCacheManager.fileChanges.deleted.push(change);
+            console.log(`파일 삭제 추적: ${fieldName}`);
+            break;
+    }
+
+    // 캐시 무효화 플래그 설정
+    window.aiCacheManager.cacheInvalidated = true;
+
+    console.log(`파일 변경사항 추적: ${changeType} - ${fieldName}`, change);
+    console.log('현재 AI 캐시 상태:', {
+        added: window.aiCacheManager.fileChanges.added.length,
+        modified: window.aiCacheManager.fileChanges.modified.length,
+        deleted: window.aiCacheManager.fileChanges.deleted.length,
+        cacheInvalidated: window.aiCacheManager.cacheInvalidated
+    });
 }
 
 // 현재 행 정보 표시
@@ -91,7 +217,25 @@ function closeAIChatModal() {
                 </div>
             `;
         }
+        
+        // AI 캐시 매니저 정리
+        cleanupAICacheManager();
     }
+}
+
+// AI 캐시 매니저 정리
+function cleanupAICacheManager() {
+    window.aiCacheManager = {
+        currentRowCache: null,
+        fileChanges: {
+            added: [],
+            modified: [],
+            deleted: []
+        },
+        dataChanges: {},
+        cacheInvalidated: false
+    };
+    console.log('AI 캐시 매니저 정리 완료');
 }
 
 // AI 메시지 전송
@@ -124,6 +268,55 @@ function sendAIMessage(forceRefresh = false) {
         rowId = window.currentDetailRowId;
     }
     
+    // AI 캐시 매니저가 초기화되지 않은 경우 초기화
+    if (!window.aiCacheManager || window.aiCacheManager.currentRowCache?.rowId !== rowId) {
+        console.log('sendAIMessage에서 AI 캐시 매니저 초기화:', rowId);
+        initializeAICacheManager();
+    }
+    
+    // 변경사항 정보 수집
+    const changes = {
+        fileChanges: window.aiCacheManager?.fileChanges || { added: [], modified: [], deleted: [] },
+        cacheInvalidated: window.aiCacheManager?.cacheInvalidated || false
+    };
+    
+    // 변경사항 로깅
+    console.log('AI 메시지 전송 - 변경사항 정보:', {
+        rowId: rowId,
+        message: message,
+        forceRefresh: forceRefresh,
+        changes: changes,
+        addedFiles: changes.fileChanges.added.length,
+        modifiedFiles: changes.fileChanges.modified.length,
+        deletedFiles: changes.fileChanges.deleted.length,
+        cacheInvalidated: changes.cacheInvalidated
+    });
+    
+    // AI 캐시 매니저 상태 상세 로깅
+    if (window.aiCacheManager) {
+        console.log('AI 캐시 매니저 상태:', {
+            currentRowId: window.aiCacheManager.currentRowCache?.rowId,
+            addedFiles: window.aiCacheManager.fileChanges.added.map(f => f.fileInfo?.original_filename),
+            modifiedFiles: window.aiCacheManager.fileChanges.modified.map(f => f.fileInfo?.original_filename),
+            deletedFiles: window.aiCacheManager.fileChanges.deleted.map(f => f.fileName || f.fileInfo?.original_filename),
+            cacheInvalidated: window.aiCacheManager.cacheInvalidated
+        });
+        
+        // 삭제된 파일 정보 상세 로깅
+        if (window.aiCacheManager.fileChanges.deleted.length > 0) {
+            console.log('삭제된 파일 상세 정보:');
+            window.aiCacheManager.fileChanges.deleted.forEach((deletedFile, index) => {
+                console.log(`  삭제된 파일 ${index + 1}:`, {
+                    fieldName: deletedFile.fieldName,
+                    fileName: deletedFile.fileName,
+                    fileInfo: deletedFile.fileInfo
+                });
+            });
+        }
+    } else {
+        console.log('AI 캐시 매니저가 초기화되지 않음');
+    }
+    
     // OpenAI API 호출
     fetch('/sales/ai_chat/', {
         method: 'POST',
@@ -134,7 +327,8 @@ function sendAIMessage(forceRefresh = false) {
         body: JSON.stringify({
             message: message,
             row_id: rowId,
-            force_refresh: forceRefresh
+            force_refresh: forceRefresh,
+            changes: changes
         })
     })
     .then(response => response.json())
@@ -149,6 +343,11 @@ function sendAIMessage(forceRefresh = false) {
         if (data.success) {
             // AI 응답 추가
             addAIMessage(data.response, 'assistant');
+            
+            // 캐시 업데이트 성공 시 변경사항 초기화
+            if (data.cache_updated) {
+                resetAICacheChanges();
+            }
         } else {
             // 오류 메시지 추가
             addAIMessage('죄송합니다. 응답을 생성하는 중 오류가 발생했습니다: ' + (data.error || '알 수 없는 오류'), 'error');
@@ -164,6 +363,35 @@ function sendAIMessage(forceRefresh = false) {
         }
         addAIMessage('네트워크 오류가 발생했습니다. 다시 시도해주세요.', 'error');
     });
+}
+
+// AI 캐시 변경사항 초기화
+function resetAICacheChanges() {
+    if (window.aiCacheManager) {
+        const previousState = {
+            added: window.aiCacheManager.fileChanges.added.length,
+            modified: window.aiCacheManager.fileChanges.modified.length,
+            deleted: window.aiCacheManager.fileChanges.deleted.length,
+            cacheInvalidated: window.aiCacheManager.cacheInvalidated
+        };
+        
+        window.aiCacheManager.fileChanges = {
+            added: [],
+            modified: [],
+            deleted: []
+        };
+        window.aiCacheManager.cacheInvalidated = false;
+        
+        console.log('AI 캐시 변경사항 초기화 완료:', {
+            previous: previousState,
+            current: {
+                added: 0,
+                modified: 0,
+                deleted: 0,
+                cacheInvalidated: false
+            }
+        });
+    }
 }
 
 // 캐시 새로고침과 함께 메시지 전송
@@ -308,3 +536,5 @@ window.sendAIMessageWithRefresh = sendAIMessageWithRefresh;
 window.handleAIChatKeydown = handleAIChatKeydown;
 window.displayCurrentRowInfo = displayCurrentRowInfo;
 window.renderMarkdownSafely = renderMarkdownSafely;
+window.trackFileChange = trackFileChange;
+window.resetAICacheChanges = resetAICacheChanges;

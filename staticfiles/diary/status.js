@@ -137,9 +137,19 @@ function applyStatusFilter() {
   if (!tbody) return;
   
   const rows = tbody.querySelectorAll('tr[data-id]');
+  let statusTab = window.currentStatusTab;
+  if (
+    statusTab === undefined ||
+    statusTab === null ||
+    statusTab === 'undefined' ||
+    statusTab === 'null' ||
+    statusTab === ''
+  ) {
+    statusTab = 'all';
+  }
   console.log('상태 필터 적용:', {
       statusAttributeName: window.statusAttributeName,
-      currentStatusTab: window.currentStatusTab,
+      currentStatusTab: statusTab,
       totalRows: rows.length
   });
   
@@ -420,8 +430,18 @@ function saveSingleAttributeSetting(attrId, statusId, isVisible) {
 function refreshTableWithStatusFilter() {
   // 현재 상태 ID를 URL 파라미터로 전달
   const url = new URL('/sales/entry_table_partial/', window.location.origin);
-  if (window.currentStatusTab !== null) {
-      url.searchParams.set('status_id', window.currentStatusTab);
+  let statusTab = window.currentStatusTab;
+  if (
+    statusTab === undefined ||
+    statusTab === null ||
+    statusTab === 'undefined' ||
+    statusTab === 'null' ||
+    statusTab === ''
+  ) {
+    statusTab = 'all';
+  }
+  if (statusTab !== null) {
+      url.searchParams.set('status_id', statusTab);
   }
   
   fetch(url)
@@ -442,7 +462,7 @@ function refreshTableWithStatusFilter() {
           }
           
           // 상태 필터가 활성화되어 있으면 즉시 적용
-          if (window.currentStatusTab !== null) {
+          if (statusTab !== null) {
               setTimeout(() => {
                   applyStatusFilter();
               }, 100);

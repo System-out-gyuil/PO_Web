@@ -296,6 +296,36 @@ function deleteFile(rowId, fieldName, fileIndex = null) {
       return;
   }
   
+  // AI 캐시 추적 - 파일 삭제
+  if (window.trackFileChange) {
+      // AI 캐시 매니저가 초기화되지 않은 경우 초기화
+      if (!window.aiCacheManager || window.aiCacheManager.currentRowCache?.rowId !== rowId) {
+          console.log('파일 삭제 시 AI 캐시 매니저 초기화:', rowId);
+          initializeAICacheManager();
+      }
+      
+      // 삭제할 파일의 정보를 가져오기 위해 DOM에서 파일 정보 찾기
+      let fileInfo = null;
+      if (fileIndex !== null) {
+          // 특정 파일 인덱스의 정보 찾기
+          const fileContainer = document.querySelector(`[data-row-id="${rowId}"][data-field-name="${fieldName}"]`);
+          if (fileContainer) {
+              const fileElements = fileContainer.querySelectorAll('.file-item, [data-file-index]');
+              if (fileElements[fileIndex]) {
+                  const fileName = fileElements[fileIndex].querySelector('.file-name, span')?.textContent || 'Unknown';
+                  fileInfo = {
+                      original_filename: fileName,
+                      fieldName: fieldName,
+                      fileIndex: fileIndex
+                  };
+              }
+          }
+      }
+      
+      window.trackFileChange(rowId, fieldName, 'deleted', fileInfo);
+      console.log('AI 캐시에 파일 삭제 추적:', { rowId, fieldName, fileIndex, fileInfo });
+  }
+  
   const requestData = {
       row_id: rowId,
       field_name: fieldName
@@ -521,7 +551,11 @@ function handleFileUpload(rowId, fieldName, fileInput) {
               .then(r => r.json())
               .then(function(data) {
                   if (data.success) {
-                      showDetailModal(data.row_data, data.row_id);
+                      if (typeof showDetailModal === 'function') {
+                          showDetailModal(data.row_data, data.row_id);
+                      } else {
+                          console.error('showDetailModal 함수가 정의되지 않았습니다.');
+                      }
                   }
               });
           

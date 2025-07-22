@@ -7,7 +7,7 @@ function showDetailModal(rowData, rowId) {
     window.currentDetailRowId = rowId;
     
     // 사용자의 속성들을 기준으로 표시
-    const user = { id: 1 }; // 임시로 user id 1 사용
+    // const user = { id: 1 }; // 임시로 user id 1 사용
     
     // 백엔드에서 사용자의 속성 목록을 가져와야 함
     fetch('/sales/get_user_attributes/')
@@ -845,6 +845,7 @@ function selectModalRegionOption(rowId, regionText, element) {
                               refreshKanban();
                           }
                       }
+                      window.triggerKanbanRefreshIfNeeded();
                   }
               });
           } else {
@@ -918,6 +919,7 @@ function selectModalSubregionOption(rowId, subregionText, element) {
                   refreshKanban();
               }
           }
+          window.triggerKanbanRefreshIfNeeded();
       } else {
           alert('수정 실패: ' + (data.error || ''));
       }
@@ -1475,6 +1477,7 @@ function proceedWithFundingRecommendation(rowId) {
                         console.error('백그라운드 모달 준비 오류:', error);
                     });
             }
+            window.triggerKanbanRefreshIfNeeded();
         } else {
             showNotification('추천자금 분석에 실패했습니다: ' + (data.error || '알 수 없는 오류'), 'error');
         }
@@ -2353,6 +2356,19 @@ function formatDebtInputRealtime(input, rowId, categoryKey) {
 function updateFileFieldInModal(rowId, fieldName, fileInfo) {
     console.log('updateFileFieldInModal 호출됨:', rowId, fieldName, fileInfo);
     
+    // AI 캐시 추적 - 파일 수정 (실제 파일 정보 사용)
+    if (window.trackFileChange && fileInfo) {
+        // 파일 정보에 추가 식별 정보 포함
+        const enhancedFileInfo = {
+            ...fileInfo,
+            file_hash: fileInfo.file_hash || fileInfo.hash || `${fileInfo.filename || fileInfo.original_filename}_${fileInfo.file_size || fileInfo.size}_${fileInfo.last_modified || Date.now()}`,
+            last_modified: fileInfo.last_modified || fileInfo.modified_time || Date.now(),
+            file_size: fileInfo.file_size || fileInfo.size
+        };
+        window.trackFileChange(rowId, fieldName, 'modified', enhancedFileInfo);
+        console.log('AI 캐시에 파일 수정 추적:', enhancedFileInfo);
+    }
+    
     const detailModal = document.getElementById('detailModal');
     if (!detailModal) {
         console.log('상세보기 모달이 열려있지 않음');
@@ -2465,6 +2481,16 @@ function updateFileFieldInModal(rowId, fieldName, fileInfo) {
 // 파일 삭제 후 상세보기 모달의 파일 필드를 "파일 없음" 상태로 업데이트하는 함수
 function updateFileFieldInModalAfterDelete(rowId, fieldName) {
     console.log('updateFileFieldInModalAfterDelete 호출됨:', rowId, fieldName);
+    
+    // AI 캐시 추적 - 파일 삭제
+    if (window.trackFileChange) {
+        const fileInfo = {
+            fieldName: fieldName,
+            rowId: rowId
+        };
+        window.trackFileChange(rowId, fieldName, 'deleted', fileInfo);
+        console.log('AI 캐시에 파일 삭제 추적:', fileInfo);
+    }
     
     const detailModal = document.getElementById('detailModal');
     if (!detailModal) {
@@ -2757,10 +2783,12 @@ function saveSalesInput(rowId, fieldName) {
     // 새로운 총 금액 계산 (새로운 억 * 100000000 + 새로운 천만 * 10000000 + 기존 나머지)
     const totalAmount = eok * 100000000 + cheonman * 10000000 + remainingAmount;
     
-    // 즉시 UI 업데이트 (사용자 경험 향상)
+    // 즉시 UI 업데이트 (사용자 경험 향상) - 억, 천만 단위 입력 형태 유지
     if (container) {
-        const formattedAmount = formatToKoreanCurrency(totalAmount);
-        container.innerHTML = formattedAmount;
+        // 새로운 억, 천만 값으로 입력 필드 업데이트
+        eokInput.value = eok;
+        cheonmanInput.value = cheonman;
+        
         container.setAttribute('data-raw', totalAmount);
         
         // 값이 있으면 빨간 테두리 제거
@@ -2798,8 +2826,10 @@ function saveSalesInput(rowId, fieldName) {
             
             // 실패 시 원래 값으로 복원
             if (container && originalValue) {
-                const formattedAmount = formatToKoreanCurrency(originalValue);
-                container.innerHTML = formattedAmount;
+                const originalEok = Math.floor(originalValue / 100000000);
+                const originalCheonman = Math.floor((originalValue % 100000000) / 10000000);
+                eokInput.value = originalEok;
+                cheonmanInput.value = originalCheonman;
                 container.setAttribute('data-raw', originalValue);
             }
         }
@@ -2810,8 +2840,10 @@ function saveSalesInput(rowId, fieldName) {
         
         // 오류 시 원래 값으로 복원
         if (container && originalValue) {
-            const formattedAmount = formatToKoreanCurrency(originalValue);
-            container.innerHTML = formattedAmount;
+            const originalEok = Math.floor(originalValue / 100000000);
+            const originalCheonman = Math.floor((originalValue % 100000000) / 10000000);
+            eokInput.value = originalEok;
+            cheonmanInput.value = originalCheonman;
             container.setAttribute('data-raw', originalValue);
         }
     });
@@ -2822,9 +2854,18 @@ function cancelSalesInput(rowId, fieldName) {
     const container = document.querySelector(`[data-field="${fieldName}"]`);
     if (container) {
         const originalValue = container.getAttribute('data-raw');
-        const displayValue = originalValue && !isNaN(parseInt(originalValue, 10)) ? 
-            formatToKoreanCurrency(parseInt(originalValue, 10)) : '0원';
-        container.innerHTML = displayValue;
+        const numericValue = originalValue && !isNaN(parseInt(originalValue, 10)) ? parseInt(originalValue, 10) : 0;
+        
+        // 원래 값으로 억, 천만 입력 필드 복원
+        const eokInput = document.getElementById('sales_eok_' + rowId);
+        const cheonmanInput = document.getElementById('sales_cheonman_' + rowId);
+        
+        if (eokInput && cheonmanInput) {
+            const originalEok = Math.floor(numericValue / 100000000);
+            const originalCheonman = Math.floor((numericValue % 100000000) / 10000000);
+            eokInput.value = originalEok;
+            cheonmanInput.value = originalCheonman;
+        }
     }
     
     // 전역 변수 정리
@@ -2878,6 +2919,7 @@ function updateBusinessField(rowId, fieldName, dataType, value) {
 // 모달에서 필드 업데이트 함수
 function detailUpdateRowField(rowId, field, value) {
     console.log('detailUpdateRowField, 디테일2')
+    
     fetch('/sales/update_row_field/', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -3075,193 +3117,183 @@ function recreateDuplicateButtons() {
     }
 }
 
-// 파일 업로드 함수 (여러 파일 지원)
 function uploadFile(rowId, fieldName, fileInput) {
-  console.log('uploadFile 호출됨:', rowId, fieldName, fileInput);
-  
-  const files = fileInput.files;
-  if (!files || files.length === 0) {
-      alert('파일을 선택해주세요.');
-      return;
-  }
-  
-  // 파일 개수 제한 (최대 10개)
-  if (files.length > 10) {
-      alert('한 번에 최대 10개 파일까지 업로드할 수 있습니다.');
-      return;
-  }
-  
-  // 각 파일에 대해 크기 체크
-  for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      if (file.size > 10 * 1024 * 1024) {
-          alert(`파일 "${file.name}"의 크기가 10MB를 초과합니다.`);
-          return;
-      }
-  }
-  
-  console.log('업로드할 파일들:', Array.from(files).map(f => f.name));
-  
-  // 업로드 진행 상황 표시
-  const uploadNotification = document.createElement('div');
-  uploadNotification.style.cssText = `
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      background: #007bff;
-      color: white;
-      padding: 15px 20px;
-      border-radius: 6px;
-      z-index: 1000;
-      font-size: 14px;
-  `;
-  uploadNotification.textContent = `${files.length}개 파일 업로드 중...`;
-  document.body.appendChild(uploadNotification);
-  
-  // 파일들을 순차적으로 업로드
-  let uploadedCount = 0;
-  let failedCount = 0;
-  
-  function uploadNextFile(index) {
-      if (index >= files.length) {
-          // 모든 파일 업로드 완료
-          uploadNotification.remove();
-          
-          if (failedCount === 0) {
-              showNotification(`${uploadedCount}개 파일이 성공적으로 업로드되었습니다.`, 'success');
-          } else if (uploadedCount === 0) {
-              showNotification('모든 파일 업로드에 실패했습니다.', 'error');
-          } else {
-              showNotification(`${uploadedCount}개 파일 업로드 성공, ${failedCount}개 파일 업로드 실패`, 'warning');
-          }
-          
-          // 테이블 새로고침
-          refreshTable();
-          
-          // 상세보기 모달이 열려있으면 모달 전체 새로고침
-          const detailModal = document.getElementById('detailModal');
-          if (detailModal && detailModal.style.display !== 'none') {
-              // 모달 새로고침
-              fetch(`/sales/get_row_details/${rowId}/`)
-                  .then(response => response.json())
-                  .then(data => {
-                      if (data.success) {
-                          showDetailModal(data.row_data, data.row_id);
-                      }
-                  })
-                  .catch(error => {
-                      console.error('모달 새로고침 오류:', error);
-                  });
-          }
-          
-          // 파일 입력 초기화
-          fileInput.value = '';
-          return;
-      }
-      
-      const file = files[index];
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('row_id', rowId);
-      formData.append('field_name', fieldName);
-      
-      // 진행 상황 업데이트
-      uploadNotification.textContent = `${index + 1}/${files.length}개 파일 업로드 중... (${file.name})`;
-      
-      fetch('/sales/upload_file/', {
-          method: 'POST',
-          body: formData,
-          headers: {
-              'X-CSRFToken': getCsrfToken()
-          }
-      })
-      .then(response => response.json())
-      .then(data => {
-          console.log(`파일 "${file.name}" 업로드 응답:`, data);
-          
-          if (data.success) {
-              uploadedCount++;
-              console.log(`파일 "${file.name}" 업로드 성공`);
-          } else {
-              failedCount++;
-              console.error(`파일 "${file.name}" 업로드 실패:`, data.error);
-          }
-      })
-      .catch(error => {
-          console.error(`파일 "${file.name}" 업로드 오류:`, error);
-          failedCount++;
-      })
-      .finally(() => {
-          // 다음 파일 업로드
-          uploadNextFile(index + 1);
-      });
-  }
-  
-  // 첫 번째 파일부터 업로드 시작
-  uploadNextFile(0);
+    console.log('uploadFile 호출됨:', rowId, fieldName, fileInput);
+
+    // AI 캐시 매니저가 초기화되지 않은 경우 초기화
+    if (!window.aiCacheManager || window.aiCacheManager.currentRowCache?.rowId !== rowId) {
+        console.log('파일 업로드 시 AI 캐시 매니저 초기화:', rowId);
+        window.currentDetailRowId = rowId; // 임시로 설정
+        initializeAICacheManager();
+    }
+
+    const files = fileInput.files;
+    if (!files || files.length === 0) {
+        alert('파일을 선택해주세요.');
+        return;
+    }
+
+    if (files.length > 10) {
+        alert('한 번에 최대 10개 파일까지 업로드할 수 있습니다.');
+        return;
+    }
+
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file.size > 10 * 1024 * 1024) {
+            alert(`파일 "${file.name}"의 크기가 10MB를 초과합니다.`);
+            return;
+        }
+    }
+
+    console.log('업로드할 파일들:', Array.from(files).map(f => f.name));
+
+    // AI 캐시 추적은 업로드 완료 후에만 수행하도록 수정
+    // 업로드 시작 시 임시 추적 제거
+
+    const uploadNotification = document.createElement('div');
+    uploadNotification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #007bff;
+        color: white;
+        padding: 15px 20px;
+        border-radius: 6px;
+        z-index: 1000;
+        font-size: 14px;
+    `;
+    uploadNotification.textContent = `${files.length}개 파일 업로드 중...`;
+    document.body.appendChild(uploadNotification);
+
+    let uploadedCount = 0;
+    let failedCount = 0;
+
+    function uploadNextFile(index) {
+        if (index >= files.length) {
+            uploadNotification.remove();
+
+            if (failedCount === 0) {
+                showNotification(`${uploadedCount}개 파일이 성공적으로 업로드되었습니다.`, 'success');
+            } else if (uploadedCount === 0) {
+                showNotification('모든 파일 업로드에 실패했습니다.', 'error');
+            } else {
+                showNotification(`${uploadedCount}개 파일 업로드 성공, ${failedCount}개 실패`, 'warning');
+            }
+
+            refreshTable();
+
+            const detailModal = document.getElementById('detailModal');
+            if (detailModal && detailModal.style.display !== 'none') {
+                fetch(`/sales/get_row_details/${rowId}/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            showDetailModal(data.row_data, data.row_id);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('모달 새로고침 오류:', error);
+                    });
+            }
+
+            fileInput.value = '';
+            return;
+        }
+
+        const file = files[index];
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('row_id', rowId);
+        formData.append('field_name', fieldName);
+
+        uploadNotification.textContent = `${index + 1}/${files.length}개 파일 업로드 중... (${file.name})`;
+
+        fetch('/sales/upload_file/', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': getCsrfToken()
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log(`파일 "${file.name}" 업로드 응답:`, data);
+
+            if (data.success) {
+                uploadedCount++;
+                console.log(`파일 "${file.name}" 업로드 성공`);
+
+                if (window.trackFileChange && data.file_info) {
+                    const fileInfo = {
+                        ...data.file_info,
+                        file_hash: data.file_info.file_hash || `${file.name}_${file.size}_${file.lastModified}`,
+                        last_modified: data.file_info.last_modified || file.lastModified,
+                        file_size: data.file_info.file_size || file.size,
+                        // 서버에서 받은 실제 파일 정보 추가
+                        id: data.file_info.id,
+                        s3_key: data.file_info.s3_key,
+                        download_url: data.file_info.download_url,
+                        preview_url: data.file_info.preview_url
+                    };
+
+                    // 기존 파일과 비교하여 정확한 변경 타입 결정 (파일명+해시까지 비교)
+                    const existingFiles = window.aiCacheManager?.fileChanges?.added || [];
+                    const existingFile = existingFiles.find(f => 
+                        f.fileInfo?.original_filename === file.name && 
+                        f.fileInfo?.file_hash === fileInfo.file_hash &&
+                        f.fieldName === fieldName
+                    );
+
+                    if (existingFile) {
+                        // 기존 파일이 있으면 수정으로 처리
+                        window.trackFileChange(rowId, fieldName, 'modified', fileInfo);
+                        console.log('AI 캐시에 파일 수정 추적 (기존 파일 존재):', fileInfo);
+                    } else {
+                        // 새 파일로 처리
+                        window.trackFileChange(rowId, fieldName, 'added', fileInfo);
+                        console.log('AI 캐시에 파일 추가 추적:', fileInfo);
+                    }
+                    
+                    // 캐시 무효화 플래그 설정
+                    if (window.aiCacheManager) {
+                        window.aiCacheManager.cacheInvalidated = true;
+                        console.log('AI 캐시 무효화 플래그 설정됨');
+                    }
+                }
+
+                alert('파일 업로드 완료!\n파일명: ' + file.name);
+
+                fetch('/sales/get_row_details/' + rowId + '/')
+                    .then(r => r.json())
+                    .then(function (data) {
+                        if (data.success) {
+                            showDetailModal(data.row_data, data.row_id);
+                        }
+                    });
+
+                refreshTable();
+                if (window.kanbanAttribute && '지역' === window.kanbanAttribute) {
+                    refreshKanban();
+                }
+                refreshCalendar();
+            } else {
+                failedCount++;
+            }
+
+            uploadNextFile(index + 1);  // ✅ 다음 파일 업로드 호출
+        })
+        .catch(error => {
+            console.error('파일 업로드 오류:', error);
+            alert('파일 업로드 중 오류가 발생했습니다.');
+            failedCount++;
+            uploadNextFile(index + 1);  // ✅ 오류 발생 시에도 다음 파일 업로드
+        });
+    }
+
+    uploadNextFile(0);  // ✅ 업로드 시작
 }
 
-// 파일 업로드 처리 함수
-function handleFileUpload(rowId, fieldName, fileInput) {
-  const file = fileInput.files[0];
-  if (!file) {
-      return;
-  }
-  
-  console.log('파일 업로드 시작:', file.name, file.size, file.type);
-  
-  // FormData 생성
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('row_id', rowId);
-  formData.append('field_name', fieldName);
-  
-  // 업로드 중 표시
-  const uploadingText = '업로드 중...';
-  
-  // 파일 업로드 요청
-  fetch('/sales/upload_file/', {
-      method: 'POST',
-      body: formData
-  })
-  .then(response => response.json())
-  .then(data => {
-      console.log('파일 업로드 응답:', data);
-      
-      if (data.success) {
-          // 업로드 성공 - 상세 모달 새로고침
-          alert('파일 업로드 완료!\n파일명: ' + file.name);
-          
-          // 모달 데이터 새로고침
-          fetch('/sales/get_row_details/' + rowId + '/')
-              .then(r => r.json())
-              .then(function(data) {
-                  if (data.success) {
-                      showDetailModal(data.row_data, data.row_id);
-                  }
-              });
-          
-          // 테이블과 칸반보드도 새로고침
-          refreshTable();
-          // 칸반보드가 활성화되어 있고 업데이트된 필드가 현재 칸반보드 속성과 일치하는 경우에만 새로고침
-          if (window.kanbanAttribute && '지역' === window.kanbanAttribute) {
-              refreshKanban();
-          }
-          
-          // 캘린더 업데이트
-          refreshCalendar();
-      } else {
-          alert('파일 업로드 실패: ' + (data.error || '알 수 없는 오류'));
-      }
-  })
-  .catch(error => {
-      console.error('파일 업로드 오류:', error);
-      alert('파일 업로드 중 오류가 발생했습니다.');
-  });
-  
-  // 파일 입력 초기화
-  fileInput.value = '';
-}
 
 // 파일 업로드 후 모달 필드 새로고침 함수
 function updateFileFieldInModalAfterUpload(rowId, fieldName) {
@@ -3283,22 +3315,264 @@ function updateFileFieldInModalAfterUpload(rowId, fieldName) {
 function updateFileFieldInModalAfterDelete(rowId, fieldName) {
     console.log('updateFileFieldInModalAfterDelete 호출됨:', rowId, fieldName);
     
+    // AI 캐시 추적 - 파일 삭제
+    if (window.trackFileChange) {
+        const fileInfo = {
+            fieldName: fieldName,
+            rowId: rowId
+        };
+        window.trackFileChange(rowId, fieldName, 'deleted', fileInfo);
+        console.log('AI 캐시에 파일 삭제 추적:', fileInfo);
+    }
+    
     const detailModal = document.getElementById('detailModal');
     if (!detailModal) {
         console.log('상세보기 모달이 열려있지 않음');
         return; // 모달이 열려있지 않으면 종료
     }
     
-    // 모달 전체 새로고침으로 변경
+    // 실제 모달 구조에 맞게 필드를 찾기
+    // 라벨 텍스트로 해당 필드의 부모 div를 찾기
+    const labels = detailModal.querySelectorAll('label');
+    let targetFieldDiv = null;
+    
+    for (let label of labels) {
+        if (label.textContent.includes(fieldName + ':')) {
+            targetFieldDiv = label.closest('div[style*="display:flex"]');
+            break;
+        }
+    }
+    
+    if (!targetFieldDiv) {
+        console.log(`필드를 찾을 수 없음: ${fieldName}`);
+        return;
+    }
+    
+    console.log('필드 div 찾음:', targetFieldDiv);
+    
+    // 서버에서 최신 파일 정보를 가져와서 업데이트
     fetch(`/sales/get_row_details/${rowId}/`)
         .then(response => response.json())
         .then(data => {
-            if (data.success) {
-                showDetailModal(data.row_data, data.row_id);
+            if (data.success && data.row_data) {
+                const fileValue = data.row_data[fieldName];
+                console.log('서버에서 받은 파일 값:', fileValue);
+                
+                if (fileValue) {
+                    try {
+                        let filesData;
+                        
+                        // fileValue가 이미 객체인지 문자열인지 확인
+                        if (typeof fileValue === 'string') {
+                            filesData = JSON.parse(fileValue);
+                        } else if (typeof fileValue === 'object') {
+                            filesData = fileValue;
+                        } else {
+                            console.error('예상치 못한 파일 값 타입:', typeof fileValue);
+                            filesData = [];
+                        }
+                        
+                        const files = Array.isArray(filesData) ? filesData : [filesData];
+                        console.log('파싱된 파일 데이터:', files);
+                        
+                        if (files.length > 0) {
+                            // 파일이 남아있는 경우: 파일 목록 표시
+                            let filesHtml = '';
+                            files.forEach((fileInfo, index) => {
+                                const displayFileName = fileInfo.original_filename || fileInfo.filename || 'Unknown';
+                                
+                                if (fileInfo.type === 'img' || fileInfo.content_type?.startsWith('image/')) {
+                                    filesHtml += `
+                                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding: 8px; border: 1px solid #e9ecef; border-radius: 4px; background: #f8f9fa;">
+                                            <span style="flex: 1; font-size: 14px;">📄 ${displayFileName}</span>
+                                            <button onclick="showFilePreviewModal(${JSON.stringify({...fileInfo, field_name: fieldName}).replace(/\"/g, '&quot;')})"
+                                                    style="padding: 4px 8px; background: #ffc107; color: #333; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                                미리보기
+                                            </button>
+                                            <button onclick="window.open('${fileInfo.download_url}', '_blank')"
+                                                    style="padding: 4px 8px; background: #17a2b8; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                                다운로드
+                                            </button>
+                                            <button onclick="deleteFile('${rowId}', '${fieldName}', '${index}')"
+                                                    style="padding: 4px 8px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                                삭제
+                                            </button>
+                                        </div>
+                                    `;
+                                } else if (fileInfo.type === 'audio') {
+                                    filesHtml += `
+                                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding: 8px; border: 1px solid #e9ecef; border-radius: 4px; background: #f8f9fa;">
+                                            <span style="flex: 1; font-size: 14px;">🎵 ${displayFileName}</span>
+                                            <button onclick="showFilePreviewModal(${JSON.stringify({...fileInfo, id: fileId, field_name: attr.name, row_id: rowId}).replace(/\"/g, '&quot;')})"
+                                                    style="padding: 4px 8px; background: #ffc107; color: #333; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                                미리보기
+                                            </button>
+                                            <button onclick="window.open('${fileInfo.download_url}', '_blank')"
+                                                    style="padding: 4px 8px; background: #17a2b8; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                                다운로드
+                                            </button>
+                                            <button class="delete-file-btn" 
+                                                    data-row-id="${rowId}" 
+                                                    data-field-name="${attr.name}" 
+                                                    data-file-index="${index}"
+                                                    style="padding: 4px 8px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                                삭제
+                                            </button>
+                                        </div>
+                                    `;
+                                } else {
+                                    // 일반 파일
+                                    filesHtml += `
+                                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding: 8px; border: 1px solid #e9ecef; border-radius: 4px; background: #f8f9fa;">
+                                            <span style="flex: 1; font-size: 14px;">📄 ${displayFileName}</span>
+                                            <button onclick="showFilePreviewModal(${JSON.stringify({...fileInfo, field_name: fieldName}).replace(/\"/g, '&quot;')})"
+                                                    style="padding: 4px 8px; background: #ffc107; color: #333; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                                미리보기
+                                            </button>
+                                            <button onclick="window.open('${fileInfo.download_url}', '_blank')"
+                                                    style="padding: 4px 8px; background: #17a2b8; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                                다운로드
+                                            </button>
+                                            <button onclick="deleteFile('${rowId}', '${fieldName}', '${index}')"
+                                                    style="padding: 4px 8px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                                삭제
+                                            </button>
+                                        </div>
+                                    `;
+                                }
+                            });
+                            
+                            // 파일 추가 버튼
+                            filesHtml += `
+                                <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px; padding: 8px; border: 1px solid #dee2e6; border-radius: 4px; background: #fff;">
+                                    <span style="flex: 1; color: #6c757d; font-size: 14px;">파일 추가</span>
+                                    <button type="button" 
+                                            onclick="document.getElementById('file_${fieldName}_${rowId}').click()" 
+                                            style="padding: 6px 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;">
+                                        + 파일 추가
+                                    </button>
+                                    <input type="file" 
+                                           id="file_${fieldName}_${rowId}" 
+                                           style="display: none;"
+                                           multiple
+                                           onchange="uploadFile('${rowId}', '${fieldName}', this)">
+                                </div>
+                            `;
+                            
+                            // 파일 컨테이너 업데이트
+                            const fileContainer = targetFieldDiv.querySelector('div[style*="flex:1"]');
+                            if (fileContainer) {
+                                fileContainer.innerHTML = filesHtml;
+                                console.log('파일 목록 업데이트 완료');
+                                
+                                // 새로운 삭제 버튼에 이벤트 리스너 추가
+                                setTimeout(() => {
+                                    const deleteButtons = fileContainer.querySelectorAll('.delete-file-btn');
+                                    console.log('새로 찾은 삭제 버튼 개수:', deleteButtons.length);
+                                    
+                                    deleteButtons.forEach((btn, index) => {
+                                        console.log(`새 버튼 ${index}:`, btn);
+                                        console.log(`새 버튼 ${index}의 data 속성:`, {
+                                            rowId: btn.getAttribute('data-row-id'),
+                                            fieldName: btn.getAttribute('data-field-name'),
+                                            fileIndex: btn.getAttribute('data-file-index')
+                                        });
+                                        
+                                        btn.addEventListener('click', function(e) {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            
+                                            const rowId = this.getAttribute('data-row-id');
+                                            const fieldName = this.getAttribute('data-field-name');
+                                            const fileIndex = this.getAttribute('data-file-index');
+                                            
+                                            console.log('새 파일 삭제 버튼 클릭됨:', rowId, fieldName, fileIndex);
+                                            console.log('fileIndex 타입:', typeof fileIndex);
+                                            console.log('fileIndex 값:', fileIndex);
+                                            
+                                            // fileIndex를 숫자로 변환
+                                            const numericFileIndex = parseInt(fileIndex, 10);
+                                            console.log('변환된 fileIndex:', numericFileIndex);
+                                            
+                                            console.log('deleteFile 함수 호출 전');
+                                            deleteFile(rowId, fieldName, numericFileIndex);
+                                            console.log('deleteFile 함수 호출 후');
+                                        });
+                                    });
+                                }, 100);
+                            }
+                        } else {
+                            // 파일이 없는 경우: 파일 선택 버튼
+                            const fileContainer = targetFieldDiv.querySelector('div[style*="flex:1"]');
+                            if (fileContainer) {
+                                fileContainer.innerHTML = `
+                                    <div style="display: flex; align-items: center;">
+                                        <span style="flex: 1; color: #6c757d; font-size: 14px; padding: 8px 0;">파일이 선택되지 않았습니다</span>
+                                        <button type="button" 
+                                                onclick="document.getElementById('file_${fieldName}_${rowId}').click()" 
+                                                style="padding: 6px 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;">
+                                            파일 선택
+                                        </button>
+                                        <input type="file" 
+                                               id="file_${fieldName}_${rowId}" 
+                                               style="display: none;"
+                                               multiple
+                                               onchange="uploadFile('${rowId}', '${fieldName}', this)">
+                                    </div>
+                                `;
+                                console.log('파일 표시 영역을 "파일 없음"으로 업데이트 완료');
+                            }
+                        }
+                    } catch (e) {
+                        console.error('파일 정보 파싱 오류:', e, 'fileValue:', fileValue);
+                        // 파싱 오류 시 "파일 없음" 상태로 설정
+                        const fileContainer = targetFieldDiv.querySelector('div[style*="flex:1"]');
+                        if (fileContainer) {
+                            fileContainer.innerHTML = `
+                                <div style="display: flex; align-items: center;">
+                                    <span style="flex: 1; color: #6c757d; font-size: 14px; padding: 8px 0;">파일이 선택되지 않았습니다</span>
+                                    <button type="button" 
+                                            onclick="document.getElementById('file_${fieldName}_${rowId}').click()" 
+                                            style="padding: 6px 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;">
+                                        파일 선택
+                                    </button>
+                                    <input type="file" 
+                                           id="file_${fieldName}_${rowId}" 
+                                           style="display: none;"
+                                           multiple
+                                           onchange="uploadFile('${rowId}', '${fieldName}', this)">
+                                </div>
+                            `;
+                        }
+                    }
+                } else {
+                    // 파일 값이 없는 경우: 파일 선택 버튼
+                    const fileContainer = targetFieldDiv.querySelector('div[style*="flex:1"]');
+                    if (fileContainer) {
+                        fileContainer.innerHTML = `
+                            <div style="display: flex; align-items: center;">
+                                <span style="flex: 1; color: #6c757d; font-size: 14px; padding: 8px 0;">파일이 선택되지 않았습니다</span>
+                                <button type="button" 
+                                        onclick="document.getElementById('file_${fieldName}_${rowId}').click()" 
+                                        style="padding: 6px 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;">
+                                    파일 선택
+                                </button>
+                                <input type="file" 
+                                       id="file_${fieldName}_${rowId}" 
+                                       style="display: none;"
+                                       multiple
+                                       onchange="uploadFile('${rowId}', '${fieldName}', this)">
+                            </div>
+                        `;
+                        console.log('파일 표시 영역을 "파일 없음"으로 업데이트 완료');
+                    }
+                }
+            } else {
+                console.error('행 정보 가져오기 실패:', data.error);
             }
         })
         .catch(error => {
-            console.error('파일 삭제 후 모달 새로고침 오류:', error);
+            console.error('파일 정보 업데이트 오류:', error);
         });
 }
 
@@ -3659,5 +3933,30 @@ function closeAudioPreviewModal() {
     if (modal) {
         modal.remove();
     }
+}
+
+// 1. 전역에서 triggerKanbanRefreshIfNeeded가 없으면 import/정의
+if (typeof triggerKanbanRefreshIfNeeded === 'undefined') {
+    window.triggerKanbanRefreshIfNeeded = function() {
+        let currentAttr = document.getElementById('kanbanAttributeSelect')?.value;
+        if (!currentAttr) {
+            currentAttr = window.kanbanSettings?.main_attr;
+        }
+        if (!currentAttr || currentAttr === 'undefined') return;
+        if (!window._kanbanRefreshTimeout) {
+            window._kanbanRefreshTimeout = null;
+        }
+        if (window._kanbanRefreshTimeout) {
+            clearTimeout(window._kanbanRefreshTimeout);
+        }
+        window._kanbanRefreshTimeout = setTimeout(() => {
+            window._kanbanRefreshTimeout = null;
+            if (!window._kanbanRefreshing) {
+                window._kanbanRefreshing = true;
+                if (typeof refreshKanban === 'function') refreshKanban();
+                setTimeout(() => { window._kanbanRefreshing = false; }, 500);
+            }
+        }, 80);
+    };
 }
 

@@ -802,11 +802,12 @@ tr:hover .delete-row-btn {
 #audioFilesList {
     min-height: 650px;
     max-height: 650px;
+    overflow-y: auto;
 }
 
 #sortableAudioContainer {
     min-height: 650px;
-    max-height: 650px;
+    overflow-y: auto;
 }
 
 /* 상태 필터 탭 스타일 */
