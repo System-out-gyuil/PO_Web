@@ -317,9 +317,9 @@
 
   <script>
     // 페이지 로드 시 로그인 상태 확인
-    document.addEventListener('DOMContentLoaded', function() {
+    {% comment %} document.addEventListener('DOMContentLoaded', function() {
       checkLoginStatus();
-    });
+    }); {% endcomment %}
     
     // 뒤로가기/앞으로가기 시에도 로그인 상태 확인
     window.addEventListener('pageshow', function(event) {
