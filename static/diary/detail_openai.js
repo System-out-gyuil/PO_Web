@@ -329,9 +329,28 @@ function sendAIMessage(forceRefresh = false) {
             row_id: rowId,
             force_refresh: forceRefresh,
             changes: changes
-        })
+        }),
+        // 타임아웃 설정 (5분)
+        signal: AbortSignal.timeout(300000)
     })
-    .then(response => response.json())
+    .then(response => {
+        // 응답 상태 코드 확인
+        if (!response.ok) {
+            if (response.status === 504) {
+                throw new Error('서버 응답 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.');
+            } else {
+                throw new Error(`서버 오류 (${response.status}): ${response.statusText}`);
+            }
+        }
+        
+        // Content-Type 확인
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            throw new Error('서버에서 JSON 응답을 받지 못했습니다. 잠시 후 다시 시도해주세요.');
+        }
+        
+        return response.json();
+    })
     .then(data => {
         if (loadingDiv) {
             loadingDiv.style.display = 'none';

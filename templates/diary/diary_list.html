@@ -501,7 +501,7 @@
                 🗑️ 선택된 행 삭제 (<span id="selectedCount">0</span>)
             </button>
         </div>
-        <div>블로그</div>
+        <div>블로그 자동쓰기</div>
     </div>
 
     <!-- 상태 탭 -->
@@ -637,6 +637,10 @@
                                         <span class="empty-debt">기대출 없음</span>
                                     </div>
                                 {% endif %}
+                            </td>
+                        {% elif attr.name == '메모' %}
+                            <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" class="{% if attr.assential %}essential-column{% endif %}" style="text-align:left;">
+                                {{ row.values|get_item:attr.name|get_item:'label' }}
                             </td>
                         {% else %}
                             <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}"{% if attr.name == '매출' or '매출' in attr.name %} data-raw="{{ row.values|get_item:attr.name|get_item:'value'|default:'0' }}"{% endif %} class="{% if attr.assential %}essential-column{% endif %}">

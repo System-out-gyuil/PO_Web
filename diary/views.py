@@ -896,11 +896,14 @@ def dropdown_options(request):
                     # 새로 추가된 dropdown의 ID를 true로 설정
                     view_select_data[str(dropdown.id)] = True
                     
+                    # 전체 탭(0번)도 true로 설정
+                    view_select_data['0'] = True
+                    
                     # Attribute 업데이트
                     user_attr.view_select = view_select_data
                     user_attr.save()
                 
-                print(f"상태 속성 '{attr.name}'의 새 옵션 '{dropdown.option}' (ID: {dropdown.id})을 모든 Attribute의 view_select에 추가")
+                print(f"상태 속성 '{attr.name}'의 새 옵션 '{dropdown.option}' (ID: {dropdown.id})을 모든 Attribute의 view_select에 추가 + 전체 탭 설정")
             
             return JsonResponse({'success': True, 'id': dropdown.id, 'option': dropdown.option, 'color': dropdown.color, 'created': created})
         return JsonResponse({'error': 'No option'}, status=400)
@@ -932,14 +935,16 @@ def dropdown_options(request):
                 
                 for dropdown_option in all_dropdown_options:
                     option_id = str(dropdown_option.id)
-                    # 0번(전체)을 제외하고 나머지 모든 옵션을 true로 설정
-                    if option_id != "0":
-                        view_select_data[option_id] = True
+                    # 모든 옵션을 true로 설정 (전체 탭 포함)
+                    view_select_data[option_id] = True
+                
+                # 전체 탭(0번)도 true로 설정
+                view_select_data['0'] = True
                 
                 attr.view_select = view_select_data
                 attr.save()
                 
-                print(f"상태 속성 '{attr.name}'의 view_select 재설정: {len(all_dropdown_options)}개 옵션")
+                print(f"상태 속성 '{attr.name}'의 view_select 재설정: {len(all_dropdown_options)}개 옵션 + 전체 탭")
             
             return JsonResponse({'success': True})
         return JsonResponse({'error': 'Invalid'}, status=400)

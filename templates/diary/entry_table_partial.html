@@ -1,6 +1,6 @@
 {% load entry_extras %}
 {% load static %}
-<style>
+{% comment %} <style>
 .dropdown-pill {
   display: inline-block;
   padding: 4px;
@@ -101,102 +101,50 @@ th.resizing {
 .row-checkbox, #selectAllCheckbox {
     margin: 0;
     cursor: pointer;
-    width: 20px;
-    height: 20px;
 }
 
-/* 버튼 공통 스타일 */
+/* 액션 버튼 스타일 */
 .action-btn {
-    padding: 0;
+    background: none;
     border: none;
-    border-radius: 3px;
     cursor: pointer;
-    font-size: 11px;
-    font-weight: 500;
-    transition: all 0.2s ease;
-    width: 20px;
-    height: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    font-size: 14px;
+    color: #6c757d;
+    padding: 2px;
+    border-radius: 3px;
+    transition: all 0.2s;
 }
 
-/* 삭제 버튼 */
 .delete-row-btn {
+    color: #dc3545;
+}
+
+.delete-row-btn:hover {
     background: #dc3545;
     color: white;
 }
 
-.delete-row-btn:hover {
-    background: #c82333;
-    transform: scale(1.05);
-}
-
-/* 복제 버튼 */
 .duplicate-row-btn {
-    background: #28a745;
-    color: white;
+    color: #007bff;
 }
 
 .duplicate-row-btn:hover {
-    background: #218838;
-    transform: scale(1.05);
+    background: #007bff;
+    color: white;
 }
 
-/* 드래그 핸들 */
 .drag-handle {
-    color: #6c757d;
-    cursor: move;
-    font-size: 10px;
-    width: 20px;
-    height: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 3px;
-    transition: background-color 0.2s ease;
+    color: #adb5bd;
+    cursor: grab;
+    font-size: 12px;
+    user-select: none;
 }
 
 .drag-handle:hover {
-    background-color: #e9ecef;
+    color: #6c757d;
 }
 
-/* 테이블 컨테이너 스타일 - 오른쪽으로만 확장 */
-#tableView {
-    overflow-x: auto;
-    overflow-y: auto;
-    max-width: 100%;
-    max-height: 70vh;
-    border: 1px solid #e9ecef;
-    border-radius: 8px;
-    background: #fff;
-    position: relative;
-}
-
-/* 테이블이 오른쪽으로만 확장되도록 설정 */
-#entryTable {
-    width: auto !important;
-    min-width: unset !important;
-    table-layout: auto;
-    position: relative;
-}
-
-/* 리사이즈 중 테이블 레이아웃 고정 */
-#entryTable.resizing {
-    table-layout: fixed !important;
-}
-
-/* 저장된 너비가 있는 컬럼에 대한 스타일 */
-.attribute-header[data-width] {
-    min-width: 150px !important;
-    max-width: none !important;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-/* 첫 번째 열은 고정 너비 */
-#entryTable th.drag-cell,
+/* 테이블 셀 스타일 통일 */
 #entryTable td.drag-cell {
     min-width: 140px !important;
     width: 140px !important;
@@ -214,14 +162,13 @@ th.resizing {
 /* td 내용이 길어도 컬럼 너비를 강제로 유지 */
 #entryTable td[data-field] {
     min-width: 150px !important;
-    max-width: none !important;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     word-break: keep-all;
 }
-</style>
-<table id="entryTable" style="width:auto; min-width:unset;">
+</style> {% endcomment %}
+<table id="entryTable" class="entry-table">
     <thead class="sticky">
     <tr>
         <th class="drag-cell">
@@ -232,11 +179,11 @@ th.resizing {
         </th>
         {% for attr in attributes %}
             {% if forloop.last and attr.assential %}
-                <th data-column="{{ attr.name }}" data-width="{{ attr.width|default:150 }}" class="attribute-header essential-separator" data-essential="{{ attr.assential|yesno:'true,false' }}" style="width: {{ attr.width|default:150 }}px; min-width: {{ attr.width|default:150 }}px; max-width: {{ attr.width|default:150 }}px;">
+                <th data-column="{{ attr.name }}" data-width="{{ attr.width|default:150 }}" class="attribute-header essential-separator" data-essential="{{ attr.assential|yesno:'true,false' }}">
             {% elif forloop.first and not attr.assential %}
-                <th data-column="{{ attr.name }}" data-width="{{ attr.width|default:150 }}" class="attribute-header non-essential-start" data-essential="{{ attr.assential|yesno:'true,false' }}" style="width: {{ attr.width|default:150 }}px; min-width: {{ attr.width|default:150 }}px; max-width: {{ attr.width|default:150 }}px;">
+                <th data-column="{{ attr.name }}" data-width="{{ attr.width|default:150 }}" class="attribute-header non-essential-start" data-essential="{{ attr.assential|yesno:'true,false' }}">
             {% else %}
-                <th data-column="{{ attr.name }}" data-width="{{ attr.width|default:150 }}" class="attribute-header" data-essential="{{ attr.assential|yesno:'true,false' }}" style="width: {{ attr.width|default:150 }}px; min-width: {{ attr.width|default:150 }}px; max-width: {{ attr.width|default:150 }}px;">
+                <th data-column="{{ attr.name }}" data-width="{{ attr.width|default:150 }}" class="attribute-header" data-essential="{{ attr.assential|yesno:'true,false' }}">
             {% endif %}
                 <div class="sort-filter-container">
                     <div class="header-content">
@@ -264,7 +211,7 @@ th.resizing {
                 </div>
             </th>
         {% endfor %}
-        <th class="add-attribute-th" style="background:#f8f9fa;border:2px dashed #dee2e6;cursor:pointer;text-align:center;color:#6c757d;font-weight:normal;min-width:120px;" onclick="openAddAttributeModal()">
+        <th class="add-attribute-th" onclick="openAddAttributeModal()">
             + 속성 추가
         </th>
     </tr>
@@ -282,7 +229,7 @@ th.resizing {
             </td>
             {% for attr in attributes %}
                 {% if attr.name == '회사명' %}
-                    <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" data-width="{{ attr.width|default:150 }}" class="{% if attr.assential %}essential-column{% endif %}" style="width: {{ attr.width|default:150 }}px; min-width: {{ attr.width|default:150 }}px; max-width: {{ attr.width|default:150 }}px;">
+                    <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" data-width="{{ attr.width|default:150 }}" class="{% if attr.assential %}essential-column{% endif %}">
                         <div class="name-container">
                             <div class="name-text">{{ row.values|get_item:attr.name|get_item:'label' }}</div>
                             <div class="more-btn-wrapper"><div class="more-btn" style="cursor:pointer;">⋯</div></div>
@@ -290,7 +237,7 @@ th.resizing {
                     </td>
                 {% elif attr.attributeType_name == 'dropdown' %}
                     {% with dropdown_value=row.values|get_item:attr.name %}
-                    <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" data-width="{{ attr.width|default:150 }}" class="{% if attr.assential %}essential-column{% endif %}" data-value="{{ dropdown_value.raw_value|default:'' }}" style="width: {{ attr.width|default:150 }}px; min-width: {{ attr.width|default:150 }}px; max-width: {{ attr.width|default:150 }}px;">
+                    <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" data-width="{{ attr.width|default:150 }}" class="{% if attr.assential %}essential-column{% endif %}" data-value="{{ dropdown_value.raw_value|default:'' }}">
                         {% if dropdown_value.selected_options and dropdown_value.selected_options|length > 0 %}
                             {% with option=dropdown_value.selected_options.0 %}
                                 <div class="dropdown-pill" style="background:{{ option.color|default:''|to_rgba:'0.18' }}; color:#333; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">{{ option.label }}</div>
@@ -311,11 +258,11 @@ th.resizing {
                     </td>
                     {% endwith %}
                 {% elif attr.attributeType_name == 'datetime' %}
-                    <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" data-width="{{ attr.width|default:150 }}" class="{% if attr.assential %}essential-column{% endif %}" style="width: {{ attr.width|default:150 }}px; min-width: {{ attr.width|default:150 }}px; max-width: {{ attr.width|default:150 }}px;">
+                    <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" data-width="{{ attr.width|default:150 }}" class="{% if attr.assential %}essential-column{% endif %}">
                         {{ row.values|get_item:attr.name|get_item:'label' }}
                     </td>
                 {% elif attr.attributeType_name == 'file' %}
-                    <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" data-width="{{ attr.width|default:150 }}" class="{% if attr.assential %}essential-column{% endif %}" style="width: {{ attr.width|default:150 }}px; min-width: {{ attr.width|default:150 }}px; max-width: {{ attr.width|default:150 }}px;">
+                    <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" data-width="{{ attr.width|default:150 }}" class="{% if attr.assential %}essential-column{% endif %}">
                         {% if row.values|get_item:attr.name|get_item:'label' %}
                             <span style="color: #007bff; font-size: 12px;">📎 {{ row.values|get_item:attr.name|get_item:'label' }}</span>
                         {% else %}
@@ -323,7 +270,7 @@ th.resizing {
                         {% endif %}
                     </td>
                 {% elif attr.name == '기대출' %}
-                    <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" data-width="{{ attr.width|default:150 }}" class="{% if attr.assential %}essential-column{% endif %}" style="width: {{ attr.width|default:150 }}px; min-width: {{ attr.width|default:150 }}px; max-width: {{ attr.width|default:150 }}px;">
+                    <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" data-width="{{ attr.width|default:150 }}" class="{% if attr.assential %}essential-column{% endif %}">
                         {% if row.values|get_item:attr.name|get_item:'label' %}
                             <div class="debt-summary" onclick="openDebtDetailsModal('{{ row.id }}')">
                                 {% with debt_data=row.values|get_item:attr.name|get_item:'label' %}
@@ -342,7 +289,7 @@ th.resizing {
                         {% endif %}
                     </td>
                 {% else %}
-                    <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" data-width="{{ attr.width|default:150 }}"{% if attr.name == '매출' or '매출' in attr.name %} data-raw="{{ row.values|get_item:attr.name|get_item:'value'|default:'0' }}"{% endif %} class="{% if attr.assential %}essential-column{% endif %}" style="width: {{ attr.width|default:150 }}px; min-width: {{ attr.width|default:150 }}px; max-width: {{ attr.width|default:150 }}px;">
+                    <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" data-width="{{ attr.width|default:150 }}"{% if attr.name == '매출' or '매출' in attr.name %} data-raw="{{ row.values|get_item:attr.name|get_item:'value'|default:'0' }}"{% endif %} class="{% if attr.assential %}essential-column{% endif %}">
                         {% if attr.name == '매출' or '매출' in attr.name %}
                             {{ row.values|get_item:attr.name|get_item:'label'|to_korean_currency }}
                         {% else %}
@@ -351,7 +298,7 @@ th.resizing {
                     </td>
                 {% endif %}
             {% endfor %}
-            <td class="add-attribute-cell" style="background:#f8f9fa;"></td>
+            <td class="add-attribute-cell"></td>
         </tr>
         {% empty %}
         <tr>

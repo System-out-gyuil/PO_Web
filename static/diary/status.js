@@ -1,6 +1,17 @@
 // 탭 초기화 함수
 function initializeStatusTabs() {
   console.log('탭 초기화 시작');
+  
+  // 기존 속성 설정 백업
+  const existingAttributeSettings = {};
+  if (window.allAttributes) {
+      window.allAttributes.forEach(attr => {
+          if (attr.view_select) {
+              existingAttributeSettings[attr.id] = { ...attr.view_select };
+          }
+      });
+  }
+  
   fetch('/sales/get_status_tabs/')
       .then(response => response.json())
       .then(data => {
@@ -8,6 +19,16 @@ function initializeStatusTabs() {
           if (data.success) {
               window.statusAttributeName = data.attribute_name;
               console.log('사용할 속성명:', window.statusAttributeName);
+              
+              // 기존 속성 설정 복원
+              if (data.attributes && Object.keys(existingAttributeSettings).length > 0) {
+                  data.attributes.forEach(attr => {
+                      if (existingAttributeSettings[attr.id]) {
+                          attr.view_select = { ...existingAttributeSettings[attr.id] };
+                      }
+                  });
+              }
+              
               createStatusTabs(data.options);
           } else {
               console.error('탭 데이터 로드 실패:', data.error);
@@ -22,6 +43,9 @@ function initializeStatusTabs() {
 function createStatusTabs(options) {
   const tabContainer = document.getElementById('tabContainer');
   if (!tabContainer) return;
+  
+  // 상태 옵션 저장
+  window.statusOptions = options;
   
   // 전체 탭 추가
   const allTab = document.createElement('button');
@@ -275,11 +299,31 @@ function selectModalStatusTab(statusId) {
 // 모달용 속성 데이터 로드
 function loadAttributesForModal() {
   console.log('모달용 속성 데이터 로드 시작');
+  
+  // 기존 속성 설정 백업
+  const existingAttributeSettings = {};
+  if (window.allAttributes) {
+      window.allAttributes.forEach(attr => {
+          if (attr.view_select) {
+              existingAttributeSettings[attr.id] = { ...attr.view_select };
+          }
+      });
+  }
+  
   fetch('/sales/get_all_attributes/')
       .then(response => response.json())
       .then(data => {
           console.log('속성 데이터 응답:', data);
           if (data.success) {
+              // 기존 속성 설정 복원
+              if (data.attributes && Object.keys(existingAttributeSettings).length > 0) {
+                  data.attributes.forEach(attr => {
+                      if (existingAttributeSettings[attr.id]) {
+                          attr.view_select = { ...existingAttributeSettings[attr.id] };
+                      }
+                  });
+              }
+              
               window.allAttributes = data.attributes;
               updateAttributesListForModal();
           } else {
@@ -428,6 +472,16 @@ function saveSingleAttributeSetting(attrId, statusId, isVisible) {
 
 // 상태 필터를 고려한 테이블 새로고침
 function refreshTableWithStatusFilter() {
+  // 현재 속성 설정 백업
+  const currentAttributeSettings = {};
+  if (window.allAttributes) {
+      window.allAttributes.forEach(attr => {
+          if (attr.view_select) {
+              currentAttributeSettings[attr.id] = { ...attr.view_select };
+          }
+      });
+  }
+  
   // 현재 상태 ID를 URL 파라미터로 전달
   const url = new URL('/sales/entry_table_partial/', window.location.origin);
   let statusTab = window.currentStatusTab;
@@ -448,6 +502,16 @@ function refreshTableWithStatusFilter() {
       .then(response => response.text())
       .then(html => {
           document.getElementById('tableView').innerHTML = html;
+          
+          // 속성 설정 복원
+          if (window.allAttributes && Object.keys(currentAttributeSettings).length > 0) {
+              window.allAttributes.forEach(attr => {
+                  if (currentAttributeSettings[attr.id]) {
+                      attr.view_select = { ...currentAttributeSettings[attr.id] };
+                  }
+              });
+          }
+          
           // 필요시 테이블 관련 이벤트 재바인딩
           if (typeof bindTableCellEvents === 'function') bindTableCellEvents();
           
@@ -504,17 +568,79 @@ function refreshStatusTabs() {
   const activeTab = document.querySelector('.status-tab.active');
   const currentStatusId = activeTab ? activeTab.getAttribute('data-status-id') : null;
   
+  // 현재 속성 설정 상태 백업
+  const currentAttributeSettings = {};
+  if (window.allAttributes) {
+      window.allAttributes.forEach(attr => {
+          if (attr.view_select) {
+              currentAttributeSettings[attr.id] = { ...attr.view_select };
+          }
+      });
+  }
+  
   // 탭 컨테이너 초기화
   const tabContainer = document.getElementById('tabContainer');
   if (tabContainer) {
       tabContainer.innerHTML = '';
   }
   
-  // 상태 탭 재초기화
-  initializeStatusTabs();
+  // 상태 탭 재초기화 - 서버 재요청 없이 기존 데이터 사용
+  if (window.statusAttributeName) {
+      // 기존 상태 옵션 데이터가 있다면 사용, 없다면 서버에서 가져오기
+      if (window.statusOptions) {
+          createStatusTabs(window.statusOptions);
+        } else {
+            // 서버에서 상태 옵션만 가져오기 (속성 설정은 유지)
+            fetch('/sales/get_status_tabs/')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        window.statusOptions = data.options;
+                        createStatusTabs(data.options);
+                        
+                        // 속성 설정 복원
+                        if (window.allAttributes && Object.keys(currentAttributeSettings).length > 0) {
+                            window.allAttributes.forEach(attr => {
+                                if (currentAttributeSettings[attr.id]) {
+                                    attr.view_select = { ...currentAttributeSettings[attr.id] };
+                                }
+                            });
+                        }
+                        
+                        // 이전 활성 탭 복원
+                        if (currentStatusId !== null) {    
+                            setTimeout(() => {
+                                const newActiveTab = document.querySelector(`.status-tab[data-status-id=${currentStatusId}]`);
+                                if (newActiveTab) {
+                                    // 기존 활성 탭 비활성화
+                                    document.querySelectorAll('.status-tab').forEach(tab => {
+                                        tab.classList.remove('active');
+                                    });
+                                    // 새 활성 탭 활성화
+                                    newActiveTab.classList.add('active');
+                                    window.currentStatusTab = currentStatusId;
+                                }
+                            }, 200);
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('상태 탭 새로고침 중 오류:', error);
+                });
+        }
+  }
   
-  // 이전 활성 탭 복원
-  if (currentStatusId !== null) {    
+  // 속성 설정 복원
+  if (window.allAttributes && Object.keys(currentAttributeSettings).length > 0) {
+      window.allAttributes.forEach(attr => {
+          if (currentAttributeSettings[attr.id]) {
+              attr.view_select = { ...currentAttributeSettings[attr.id] };
+          }
+      });
+  }
+  
+  // 이전 활성 탭 복원 (기존 데이터 사용 시)
+  if (currentStatusId !== null && window.statusOptions) {    
       setTimeout(() => {
           const newActiveTab = document.querySelector(`.status-tab[data-status-id=${currentStatusId}]`);
           if (newActiveTab) {

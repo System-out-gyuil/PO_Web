@@ -785,6 +785,16 @@ function hexToRgba(hex, alpha) {
   function refreshTable() {
       console.log('refreshTable 함수 시작');
       
+      // 현재 속성 설정 백업
+      const currentAttributeSettings = {};
+      if (window.allAttributes) {
+          window.allAttributes.forEach(attr => {
+              if (attr.view_select) {
+                  currentAttributeSettings[attr.id] = { ...attr.view_select };
+              }
+          });
+      }
+      
       // 현재 스크롤 위치 저장
       const tableView = document.getElementById('tableView');
       const scrollTop = tableView ? tableView.scrollTop : 0;
@@ -823,6 +833,15 @@ function hexToRgba(hex, alpha) {
               if (currentTable) {
                   currentTable.innerHTML = newTable.innerHTML;
                   console.log('테이블 내용 교체 완료');
+                  
+                  // 속성 설정 복원
+                  if (window.allAttributes && Object.keys(currentAttributeSettings).length > 0) {
+                      window.allAttributes.forEach(attr => {
+                          if (currentAttributeSettings[attr.id]) {
+                              attr.view_select = { ...currentAttributeSettings[attr.id] };
+                          }
+                      });
+                  }
                   
                   // 테이블 레이아웃을 fixed로 강제 설정
                   currentTable.style.tableLayout = 'fixed';
@@ -992,6 +1011,44 @@ function hexToRgba(hex, alpha) {
                           if (window.columnResizer && typeof window.columnResizer.loadColumnWidths === 'function') {
                               window.columnResizer.loadColumnWidths();
                               console.log('저장된 컬럼 너비 재적용 완료');
+                          } else {
+                              // fallback: 직접 너비 복원
+                              const headers = document.querySelectorAll('#entryTable thead th[data-column]');
+                              headers.forEach((header) => {
+                                  const attrName = header.getAttribute('data-column');
+                                  if (attrName) {
+                                      const savedWidth = localStorage.getItem(`column_width_${attrName}`);
+                                      const dataWidth = header.getAttribute('data-width');
+                                      
+                                      // 우선순위: localStorage > data-width > 기본값
+                                      let width = null;
+                                      if (savedWidth) {
+                                          width = parseInt(savedWidth);
+                                          console.log(`localStorage에서 너비 복원: ${attrName} = ${width}px`);
+                                      } else if (dataWidth) {
+                                          width = parseInt(dataWidth);
+                                          console.log(`data-width에서 너비 적용: ${attrName} = ${width}px`);
+                                      }
+                                      
+                                      if (width) {
+                                          header.style.width = width + 'px';
+                                          header.style.minWidth = width + 'px';
+                                          header.style.maxWidth = width + 'px';
+                                          
+                                          const cells = document.querySelectorAll(`#entryTable td[data-field="${attrName}"]`);
+                                          cells.forEach(cell => {
+                                              cell.style.width = width + 'px';
+                                              cell.style.minWidth = width + 'px';
+                                              cell.style.maxWidth = width + 'px';
+                                              cell.style.overflow = 'hidden';
+                                              cell.style.textOverflow = 'ellipsis';
+                                              cell.style.whiteSpace = 'nowrap';
+                                          });
+                                          
+                                          console.log(`fallback 컬럼 너비 복원: ${attrName} = ${width}px`);
+                                      }
+                                  }
+                              });
                           }
                       }, 100);
                   }
@@ -1595,7 +1652,11 @@ function hexToRgba(hex, alpha) {
       // 컬러피커 이벤트
       const colorInput = li.querySelector('input[data-color-edit]');
       if(colorInput) {
+          // 색상 변경 이벤트 (색상 선택 완료 시)
           colorInput.onchange = function(e){
+              e.stopPropagation();
+              e.preventDefault();
+              
               fetch('/sales/dropdown_options/?field=' + encodeURIComponent(type) + '&id=' + colorInput.getAttribute('data-color-edit') + '&color=' + encodeURIComponent(colorInput.value), {
                   method: 'PUT'
               }).then(r => r.json()).then(data => {
@@ -1606,11 +1667,86 @@ function hexToRgba(hex, alpha) {
                       
                       // 실시간 동기화 - 드롭다운 옵션 색상 변경도 테이블과 칸반보드에 반영
                       syncTableAndKanban(type);
+                      
+                      // 색상 변경 후 추가 동기화 처리
+                      setTimeout(() => {
+                          // 테이블 셀들의 색상 정보를 다시 업데이트
+                          const cells = document.querySelectorAll(`td[data-field="${type}"]`);
+                          cells.forEach(cell => {
+                              const currentValue = cell.getAttribute('data-value');
+                              if (currentValue) {
+                                  // 해당 셀의 색상 정보를 즉시 업데이트
+                                  const pill = cell.querySelector('.dropdown-pill');
+                                  if (pill) {
+                                      pill.style.background = hexToRgba(colorInput.value, 0.18);
+                                  }
+                              }
+                          });
+                      }, 100);
                   }
               }).catch(error => {
                   console.error('색상 변경 실패:', error);
               });
           };
+          
+          // 실시간 색상 변경 이벤트 (색상 선택 중)
+          colorInput.addEventListener('input', function(e) {
+              e.stopPropagation();
+              const optionId = this.getAttribute('data-color-edit');
+              const newColor = this.value;
+              
+              // 드롭다운 내부 색상 실시간 업데이트
+              const span = li.querySelector('span[data-option-id]');
+              if (span) {
+                  span.style.background = hexToRgba(newColor, 0.18);
+              }
+              
+              // 테이블 셀들의 색상 정보를 실시간으로 업데이트
+              const cells = document.querySelectorAll(`td[data-field="${type}"]`);
+              cells.forEach(cell => {
+                  const currentValue = cell.getAttribute('data-value');
+                  if (currentValue) {
+                      try {
+                          // JSON 형태로 저장된 다중선택 값인지 확인
+                          const parsed = JSON.parse(currentValue);
+                          if (Array.isArray(parsed) && parsed.length > 0) {
+                              // 다중선택 값 처리 - 해당 옵션 ID가 포함된 경우 색상 업데이트
+                              if (parsed.includes(Number(optionId))) {
+                                  const pill = cell.querySelector('.dropdown-pill');
+                                  if (pill) {
+                                      pill.style.background = hexToRgba(newColor, 0.18);
+                                  }
+                              }
+                          } else {
+                              // 단일 선택 값 처리
+                              if (Number(currentValue) === Number(optionId)) {
+                                  const pill = cell.querySelector('.dropdown-pill');
+                                  if (pill) {
+                                      pill.style.background = hexToRgba(newColor, 0.18);
+                                  }
+                              }
+                          }
+                      } catch (e) {
+                          // JSON 파싱 실패 시 단일 값으로 처리
+                          if (Number(currentValue) === Number(optionId)) {
+                              const pill = cell.querySelector('.dropdown-pill');
+                              if (pill) {
+                                  pill.style.background = hexToRgba(newColor, 0.18);
+                              }
+                          }
+                      }
+                  }
+              });
+          });
+          
+          // 컬러피커 클릭 시 드롭다운이 닫히지 않도록 추가 이벤트 처리
+          colorInput.addEventListener('click', function(e) {
+              e.stopPropagation();
+          });
+          
+          colorInput.addEventListener('mousedown', function(e) {
+              e.stopPropagation();
+          });
       }
       
       // 삭제 버튼 이벤트
@@ -2609,6 +2745,16 @@ function resetCheckboxes() {
 
 // 기존 refreshTable 함수를 수정하여 체크박스 상태 초기화 추가
 function refreshTable() {
+    // 현재 속성 설정 백업
+    const currentAttributeSettings = {};
+    if (window.allAttributes) {
+        window.allAttributes.forEach(attr => {
+            if (attr.view_select) {
+                currentAttributeSettings[attr.id] = { ...attr.view_select };
+            }
+        });
+    }
+    
     // 현재 상태 ID를 URL 파라미터로 전달
     const url = new URL('/sales/entry_table_partial/', window.location.origin);
     if (window.currentStatusTab !== null) {
@@ -2619,6 +2765,15 @@ function refreshTable() {
         .then(response => response.text())
         .then(html => {
             document.getElementById('tableView').innerHTML = html;
+            
+            // 속성 설정 복원
+            if (window.allAttributes && Object.keys(currentAttributeSettings).length > 0) {
+                window.allAttributes.forEach(attr => {
+                    if (currentAttributeSettings[attr.id]) {
+                        attr.view_select = { ...currentAttributeSettings[attr.id] };
+                    }
+                });
+            }
             
             // 필요시 테이블 관련 이벤트 재바인딩
             if (typeof bindTableCellEvents === 'function') bindTableCellEvents();

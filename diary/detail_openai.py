@@ -533,7 +533,7 @@ def ai_chat(request):
             'https://api.openai.com/v1/chat/completions',
             headers=headers,
             json=payload,
-            timeout=60
+            timeout=120  # 타임아웃을 2분으로 증가
         )
         
         if response.status_code == 200:

@@ -38,9 +38,43 @@ class ColumnResizer {
             
             const attrName = header.getAttribute('data-column');
             if (attrName) {
-                const savedWidth = localStorage.getItem(`column_max_width_${attrName}`);
+                const savedWidth = localStorage.getItem(`column_width_${attrName}`);
+                const savedMaxWidth = localStorage.getItem(`column_max_width_${attrName}`);
+                const dataWidth = header.getAttribute('data-width');
+                
+                // 우선순위: localStorage > data-width > 기본값
+                let width = null;
                 if (savedWidth) {
-                    this.applyColumnMaxWidth(attrName, parseInt(savedWidth));
+                    width = parseInt(savedWidth);
+                    console.log(`localStorage에서 너비 복원: ${attrName} = ${width}px`);
+                } else if (dataWidth) {
+                    width = parseInt(dataWidth);
+                    console.log(`data-width에서 너비 적용: ${attrName} = ${width}px`);
+                }
+                
+                if (width) {
+                    // 헤더에 너비 적용
+                    header.style.width = width + 'px';
+                    header.style.minWidth = width + 'px';
+                    header.style.maxWidth = width + 'px';
+                    
+                    // 셀에도 너비 적용
+                    const cells = this.table.querySelectorAll(`td[data-field="${attrName}"]`);
+                    cells.forEach(cell => {
+                        cell.style.width = width + 'px';
+                        cell.style.minWidth = width + 'px';
+                        cell.style.maxWidth = width + 'px';
+                        cell.style.overflow = 'hidden';
+                        cell.style.textOverflow = 'ellipsis';
+                        cell.style.whiteSpace = 'nowrap';
+                    });
+                    
+                    console.log(`컬럼 너비 복원: ${attrName} = ${width}px`);
+                }
+                
+                // 최대 너비도 복원
+                if (savedMaxWidth) {
+                    this.applyColumnMaxWidth(attrName, parseInt(savedMaxWidth));
                 }
             }
         });
@@ -249,6 +283,22 @@ class ColumnResizer {
         const maxWidth = this.calculateColumnMaxWidth(width);
         
         if (attrName && width) {
+            // 헤더에 최종 너비 적용
+            this.currentColumn.style.width = width + 'px';
+            this.currentColumn.style.minWidth = width + 'px';
+            this.currentColumn.style.maxWidth = width + 'px';
+            
+            // 셀에도 너비 적용
+            const cells = this.table.querySelectorAll(`td[data-field="${attrName}"]`);
+            cells.forEach(cell => {
+                cell.style.width = width + 'px';
+                cell.style.minWidth = width + 'px';
+                cell.style.maxWidth = width + 'px';
+                cell.style.overflow = 'hidden';
+                cell.style.textOverflow = 'ellipsis';
+                cell.style.whiteSpace = 'nowrap';
+            });
+            
             // 이전 타임아웃 취소
             if (this.resizeTimeout) {
                 clearTimeout(this.resizeTimeout);
@@ -297,9 +347,10 @@ class ColumnResizer {
         })
         .catch(err => console.error('컬럼 너비 저장 오류:', err));
         
-        // 로컬 스토리지에 높이 저장
+        // 로컬 스토리지에 너비 저장
+        localStorage.setItem(`column_width_${attrName}`, width.toString());
         localStorage.setItem(`column_max_width_${attrName}`, maxWidth.toString());
-        console.log(`컬럼 최대 너비 저장: ${attrName} = ${maxWidth}px`);
+        console.log(`컬럼 너비 저장: ${attrName} = ${width}px, 최대 너비 = ${maxWidth}px`);
     }
     
     cancelResize() {
@@ -369,6 +420,56 @@ class ColumnResizer {
             this.table.classList.remove('resizing');
         }
     }
+    
+    // 저장된 컬럼 너비 로드 함수
+    loadColumnWidths() {
+        const headers = this.table.querySelectorAll('thead th');
+        headers.forEach((header, index) => {
+            if (header.classList.contains('add-attribute-th')) return;
+            
+            const attrName = header.getAttribute('data-column');
+            if (attrName) {
+                const savedWidth = localStorage.getItem(`column_width_${attrName}`);
+                const savedMaxWidth = localStorage.getItem(`column_max_width_${attrName}`);
+                const dataWidth = header.getAttribute('data-width');
+                
+                // 우선순위: localStorage > data-width > 기본값
+                let width = null;
+                if (savedWidth) {
+                    width = parseInt(savedWidth);
+                    console.log(`localStorage에서 너비 로드: ${attrName} = ${width}px`);
+                } else if (dataWidth) {
+                    width = parseInt(dataWidth);
+                    console.log(`data-width에서 너비 적용: ${attrName} = ${width}px`);
+                }
+                
+                if (width) {
+                    // 헤더에 너비 적용
+                    header.style.width = width + 'px';
+                    header.style.minWidth = width + 'px';
+                    header.style.maxWidth = width + 'px';
+                    
+                    // 셀에도 너비 적용
+                    const cells = this.table.querySelectorAll(`td[data-field="${attrName}"]`);
+                    cells.forEach(cell => {
+                        cell.style.width = width + 'px';
+                        cell.style.minWidth = width + 'px';
+                        cell.style.maxWidth = width + 'px';
+                        cell.style.overflow = 'hidden';
+                        cell.style.textOverflow = 'ellipsis';
+                        cell.style.whiteSpace = 'nowrap';
+                    });
+                    
+                    console.log(`컬럼 너비 로드: ${attrName} = ${width}px`);
+                }
+                
+                // 최대 너비도 복원
+                if (savedMaxWidth) {
+                    this.applyColumnMaxWidth(attrName, parseInt(savedMaxWidth));
+                }
+            }
+        });
+    }
 }
 
 // 페이지 로드 시 컬럼 리사이저 초기화
@@ -407,6 +508,37 @@ function reinitializeColumnResizer() {
         const table = document.getElementById('entryTable');
         if (table) {
             window.columnResizer = new ColumnResizer('entryTable');
+            
+            // 저장된 너비 즉시 적용
+            const headers = table.querySelectorAll('thead th');
+            headers.forEach((header, index) => {
+                if (header.classList.contains('add-attribute-th')) return;
+                
+                const attrName = header.getAttribute('data-column');
+                if (attrName) {
+                    const savedWidth = localStorage.getItem(`column_width_${attrName}`);
+                    if (savedWidth) {
+                        const width = parseInt(savedWidth);
+                        // 헤더에 너비 적용
+                        header.style.width = width + 'px';
+                        header.style.minWidth = width + 'px';
+                        header.style.maxWidth = width + 'px';
+                        
+                        // 셀에도 너비 적용
+                        const cells = table.querySelectorAll(`td[data-field="${attrName}"]`);
+                        cells.forEach(cell => {
+                            cell.style.width = width + 'px';
+                            cell.style.minWidth = width + 'px';
+                            cell.style.maxWidth = width + 'px';
+                            cell.style.overflow = 'hidden';
+                            cell.style.textOverflow = 'ellipsis';
+                            cell.style.whiteSpace = 'nowrap';
+                        });
+                        
+                        console.log(`리랜더링 후 컬럼 너비 복원: ${attrName} = ${width}px`);
+                    }
+                }
+            });
         }
     }, 100);
 }

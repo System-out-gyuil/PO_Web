@@ -5,12 +5,46 @@
       setTimeout(() => {
           reinitializeColumnResizer();
           
-          // 저장된 컬럼 max-width 값들 복원
+          // 저장된 컬럼 너비 값들 복원
           const headers = document.querySelectorAll('#entryTable thead th[data-column]');
           headers.forEach((header) => {
               const attrName = header.getAttribute('data-column');
               if (attrName) {
+                  const savedWidth = localStorage.getItem(`column_width_${attrName}`);
                   const savedMaxWidth = localStorage.getItem(`column_max_width_${attrName}`);
+                  const dataWidth = header.getAttribute('data-width');
+                  
+                  // 우선순위: localStorage > data-width > 기본값
+                  let width = null;
+                  if (savedWidth) {
+                      width = parseInt(savedWidth);
+                      console.log(`localStorage에서 너비 복원: ${attrName} = ${width}px`);
+                  } else if (dataWidth) {
+                      width = parseInt(dataWidth);
+                      console.log(`data-width에서 너비 적용: ${attrName} = ${width}px`);
+                  }
+                  
+                  if (width) {
+                      // 헤더에 너비 적용
+                      header.style.width = width + 'px';
+                      header.style.minWidth = width + 'px';
+                      header.style.maxWidth = width + 'px';
+                      
+                      // 셀에도 너비 적용
+                      const cells = document.querySelectorAll(`#entryTable td[data-field="${attrName}"]`);
+                      cells.forEach(cell => {
+                          cell.style.width = width + 'px';
+                          cell.style.minWidth = width + 'px';
+                          cell.style.maxWidth = width + 'px';
+                          cell.style.overflow = 'hidden';
+                          cell.style.textOverflow = 'ellipsis';
+                          cell.style.whiteSpace = 'nowrap';
+                      });
+                      
+                      console.log(`리렌더링 후 컬럼 너비 적용: ${attrName} = ${width}px`);
+                  }
+                  
+                  // 최대 너비도 복원
                   if (savedMaxWidth) {
                       const cells = document.querySelectorAll(`#entryTable td[data-field="${attrName}"]`);
                       cells.forEach(cell => {
