@@ -677,7 +677,7 @@ function initializeCalendarWithSettings() {
                         color:#222;
                     ">
                     <div style="display:flex;align-items:center;justify-content:space-between;">
-                        ${dateFieldName !== '커스텀' ? `<div style="width:30%; font-size:1.05em;font-weight:bold;color:${dateFieldColor};margin-bottom:2px;">${dateFieldName}</div>` : ''}
+                        ${dateFieldName !== '커스텀' ? `<div style="width:30%; font-size:1.05em;font-weight:bold;color:000;margin-bottom:2px;">${dateFieldName}</div>` : ''}
                         <div style="width:70%; font-weight:bold; font-size:1.08em; margin-bottom:6px;">${name}</div>
                     </div>
                         ${fields}

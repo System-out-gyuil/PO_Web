@@ -67,11 +67,14 @@ class SignupView(View):
             data = json.loads(request.body)
             email = data.get('email')
             password = data.get('password')
+            manager_name = data.get('manager_name')
+            company_name = data.get('company_name')
+            phone_number = data.get('phone_number')
             
-            if not email or not password:
+            if not email or not password or not manager_name or not company_name or not phone_number:
                 return JsonResponse({
                     'success': False,
-                    'error': '이메일과 비밀번호를 모두 입력해주세요.'
+                    'error': '모든 필드를 입력해주세요.'
                 })
             
             # 이메일 중복 확인
@@ -81,11 +84,14 @@ class SignupView(View):
                     'error': '이미 존재하는 이메일입니다.'
                 })
             
-            # 사용자 생성 (테스트용으로 name은 email과 동일하게 설정)
+            # 사용자 생성
             user = User.objects.create(
-                name=email,
+                name=manager_name,  # 담당자명을 name으로 저장
                 email=email,
-                password=password
+                password=password,
+                manager_name=manager_name,
+                company_name=company_name,
+                phone_number=phone_number
             )
             
             # 기본 속성들을 사용자에게 부여

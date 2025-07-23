@@ -259,8 +259,9 @@ def get_all_attributes(request):
         user_id = request.session.get('diary_member_id')
 
         user = User.objects.get(id=user_id)
-        attributes = Attribute.objects.filter(user=user).order_by('sort_order', 'id')
+        attributes = Attribute.objects.filter(user=user, detail=False).order_by('sort_order', 'id')
         attributes_data = []
+        
         for attr in attributes:
             attributes_data.append({
                 'id': attr.id,

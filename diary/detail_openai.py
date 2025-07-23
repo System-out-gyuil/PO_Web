@@ -100,6 +100,61 @@ def ai_chat(request):
                     row_data = cached_data.get('row_data', {})
                     file_texts = cached_data.get('file_texts', [])
                     print(f"캐시된 데이터 사용: 행 {row_id}")
+                    
+                    # text 타입 파일들은 항상 최신 데이터로 업데이트
+                    try:
+                        row = Row.objects.get(id=row_id)
+                        text_file_attribute_values = AttributeValue.objects.filter(row=row, attribute__attributeType__name='file')
+                        
+                        for attr_value in text_file_attribute_values:
+                            attr_name = attr_value.attribute.name
+                            
+                            if attr_value.value:
+                                try:
+                                    file_data = json.loads(attr_value.value) if isinstance(attr_value.value, str) else attr_value.value
+                                    print(f'캐시 사용 중 text 타입 확인 - file_data: {file_data}')
+                                    
+                                    # 음성파일 속성인 경우 (data 구조)
+                                    if isinstance(file_data, dict) and 'data' in file_data:
+                                        for file_id, file_info in file_data['data'].items():
+                                            if file_info.get('type') == 'text':
+                                                # text 타입은 항상 새로 처리
+                                                print(f'캐시 사용 중 text 타입 새로 처리: {attr_name}')
+                                                text_content = file_info.get('text', '')
+                                                if text_content:
+                                                    # 기존 text 타입 파일 제거
+                                                    file_texts = [text for text in file_texts if not text.startswith(f"[{attr_name} - 텍스트]:")]
+                                                    # 새 text 내용 추가
+                                                    file_texts.append(f"[{attr_name} - 텍스트]:\n{text_content}")
+                                                    print(f'text 타입 파일 업데이트 완료: {attr_name}')
+                                    
+                                    # 일반 파일 속성인 경우 (배열 구조) - text 타입 처리
+                                    elif isinstance(file_data, list):
+                                        for file_info in file_data:
+                                            if file_info.get('type') == 'text':
+                                                print(f'캐시 사용 중 text 타입 새로 처리: {attr_name}')
+                                                text_content = file_info.get('text', '')
+                                                if text_content:
+                                                    # 기존 text 타입 파일 제거
+                                                    file_texts = [text for text in file_texts if not text.startswith(f"[{attr_name} - 텍스트]:")]
+                                                    # 새 text 내용 추가
+                                                    file_texts.append(f"[{attr_name} - 텍스트]:\n{text_content}")
+                                                    print(f'text 타입 파일 업데이트 완료: {attr_name}')
+                                except Exception as e:
+                                    logger.error(f"캐시 사용 중 text 타입 파일 처리 실패: {e}")
+                    except Exception as e:
+                        logger.error(f"캐시 사용 중 text 타입 파일 새로 처리 중 오류: {e}")
+                    
+                    # 업데이트된 file_texts로 캐시 갱신
+                    cache_data = {
+                        'row_data': row_data,
+                        'file_texts': file_texts,
+                        'timestamp': current_time
+                    }
+                    request.session[cache_key] = cache_data
+                    request.session.modified = True
+                    cache_updated = True
+                    print(f"text 타입 파일 업데이트로 인한 캐시 갱신 완료")
                 else:
                     # 캐시 만료 - 새로운 데이터 처리
                     print(f"캐시 만료 - 새로운 데이터 처리: 행 {row_id}")
@@ -280,8 +335,12 @@ def ai_chat(request):
                                                 logger.error(f"음성파일 텍스트 추출 실패: {e}")
 
                                         elif file_info.get('type') == 'text':
-                                            print(f'file_info: {file_info.get("text")}')
-                                            file_texts.append(file_info.get('text'))
+                                            # text 타입은 항상 새로 처리 (캐시 무시)
+                                            print(f'text 타입 파일 새로 처리: {file_info.get("text")}')
+                                            text_content = file_info.get('text', '')
+                                            if text_content:
+                                                file_texts.append(f"[{attr_name} - 텍스트]:\n{text_content}")
+                                                print(f'text 타입 파일 캐시에 저장: {attr_name}')
                                             
                                 # 일반 파일 속성인 경우 (배열 구조)
                                 elif isinstance(file_data, list):
@@ -369,6 +428,50 @@ def ai_chat(request):
                     print(f"  기존 file_texts 개수: {len(file_texts)}")
                     for i, text in enumerate(file_texts):
                         print(f"    기존 file_text {i + 1}: {text[:100]}...")
+                    
+                    # text 타입 파일들은 항상 새로 처리 (캐시 무시)
+                    try:
+                        row = Row.objects.get(id=row_id)
+                        text_file_attribute_values = AttributeValue.objects.filter(row=row, attribute__attributeType__name='file')
+                        
+                        for attr_value in text_file_attribute_values:
+                            attr_name = attr_value.attribute.name
+                            
+                            if attr_value.value:
+                                try:
+                                    file_data = json.loads(attr_value.value) if isinstance(attr_value.value, str) else attr_value.value
+                                    
+                                    print(f'file_data: {file_data}')
+                                    # 음성파일 속성인 경우 (data 구조)
+                                    if isinstance(file_data, dict) and 'data' in file_data:
+                                        for file_id, file_info in file_data['data'].items():
+                                            if file_info.get('type') == 'text':
+                                                # text 타입은 항상 새로 처리
+                                                print(f'캐시 기반 부분 업데이트에서 text 타입 새로 처리: {attr_name}')
+                                                text_content = file_info.get('text', '')
+                                                if text_content:
+                                                    # 기존 text 타입 파일 제거
+                                                    file_texts = [text for text in file_texts if not text.startswith(f"[{attr_name} - 텍스트]:")]
+                                                    # 새 text 내용 추가
+                                                    file_texts.append(f"[{attr_name} - 텍스트]:\n{text_content}")
+                                                    print(f'text 타입 파일 업데이트 완료: {attr_name}')
+                                    
+                                    # 일반 파일 속성인 경우 (배열 구조) - text 타입 처리
+                                    elif isinstance(file_data, list):
+                                        for file_info in file_data:
+                                            if file_info.get('type') == 'text':
+                                                print(f'캐시 기반 부분 업데이트에서 text 타입 새로 처리: {attr_name}')
+                                                text_content = file_info.get('text', '')
+                                                if text_content:
+                                                    # 기존 text 타입 파일 제거
+                                                    file_texts = [text for text in file_texts if not text.startswith(f"[{attr_name} - 텍스트]:")]
+                                                    # 새 text 내용 추가
+                                                    file_texts.append(f"[{attr_name} - 텍스트]:\n{text_content}")
+                                                    print(f'text 타입 파일 업데이트 완료: {attr_name}')
+                                except Exception as e:
+                                    logger.error(f"캐시 기반 text 타입 파일 처리 실패: {e}")
+                    except Exception as e:
+                        logger.error(f"text 타입 파일 새로 처리 중 오류: {e}")
                     
                     # 파일 변경사항 처리
                     file_changes = changes.get('fileChanges', {})

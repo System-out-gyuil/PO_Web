@@ -482,6 +482,7 @@
 <div class="container">
     <!-- 로그아웃 버튼 -->
     <div class="logout-container">
+        <button class="inquiry-btn" onclick="openInquiryModal()" style="margin-right: 10px; padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.2s ease;">문의하기</button>
         <button class="logout-btn" onclick="logout()">로그아웃</button>
     </div>
     
@@ -565,6 +566,7 @@
                     </button>
                 </th> {% endcomment %}
             </tr>
+
             </thead>
             <tbody id="entryTbody">
                 {% for row in rows %}
@@ -1156,6 +1158,55 @@
     
     <!-- 마크다운 렌더링 라이브러리 -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    
+    <!-- 문의하기 모달 -->
+    <div id="inquiryModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;justify-content:center;align-items:center;">
+        <div style="background:white;border-radius:10px;width:90%;max-width:600px;max-height:80vh;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,0.3);">
+            <div style="padding:20px;border-bottom:1px solid #eee;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <h3 style="margin:0;">📝 문의하기</h3>
+                    <button onclick="closeInquiryModal()" style="background:none;border:none;font-size:20px;cursor:pointer;">&times;</button>
+                </div>
+            </div>
+            
+            <div style="padding:20px;">
+                <div style="margin-bottom:20px;">
+                    <p style="color:#6c757d;font-size:14px;margin:0 0 15px 0;">
+                        문의사항을 자유롭게 작성해주세요. 빠른 시일 내에 답변드리겠습니다.
+                    </p>
+                </div>
+                
+                <div style="margin-bottom:20px;">
+                    <label style="display:block;margin-bottom:8px;font-weight:bold;color:#495057;">문의 내용:</label>
+                    <textarea id="inquiryContent" 
+                              placeholder="문의사항을 입력해주세요..." 
+                              style="width:95%;height:200px;padding:15px;border:1px solid #ddd;border-radius:6px;font-size:14px;line-height:1.6;resize:vertical;font-family:inherit;"
+                              maxlength="2000"></textarea>
+                    <div style="text-align:right;margin-top:5px;color:#6c757d;font-size:12px;">
+                        <span id="inquiryCharCount">0</span>/2000
+                    </div>
+                </div>
+                
+                <div id="inquiryLoading" style="display:none;text-align:center;padding:10px;color:#6c757d;">
+                    <div style="display:inline-block;width:20px;height:20px;border:2px solid #f3f3f3;border-top:2px solid #007bff;border-radius:50%;animation:spin 1s linear infinite;"></div>
+                    문의를 제출하고 있습니다...
+                </div>
+            </div>
+            
+            <div style="padding:20px;border-top:1px solid #eee;background:#f8f9fa;">
+                <div style="display:flex;justify-content:flex-end;gap:10px;">
+                    <button onclick="closeInquiryModal()" 
+                            style="padding:10px 20px;background:#6c757d;color:white;border:none;border-radius:6px;cursor:pointer;font-size:14px;">
+                        취소
+                    </button>
+                    <button id="submitInquiryBtn" onclick="submitInquiry()" 
+                            style="padding:10px 20px;background:#007bff;color:white;border:none;border-radius:6px;cursor:pointer;font-size:14px;">
+                        문의 제출
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script src="{% static 'diary/common_utils.js' %}"></script>
@@ -1175,6 +1226,7 @@
 <script src="{% static 'diary/status.js' %}"></script>
 <script src="{% static 'diary/auto_blog.js' %}"></script>
 <script src="{% static 'diary/detail_openai.js' %}"></script>
+<script src="{% static 'diary/diary_inquiry.js' %}"></script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -3251,6 +3303,7 @@ function logout() {
 
 <script src="{% static 'diary/auto_blog.js' %}"></script>
 <script src="{% static 'diary/detail_openai.js' %}"></script>
+<script src="{% static 'diary/diary_inquiry.js' %}"></script>
 
 </body>
 </html> 

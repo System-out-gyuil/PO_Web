@@ -163,18 +163,20 @@ function displayCurrentRowInfo() {
     const rowDataDiv = document.getElementById('aiChatRowData');
     
     if (rowInfoDiv && rowDataDiv && window.currentDetailRowId) {
-        // 현재 행의 기본 정보 표시
-        const rowId = window.currentDetailRowId;
-        rowDataDiv.innerHTML = `행 ID: ${rowId}`;
-        rowInfoDiv.style.display = 'block';
-        
-        // 추가로 회사명이나 주요 정보가 있다면 표시
+        // 회사명만 표시
         const detailContent = document.getElementById('detailModalContent');
         if (detailContent) {
             const companyName = detailContent.querySelector('.company-name');
             if (companyName) {
-                rowDataDiv.innerHTML += ` | 회사: ${companyName.textContent}`;
+                rowDataDiv.innerHTML = companyName.textContent;
+                rowInfoDiv.style.display = 'block';
+            } else {
+                // 회사명이 없는 경우 정보 숨기기
+                rowInfoDiv.style.display = 'none';
             }
+        } else {
+            // detailContent가 없는 경우 정보 숨기기
+            rowInfoDiv.style.display = 'none';
         }
     }
 }

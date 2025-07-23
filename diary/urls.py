@@ -1,6 +1,6 @@
 from django.urls import path
 from . import views
-from .views import upload_note_file, delete_note_file, update_note_order_and_notes, get_file_preview_url, get_file_preview_url_note
+from .views import upload_note_file, delete_note_file, update_note_order_and_notes, get_file_preview_url, get_file_preview_url_note, get_file_content_note
 from .login_views import LoginView, LogoutView, SignupView
 from .main_views import DiaryMainView
 from .file_handler import upload_file, delete_file, download_file
@@ -73,6 +73,7 @@ urlpatterns = [
     path('update_note_order_and_notes/', update_note_order_and_notes, name='update_note_order_and_notes'),
     path('get_file_preview_url/<str:row_id>/<str:field_name>/', get_file_preview_url, name='get_file_preview_url'),
     path('get_file_preview_url_note/<str:file_id>/', get_file_preview_url_note, name='get_file_preview_url_note'),
+    path('get_file_content_note/<str:file_id>/', get_file_content_note, name='get_file_content_note'),
     
     # 캘린더 설정 관련 API
     path('get_datetime_attributes/', get_datetime_attributes, name='get_datetime_attributes'),
@@ -111,4 +112,7 @@ urlpatterns = [
     # AI 채팅 관련 API
     path('ai_chat/', ai_chat, name='ai_chat'),
     path('ai_chat_cache_clear/', ai_chat_cache_clear, name='ai_chat_cache_clear'),
+    
+    # 문의하기 관련 API
+    path('submit_inquiry/', views.submit_inquiry, name='submit_inquiry'),
 ] 

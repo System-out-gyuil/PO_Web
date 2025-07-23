@@ -3881,3 +3881,189 @@ def get_dependent_rows(request):
     
     return JsonResponse({'success': False, 'error': 'POST 요청만 지원합니다'})
 
+@csrf_exempt
+def get_file_content_note(request, file_id):
+    """텍스트 파일의 내용을 가져오는 API (CORS 문제 해결용)"""
+    if request.method == 'GET':
+        print(f"get_file_content_note 호출됨: {file_id}")
+        try:
+            row_id = request.GET.get('row_id')
+            if not row_id:
+                return JsonResponse({'success': False, 'error': 'row_id가 필요합니다.'})
+             
+            user_id = request.session.get('diary_member_id')
+            user = User.objects.get(id=user_id)
+            row = Row.objects.get(id=row_id, user=user)
+            audio_attribute = Attribute.objects.get(name='음성파일', user=user)
+            attr_value = AttributeValue.objects.filter(row=row, attribute=audio_attribute).first()
+            
+            if not attr_value or not attr_value.value:
+                return JsonResponse({'success': False, 'error': '파일 데이터를 찾을 수 없습니다.'})
+            
+            try:
+                audio_data = json.loads(attr_value.value)
+            except json.JSONDecodeError:
+                return JsonResponse({'success': False, 'error': '잘못된 데이터 형식입니다.'})
+            
+            file_info = None
+            if 'data' in audio_data:
+                for k, v in audio_data['data'].items():
+                    if not isinstance(v, dict):
+                        continue
+                    # 정확히 key 또는 stored_filename으로만 매칭
+                    if k == file_id or v.get('stored_filename') == file_id:
+                        file_info = v
+                        break
+            
+            if not file_info:
+                return JsonResponse({'success': False, 'error': f'파일 ID {file_id}를 찾을 수 없습니다.'})
+            
+            s3_key = file_info.get('s3_key')
+            if not s3_key:
+                return JsonResponse({'success': False, 'error': 'S3 키가 없습니다.'})
+            
+            # 파일 확장자 확인
+            filename = file_info.get('original_filename', '')
+            file_ext = filename.split('.')[-1].lower() if '.' in filename else ''
+            
+            try:
+                import boto3
+                from django.conf import settings
+                import chardet
+                
+                s3_client = boto3.client(
+                    's3',
+                    aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+                    aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+                    region_name=settings.AWS_S3_REGION_NAME
+                )
+                
+                # S3에서 파일 내용 가져오기
+                response = s3_client.get_object(
+                    Bucket=settings.AWS_STORAGE_BUCKET_NAME,
+                    Key=s3_key
+                )
+                file_content = response['Body'].read()
+                
+                # 인코딩 감지 및 디코딩
+                detected = chardet.detect(file_content)
+                detected_encoding = detected['encoding']
+                confidence = detected['confidence']
+                
+                print(f"감지된 인코딩: {detected_encoding}, 신뢰도: {confidence}")
+                
+                # 파일 확장자에 따른 기본 인코딩 설정
+                default_encoding = 'utf-8'
+                if file_ext in ['txt', 'log', 'csv']:
+                    default_encoding = 'euc-kr'
+                elif file_ext in ['json', 'xml', 'html', 'htm', 'css', 'js']:
+                    default_encoding = 'utf-8'
+                
+                # 다양한 인코딩 시도
+                encodings_to_try = [detected_encoding, default_encoding, 'utf-8', 'euc-kr', 'cp949', 'iso-8859-1']
+                decoded_content = None
+                used_encoding = None
+                
+                for encoding in encodings_to_try:
+                    if not encoding:
+                        continue
+                    try:
+                        decoded_content = file_content.decode(encoding)
+                        used_encoding = encoding
+                        
+                        # 한글 파일의 경우 한글이 포함되어 있는지 확인
+                        if file_ext in ['txt', 'log', 'csv']:
+                            import re
+                            korean_pattern = re.compile(r'[가-힣]')
+                            if korean_pattern.search(decoded_content):
+                                print(f"한글 텍스트 감지됨 - 인코딩: {encoding}")
+                                break
+                        else:
+                            # 웹 파일들은 첫 번째 성공한 인코딩 사용
+                            break
+                    except (UnicodeDecodeError, LookupError):
+                        print(f"인코딩 {encoding} 실패, 다음 시도...")
+                        continue
+                
+                if not decoded_content:
+                    # 모든 인코딩이 실패한 경우 기본값 사용
+                    decoded_content = file_content.decode('utf-8', errors='replace')
+                    used_encoding = 'utf-8 (fallback)'
+                
+                return JsonResponse({
+                    'success': True, 
+                    'content': decoded_content,
+                    'encoding': used_encoding,
+                    'detected_encoding': detected_encoding,
+                    'confidence': confidence
+                })
+                
+            except Exception as e:
+                return JsonResponse({'success': False, 'error': f'파일 내용 읽기 실패: {str(e)}'})
+                
+        except Row.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '해당 행을 찾을 수 없습니다.'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': f'처리 중 오류가 발생했습니다: {str(e)}'})
+    
+    return JsonResponse({'success': False, 'error': 'GET 요청만 허용됩니다.'})
+
+@csrf_exempt
+def submit_inquiry(request):
+    """문의하기 제출"""
+    if request.method == 'POST':
+        try:
+            # 세션에서 사용자 정보 가져오기
+            user_id = request.session.get('diary_member_id')
+            if not user_id:
+                return JsonResponse({
+                    'success': False,
+                    'error': '로그인이 필요합니다.'
+                })
+            
+            # 사용자 정보 조회
+            try:
+                user = User.objects.get(id=user_id)
+            except User.DoesNotExist:
+                return JsonResponse({
+                    'success': False,
+                    'error': '사용자 정보를 찾을 수 없습니다.'
+                })
+            
+            # POST 데이터에서 문의 내용 가져오기
+            content = request.POST.get('content', '').strip()
+            if not content:
+                return JsonResponse({
+                    'success': False,
+                    'error': '문의 내용을 입력해주세요.'
+                })
+            
+            # Inquiry 모델 import 추가
+            from .models import Inquiry
+            
+            # 문의 저장
+            inquiry = Inquiry.objects.create(
+                name=user.name,
+                company_name=user.company_name,
+                contact=user.phone_number,
+                content=content
+            )
+            
+            return JsonResponse({
+                'success': True,
+                'message': '문의가 성공적으로 제출되었습니다.',
+                'inquiry_id': inquiry.id
+            })
+            
+        except Exception as e:
+            logger.error(f'문의 제출 오류: {e}')
+            return JsonResponse({
+                'success': False,
+                'error': '문의 제출 중 오류가 발생했습니다.'
+            })
+    
+    return JsonResponse({
+        'success': False,
+        'error': '잘못된 요청입니다.'
+    })
+

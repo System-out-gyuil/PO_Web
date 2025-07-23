@@ -68,6 +68,8 @@ def get_kanban_data(request):
                 entry_data = {
                     'id': row.id,
                     'name': row_values.get('회사명', ''),
+                    'now': row_values.get('진행사항', ''),
+                    'progress': row_values.get('진행사항', '')  # 진행사항 값
                 }
                 entries.append(entry_data)
             
@@ -83,10 +85,22 @@ def get_kanban_data(request):
                 'entries': entries
             })
         
+        # 진행사항 드롭다운 옵션들 가져오기
+        progress_attr = Attribute.objects.filter(
+            user=user, 
+            name='진행사항', 
+            attributeType__name='dropdown'
+        ).first()
+        
+        progress_options = []
+        if progress_attr:
+            progress_options = list(DropdownAttribute.objects.filter(attribute=progress_attr).values('id', 'option'))
+        
         return JsonResponse({
             'success': True,
             'board': board_data,
-            'selected_attr': attr_name
+            'selected_attr': attr_name,
+            'progress_options': progress_options
         })
         
     except Exception as e:

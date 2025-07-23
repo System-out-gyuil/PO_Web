@@ -1,6 +1,5 @@
 from django.shortcuts import render, redirect
 from django.views import View
-from diary.views import diary_list
 from board.models import BizInfo
 from main.models import Count, IpAddress, Count_by_date, BizTop
 from django.http import HttpResponse

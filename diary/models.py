@@ -48,9 +48,12 @@ class DiaryEntry(models.Model):
         return self.name
     
 class User(models.Model):
-    name = models.CharField(max_length=50, unique=True)
+    name = models.CharField(max_length=50, unique=False)
     email = models.EmailField(unique=True)
     password = models.CharField(max_length=128)
+    company_name = models.CharField(max_length=50, blank=True, null=True, default='')
+    manager_name = models.CharField(max_length=50, blank=True, null=True, default='')
+    phone_number = models.CharField(max_length=20, blank=True, null=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -220,5 +223,26 @@ class DropdownAttribute(models.Model):
 
     def __str__(self):
         return self.option
+    
+
+
+class Inquiry(models.Model):
+    """문의 테이블 모델"""
+    name = models.CharField(max_length=50, blank=True, null=True, default='')
+    company_name = models.CharField(max_length=50, blank=True, null=True, default='')
+    contact = models.CharField(max_length=50, blank=True, null=True, default='')
+    content = models.TextField(blank=True, null=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = '문의'
+        verbose_name_plural = '문의'
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.name} - {self.company_name} ({self.created_at.strftime('%Y-%m-%d')})"
+    
+
 
     
