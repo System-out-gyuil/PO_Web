@@ -1696,20 +1696,6 @@ function closeDropdown() {
     }
 }
 
-
-
-// 파일 다운로드 함수
-{% comment %} function downloadFile(downloadUrl, filename) {
-    // 새 탭에서 파일 다운로드
-    const link = document.createElement('a');
-    link.href = downloadUrl;
-    link.download = filename;
-    link.target = '_blank';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-} {% endcomment %}
-
 // 파일 삭제 함수 (모든 파일 삭제)
 function deleteAllFiles(rowId, fieldName) {
     if (!confirm('모든 파일을 삭제하시겠습니까?\n삭제된 파일은 복구할 수 없습니다.')) {

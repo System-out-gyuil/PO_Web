@@ -26,22 +26,8 @@ function hexToRgba(hex, alpha) {
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-// 드롭다운 닫기 함수
-// function closeDropdown() {
-//     console.log('table closeDropdown 호출됨');
-//     if (window.dropdown && window.dropdown.parentNode) {
-//         window.dropdown.parentNode.removeChild(window.dropdown);
-//         window.dropdown = null;
-//     }
-//     // 모든 기존 드롭다운 요소들 제거
-//     document.querySelectorAll('.dropdown-edit').forEach(el => el.remove());
-// }
-
-
-  
   // Sticky 헤더 기능 초기화
   function initializeStickyHeader() {
-      console.log('Sticky 헤더 초기화 시작');
       
       const tableView = document.getElementById('tableView');
       const table = document.getElementById('entryTable');
@@ -50,8 +36,6 @@ function hexToRgba(hex, alpha) {
           console.error('테이블 요소를 찾을 수 없습니다.');
           return;
       }
-      
-      console.log('테이블 요소 찾음:', { tableView: !!tableView, table: !!table });
       
       // 기존 스크롤 이벤트 리스너 제거
       const newTableView = tableView.cloneNode(true);
@@ -70,19 +54,14 @@ function hexToRgba(hex, alpha) {
       const thead = updatedTable.querySelector('thead');
       if (thead) {
           const scrollTop = updatedTableView.scrollTop;
-          console.log('현재 스크롤 위치:', scrollTop);
           
           // 스크롤이 있을 때 sticky 클래스 강제 적용
           if (scrollTop > 0) {
-              console.log('thead 요소:', thead);
-              console.log('sticky 클래스 추가');
               thead.classList.add('sticky');
               thead.classList.remove('out-of-view');
-              console.log('스크롤 위치에 따라 sticky 클래스 강제 적용');
           } else {
               thead.classList.remove('sticky');
               thead.classList.remove('out-of-view');
-              console.log('스크롤 위치에 따라 sticky 클래스 제거');
           }
       }
       
@@ -95,21 +74,15 @@ function hexToRgba(hex, alpha) {
           }
           
           const scrollTop = updatedTableView.scrollTop;
-          console.log('스크롤 이벤트:', { scrollTop, theadClasses: thead.className });
           
           // 스크롤이 있을 때 sticky 적용
           if (scrollTop > 0) {
-              console.log('thead 요소:', thead);
-              console.log('sticky 클래스 추가');
               thead.classList.add('sticky');
               thead.classList.remove('out-of-view');
-              console.log('sticky 클래스 추가 후:', thead.className);
           } else {
-              console.log('sticky 클래스 제거');
               // 스크롤이 없을 때는 기본 상태로 복원
               thead.classList.remove('sticky');
               thead.classList.remove('out-of-view');
-              console.log('sticky 클래스 제거 후:', thead.className);
           }
       });
       
@@ -319,8 +292,6 @@ function hexToRgba(hex, alpha) {
                       const currentValue = (type === '회사명') ? 
                           (td.querySelector('.name-text')?.innerText.trim() || '') : 
                           td.innerText.trim();
-                      console.log('상세지역 드롭다운 파라미터:', {regionValue, currentValue, id});
-                      // openDropdown(td, type, id, currentId, currentSubregion) 형식에 맞춰 호출
                       openDropdown(td, 'region_detail', id, regionValue, currentValue);
 
                   } else if(dataType === 'dropdown') {
@@ -655,7 +626,6 @@ function hexToRgba(hex, alpha) {
       const cell = row.querySelector(`td[data-field="${field}"]`);
       if (!cell) return;
       
-      console.log(`updateTableCell 호출: ${rowId}, ${field}, ${value}`);
       
       // 셀 내용만 업데이트 (전체 테이블 새로고침 없이)
       if (field === '매출' || field.includes('매출')) {
@@ -695,7 +665,6 @@ function hexToRgba(hex, alpha) {
           
           if (dropdownFields.includes(field)) {
               // 드롭다운 필드는 서버에서 최신 옵션 정보를 가져와서 업데이트
-              console.log(`드롭다운 필드 업데이트: ${field}, 값: ${value}`);
               
               // 먼저 현재 셀의 내용을 pill 형태로 임시 업데이트 (로딩 상태)
               if (value) {
@@ -712,7 +681,6 @@ function hexToRgba(hex, alpha) {
                       return response.json();
                   })
                   .then(data => {
-                      console.log(`드롭다운 옵션 데이터:`, data);
                       if (data.options && Array.isArray(data.options)) {
                           // 값이 숫자인 경우 ID로 처리, 그렇지 않으면 텍스트로 처리
                           let option = null;
@@ -721,14 +689,12 @@ function hexToRgba(hex, alpha) {
                           if (value && !isNaN(value)) {
                               // 숫자인 경우 ID로 찾기
                               option = data.options.find(opt => opt.id == value);
-                              console.log(`ID ${value}로 찾은 옵션:`, option);
                               if (option) {
                                   displayValue = option.option;
                               }
                           } else {
                               // 텍스트인 경우 이름으로 찾기
                               option = data.options.find(opt => opt.option === value);
-                              console.log(`텍스트 "${value}"로 찾은 옵션:`, option);
                               if (option) {
                                   displayValue = option.option;
                               }
@@ -738,16 +704,13 @@ function hexToRgba(hex, alpha) {
                               const color = option.color ? hexToRgba(option.color, 0.18) : '#eee';
                               cell.innerHTML = `<div class="dropdown-pill" style="background:${color}; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">${displayValue}</div>`;
                               cell.setAttribute('data-value', option.id);
-                              console.log(`드롭다운 셀 업데이트 완료: ${displayValue}`);
                           } else {
                               // 옵션을 찾지 못한 경우에도 pill 형태로 표시
-                              console.log(`옵션을 찾지 못함, pill 형태로 표시: ${displayValue}`);
                               cell.innerHTML = `<div class="dropdown-pill" style="background:#f8f9fa; color:#6c757d; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center; border:1px solid #dee2e6;">${displayValue}</div>`;
                               cell.setAttribute('data-value', value);
                           }
                       } else {
                           // 옵션 데이터가 없는 경우에도 pill 형태로 표시
-                          console.log(`옵션 데이터가 없음, pill 형태로 표시: ${value}`);
                           cell.innerHTML = `<div class="dropdown-pill" style="background:#f8f9fa; color:#6c757d; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center; border:1px solid #dee2e6;">${value}</div>`;
                           cell.setAttribute('data-value', value);
                       }
@@ -813,26 +776,21 @@ function hexToRgba(hex, alpha) {
       
       fetch(url)
       .then(r => {
-          console.log('fetch 응답 상태:', r.status);
           if (!r.ok) {
               throw new Error('Network response was not ok: ' + r.status);
           }
           return r.text();
       })
       .then(html => {
-          console.log('HTML 받음, 길이:', html.length);
           const temp = document.createElement('div');
           temp.innerHTML = html;
           const newTable = temp.querySelector('#entryTable');
-          console.log('새 테이블 찾음:', !!newTable);
           
           if (newTable) {
               const currentTable = document.getElementById('entryTable');
-              console.log('현재 테이블 찾음:', !!currentTable);
               
               if (currentTable) {
                   currentTable.innerHTML = newTable.innerHTML;
-                  console.log('테이블 내용 교체 완료');
                   
                   // 속성 설정 복원
                   if (window.allAttributes && Object.keys(currentAttributeSettings).length > 0) {
@@ -882,20 +840,16 @@ function hexToRgba(hex, alpha) {
                   }
                   
                   bindTableCellEvents(); // 테이블 이벤트 복구
-                  console.log('테이블 이벤트 바인딩 완료');
                   
                   // 체크박스와 상세보기 버튼 이벤트 재바인딩
                   if (typeof bindCheckboxEvents === 'function') {
                       bindCheckboxEvents();
-                      console.log('체크박스 이벤트 바인딩 완료');
                   }
                   
                   // 상세보기 버튼 이벤트 바인딩 (약간의 지연 후 실행)
                   setTimeout(() => {
                       if (typeof bindDetailButtonEvents === 'function') {
-                          console.log('상세보기 버튼 이벤트 바인딩 시작...');
                           bindDetailButtonEvents();
-                          console.log('상세보기 버튼 이벤트 바인딩 완료');
                       } else {
                           console.log('bindDetailButtonEvents 함수를 찾을 수 없습니다.');
                       }
@@ -1024,10 +978,8 @@ function hexToRgba(hex, alpha) {
                                       let width = null;
                                       if (savedWidth) {
                                           width = parseInt(savedWidth);
-                                          console.log(`localStorage에서 너비 복원: ${attrName} = ${width}px`);
                                       } else if (dataWidth) {
                                           width = parseInt(dataWidth);
-                                          console.log(`data-width에서 너비 적용: ${attrName} = ${width}px`);
                                       }
                                       
                                       if (width) {
@@ -1045,7 +997,6 @@ function hexToRgba(hex, alpha) {
                                               cell.style.whiteSpace = 'nowrap';
                                           });
                                           
-                                          console.log(`fallback 컬럼 너비 복원: ${attrName} = ${width}px`);
                                       }
                                   }
                               });
@@ -1075,7 +1026,6 @@ function hexToRgba(hex, alpha) {
           const field = td.getAttribute('data-field');
           const type = td.getAttribute('data-type');
           
-          console.log(`새 행 필드 "${field}" 이벤트 바인딩, type: ${type}`);
           
           // datetime 타입 필드들
           if (type === 'datetime') {
@@ -1083,7 +1033,6 @@ function hexToRgba(hex, alpha) {
               if (input) {
                   input.onchange = function() {
                       const newValue = input.value;
-                      console.log(`새 행 datetime 필드 "${field}" 값 변경:`, newValue);
                       // 새 행 필드 저장
                       saveNewRowField(tr, field, newValue);
                   };
@@ -1093,14 +1042,12 @@ function hexToRgba(hex, alpha) {
           else if(type === 'dropdown' || field === '지역' || field === '상세지역') {
               td.style.cursor = 'pointer';
               td.onclick = function(e) {
-                  console.log(`새 행 드롭다운 클릭됨 - 필드: ${field}, type: ${type}`);
                   e.stopPropagation();
                   
                   let dropdownType = '';
                   if(type === 'dropdown') {
                       // 필드명을 그대로 사용 (영어 매핑 제거)
                       dropdownType = field;
-                      console.log(`dropdown 타입: ${field}`);
                   } else if(field === '지역') {
                       dropdownType = 'region';
                       console.log('지역 드롭다운으로 설정');
@@ -1161,7 +1108,6 @@ function hexToRgba(hex, alpha) {
                   input.onblur = function() {
                       const newValue = input.value;
                       restoreCell(newValue);
-                      console.log(`새 행 회사명 필드 값 변경:`, newValue);
                       // 새 행 필드 저장
                       saveNewRowField(tr, field, newValue);
                   };
@@ -1244,7 +1190,6 @@ function hexToRgba(hex, alpha) {
   // 새 행 필드 값 저장 함수 (수정됨)
   function saveNewRowField(tr, field, value) {
       const currentId = tr.getAttribute('data-id');
-      console.log(`새 행 필드 저장: ${field} = ${value}, 현재 ID: ${currentId}`);
       
       // 매출 필드인 경우 한국어 단위를 숫자로 변환
       let processedValue = value;
@@ -1260,15 +1205,12 @@ function hexToRgba(hex, alpha) {
               headers: {'Content-Type': 'application/x-www-form-urlencoded'},
               body: 'field=' + encodeURIComponent(field) + '&value=' + encodeURIComponent(processedValue)
           }).then(function(response) {
-              console.log(`새 행 생성 응답 상태:`, response.status);
               return response.json();
           }).then(function(data) {
-              console.log(`새 행 생성 응답:`, data);
               if (data.success && data.id) {
                   // 임시 ID를 실제 ID로 변경
                   tr.setAttribute('data-id', data.id);
                   tr.removeAttribute('data-is-new');
-                  console.log(`새 행 ID 업데이트: ${currentId} -> ${data.id}`);
                   
                   // 실시간 동기화
                   syncTableAndKanban(field);
@@ -1302,10 +1244,8 @@ function hexToRgba(hex, alpha) {
               headers: {'Content-Type': 'application/x-www-form-urlencoded'},
               body: 'id=' + encodeURIComponent(currentId) + '&field=' + encodeURIComponent(field) + '&value=' + encodeURIComponent(processedValue)
           }).then(function(response) {
-              console.log(`${field} 필드 업데이트 응답 상태:`, response.status);
               return response.json();
           }).then(function(data) {
-              console.log(`${field} 필드 업데이트 응답:`, data);
               if (data.success) {
                   // 실시간 동기화
                   syncTableAndKanban(field);
@@ -1340,8 +1280,6 @@ function hexToRgba(hex, alpha) {
   
   // 새 행용 드롭다운 함수 (Attribute 시스템)
   function openNewRowAttributeDropdown(td, type, currentValue, currentSubregion, tr) {
-      console.log('새 행 attribute 드롭다운 호출됨');
-      console.log('파라미터:', {type, currentValue, currentSubregion});
       
       closeDropdown();
       dropdown = document.createElement('div');
@@ -1825,7 +1763,6 @@ function hexToRgba(hex, alpha) {
                   .then(response => response.json())
                   .then(data => {
                       if (data.success) {
-                          console.log('옵션 수정 성공:', data);
                           optionText.textContent = newText;
                           optionText.style.display = '';
                           input.remove();
@@ -1843,7 +1780,6 @@ function hexToRgba(hex, alpha) {
                       }
                   })
                   .catch(error => {
-                      console.error('옵션 수정 실패:', error);
                       alert('옵션 수정 중 오류가 발생했습니다: ' + error.message);
                       optionText.style.display = '';
                       input.remove();
@@ -1899,7 +1835,6 @@ function hexToRgba(hex, alpha) {
   
   // 숫자 필드 업데이트 시 콤마 포맷팅 적용
   function updateCellValue(id, fieldName, value, element) {
-      console.log('updateCellValue 호출:', {id, fieldName, value});
       
       // 새 행인 경우
       if (id && id.startsWith('temp_')) {
@@ -1997,7 +1932,6 @@ function hexToRgba(hex, alpha) {
   
   // 종속된 행들을 찾아서 업데이트하는 함수
   function updateDependentRows(updatedRowId, fieldName, value) {
-      console.log('종속된 행들 업데이트 시작:', {updatedRowId, fieldName, value});
       
       // 모든 필드에 대해 종속된 행들 찾기 (매출 관련 필드 제한 제거)
       // 서버에서 종속된 행들 정보 가져오기
@@ -2009,7 +1943,6 @@ function hexToRgba(hex, alpha) {
       .then(response => response.json())
       .then(data => {
           if (data.success && data.dependent_rows) {
-              console.log('종속된 행들:', data.dependent_rows);
               
               // 드롭다운 필드인지 확인
               const dropdownFields = (window.ATTR_FIELDS || [])
@@ -2021,7 +1954,6 @@ function hexToRgba(hex, alpha) {
               // 각 종속된 행의 셀 업데이트
               data.dependent_rows.forEach(depRow => {
                   if (depRow.row_id && depRow.field && depRow.value !== undefined) {
-                      console.log('종속된 행 업데이트:', depRow);
                       
                       // 드롭다운 필드인 경우 옵션 정보를 가져와서 처리
                       let displayValue = depRow.value;
@@ -2101,18 +2033,15 @@ function hexToRgba(hex, alpha) {
           .filter(attr => attr.attributeType_name === 'dropdown')
           .map(attr => attr.name);
       if (fieldName && dropdownFields.includes(fieldName)) {
-          console.log('드롭다운 옵션 동기화 시작:', fieldName);
           
           // 서버에서 최신 옵션 정보 가져와서 모든 관련 셀 업데이트
           fetch('/sales/dropdown_options/?field=' + encodeURIComponent(fieldName))
               .then(response => response.json())
               .then(data => {
                   if (data.options) {
-                      console.log('최신 옵션 정보 로드됨:', data.options);
                       
                       // 해당 필드를 사용하는 모든 셀 찾기
                       const cells = document.querySelectorAll(`td[data-field="${fieldName}"]`);
-                      console.log(`업데이트할 셀 개수: ${cells.length}`);
                       
                       cells.forEach(cell => {
                           const currentValue = cell.getAttribute('data-value');
@@ -2146,7 +2075,6 @@ function hexToRgba(hex, alpha) {
                                       // 단일 선택 값 처리 (기존 로직)
                                       const option = data.options.find(opt => opt.id == currentValue);
                                       if (option) {
-                                          console.log(`셀 업데이트: ${currentText} -> ${option.option} (색상: ${option.color})`);
                                           const color = option.color ? hexToRgba(option.color, 0.18) : '#eee';
                                           cell.innerHTML = `<div class="dropdown-pill" style="background:${color}; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">${option.option}</div>`;
                                           cell.setAttribute('data-value', option.id);
@@ -2154,7 +2082,6 @@ function hexToRgba(hex, alpha) {
                                           // data-value가 일치하지 않으면 텍스트로 찾기
                                           const textOption = data.options.find(opt => opt.option === currentText);
                                           if (textOption) {
-                                              console.log(`텍스트로 셀 업데이트: ${currentText} (색상: ${textOption.color})`);
                                               const color = textOption.color ? hexToRgba(textOption.color, 0.18) : '#eee';
                                               cell.innerHTML = `<div class="dropdown-pill" style="background:${color}; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">${textOption.option}</div>`;
                                               cell.setAttribute('data-value', textOption.id);
@@ -2170,7 +2097,6 @@ function hexToRgba(hex, alpha) {
                                   // JSON 파싱 실패 시 단일 값으로 처리
                                   const option = data.options.find(opt => opt.id == currentValue);
                                   if (option) {
-                                      console.log(`셀 업데이트: ${currentText} -> ${option.option} (색상: ${option.color})`);
                                       const color = option.color ? hexToRgba(option.color, 0.18) : '#eee';
                                       cell.innerHTML = `<div class="dropdown-pill" style="background:${color}; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">${option.option}</div>`;
                                       cell.setAttribute('data-value', option.id);
@@ -2302,7 +2228,6 @@ function hexToRgba(hex, alpha) {
               if (window.currentStatusTab !== null && window.statusAttributeName) {
                   statusField = window.statusAttributeName;
                   statusValue = window.currentStatusTab;
-                  console.log('상태 탭이 선택됨:', { field: statusField, value: statusValue });
               }
 
               // 서버에 새 행 생성 요청
@@ -2326,7 +2251,6 @@ function hexToRgba(hex, alpha) {
               })
               .then(function(data) {
                   if (data.success) {
-                      console.log('새 행 생성 성공:', data);
                       // 기존 refreshTable 함수 사용
                       if (typeof refreshTable === 'function') {
                           refreshTable();
@@ -2376,7 +2300,6 @@ function hexToRgba(hex, alpha) {
                       const parsed = JSON.parse(currentValue);
                       if (Array.isArray(parsed) && parsed.length > 0) {
                           // 배열인 경우 첫 번째 값만 사용
-                          console.log(`${field} 필드 정리: ${currentValue} -> ${parsed[0]}`);
                           cell.setAttribute('data-value', parsed[0]);
                           // UI도 업데이트
                           const optionId = parsed[0];
@@ -2420,15 +2343,12 @@ function hexToRgba(hex, alpha) {
       
       // 다중선택 드롭다운 필드 목록 동적 추출
       const dropdownFields = getDropdownFields();
-      console.log('드롭다운 필드들:', dropdownFields);
       
       dropdownFields.forEach(field => {
           const cells = document.querySelectorAll(`td[data-field="${field}"]`);
-          console.log(`필드 "${field}"의 셀 개수: ${cells.length}`);
           
           cells.forEach(cell => {
               const currentValue = cell.getAttribute('data-value');
-              console.log(`셀 ${field} 값:`, currentValue);
               
               if (!currentValue) {
                   cell.innerHTML = '<div class="dropdown-pill" style="background:#f8f9fa; color:#6c757d; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center; border:1px solid #dee2e6;">선택 없음</div>';
@@ -2463,7 +2383,6 @@ function hexToRgba(hex, alpha) {
                       if (Array.isArray(parsed)) {
                           // 다중선택 값 처리
                           const selectedOptions = data.options.filter(opt => parsed.includes(Number(opt.id)));
-                          console.log(`다중선택 옵션들:`, selectedOptions);
                           
                           selectedOptions.forEach(opt => {
                               const color = opt.color ? hexToRgba(opt.color, 0.18) : '#eee';
