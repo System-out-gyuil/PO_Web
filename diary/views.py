@@ -4067,4 +4067,3 @@ def submit_inquiry(request):
         'success': False,
         'error': '잘못된 요청입니다.'
     })
-

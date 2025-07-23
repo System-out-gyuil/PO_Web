@@ -3,7 +3,7 @@ from . import views
 from .views import upload_note_file, delete_note_file, update_note_order_and_notes, get_file_preview_url, get_file_preview_url_note, get_file_content_note
 from .login_views import LoginView, LogoutView, SignupView
 from .main_views import DiaryMainView
-from .file_handler import upload_file, delete_file, download_file
+from .file_handler import upload_file, delete_file, download_file, download_file_note
 from .calendar_handlers import get_datetime_attributes, get_calendar_settings, save_calendar_settings, calendar_events
 from .excel_handlers import preview_excel, upload_excel
 from .kanban_handlers import update_kanban_option_order, get_kanban_data, get_kanban_settings, save_kanban_settings, get_dropdown_attributes_for_kanban
@@ -40,7 +40,7 @@ urlpatterns = [
     path('get_user_attributes/', views.get_user_attributes, name='get_user_attributes'),
     path('get_kanban_data/', get_kanban_data, name='get_kanban_data'),
     path('upload_file/', upload_file, name='upload_file'),
-    path('download_file/<int:row_id>/<str:field_name>/', download_file, name='download_file'),
+    path('download_file/<int:row_id>/<str:field_name>/<str:fileId>/', download_file, name='download_file'),
     path('delete_file/', delete_file, name='delete_file'),
     path('upload_audio_file/', upload_audio_file, name='upload_audio_file'),
     path('get_audio_files_by_date/', get_audio_files_by_date, name='get_audio_files_by_date'),
@@ -115,4 +115,5 @@ urlpatterns = [
     
     # 문의하기 관련 API
     path('submit_inquiry/', views.submit_inquiry, name='submit_inquiry'),
+    path('download_file_note/<str:fileId>/', download_file_note, name='download_file_note'),
 ] 

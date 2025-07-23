@@ -1699,7 +1699,7 @@ function closeDropdown() {
 
 
 // 파일 다운로드 함수
-function downloadFile(downloadUrl, filename) {
+{% comment %} function downloadFile(downloadUrl, filename) {
     // 새 탭에서 파일 다운로드
     const link = document.createElement('a');
     link.href = downloadUrl;
@@ -1708,7 +1708,7 @@ function downloadFile(downloadUrl, filename) {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-}
+} {% endcomment %}
 
 // 파일 삭제 함수 (모든 파일 삭제)
 function deleteAllFiles(rowId, fieldName) {

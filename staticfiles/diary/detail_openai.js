@@ -163,18 +163,20 @@ function displayCurrentRowInfo() {
     const rowDataDiv = document.getElementById('aiChatRowData');
     
     if (rowInfoDiv && rowDataDiv && window.currentDetailRowId) {
-        // 현재 행의 기본 정보 표시
-        const rowId = window.currentDetailRowId;
-        rowDataDiv.innerHTML = `행 ID: ${rowId}`;
-        rowInfoDiv.style.display = 'block';
-        
-        // 추가로 회사명이나 주요 정보가 있다면 표시
+        // 회사명만 표시
         const detailContent = document.getElementById('detailModalContent');
         if (detailContent) {
             const companyName = detailContent.querySelector('.company-name');
             if (companyName) {
-                rowDataDiv.innerHTML += ` | 회사: ${companyName.textContent}`;
+                rowDataDiv.innerHTML = companyName.textContent;
+                rowInfoDiv.style.display = 'block';
+            } else {
+                // 회사명이 없는 경우 정보 숨기기
+                rowInfoDiv.style.display = 'none';
             }
+        } else {
+            // detailContent가 없는 경우 정보 숨기기
+            rowInfoDiv.style.display = 'none';
         }
     }
 }
@@ -329,9 +331,28 @@ function sendAIMessage(forceRefresh = false) {
             row_id: rowId,
             force_refresh: forceRefresh,
             changes: changes
-        })
+        }),
+        // 타임아웃 설정 (5분)
+        signal: AbortSignal.timeout(300000)
     })
-    .then(response => response.json())
+    .then(response => {
+        // 응답 상태 코드 확인
+        if (!response.ok) {
+            if (response.status === 504) {
+                throw new Error('서버 응답 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.');
+            } else {
+                throw new Error(`서버 오류 (${response.status}): ${response.statusText}`);
+            }
+        }
+        
+        // Content-Type 확인
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            throw new Error('서버에서 JSON 응답을 받지 못했습니다. 잠시 후 다시 시도해주세요.');
+        }
+        
+        return response.json();
+    })
     .then(data => {
         if (loadingDiv) {
             loadingDiv.style.display = 'none';

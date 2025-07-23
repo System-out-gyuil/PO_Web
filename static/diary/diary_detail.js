@@ -424,7 +424,7 @@ function showDetailModal(rowData, rowId) {
                                                 style="padding: 4px 8px; background: #ffc107; color: #333; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
                                             미리보기
                                         </button>
-                                        <button onclick="window.open('${fileInfo.download_url}', '_blank')"
+                                        <button onclick="downloadFile('${rowId}', '${attr.name}', '${fileId}')"
                                                 style="padding: 4px 8px; background: #17a2b8; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
                                             다운로드
                                         </button>
@@ -445,7 +445,7 @@ function showDetailModal(rowData, rowId) {
                                                 style="padding: 4px 8px; background: #ffc107; color: #333; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
                                             미리보기
                                         </button>
-                                        <button onclick="window.open('${fileInfo.download_url}', '_blank')"
+                                        <button onclick="downloadFile('${rowId}', '${attr.name}', '${fileId}')"
                                                 style="padding: 4px 8px; background: #17a2b8; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
                                             다운로드
                                         </button>
@@ -467,7 +467,7 @@ function showDetailModal(rowData, rowId) {
                                                 style="padding: 4px 8px; background: #ffc107; color: #333; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
                                             미리보기
                                         </button>
-                                        <button onclick="window.open('${fileInfo.download_url}', '_blank')"
+                                        <button onclick="downloadFile('${rowId}', '${attr.name}', '${fileId}')"
                                                 style="padding: 4px 8px; background: #17a2b8; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
                                             다운로드
                                         </button>
@@ -2421,7 +2421,7 @@ function updateFileFieldInModal(rowId, fieldName, fileInfo) {
                     미리보기
                 </button>
                 <button type="button" 
-                    onclick="window.open('${downloadUrl}', '_blank')" 
+                    onclick="downloadFile('${rowId}', '${attr.name}', '${fileId}')"
                     style="
                         padding: 6px 12px; 
                         background: #17a2b8; 
@@ -2556,7 +2556,7 @@ function updateFileFieldInModalAfterDelete(rowId, fieldName) {
                                                     style="padding: 4px 8px; background: #ffc107; color: #333; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
                                                 미리보기
                                             </button>
-                                            <button onclick="window.open('${fileInfo.download_url}', '_blank')"
+                                            <button onclick="downloadFile('${rowId}', '${attr.name}', '${fileId}')"
                                                     style="padding: 4px 8px; background: #17a2b8; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
                                                 다운로드
                                             </button>
@@ -2574,7 +2574,7 @@ function updateFileFieldInModalAfterDelete(rowId, fieldName) {
                                                     style="padding: 4px 8px; background: #ffc107; color: #333; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
                                                 미리보기
                                             </button>
-                                            <button onclick="window.open('${fileInfo.download_url}', '_blank')"
+                                            <button onclick="downloadFile('${rowId}', '${attr.name}', '${fileId}')"
                                                     style="padding: 4px 8px; background: #17a2b8; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
                                                 다운로드
                                             </button>
@@ -2596,7 +2596,7 @@ function updateFileFieldInModalAfterDelete(rowId, fieldName) {
                                                     style="padding: 4px 8px; background: #ffc107; color: #333; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
                                                 미리보기
                                             </button>
-                                            <button onclick="window.open('${fileInfo.download_url}', '_blank')"
+                                            <button onclick="downloadFile('${rowId}', '${attr.name}', '${fileId}')"
                                                     style="padding: 4px 8px; background: #17a2b8; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
                                                 다운로드
                                             </button>
@@ -3389,7 +3389,7 @@ function updateFileFieldInModalAfterDelete(rowId, fieldName) {
                                                     style="padding: 4px 8px; background: #ffc107; color: #333; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
                                                 미리보기
                                             </button>
-                                            <button onclick="window.open('${fileInfo.download_url}', '_blank')"
+                                            <button onclick="downloadFile('${rowId}', '${attr.name}', '${fileId}')"
                                                     style="padding: 4px 8px; background: #17a2b8; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
                                                 다운로드
                                             </button>
@@ -3407,7 +3407,7 @@ function updateFileFieldInModalAfterDelete(rowId, fieldName) {
                                                     style="padding: 4px 8px; background: #ffc107; color: #333; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
                                                 미리보기
                                             </button>
-                                            <button onclick="window.open('${fileInfo.download_url}', '_blank')"
+                                            <button onclick="downloadFile('${rowId}', '${attr.name}', '${fileId}')"
                                                     style="padding: 4px 8px; background: #17a2b8; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
                                                 다운로드
                                             </button>
@@ -3429,7 +3429,7 @@ function updateFileFieldInModalAfterDelete(rowId, fieldName) {
                                                     style="padding: 4px 8px; background: #ffc107; color: #333; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
                                                 미리보기
                                             </button>
-                                            <button onclick="window.open('${fileInfo.download_url}', '_blank')"
+                                            <button onclick="downloadFile('${rowId}', '${attr.name}', '${fileId}')"
                                                     style="padding: 4px 8px; background: #17a2b8; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
                                                 다운로드
                                             </button>
@@ -3958,5 +3958,32 @@ if (typeof triggerKanbanRefreshIfNeeded === 'undefined') {
             }
         }, 80);
     };
+}
+
+// 최신 presigned download URL로 파일 다운로드 (중복 방지)
+if (!window.downloadFileWithFreshUrl) {
+    window.downloadFileWithFreshUrl = function(fileId, fileName) {
+        if (!window.currentDetailRowId) {
+            alert('row_id가 없습니다.');
+            return;
+        }
+        console.log(fileId, fileName);
+        console.log('window.currentDetailRowId', window.currentDetailRowId);
+        fetch(`/sales/download_file/${fileId}/?row_id=${window.currentDetailRowId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.download_url) {
+                    const a = document.createElement('a');
+                    a.href = data.download_url;
+                    a.download = fileName;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                } else {
+                    alert('다운로드 URL을 가져오지 못했습니다.');
+                }
+            })
+            .catch(() => alert('다운로드 요청 중 오류가 발생했습니다.'));
+    }
 }
 

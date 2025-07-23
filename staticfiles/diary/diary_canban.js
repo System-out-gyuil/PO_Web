@@ -200,11 +200,22 @@ function updateKanbanBoard(attrName) {
                   col.entries.forEach(function(entry) {
                       const entryName = entry.name || '(이름 없음)';
                       const entryAmount = entry.amount;
+                      const entryProgress = entry.progress || entry.now || '';
+                      
+                      // 진행사항 옵션에서 텍스트 찾기
+                      let progressText = '';
+                      if (entryProgress && data.progress_options) {
+                          const progressOption = data.progress_options.find(option => option.id == entryProgress);
+                          if (progressOption) {
+                              progressText = progressOption.option;
+                          }
+                      }
                       
                       boardHTML += `
                           <div class="board-card" data-entry-id="${entry.id}">
                             <div class="board-card-title">${entryName || '(회사명 없음)'}</div>
                             <div class="board-card-amount">${entryAmount ? formatKoreanCurrency(entryAmount) : ''}</div>
+                            ${progressText ? `<div class="board-card-progress" style="font-size: 11px; color: #666; margin-top: 4px;">${progressText}</div>` : ''}
                           </div>
                       `;
                   });
@@ -483,11 +494,15 @@ function initializeKanbanBoard() {
                 window.kanbanSettings = data.settings;
                 updateKanbanBoard(data.settings.main_attr);
             } else {
-                // 기준 속성이 없으면 설정 모달을 띄움
-                if (typeof showKanbanSettingsModal === 'function') {
-                    showKanbanSettingsModal();
+                // 설정이 없을 때: ATTR_FIELDS에서 '상태' 속성명을 찾아 디폴트로 사용
+                if (window.ATTR_FIELDS) {
+                    const statusAttr = window.ATTR_FIELDS.find(attr => attr.name === '상태');
+                    if (statusAttr) {
+                        updateKanbanBoard('상태');
+                    }
                 }
             }
+            // 설정이 없을 때는 아무것도 하지 않음 (모달 자동 표시 제거)
         });
 }
 
@@ -534,11 +549,22 @@ function updateKanbanBoard(attrName) {
                     col.entries.forEach(function(entry) {
                         const entryName = entry.name || '(이름 없음)';
                         const entryAmount = entry.amount;
+                        const entryProgress = entry.progress || entry.now || '';
+                        
+                        // 진행사항 옵션에서 텍스트 찾기
+                        let progressText = '';
+                        if (entryProgress && data.progress_options) {
+                            const progressOption = data.progress_options.find(option => option.id == entryProgress);
+                            if (progressOption) {
+                                progressText = progressOption.option;
+                            }
+                        }
                         
                         boardHTML += `
                             <div class="board-card" data-entry-id="${entry.id}">
                               <div class="board-card-title">${entryName || '(회사명 없음)'}</div>
                               <div class="board-card-amount">${entryAmount ? formatKoreanCurrency(entryAmount) : ''}</div>
+                              ${progressText ? `<div class="board-card-progress" style="font-size: 11px; color: #666; margin-top: 4px;">${progressText}</div>` : ''}
                             </div>
                         `;
                     });

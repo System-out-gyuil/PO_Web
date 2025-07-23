@@ -711,10 +711,13 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
     
     // 색상 변경 기능
     dropdown.querySelectorAll('input[data-color-edit]').forEach(function(colorInput) {
+        // 색상 변경 이벤트 (색상 선택 완료 시)
         colorInput.addEventListener('change', function(e) {
             e.stopPropagation();
+            e.preventDefault();
             const optionId = this.getAttribute('data-color-edit');
             const newColor = this.value;
+            
             fetch(`/sales/dropdown_options/?field=${encodeURIComponent(fieldType)}&id=${optionId}&color=${encodeURIComponent(newColor)}`, {
                 method: 'PUT',
                 headers: {
@@ -725,21 +728,93 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
             .then(data => {
                 if (data.success) {
                     console.log('색상 변경 성공:', data);
+                    
+                    // 드롭다운 내부 색상 즉시 업데이트
                     const optionContainer = this.closest('.dropdown-option-container');
                     const dropdownItem = optionContainer.querySelector('.dropdown-item');
                     if (dropdownItem) {
                         dropdownItem.style.background = hexToRgba(newColor, 0.18);
                     }
+                    
+                    // 테이블과 칸반보드 동기화
                     syncTableAndKanban(fieldType);
                     
-                    // 상태 속성인 경우 상태 탭 새로고침
+                    // 색상 변경 후 추가 동기화 처리
+                    setTimeout(() => {
+                        // 테이블 셀들의 색상 정보를 즉시 업데이트
+                        const cells = document.querySelectorAll(`td[data-field="${fieldType}"]`);
+                        cells.forEach(cell => {
+                            const currentValue = cell.getAttribute('data-value');
+                            if (currentValue) {
+                                try {
+                                    // JSON 형태로 저장된 다중선택 값인지 확인
+                                    const parsed = JSON.parse(currentValue);
+                                    if (Array.isArray(parsed) && parsed.length > 0) {
+                                        // 다중선택 값 처리 - 해당 옵션 ID가 포함된 경우 색상 업데이트
+                                        if (parsed.includes(Number(optionId))) {
+                                            const pill = cell.querySelector('.dropdown-pill');
+                                            if (pill) {
+                                                pill.style.background = hexToRgba(newColor, 0.18);
+                                            }
+                                        }
+                                    } else {
+                                        // 단일 선택 값 처리
+                                        if (Number(currentValue) === Number(optionId)) {
+                                            const pill = cell.querySelector('.dropdown-pill');
+                                            if (pill) {
+                                                pill.style.background = hexToRgba(newColor, 0.18);
+                                            }
+                                        }
+                                    }
+                                } catch (e) {
+                                    // JSON 파싱 실패 시 단일 값으로 처리
+                                    if (Number(currentValue) === Number(optionId)) {
+                                        const pill = cell.querySelector('.dropdown-pill');
+                                        if (pill) {
+                                            pill.style.background = hexToRgba(newColor, 0.18);
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                    }, 50);
+                    
+                    // 상태 속성인 경우에만 상태 탭 새로고침 (view_select 문제 방지)
                     if (window.statusAttributeName && fieldType === window.statusAttributeName) {
                         console.log('상태 속성 색상 변경됨, 상태 탭 새로고침 시작');
-                        // 상태 탭 새로고침 함수 호출
+                        // 상태 탭 새로고침 함수 호출 - 지연 시간을 늘려서 동기화 완료 후 실행
                         if (typeof refreshStatusTabs === 'function') {
+                            // 색상 변경 후 상태 탭 새로고침을 더 안전하게 처리
                             setTimeout(() => {
-                                refreshStatusTabs();
-                            }, 100);
+                                try {
+                                    // 상태 탭 새로고침 전에 현재 설정 백업
+                                    const currentSettings = {};
+                                    if (window.allAttributes) {
+                                        window.allAttributes.forEach(attr => {
+                                            if (attr.view_select) {
+                                                currentSettings[attr.id] = { ...attr.view_select };
+                                            }
+                                        });
+                                    }
+                                    
+                                    refreshStatusTabs();
+                                    console.log('상태 탭 새로고침 완료');
+                                    
+                                    // 새로고침 후 설정 복원 확인
+                                    setTimeout(() => {
+                                        if (window.allAttributes && Object.keys(currentSettings).length > 0) {
+                                            window.allAttributes.forEach(attr => {
+                                                if (currentSettings[attr.id]) {
+                                                    attr.view_select = { ...currentSettings[attr.id] };
+                                                }
+                                            });
+                                            console.log('상태 탭 새로고침 후 설정 복원 완료');
+                                        }
+                                    }, 100);
+                                } catch (error) {
+                                    console.error('상태 탭 새로고침 중 오류:', error);
+                                }
+                            }, 1000); // 더 긴 지연 시간으로 안정성 확보
                         }
                     }
                 } else {
@@ -750,6 +825,66 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                 console.error('색상 변경 실패:', error);
                 alert('색상 변경 중 오류가 발생했습니다: ' + error.message);
             });
+        });
+        
+        // 실시간 색상 변경 이벤트 (색상 선택 중)
+        colorInput.addEventListener('input', function(e) {
+            e.stopPropagation();
+            const optionId = this.getAttribute('data-color-edit');
+            const newColor = this.value;
+            
+            // 드롭다운 내부 색상 실시간 업데이트
+            const optionContainer = this.closest('.dropdown-option-container');
+            const dropdownItem = optionContainer.querySelector('.dropdown-item');
+            if (dropdownItem) {
+                dropdownItem.style.background = hexToRgba(newColor, 0.18);
+            }
+            
+            // 테이블 셀들의 색상 정보를 실시간으로 업데이트
+            const cells = document.querySelectorAll(`td[data-field="${fieldType}"]`);
+            cells.forEach(cell => {
+                const currentValue = cell.getAttribute('data-value');
+                if (currentValue) {
+                    try {
+                        // JSON 형태로 저장된 다중선택 값인지 확인
+                        const parsed = JSON.parse(currentValue);
+                        if (Array.isArray(parsed) && parsed.length > 0) {
+                            // 다중선택 값 처리 - 해당 옵션 ID가 포함된 경우 색상 업데이트
+                            if (parsed.includes(Number(optionId))) {
+                                const pill = cell.querySelector('.dropdown-pill');
+                                if (pill) {
+                                    pill.style.background = hexToRgba(newColor, 0.18);
+                                }
+                            }
+                        } else {
+                            // 단일 선택 값 처리
+                            if (Number(currentValue) === Number(optionId)) {
+                                const pill = cell.querySelector('.dropdown-pill');
+                                if (pill) {
+                                    pill.style.background = hexToRgba(newColor, 0.18);
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        // JSON 파싱 실패 시 단일 값으로 처리
+                        if (Number(currentValue) === Number(optionId)) {
+                            const pill = cell.querySelector('.dropdown-pill');
+                            if (pill) {
+                                pill.style.background = hexToRgba(newColor, 0.18);
+                            }
+                        }
+                    }
+                }
+            });
+        });
+        
+        // 컬러피커 클릭 시 드롭다운이 닫히지 않도록 추가 이벤트 처리
+        colorInput.addEventListener('click', function(e) {
+            e.stopPropagation();
+        });
+        
+        colorInput.addEventListener('mousedown', function(e) {
+            e.stopPropagation();
         });
     });
     

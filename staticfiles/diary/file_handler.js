@@ -146,7 +146,7 @@ function showFilePreview(fileId, fileInfo, rowId, fieldName) {
             } else if (contentType.includes('audio/')) {
                 // 오디오 파일
                 previewContent = `
-                    <div style="text-align: center; background: #f8f9fa; padding: 40px; border-radius: 8px;">
+                    <div style="text-align: center; background: #f8f9fa; width:50%; padding: 40px; border-radius: 8px;">
                         <div style="font-size: 48px; margin-bottom: 20px;">🎵</div>
                         <div style="font-size: 18px; margin-bottom: 20px; color: #333;">${fileName}</div>
                         <audio controls style="width: 100%; max-width: 400px;">
@@ -173,7 +173,7 @@ function showFilePreview(fileId, fileInfo, rowId, fieldName) {
                                     style="padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">
                                 새 창에서 열기
                             </button>
-                            <button onclick="window.open('${fileInfo.download_url || fileUrl}', '_blank')" 
+                            <button onclick="downloadFile(rowId, fieldName)" 
                                     style="padding: 8px 16px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer;">
                                 다운로드
                             </button>
@@ -193,7 +193,7 @@ function showFilePreview(fileId, fileInfo, rowId, fieldName) {
                                 style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; font-weight: 500; margin-right: 10px; cursor: pointer;">
                             새 창에서 열기
                         </button>
-                        <button onclick="window.open('${fileInfo.download_url || fileUrl}', '_blank')" 
+                        <button onclick="downloadFile(rowId, fieldName)" 
                                 style="padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 4px; font-weight: 500; cursor: pointer;">
                             다운로드
                         </button>
@@ -271,9 +271,10 @@ function closeFilePreviewModal() {
 }
 
 // 파일 다운로드 함수
-function downloadFile(rowId, fieldName) {
+function downloadFile(rowId, fieldName, fileId) {
+    console.log('downloadFile 호출됨:', rowId, fieldName, fileId);
   // 직접 다운로드 URL로 이동
-  window.open(`/sales/download_file/${rowId}/${fieldName}/`, '_blank');
+  window.open(`/sales/download_file/${rowId}/${fieldName}/${fileId}/`, '_blank');
 }
 
 // 파일 삭제 함수

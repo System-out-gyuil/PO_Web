@@ -8,6 +8,7 @@ function initializeTableData() {
 }
 
 function sortTable(column, direction) {
+    console.log("sortTable 호출됨");
   const tbody = document.getElementById('entryTbody');
   if (!tbody) return;
 
@@ -176,11 +177,18 @@ function getCellByColumn(row, column) {
 }
 
 function getCellValue(row, column) {
+    
   const cells = row.querySelectorAll('td');
   const attributes = window.ATTR_FIELDS || [];
   // 속성 인덱스 찾기 (드래그 셀 제외하고 시작)
-  const columnIndex = attributes.findIndex(attr => attr.name === column) + 1;
-  if (columnIndex > 0 && columnIndex < cells.length) {
+    const columnIndex = attributes.findIndex(attr => attr.name === column) + 1;
+    console.log("column", column);
+    console.log("attributes", attributes);
+  console.log("columnIndex", columnIndex);
+  console.log("cells.length", cells.length);
+  console.log("cells", cells);
+    if (columnIndex > 0 && columnIndex < cells.length) {
+      console.log("들어옴")
       const cell = cells[columnIndex];
       // 매출 컬럼이면 data-raw 사용
       if (column === '매출' && cell.hasAttribute('data-raw')) {
@@ -290,6 +298,7 @@ function updateSortButtonStates(activeColumn = null, activeDirection = null) {
 }
 
 function updateFilterStatus(someObj) {
+    console.log("updateFilterStatus 호출됨");
     if (!someObj) return;
   const statusElement = document.getElementById('filterStatus');
   if (!statusElement) return;

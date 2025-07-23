@@ -486,10 +486,10 @@ def delete_file(request):
     })
 
 @require_GET
-def download_file(request, row_id, field_name):
+def download_file(request, row_id, field_name, fileId):
     """S3에 저장된 파일을 다운로드하는 뷰"""
     try:
-        # 사용자 ID를 1로 고정 (이미 import된 User 모델 사용)
+        print(f"download_file 호출됨: {row_id}, {field_name}, {fileId}")
          
         user_id = request.session.get('diary_member_id')
 
@@ -505,7 +505,20 @@ def download_file(request, row_id, field_name):
             
             if attribute_value.value:
                 try:
-                    file_info = json.loads(attribute_value.value)
+                    file_infos = json.loads(attribute_value.value)
+                    file_info = None
+                    # value가 리스트인 경우 fileId(stored_filename)로 해당 파일 찾기
+                    if isinstance(file_infos, list):
+                        file_info = next((f for f in file_infos if f.get('stored_filename') == fileId), None)
+                    elif isinstance(file_infos, dict):
+                        # 단일 파일인 경우
+                        if file_infos.get('stored_filename') == fileId:
+                            file_info = file_infos
+                    if not file_info:
+                        return JsonResponse({
+                            'success': False,
+                            'error': '해당 파일을 찾을 수 없습니다.'
+                        })
                     s3_key = file_info.get('s3_key')
                     original_filename = file_info.get('original_filename', 'download')
                     existing_download_url = file_info.get('download_url')
@@ -544,13 +557,11 @@ def download_file(request, row_id, field_name):
                                     'success': False,
                                     'error': '다운로드 URL 생성에 실패했습니다.'
                                 })
-                        
                     else:
                         return JsonResponse({
                             'success': False,
                             'error': 'S3 키가 없습니다.'
                         })
-                        
                 except json.JSONDecodeError:
                     return JsonResponse({
                         'success': False,
@@ -561,13 +572,11 @@ def download_file(request, row_id, field_name):
                     'success': False,
                     'error': '파일 정보가 없습니다.'
                 })
-                
         except AttributeValue.DoesNotExist:
             return JsonResponse({
                 'success': False,
                 'error': '파일이 존재하지 않습니다.'
             })
-                
     except User.DoesNotExist:
         return JsonResponse({
             'success': False,
@@ -589,4 +598,81 @@ def download_file(request, row_id, field_name):
             'success': False,
             'error': f'파일 다운로드 중 오류가 발생했습니다: {str(e)}'
         })
+    
+
+@require_GET
+def download_file_note(request, fileId):
+    """노트(note_files) S3 파일 다운로드 뷰"""
+    import boto3
+    import json
+    from django.conf import settings
+    from django.http import JsonResponse, HttpResponseRedirect
+
+    row_id = request.GET.get('row_id')
+    if not row_id:
+        return JsonResponse({'success': False, 'error': 'row_id가 필요합니다.'})
+
+    try:
+        # Row 객체에서 음성파일/노트 데이터 조회
+        from .models import Row, AttributeValue, Attribute
+
+        print(f"row_id: {row_id}")
+        print(f"fileId: {fileId}")
+        row = Row.objects.get(id=row_id)
+        user = row.user  # 유저 정보 추출
+        # '음성파일' 또는 '노트' 필드명에 따라 Attribute 조회 (user 포함)
+        attribute = Attribute.objects.filter(name='음성파일', user=user).first()
+        if not attribute:
+            attribute = Attribute.objects.filter(name='노트', user=user).first()
+        if not attribute:
+            return JsonResponse({'success': False, 'error': '노트/음성파일 속성을 찾을 수 없습니다.'})
+        try:
+            attribute_value = AttributeValue.objects.get(row=row, attribute=attribute)
+        except AttributeValue.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '노트/음성파일 데이터가 없습니다.'})
+        if not attribute_value.value:
+            return JsonResponse({'success': False, 'error': '노트/음성파일 데이터가 비어 있습니다.'})
+        try:
+            note_data = json.loads(attribute_value.value)
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': f'노트 데이터 파싱 오류: {e}'})
+        # note_data는 dict이며 note_data['data']에 파일 dict가 있음
+        file_info = None
+        if isinstance(note_data, dict) and 'data' in note_data:
+            for f_id, f_info in note_data['data'].items():
+                if f_info.get('stored_filename') == fileId or f_id == fileId:
+                    file_info = f_info
+                    break
+        if not file_info:
+            return JsonResponse({'success': False, 'error': '해당 파일을 찾을 수 없습니다.'})
+        s3_key = file_info.get('s3_key')
+        original_filename = file_info.get('original_filename', 'download')
+        existing_download_url = file_info.get('download_url')
+        if not s3_key:
+            return JsonResponse({'success': False, 'error': 'S3 키가 없습니다.'})
+        # presigned_url 생성
+        s3_client = boto3.client(
+            's3',
+            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+            region_name=settings.AWS_S3_REGION_NAME
+        )
+        try:
+            signed_url = s3_client.generate_presigned_url(
+                'get_object',
+                Params={
+                    'Bucket': settings.AWS_STORAGE_BUCKET_NAME,
+                    'Key': s3_key
+                },
+                ExpiresIn=300  # 5분
+            )
+            return JsonResponse({'success': True, 'download_url': signed_url, 'filename': original_filename})
+        except Exception as e:
+            print(f"노트 presigned url 생성 실패: {e}")
+            if existing_download_url:
+                return JsonResponse({'success': True, 'download_url': existing_download_url, 'filename': original_filename})
+            return JsonResponse({'success': False, 'error': '다운로드 URL 생성에 실패했습니다.'})
+    except Exception as e:
+        print(f"노트 파일 다운로드 중 오류: {e}")
+        return JsonResponse({'success': False, 'error': f'노트 파일 다운로드 중 오류: {str(e)}'})
     

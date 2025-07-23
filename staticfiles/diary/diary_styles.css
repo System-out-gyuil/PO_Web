@@ -63,7 +63,6 @@ thead.sticky {
 
 thead.sticky th {
     background: #f1f3f6 !important;
-    border-bottom: 2px solid #e9ecef !important;
     position: relative !important;
     z-index: 999 !important;
 }
@@ -84,7 +83,6 @@ thead.sticky th {
 
 #tableView thead.sticky th {
     background: #f1f3f6 !important;
-    border-bottom: 2px solid #e9ecef !important;
     position: relative !important;
     z-index: 999 !important;
 }
@@ -129,7 +127,8 @@ th, td {
     height: 36px; 
     box-sizing: border-box; 
     white-space: nowrap;
-    overflow: visible;
+    overflow: hidden;
+    text-overflow: ellipsis;
     width: auto;
 }
 th { background: #f1f3f6; }
@@ -1320,4 +1319,94 @@ th.resizing .attribute-name-text {
 .attribute-header[data-essential="false"] .header-content > span {
     font-weight: 500;
     color: #6c757d;
+}
+
+/* 테이블 셀 스타일 통일 */
+#entryTable td.drag-cell {
+    min-width: 140px !important;
+    width: 140px !important;
+    max-width: 140px !important;
+}
+
+/* 속성 추가 열은 고정 너비 */
+#entryTable th.add-attribute-th,
+#entryTable td.add-attribute-cell {
+    min-width: 120px !important;
+    width: 120px !important;
+    max-width: 120px !important;
+}
+
+/* td 내용이 길어도 컬럼 너비를 강제로 유지 */
+#entryTable td[data-field] {
+    min-width: 150px !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    word-break: keep-all;
+}
+
+/* entry-table 클래스 스타일 (리랜더링된 테이블용) */
+.entry-table {
+    width: auto !important;
+    min-width: unset !important;
+    table-layout: auto;
+    position: relative;
+}
+
+.entry-table.resizing {
+    table-layout: fixed !important;
+}
+
+.entry-table th,
+.entry-table td {
+    border: 1px solid #eee; 
+    padding: 0.5em 12px; 
+    text-align: center; 
+    min-width: 120px; 
+    max-width: 380px;
+    /* height: 36px;  */
+    box-sizing: border-box; 
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: auto;
+}
+
+.entry-table th {
+    background: #f1f3f6;
+}
+
+.entry-table tr:nth-child(even) {
+    background: #fafbfc;
+}
+
+.entry-table .drag-cell {
+    min-width: 140px !important;
+    width: 140px !important;
+    max-width: 140px !important;
+    padding: 8px 12px !important;
+    background-color: #f8f9fa;
+    border-right: 2px solid #dee2e6;
+}
+
+.entry-table .add-attribute-th {
+    background: #f8f9fa !important;
+    border: 2px dashed #dee2e6 !important;
+    cursor: pointer !important;
+    text-align: center !important;
+    color: #6c757d !important;
+    font-weight: normal !important;
+    min-width: 120px !important;
+}
+
+.entry-table .add-attribute-cell {
+    background: #f8f9fa !important;
+}
+
+.entry-table td[data-field] {
+    min-width: 150px !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    word-break: keep-all;
 }

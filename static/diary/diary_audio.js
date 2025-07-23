@@ -358,10 +358,10 @@ function createAudioFileElement(fileData, index) {
                       style="padding: 6px 12px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
                   녹취록
               </button>
-              <a href="${fileInfo.download_url}" download="${fileInfo.original_filename || fileInfo.filename}" 
-                 style="padding: 6px 12px; background: #6c757d; color: white; text-decoration: none; border-radius: 4px; font-size: 12px; display: inline-block;">
+              <button onclick="download_file_note('${fileId}', '${fileInfo.original_filename || fileInfo.filename}')"
+                      style="padding: 6px 12px; background: #6c757d; color: white; border: none; border-radius: 4px; font-size: 12px; display: inline-block;">
                   다운로드
-              </a>
+              </button>
               <button onclick="deleteAudioFileItem('${fileId}', '${fileInfo.original_filename || fileInfo.filename}')" 
                       style="padding: 6px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
                   삭제
@@ -1199,10 +1199,10 @@ function createImageFileElement(fileData, index) {
                       style="padding: 6px 12px; background: #ffc107; color: #333; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;">
                   미리보기
               </button>
-              <a href="${fileInfo.download_url}" download="${fileInfo.original_filename || fileInfo.filename}" 
-                 style="padding: 6px 12px; background: #6c757d; color: white; text-decoration: none; border-radius: 4px; font-size: 12px; display: inline-block; text-align: center;">
+              <button onclick="download_file_note('${fileId}', '${fileInfo.original_filename || fileInfo.filename}')"
+                      style="padding: 6px 12px; background: #6c757d; color: white; border: none; border-radius: 4px; font-size: 12px; display: inline-block;">
                   다운로드
-              </a>
+              </button>
               <button onclick="deleteAudioFileItem('${fileId}', '${fileInfo.original_filename || fileInfo.filename}')" 
                       style="padding: 6px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
                   삭제
@@ -1428,11 +1428,13 @@ function createDocumentFileElement(fileData, index) {
   };
 
   // 다운로드 버튼
-  const downloadBtn = document.createElement('a');
+  const downloadBtn = document.createElement('button');
   downloadBtn.textContent = '다운로드';
-  downloadBtn.href = fileInfo.download_url;
-  downloadBtn.download = fileInfo.original_filename || fileInfo.filename;
-  downloadBtn.style.cssText = 'padding: 6px 12px; background: #6c757d; color: white; text-decoration: none; border-radius: 4px; font-size: 12px; display: inline-block;';
+  downloadBtn.style.cssText = 'padding: 6px 12px; background: #6c757d; color: white; border: none; border-radius: 4px; font-size: 12px; display: inline-block;';
+  downloadBtn.onclick = function(e) {
+    e.stopPropagation();
+    download_file_note(fileId, fileInfo.original_filename || fileInfo.filename);
+  };
 
   // 삭제 버튼
   const deleteBtn = document.createElement('button');
@@ -2235,7 +2237,7 @@ function showNoteFilePreview(fileId, fileInfo) {
             } else if (contentType.includes('audio/')) {
                 // 오디오 파일
                 previewContent = `
-                    <div style="text-align: center; background: #f8f9fa; padding: 40px; border-radius: 8px;">
+                    <div style="text-align: center; background: #f8f9fa; width:50%; padding: 40px; border-radius: 8px;">
                         <div style="font-size: 48px; margin-bottom: 20px;">🎵</div>
                         <div style="font-size: 18px; margin-bottom: 20px; color: #333;">${fileName}</div>
                         <audio controls style="width: 100%; max-width: 400px;">
@@ -2586,4 +2588,27 @@ if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', setupGlobalClipboardListener);
 } else {
     setupGlobalClipboardListener();
+}
+
+// 파일 다운로드 함수 (노트/음성/이미지/문서 등)
+function download_file_note(fileId, fileName) {
+    if (!window.currentDetailRowId) {
+        alert('row_id가 없습니다.');
+        return;
+    }
+    fetch(`/sales/download_file_note/${fileId}/?row_id=${window.currentDetailRowId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.download_url) {
+                const a = document.createElement('a');
+                a.href = data.download_url;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            } else {
+                alert('다운로드 URL을 가져오지 못했습니다.');
+            }
+        })
+        .catch(() => alert('다운로드 요청 중 오류가 발생했습니다.'));
 }
