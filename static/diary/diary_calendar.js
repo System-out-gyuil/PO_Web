@@ -265,6 +265,17 @@ function showCalendarSettingsModal(forceSettings) {
                     margin-bottom: 0;
                     cursor: pointer;
                 }
+                /* 캘린더 스크롤바 숨김 */
+                #calendar {
+                    overflow-x: auto;
+                    overflow-y: auto;
+                    /* 스크롤은 되지만 스크롤바는 안 보이게 */
+                    scrollbar-width: none; /* Firefox */
+                    -ms-overflow-style: none; /* IE, Edge */
+                }
+                #calendar::-webkit-scrollbar {
+                    display: none; /* Chrome, Safari, Opera */
+                }
             `;
             document.head.appendChild(style);
         }

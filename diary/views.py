@@ -308,6 +308,7 @@ def diary_list(request):
         'status_id': status_id,
         'show_detail': show_detail
     }
+    context['attributes_json'] = json.dumps(context['attributes'], ensure_ascii=False)
     
     return render(request, 'diary/diary_list.html', context)
 

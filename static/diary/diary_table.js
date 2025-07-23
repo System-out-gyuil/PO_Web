@@ -2249,6 +2249,14 @@ function hexToRgba(hex, alpha) {
               // 칸반 보드와 캘린더 동기화
               syncTableAndKanban();
               
+              // 항상 칸반보드와 캘린더 리렌더링
+              if (typeof refreshKanban === 'function') {
+                  refreshKanban();
+              }
+              if (typeof refreshCalendar === 'function') {
+                  refreshCalendar();
+              }
+              
               alert('행이 성공적으로 삭제되었습니다.');
           } else {
               alert('오류: ' + data.error);

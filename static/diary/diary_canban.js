@@ -493,6 +493,14 @@ function initializeKanbanBoard() {
             if (data.success && data.settings && data.settings.main_attr) {
                 window.kanbanSettings = data.settings;
                 updateKanbanBoard(data.settings.main_attr);
+            } else {
+                // 설정이 없을 때: ATTR_FIELDS에서 '상태' 속성명을 찾아 디폴트로 사용
+                if (window.ATTR_FIELDS) {
+                    const statusAttr = window.ATTR_FIELDS.find(attr => attr.name === '상태');
+                    if (statusAttr) {
+                        updateKanbanBoard('상태');
+                    }
+                }
             }
             // 설정이 없을 때는 아무것도 하지 않음 (모달 자동 표시 제거)
         });
