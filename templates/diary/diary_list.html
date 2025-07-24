@@ -817,7 +817,7 @@
         
         // 알림 배지 초기 업데이트
         function updateNotificationBadgeOnLoad() {
-            fetch('/sales/notifications/', {
+            fetch('/sales/diary_board/notifications/', {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
@@ -3712,7 +3712,7 @@ function loadNotifications() {
     const notificationList = document.getElementById('notificationList');
     
     // 서버에서 알림 데이터를 가져오는 API 호출
-    fetch('/sales/notifications/', {
+    fetch('/sales/diary_board/notifications/', {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
@@ -3811,7 +3811,7 @@ document.addEventListener('click', function(event) {
 
 // 알림 읽음 상태로 표시 함수
 function markNotificationRead(notificationId, element) {
-    fetch(`/sales/notifications/${notificationId}/read/`, {
+    fetch(`/sales/diary_board/notifications/${notificationId}/read/`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

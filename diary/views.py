@@ -4017,22 +4017,36 @@ def submit_inquiry(request):
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
-            name = data.get('name', '').strip()
-            company_name = data.get('company_name', '').strip()
-            contact = data.get('contact', '').strip()
             content = data.get('content', '').strip()
             
-            if not all([name, contact, content]):
+            if not content:
                 return JsonResponse({
                     'success': False,
-                    'message': '필수 항목을 모두 입력해주세요.'
+                    'message': '문의 내용을 입력해주세요.'
                 })
+            
+            # 현재 로그인한 사용자 정보 가져오기
+            user_id = request.session.get('diary_member_id')
+            user_name = ''
+            user_contact = ''
+            
+            if user_id:
+                try:
+                    user = User.objects.get(id=user_id)
+                    user_name = user.name or user.username or '익명'
+                    user_contact = user.phone_number or user.email or ''
+                except User.DoesNotExist:
+                    user_name = '익명'
+                    user_contact = ''
+            else:
+                user_name = '익명'
+                user_contact = ''
             
             from .models import Inquiry
             inquiry = Inquiry.objects.create(
-                name=name,
-                company_name=company_name,
-                contact=contact,
+                name=user_name,
+                company_name=data.get('company_name', '').strip(),
+                contact=user_contact,
                 content=content
             )
             

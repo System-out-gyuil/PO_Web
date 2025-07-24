@@ -1,24 +1,59 @@
+// ESC 키 이벤트 핸들러 (전역 스코프)
+let handleEscape = null;
+
 // 문의하기 모달 열기
 function openInquiryModal() {
     const modal = document.getElementById('inquiryModal');
+    const textarea = document.getElementById('inquiryContent');
+    
+    // 모달 표시
     modal.style.display = 'flex';
     
     // 텍스트 영역 초기화
-    document.getElementById('inquiryContent').value = '';
+    textarea.value = '';
     document.getElementById('inquiryCharCount').textContent = '0';
     
     // 로딩 상태 초기화
     document.getElementById('inquiryLoading').style.display = 'none';
     document.getElementById('submitInquiryBtn').disabled = false;
     
-    // 텍스트 영역에 포커스
-    document.getElementById('inquiryContent').focus();
+    // 모달이 완전히 렌더링된 후 포커스 설정
+    setTimeout(() => {
+        if (textarea) {
+            textarea.focus();
+            // 커서를 텍스트 영역의 시작 위치로 이동
+            textarea.setSelectionRange(0, 0);
+            
+            // 스크롤을 맨 위로 이동 (모바일에서 유용)
+            textarea.scrollTop = 0;
+        }
+    }, 150);
+    
+    // ESC 키로 모달 닫기 이벤트 추가
+    handleEscape = function(e) {
+        if (e.key === 'Escape') {
+            closeInquiryModal();
+        }
+    };
+    document.addEventListener('keydown', handleEscape);
 }
 
 // 문의하기 모달 닫기
 function closeInquiryModal() {
     const modal = document.getElementById('inquiryModal');
     modal.style.display = 'none';
+    
+    // 포커스를 모달 외부로 이동 (접근성 개선)
+    const inquiryBtn = document.querySelector('.inquiry-btn');
+    if (inquiryBtn) {
+        inquiryBtn.focus();
+    }
+    
+    // ESC 키 이벤트 리스너 정리
+    if (handleEscape) {
+        document.removeEventListener('keydown', handleEscape);
+        handleEscape = null;
+    }
 }
 
 // 문의 제출
@@ -39,14 +74,22 @@ function submitInquiry() {
     document.getElementById('inquiryLoading').style.display = 'block';
     document.getElementById('submitInquiryBtn').disabled = true;
     
-    // FormData 생성
-    const formData = new FormData();
-    formData.append('content', content);
+    // JSON 데이터 생성
+    const data = {
+        name: '',  // 사용자 이름은 빈 값으로 설정 (서버에서 처리)
+        company_name: '',  // 회사명은 빈 값으로 설정
+        contact: '',  // 연락처는 빈 값으로 설정
+        content: content
+    };
     
     // 문의 제출 요청
     fetch('/sales/submit_inquiry/', {
         method: 'POST',
-        body: formData
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify(data)
     })
     .then(response => response.json())
     .then(data => {
@@ -58,7 +101,7 @@ function submitInquiry() {
             alert('문의가 성공적으로 제출되었습니다.');
             closeInquiryModal();
         } else {
-            alert('문의 제출 실패: ' + (data.error || '알 수 없는 오류'));
+            alert('문의 제출 실패: ' + (data.message || '알 수 없는 오류'));
         }
     })
     .catch(error => {
