@@ -3,7 +3,7 @@ from django.views import View
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
-from .models import User, BaseAttribute, BaseAttributeDetail, Attribute
+from .models import User, BaseAttribute, BaseAttributeDetail, Attribute, AttributeValue, DropdownAttribute, Row
 import json
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -97,9 +97,16 @@ class SignupView(View):
             # 기본 속성들을 사용자에게 부여
             self._create_default_attributes(user)
             
+            # 샘플 데이터 생성
+            sample_data_created = self._create_sample_data(user)
+            
+            success_message = '회원가입이 완료되었습니다.'
+            if sample_data_created:
+                success_message += ' 샘플 데이터가 추가되었습니다.'
+            
             return JsonResponse({
                 'success': True,
-                'message': '회원가입이 완료되었습니다.',
+                'message': success_message,
                 'user_id': user.id
             })
             
@@ -205,6 +212,80 @@ class SignupView(View):
                 )
                 sort_order_counter += 1
     
+    def _create_sample_data(self, user):
+        """샘플 데이터를 생성하는 메서드 (user.id=15 기준, FK는 새 유저 인스턴스 사용, 드롭다운 id 매핑)"""
+        from django.db import transaction
+        try:
+            with transaction.atomic():
+                sample_user = User.objects.get(id=15)
+                # 1. 새 유저의 Attribute를 속성명 기준으로 dict로 만듦
+                user_attrs = {a.name: a for a in Attribute.objects.filter(user=user)}
+                # 2. 샘플 유저의 Row를 모두 새 유저로 복사하고, row id 매핑 테이블 생성
+                sample_rows = Row.objects.filter(user=sample_user)
+                row_map = {}
+                for sample_row in sample_rows:
+                    new_row = Row.objects.create(
+                        order=sample_row.order,
+                        user=user,
+                        created_at=sample_row.created_at
+                    )
+                    row_map[sample_row.id] = new_row
+                # 3. DropdownAttribute 매핑 (option, color, order가 같으면 id 매핑)
+                sample_attrs = Attribute.objects.filter(user=sample_user)
+                attr_name_map = {}
+                dropdown_map = {}  # (샘플 DropdownAttribute id) -> (새 DropdownAttribute id)
+                for sample_attr in sample_attrs:
+                    if sample_attr.name in user_attrs:
+                        new_attr = user_attrs[sample_attr.name]
+                        attr_name_map[sample_attr.id] = new_attr
+                        sample_dropdowns = DropdownAttribute.objects.filter(attribute=sample_attr)
+                        for sample_dropdown in sample_dropdowns:
+                            new_dropdown = DropdownAttribute.objects.create(
+                                attribute=new_attr,
+                                option=sample_dropdown.option,
+                                color=sample_dropdown.color,
+                                order=sample_dropdown.order
+                            )
+                            dropdown_map[sample_dropdown.id] = new_dropdown.id
+                # 4. 샘플 유저의 AttributeValue를 복사
+                sample_values = AttributeValue.objects.filter(row__user=sample_user)
+                for sample_value in sample_values:
+                    # FK 매핑: attribute, row
+                    new_attr = attr_name_map.get(sample_value.attribute_id)
+                    new_row = row_map.get(sample_value.row_id)
+                    if new_attr and new_row:
+                        # 드롭다운 타입이면 value를 id 매핑
+                        if new_attr.attributeType and new_attr.attributeType.name == 'dropdown':
+                            v = sample_value.value
+                            import json
+                            try:
+                                if v.startswith('[') and v.endswith(']'):
+                                    old_ids = json.loads(v)
+                                    new_ids = [dropdown_map.get(int(i), i) for i in old_ids]
+                                    value_to_save = json.dumps(new_ids, ensure_ascii=False)
+                                elif v.isdigit():
+                                    value_to_save = str(dropdown_map.get(int(v), v))
+                                else:
+                                    value_to_save = v
+                            except Exception:
+                                value_to_save = v
+                        else:
+                            value_to_save = sample_value.value
+                        AttributeValue.objects.create(
+                            attribute=new_attr,
+                            row=new_row,
+                            value=value_to_save,
+                            copy_from=sample_value.copy_from
+                        )
+            print(f"샘플 데이터 생성 완료: {user.id}번 사용자")
+            return True
+        except User.DoesNotExist:
+            print("user.id=15인 사용자가 존재하지 않습니다.")
+            return False
+        except Exception as e:
+            print(f"샘플 데이터 생성 중 오류: {str(e)}")
+            return False
+
 class LogoutView(View):
     def get(self, request):
         return render(request, 'diary/logout.html')

@@ -1424,7 +1424,7 @@ th.resizing .attribute-name-text {
 
 .main-section-item1 {
     /* background-color: #f1f3f6; */
-    background-image: url('/static/images/banner/1.png');
+    background-image: url('/static/images/banner/001.jpg');
     background-size: cover;
     background-position: center;
     border-radius: 10px;
@@ -1433,7 +1433,7 @@ th.resizing .attribute-name-text {
 }
 .main-section-item2 {
     /* background-color: #f1f3f6; */
-    background-image: url('/static/images/banner/2.png');
+    background-image: url('/static/images/banner/002.jpg');
     background-size: cover;
     background-position: center;
     border-radius: 10px;
@@ -1442,7 +1442,7 @@ th.resizing .attribute-name-text {
 }
 .main-section-item3 {
     /* background-color: #f1f3f6; */
-    background-image: url('/static/images/banner/1.png');
+    background-image: url('/static/images/banner/001.jpg');
     background-size: cover;
     background-position: center;
     border-radius: 10px;
