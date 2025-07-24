@@ -128,13 +128,26 @@ function showFilePreview(fileId, fileInfo, rowId, fieldName) {
                     </iframe>
                 `;
             } else if (contentType.includes('text/') || contentType.includes('application/json') || contentType.includes('application/xml')) {
-                // 텍스트 파일
-                previewContent = `
-                    <iframe src="${fileUrl}" 
-                            style="width: 100%; height: 100%; border: none; border-radius: 8px;"
-                            title="${fileName}">
-                    </iframe>
-                `;
+                // 텍스트/코드/JSON/XML 파일은 fetch로 받아와서 <pre>로 출력 (한글 깨짐 방지)
+                fetch(fileUrl)
+                    .then(response => response.text())
+                    .then(text => {
+                        const contentDiv = modal.querySelector('div[style*="position: absolute; top: 60px"]');
+                        if (contentDiv) {
+                            contentDiv.innerHTML = `
+                                <pre style="width: 100%; height: 100%; overflow: auto; background: #f8f9fa; color: #222; font-size: 1rem; border-radius: 8px; padding: 16px;">${escapeHtml(text)}</pre>
+                            `;
+                        }
+                    })
+                    .catch(err => {
+                        const contentDiv = modal.querySelector('div[style*="position: absolute; top: 60px"]');
+                        if (contentDiv) {
+                            contentDiv.innerHTML = `
+                                <div style="color: red;">텍스트 파일을 불러오는 중 오류가 발생했습니다.</div>
+                            `;
+                        }
+                    });
+                return; // 아래에서 contentDiv.innerHTML을 또 바꾸지 않도록 return
             } else if (contentType.includes('video/')) {
                 // 비디오 파일
                 previewContent = `

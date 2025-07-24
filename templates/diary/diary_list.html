@@ -864,7 +864,7 @@
         <div class="header-right">
             <!-- 알림 버튼 -->
             <div class="notification-container">
-                <button class="w-10 h-10 bg-yellow-400 hover:bg-yellow-500 text-gray-900 rounded-lg transition flex items-center justify-center relative" onclick="toggleNotificationPanel()" id="notificationBtn" type="button">
+                <button class="w-10 h-10 bg-yellow-400 hover:bg-yellow-500 text-gray-900 rounded-lg transition flex items-center justify-center relative" id="notificationBtn" type="button">
                     <i class="fas fa-bell text-lg"></i>
                     <span class="notification-badge absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold border-2 border-white" id="notificationBadge" style="display: none;">0</span>
                 </button>
@@ -1760,6 +1760,22 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 전역 이벤트 위임 리스너 추가
     setupGlobalEventDelegation();
+
+    var notificationBtn = document.getElementById('notificationBtn');
+    if (notificationBtn) {
+        notificationBtn.addEventListener('click', function(event) {
+            event.stopPropagation();
+            toggleNotificationPanel();
+        });
+    }
+    document.addEventListener('click', function(event) {
+        const notificationPanel = document.getElementById('notificationPanel');
+        const notificationBtn = event.target.closest('.notification-btn');
+        // 패널 내부 클릭도 예외 처리
+        if (!notificationBtn && !notificationPanel.contains(event.target) && notificationPanel.style.display === 'block') {
+            notificationPanel.style.display = 'none';
+        }
+    });
 });
 
 // 전역 이벤트 위임 설정 함수
@@ -3723,6 +3739,9 @@ function toggleNotificationPanel() {
         panel.style.display = 'block';
         console.log(panel.style.display);
         loadNotifications();
+        setTimeout(() => {
+            console.log('1초 후 display:', panel.style.display);
+          }, 1000);
     } else {
         panel.style.display = 'none';
     }

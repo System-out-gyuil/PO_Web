@@ -236,6 +236,7 @@ function removeCommaFromNumber(value) {
 
 // 알림 표시 함수 (기존에 없다면 추가)
 function showNotification(message, type = 'info') {
+    console.log("show noti 호출됨")
   // 기존 알림 제거
   const existingNotifications = document.querySelectorAll('.notification');
   existingNotifications.forEach(notification => notification.remove());
