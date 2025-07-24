@@ -5,6 +5,8 @@
 <head>
     <meta charset="UTF-8">
     <title>영업 관리표</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
     <link rel="stylesheet" href="{% static 'diary/diary_styles.css' %}">
     <style>
         /* 로그아웃 버튼 스타일 */
@@ -110,23 +112,39 @@
         
         /* 알림 버튼 스타일 */
         .notification-btn {
-            background: #007bff;
+            background: #facc15;
             border: none;
-            color: white;
+            color: #1f2937;
             font-size: 16px;
             cursor: pointer;
-            padding: 8px 12px;
-            border-radius: 6px;
+            padding: 8px 24px;
+            border-radius: 12px;
             transition: all 0.2s ease;
             position: relative;
             display: flex;
             align-items: center;
-            gap: 6px;
+            font-weight: 500;
         }
         
         .notification-btn:hover {
-            background: #0056b3;
-            transform: translateY(-1px);
+            background: #fde047;
+        }
+        
+        .notification-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #ef4444;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            border: 2px solid white;
         }
         
         /* 문의하기 버튼 스타일 */
@@ -168,22 +186,6 @@
         /* 알림 스타일 */
         .notification-container {
             position: relative;
-        }
-        
-        .notification-btn {
-            background: none;
-            border: none;
-            color: white;
-            font-size: 20px;
-            cursor: pointer;
-            padding: 8px;
-            border-radius: 50%;
-            transition: all 0.2s ease;
-            position: relative;
-        }
-        
-        .notification-btn:hover {
-            background: rgba(255,255,255,0.1);
         }
         
         .notification-badge {
@@ -850,6 +852,7 @@
             }
         });
     </script>
+    
 </head>
 <body>
 <!-- 헤더 -->
@@ -861,13 +864,13 @@
         <div class="header-right">
             <!-- 알림 버튼 -->
             <div class="notification-container">
-                <button class="header-btn notification-btn" onclick="toggleNotificationPanel()">
-                    <i class="notification-icon">🔔</i>
-                    <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
+                <button class="w-10 h-10 bg-yellow-400 hover:bg-yellow-500 text-gray-900 rounded-lg transition flex items-center justify-center relative" onclick="toggleNotificationPanel()" id="notificationBtn" type="button">
+                    <i class="fas fa-bell text-lg"></i>
+                    <span class="notification-badge absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold border-2 border-white" id="notificationBadge" style="display: none;">0</span>
                 </button>
                 
                 <!-- 알림 패널 -->
-                <div class="notification-panel" id="notificationPanel" style="display: none;">
+                <div class="notification-panel absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg z-50 border border-gray-200" id="notificationPanel" style="display: none;">
                     <div class="notification-header">
                         <h3>알림</h3>
                         <button class="close-notification-btn" onclick="toggleNotificationPanel()">×</button>
@@ -3712,10 +3715,13 @@ function goToAdminPage() {
 function toggleNotificationPanel() {
     console.log('알림 패널 토글 함수 호출');
     const panel = document.getElementById('notificationPanel');
+    console.log(panel);
     
     // 알림 패널 토글
     if (panel.style.display === 'none') {
+        console.log('패널 표시');
         panel.style.display = 'block';
+        console.log(panel.style.display);
         loadNotifications();
     } else {
         panel.style.display = 'none';
