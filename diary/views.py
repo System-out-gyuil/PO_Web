@@ -14,7 +14,7 @@ from django.conf import settings
 from .models import (
     DiaryEntry, Category, Region, SalesStatus, BaseAttribute, 
     Attribute, AttributeValue, User, DropdownAttribute, Row, 
-    AttributeType, CalendarSettings
+    AttributeType, CalendarSettings, UserAlarm
 )
 from .funding_calculator import FundingCalculator
 from board.models import BizInfo
@@ -293,9 +293,11 @@ def diary_list(request):
         'attributes': [
             {
                 'name': attr.name,
-                'attributeType_name': attr.attributeType.name if attr.attributeType else '',
                 'assential': attr.assential,
+                'detail': attr.detail,
                 'width': attr.width,
+                'attributeType_name': attr.attributeType.name if attr.attributeType else None,
+                'dropdown_options': list(attr.dropdown_attributes.values('id', 'option', 'color', 'order').order_by('order')) if attr.attributeType and attr.attributeType.name == 'dropdown' else []
             }
             for attr in user_attributes
         ],
@@ -306,7 +308,8 @@ def diary_list(request):
         'calendar_settings': calendar_settings,
         'cache_timestamp': cache_timestamp,
         'status_id': status_id,
-        'show_detail': show_detail
+        'show_detail': show_detail,
+        'is_admin': user.is_admin  # 관리자 상태 추가
     }
     context['attributes_json'] = json.dumps(context['attributes'], ensure_ascii=False)
     
@@ -4011,59 +4014,115 @@ def get_file_content_note(request, file_id):
 
 @csrf_exempt
 def submit_inquiry(request):
-    """문의하기 제출"""
     if request.method == 'POST':
         try:
-            # 세션에서 사용자 정보 가져오기
-            user_id = request.session.get('diary_member_id')
-            if not user_id:
+            data = json.loads(request.body)
+            name = data.get('name', '').strip()
+            company_name = data.get('company_name', '').strip()
+            contact = data.get('contact', '').strip()
+            content = data.get('content', '').strip()
+            
+            if not all([name, contact, content]):
                 return JsonResponse({
                     'success': False,
-                    'error': '로그인이 필요합니다.'
+                    'message': '필수 항목을 모두 입력해주세요.'
                 })
             
-            # 사용자 정보 조회
-            try:
-                user = User.objects.get(id=user_id)
-            except User.DoesNotExist:
-                return JsonResponse({
-                    'success': False,
-                    'error': '사용자 정보를 찾을 수 없습니다.'
-                })
-            
-            # POST 데이터에서 문의 내용 가져오기
-            content = request.POST.get('content', '').strip()
-            if not content:
-                return JsonResponse({
-                    'success': False,
-                    'error': '문의 내용을 입력해주세요.'
-                })
-            
-            # Inquiry 모델 import 추가
             from .models import Inquiry
-            
-            # 문의 저장
             inquiry = Inquiry.objects.create(
-                name=user.name,
-                company_name=user.company_name,
-                contact=user.phone_number,
+                name=name,
+                company_name=company_name,
+                contact=contact,
                 content=content
             )
             
             return JsonResponse({
                 'success': True,
-                'message': '문의가 성공적으로 제출되었습니다.',
-                'inquiry_id': inquiry.id
+                'message': '문의사항이 성공적으로 전송되었습니다.'
             })
             
-        except Exception as e:
-            logger.error(f'문의 제출 오류: {e}')
+        except json.JSONDecodeError:
             return JsonResponse({
                 'success': False,
-                'error': '문의 제출 중 오류가 발생했습니다.'
+                'message': '잘못된 요청 형식입니다.'
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': f'문의사항 전송 중 오류가 발생했습니다: {str(e)}'
             })
     
     return JsonResponse({
         'success': False,
-        'error': '잘못된 요청입니다.'
+        'message': '잘못된 요청입니다.'
     })
+
+@require_GET
+def get_notifications(request):
+    """사용자의 알림 목록을 반환하는 API"""
+    try:
+        user_id = request.session.get('diary_member_id')
+        if not user_id:
+            return JsonResponse({'success': False, 'message': '로그인이 필요합니다.'})
+        
+        user = User.objects.get(id=user_id)
+        
+        # 사용자의 알림 목록 가져오기 (최근 20개)
+        user_alarms = UserAlarm.objects.filter(user=user).select_related('alarm').order_by('-created_at')[:20]
+        
+        notifications = []
+        unread_count = 0
+        
+        for user_alarm in user_alarms:
+            if not user_alarm.is_read:
+                unread_count += 1
+            
+            # 새로운 content 구조에서 text만 추출
+            content = user_alarm.alarm.content
+            if isinstance(content, dict) and 'text' in content:
+                message = content['text']
+            elif isinstance(content, str):
+                message = content
+            else:
+                message = '내용 없음'
+            
+            notifications.append({
+                'id': user_alarm.id,
+                'title': user_alarm.alarm.title,
+                'message': message,
+                'created_at': user_alarm.alarm.created_at.isoformat(),
+                'is_read': user_alarm.is_read
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'notifications': notifications,
+            'unread_count': unread_count
+        })
+        
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'message': '사용자를 찾을 수 없습니다.'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'알림을 불러오는 중 오류가 발생했습니다: {str(e)}'})
+
+@csrf_exempt
+def mark_notification_read(request, notification_id):
+    """알림을 읽음 상태로 표시하는 API"""
+    try:
+        user_id = request.session.get('diary_member_id')
+        if not user_id:
+            return JsonResponse({'success': False, 'message': '로그인이 필요합니다.'})
+        
+        user = User.objects.get(id=user_id)
+        user_alarm = UserAlarm.objects.get(id=notification_id, user=user)
+        
+        user_alarm.mark_as_read()
+        
+        return JsonResponse({'success': True, 'message': '알림이 읽음 상태로 표시되었습니다.'})
+        
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'message': '사용자를 찾을 수 없습니다.'})
+    except UserAlarm.DoesNotExist:
+        return JsonResponse({'success': False, 'message': '알림을 찾을 수 없습니다.'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'알림 상태 변경 중 오류가 발생했습니다: {str(e)}'})

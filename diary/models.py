@@ -56,7 +56,8 @@ class User(models.Model):
     phone_number = models.CharField(max_length=20, blank=True, null=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-
+    is_admin = models.BooleanField(default=False)
+    
     def __str__(self):
         return self.name
 
@@ -243,6 +244,53 @@ class Inquiry(models.Model):
     def __str__(self):
         return f"{self.name} - {self.company_name} ({self.created_at.strftime('%Y-%m-%d')})"
     
+class Alarm(models.Model):
+    title = models.CharField(max_length=100)
+    content = models.JSONField(default=dict)  # dict 형태로 저장: {"text": "...", "files": [...]}
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return self.title
+    
+    def get_text_content(self):
+        """텍스트 내용 반환"""
+        return self.content.get('text', '')
+    
+    def get_files(self):
+        """파일 목록 반환"""
+        return self.content.get('files', [])
+    
+    def set_content(self, text, files=None):
+        """내용 설정"""
+        self.content = {
+            'text': text,
+            'files': files or []
+        }
+        self.save()
 
+class UserAlarm(models.Model):
+    """사용자별 알람 확인 상태를 관리하는 모델"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='user_alarms')
+    alarm = models.ForeignKey(Alarm, on_delete=models.CASCADE, related_name='user_alarms')
+    is_read = models.BooleanField(default=False)  # 알람을 읽었는지 여부
+    read_at = models.DateTimeField(null=True, blank=True)  # 읽은 시간
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ['user', 'alarm']  # 사용자당 같은 알람은 하나만
+        verbose_name = '사용자 알람'
+        verbose_name_plural = '사용자 알람'
+    
+    def __str__(self):
+        return f"{self.user.name} - {self.alarm.title}"
+    
+    def mark_as_read(self):
+        """알람을 읽음 상태로 표시"""
+        from django.utils import timezone
+        self.is_read = True
+        self.read_at = timezone.now()
+        self.save()
+    
 
     

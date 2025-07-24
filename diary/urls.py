@@ -12,6 +12,8 @@ from .audio_handler import upload_audio_file, get_audio_files_by_date, delete_au
 from .cascade_handlers import toggle_cascade_attribute, get_cascade_attributes_list
 from .auto_blog import upload_blog_file, get_blog_files
 from .detail_openai import ai_chat, ai_chat_cache_clear
+from .admin_view import admin_dashboard, inquiry_list, inquiry_detail, alarm_list, alarm_create, alarm_edit, alarm_delete, inquiry_delete, admin_api
+from .diary_board import diary_board, get_announcements, get_announcement_detail, mark_as_read, download_announcement_file, announcement_detail_page, create_announcement, upload_announcement_file, get_announcement_file_url
 
 urlpatterns = [
     path('', DiaryMainView.as_view(), name='diary_main'),
@@ -116,4 +118,30 @@ urlpatterns = [
     # 문의하기 관련 API
     path('submit_inquiry/', views.submit_inquiry, name='submit_inquiry'),
     path('download_file_note/<str:fileId>/', download_file_note, name='download_file_note'),
+    
+    # 게시판 관련 URL
+    path('diary_board/', diary_board, name='diary_board'),
+    path('diary_board/announcements/', get_announcements, name='get_announcements'),
+    path('diary_board/announcement/<int:announcement_id>/', get_announcement_detail, name='get_announcement_detail'),
+    path('diary_board/announcement/<int:announcement_id>/detail/', announcement_detail_page, name='announcement_detail_page'),
+    path('diary_board/announcement/<int:announcement_id>/mark-read/', mark_as_read, name='mark_as_read'),
+    path('diary_board/download/<path:saved_name>/', download_announcement_file, name='download_announcement_file'),
+    path('diary_board/announcement/create/', create_announcement, name='create_announcement'),
+    path('diary_board/announcement/upload-file/', upload_announcement_file, name='upload_announcement_file'),
+    path('diary_board/announcement/file/<path:saved_name>/<str:action>/', get_announcement_file_url, name='get_announcement_file_url'),
+    
+    # 알림 관련 URL
+    path('diary_board/notifications/', views.get_notifications, name='get_notifications'),
+    path('diary_board/notifications/<int:notification_id>/read/', views.mark_notification_read, name='mark_notification_read'),
+    
+    # 어드민 관련 URL
+    path('diary_admin/board/', admin_dashboard, name='admin_dashboard'),
+    path('diary_admin/inquiries/', inquiry_list, name='admin_inquiry_list'),
+    path('diary_admin/inquiry/<int:inquiry_id>/', inquiry_detail, name='admin_inquiry_detail'),
+    path('diary_admin/alarms/', alarm_list, name='admin_alarm_list'),
+    path('diary_admin/alarm/create/', alarm_create, name='admin_alarm_create'),
+    path('diary_admin/alarm/<int:alarm_id>/', alarm_edit, name='admin_alarm_edit'),
+    path('diary_admin/alarm/<int:alarm_id>/delete/', alarm_delete, name='admin_alarm_delete'),
+    path('diary_admin/inquiry/<int:inquiry_id>/delete/', inquiry_delete, name='admin_inquiry_delete'),
+    path('diary_admin/api/', admin_api, name='admin_api'),
 ] 

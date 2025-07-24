@@ -1,0 +1,845 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>공고 상세보기 - 자금왕</title>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{% static 'diary/diary_board.css' %}">
+    
+    <style>
+        * {
+            font-family: 'Noto Sans KR', sans-serif;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #f8f9fa;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .header {
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #667eea;
+        }
+        
+        .nav-buttons {
+            display: flex;
+            gap: 1rem;
+        }
+        
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .btn-outline-primary {
+            background: transparent;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+        
+        .btn-outline-primary:hover {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-outline-secondary {
+            background: transparent;
+            color: #6c757d;
+            border: 2px solid #6c757d;
+        }
+        
+        .btn-outline-secondary:hover {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .detail-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .detail-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+        }
+        
+        .detail-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        
+        .detail-meta {
+            display: flex;
+            gap: 2rem;
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+        
+        .detail-body {
+            padding: 2rem;
+        }
+        
+        .detail-content {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: #444;
+            margin-bottom: 2rem;
+            white-space: pre-wrap;
+        }
+        
+        .files-section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-top: 2rem;
+        }
+        
+        .files-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .file-item {
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+        
+        .file-item:hover {
+            border-color: #667eea;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+        }
+        
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex: 1;
+        }
+        
+        .file-icon {
+            font-size: 1.2rem;
+            margin-right: 0.5rem;
+            display: flex;
+            align-items: center;
+        }
+        
+        .file-details {
+            flex: 1;
+        }
+        
+        .file-name {
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 0.25rem;
+        }
+        
+        .file-size {
+            font-size: 0.8rem;
+            color: #6c757d;
+        }
+        
+        .file-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .file-btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+        
+        .preview-btn {
+            background: #28a745;
+            color: white;
+        }
+        
+        .preview-btn:hover {
+            background: #218838;
+        }
+        
+        .download-btn {
+            background: #007bff;
+            color: white;
+        }
+        
+        .download-btn:hover {
+            background: #0056b3;
+        }
+        
+        .back-button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: background 0.3s ease;
+            margin-bottom: 2rem;
+        }
+        
+        .back-button:hover {
+            background: #5a6fd8;
+        }
+        
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 3rem;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 1rem;
+            border-radius: 6px;
+            border: 1px solid #f5c6cb;
+            text-align: center;
+        }
+        
+        @media (max-width: 768px) {
+            .header-content {
+                padding: 0 1rem;
+            }
+            
+            .container {
+                padding: 1rem;
+            }
+            
+            .detail-header {
+                padding: 1.5rem;
+            }
+            
+            .detail-title {
+                font-size: 1.5rem;
+            }
+            
+            .detail-meta {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            
+            .detail-body {
+                padding: 1.5rem;
+            }
+            
+            .file-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+            
+            .file-actions {
+                width: 100%;
+                justify-content: flex-end;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <span>💎</span>
+                <span>자금왕</span>
+                <span style="font-size: 0.9rem; color: #6c757d; margin-left: 0.5rem;">정책자금 전용 CRM</span>
+            </div>
+            <div class="nav-buttons">
+                <a href="{% url 'diary_board' %}" class="btn btn-outline-primary">
+                    <i class="fas fa-arrow-left"></i> 목록으로
+                </a>
+                <a href="{% url 'diary_main' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-home"></i> 메인으로
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container">
+        <button class="back-button" onclick="history.back()">
+            <i class="fas fa-arrow-left"></i> 뒤로가기
+        </button>
+        
+        <div class="detail-card">
+            <div class="detail-header">
+                <h1 class="detail-title" id="announcement-title">
+                    <i class="fas fa-bullhorn"></i> 공고 상세보기
+                </h1>
+                <div class="detail-meta" id="announcement-meta">
+                    <span><i class="fas fa-calendar-alt"></i> 작성일: 로딩 중...</span>
+                    <span><i class="fas fa-clock"></i> 수정일: 로딩 중...</span>
+                </div>
+            </div>
+            
+            <div class="detail-body">
+                <div class="detail-content" id="announcement-content">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+                
+                <div class="files-section" id="files-section" style="display: none;">
+                    <h3 class="files-title">
+                        <i class="fas fa-paperclip"></i> 첨부파일
+                    </h3>
+                    <div id="files-list">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Custom JS -->
+    <script src="{% static 'diary/diary_board.js' %}"></script>
+    <script>
+        // 페이지 로드 시 공고 데이터 로드
+        document.addEventListener('DOMContentLoaded', function() {
+            // URL에서 announcement_id 추출
+            const pathParts = window.location.pathname.split('/').filter(part => part !== '');
+            console.log('Path parts:', pathParts);
+            
+            // URL 패턴: /sales/diary_board/announcement/{id}/detail/
+            // pathParts: ['sales', 'diary_board', 'announcement', '{id}', 'detail']
+            const announcementId = pathParts[pathParts.length - 2]; // detail 앞의 요소
+            console.log('Extracted announcement ID:', announcementId);
+            
+            if (announcementId && !isNaN(announcementId)) {
+                console.log('Loading announcement with ID:', announcementId);
+                loadAnnouncementDetail(announcementId);
+            } else {
+                console.error('Invalid announcement ID:', announcementId);
+                showError('공고 ID를 찾을 수 없습니다. ID: ' + announcementId);
+            }
+        });
+        
+        // 공고 상세보기 로드
+        async function loadAnnouncementDetail(announcementId) {
+            try {
+                console.log('Fetching announcement detail for ID:', announcementId);
+                const response = await fetch(`/sales/diary_board/announcement/${announcementId}/`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    renderAnnouncementDetail(data.announcement);
+                    // 읽음 처리
+                    markAsRead(announcementId);
+                } else {
+                    showError('공고를 불러오는데 실패했습니다: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error loading announcement detail:', error);
+                showError('공고를 불러오는데 실패했습니다.');
+            }
+        }
+        
+        // 공고 상세보기 렌더링
+        function renderAnnouncementDetail(announcement) {
+            // 제목 설정
+            document.getElementById('announcement-title').innerHTML = `
+                <i class="fas fa-bullhorn"></i> ${escapeHtml(announcement.title)}
+            `;
+            
+            // 메타 정보 설정
+            document.getElementById('announcement-meta').innerHTML = `
+                <span><i class="fas fa-calendar-alt"></i> 작성일: ${announcement.created_at}</span>
+                <span><i class="fas fa-clock"></i> 수정일: ${announcement.updated_at}</span>
+            `;
+            
+            // 내용 설정
+            document.getElementById('announcement-content').innerHTML = formatContent(announcement.content);
+            
+            // 파일 섹션 렌더링
+            if (announcement.files && announcement.files.length > 0) {
+                renderFilesSection(announcement.files);
+            }
+        }
+        
+        // 파일 섹션 렌더링
+        function renderFilesSection(files) {
+            const filesSection = document.getElementById('files-section');
+            const filesList = document.getElementById('files-list');
+            
+            filesSection.style.display = 'block';
+            
+            let html = '';
+            files.forEach(file => {
+                html += renderFileItem(file);
+            });
+            
+            filesList.innerHTML = html;
+        }
+        
+        // 파일 아이템 렌더링
+        function renderFileItem(file) {
+            const fileIcon = getFileIcon(file.original_name);
+            const fileSize = formatFileSize(file.file_size);
+            
+            // 파일 타입에 따른 미리보기 가능 여부 확인
+            const canPreview = canPreviewFile(file);
+            
+            let previewButton = '';
+            if (canPreview) {
+                previewButton = `
+                    <button class="file-btn preview-btn" onclick="previewFile(${JSON.stringify(file).replace(/"/g, '&quot;')})">
+                        <i class="fas fa-eye"></i> 미리보기
+                    </button>
+                `;
+            }
+            
+            return `
+                <div class="file-item">
+                    <div class="file-info">
+                        <div class="file-icon">
+                            ${fileIcon}
+                        </div>
+                        <div class="file-details">
+                            <div class="file-name">${escapeHtml(file.original_name)}</div>
+                            <div class="file-size">${fileSize}</div>
+                        </div>
+                    </div>
+                    <div class="file-actions">
+                        ${previewButton}
+                        <button class="file-btn download-btn" onclick="downloadFile('${file.saved_name}', '${file.original_name}', '${file.download_url || ''}')">
+                            <i class="fas fa-download"></i> 다운로드
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // 파일 미리보기 가능 여부 확인
+        function canPreviewFile(file) {
+            const fileName = file.original_name || '';
+            const contentType = file.file_type || file.content_type || '';
+            const fileExt = fileName.split('.').pop()?.toLowerCase() || '';
+            
+            // 이미지 파일
+            if (contentType.startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg', 'webp'].includes(fileExt)) {
+                return true;
+            }
+            
+            // PDF 파일
+            if (contentType === 'application/pdf' || fileExt === 'pdf') {
+                return true;
+            }
+            
+            // 텍스트 파일
+            if (contentType.includes('text/') || contentType.includes('application/json') || contentType.includes('application/xml') || 
+                ['txt', 'json', 'xml', 'md', 'html', 'css', 'js', 'py', 'java', 'cpp', 'c', 'sql'].includes(fileExt)) {
+                return true;
+            }
+            
+            // 비디오 파일
+            if (contentType.includes('video/') || ['mp4', 'avi', 'mov', 'wmv', 'flv', 'mkv'].includes(fileExt)) {
+                return true;
+            }
+            
+            // 오디오 파일
+            if (contentType.includes('audio/') || ['mp3', 'wav', 'flac', 'aac', 'ogg'].includes(fileExt)) {
+                return true;
+            }
+            
+            // Office 문서 파일들
+            if (['docx', 'doc', 'pptx', 'ppt', 'xlsx', 'xls'].includes(fileExt) || 
+                contentType.includes('wordprocessingml') || 
+                contentType.includes('presentationml') || 
+                contentType.includes('spreadsheetml') ||
+                contentType.includes('msword')) {
+                return true;
+            }
+            
+            return false;
+        }
+        
+        // 파일 미리보기
+        function previewFile(file) {
+            // file이 문자열로 넘어올 수 있으니 파싱
+            if (typeof file === 'string') {
+                try {
+                    file = JSON.parse(file);
+                } catch (e) {
+                    alert('파일 정보를 처리할 수 없습니다.');
+                    return;
+                }
+            }
+            const fileName = file.original_name || file.original_filename || file.filename || 'Unknown';
+            const fileExt = fileName.split('.').pop()?.toLowerCase() || '';
+            const contentType = file.file_type || file.content_type || '';
+
+            // S3 서명 URL 요청
+            fetch(`/sales/diary_board/announcement/file/${file.saved_name}/preview/`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.url) {
+                        showFilePreview(file, fileName, data.url, contentType, fileExt);
+                    } else {
+                        alert('파일 미리보기를 불러올 수 없습니다.');
+                    }
+                })
+                .catch(error => {
+                    console.error('파일 미리보기 오류:', error);
+                    alert('파일 미리보기 중 오류가 발생했습니다.');
+                });
+        }
+        
+        // 파일 미리보기 모달
+        function showFilePreview(file, fileName, fileUrl, contentType, fileExt) {
+            // 기존 모달 제거
+            const existingModal = document.getElementById('filePreviewModal');
+            if (existingModal) existingModal.remove();
+
+            // 모달 생성
+            const modal = document.createElement('div');
+            modal.id = 'filePreviewModal';
+            modal.style.cssText = `
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 10000;
+            `;
+            modal.innerHTML = `
+                <div style="position: relative; width: 90%; height: 90%; background: white; border-radius: 8px; overflow: hidden;">
+                    <div style="position: absolute; top: 0; left: 0; right: 0; height: 60px; background: #f8f9fa; border-bottom: 1px solid #dee2e6; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; z-index: 10;">
+                        <div style="font-size: 16px; font-weight: bold; color: #333;">${fileName}</div>
+                        <button onclick="closeFilePreviewModal()" style="background: #dc3545; color: white; border: none; border-radius: 4px; padding: 8px 16px; cursor: pointer; font-size: 14px;">닫기</button>
+                    </div>
+                    <div id="file-preview-content" style="position: absolute; top: 60px; left: 0; right: 0; bottom: 0; padding: 20px; display: flex; align-items: center; justify-content: center;">
+                        <div style="text-align: center;">
+                            <div style="font-size: 48px; margin-bottom: 20px;">⏳</div>
+                            <div style="font-size: 16px; color: #666;">미리보기를 로딩 중...</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+
+            // 미리보기 컨텐츠 결정
+            let previewContent = '';
+            
+            // 이미지 파일
+            if (contentType.startsWith('image/') || ['jpg','jpeg','png','gif','bmp','svg','webp'].includes(fileExt)) {
+                previewContent = `
+                    <img src="${fileUrl}" 
+                         alt="${fileName}"
+                         style="max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px;"
+                         onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjhmOWZhIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzZjNzU3ZCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIGxvYWQgZmFpbGVkPC90ZXh0Pjwvc3ZnPg==';">
+                `;
+            }
+            // PDF 파일
+            else if (contentType === 'application/pdf' || fileExt === 'pdf') {
+                previewContent = `
+                    <iframe src="${fileUrl}" 
+                            style="width: 100%; height: 100%; border: none; border-radius: 8px;"
+                            title="${fileName}">
+                    </iframe>
+                `;
+            }
+            // 텍스트/코드/JSON/XML 파일
+            else if (
+                contentType.includes('text/') || contentType.includes('application/json') || contentType.includes('application/xml') ||
+                ['txt','json','xml','md','html','css','js','py','java','cpp','c','sql'].includes(fileExt)
+            ) {
+                // iframe으로 inline 미리보기 (CORS 문제 없음)
+                previewContent = `
+                    <iframe src="${fileUrl}" 
+                            style="width: 100%; height: 100%; border: none; border-radius: 8px;"
+                            title="${fileName}">
+                    </iframe>
+                `;
+            }
+            // 비디오 파일
+            else if (contentType.includes('video/') || ['mp4','avi','mov','wmv','flv','mkv'].includes(fileExt)) {
+                previewContent = `
+                    <video controls style="max-width: 100%; max-height: 100%; border-radius: 8px;">
+                        <source src="${fileUrl}" type="${contentType}">
+                        Your browser does not support the video tag.
+                    </video>
+                `;
+            }
+            // 오디오 파일
+            else if (contentType.includes('audio/') || ['mp3','wav','flac','aac','ogg','m4a'].includes(fileExt)) {
+                previewContent = `
+                    <div style="text-align: center; background: #f8f9fa; width:50%; padding: 40px; border-radius: 8px;">
+                        <div style="font-size: 48px; margin-bottom: 20px;">🎵</div>
+                        <div style="font-size: 18px; margin-bottom: 20px; color: #333;">${fileName}</div>
+                        <audio controls style="width: 100%; max-width: 400px;">
+                            <source src="${fileUrl}" type="${contentType}">
+                            Your browser does not support the audio tag.
+                        </audio>
+                    </div>
+                `;
+            }
+            // 오피스 문서 파일들 (Google Docs Viewer 사용)
+            else if (
+                ['docx','doc','pptx','ppt','xlsx','xls'].includes(fileExt) ||
+                contentType.includes('wordprocessingml') || contentType.includes('presentationml') || contentType.includes('spreadsheetml') || contentType.includes('msword')
+            ) {
+                const encodedUrl = encodeURIComponent(fileUrl);
+                previewContent = `
+                    <div style="width: 100%; height: 100%; display: flex; flex-direction: column;">
+                        <iframe src="https://docs.google.com/viewer?url=${encodedUrl}&embedded=true"
+                                style="flex: 1; border: none; border-radius: 8px;"
+                                title="${fileName}">
+                        </iframe>
+                        <div style="text-align: center; margin-top: 15px; padding: 10px;">
+                            <button onclick="window.open('${fileUrl}', '_blank')" 
+                                    style="padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">
+                                새 창에서 열기
+                            </button>
+                            <button onclick="downloadFile('${file.saved_name}')" 
+                                    style="padding: 8px 16px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                다운로드
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+            // 지원하지 않는 파일 타입
+            else {
+                previewContent = `
+                    <div style="text-align: center; background: #f8f9fa; padding: 40px; border-radius: 8px;">
+                        <div style="font-size: 48px; margin-bottom: 20px;">📄</div>
+                        <div style="font-size: 18px; margin-bottom: 20px; color: #333;">${fileName}</div>
+                        <div style="font-size: 14px; color: #666; margin-bottom: 20px;">
+                            이 파일 타입은 미리보기를 지원하지 않습니다.
+                        </div>
+                        <button onclick="window.open('${fileUrl}', '_blank')" 
+                                style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; font-weight: 500; margin-right: 10px; cursor: pointer;">
+                            새 창에서 열기
+                        </button>
+                        <button onclick="downloadFile('${file.saved_name}')" 
+                                style="padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 4px; font-weight: 500; cursor: pointer;">
+                            다운로드
+                        </button>
+                    </div>
+                `;
+            }
+
+            // 미리보기 콘텐츠 업데이트
+            const contentDiv = modal.querySelector('#file-preview-content');
+            if (contentDiv) contentDiv.innerHTML = previewContent;
+
+            // 모달 외부 클릭시 닫기
+            modal.onclick = function(e) {
+                if (e.target === modal) {
+                    closeFilePreviewModal();
+                }
+            };
+        }
+        
+        // 파일 미리보기 모달 닫기
+        function closeFilePreviewModal() {
+            const modal = document.getElementById('filePreviewModal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+        
+        // 파일 다운로드
+        function downloadFile(savedName, originalName, downloadUrl) {
+            // S3 서명된 URL이 있으면 사용, 없으면 기존 방식 사용
+            if (downloadUrl && downloadUrl.trim() !== '') {
+                const link = document.createElement('a');
+                link.href = downloadUrl;
+                link.download = originalName;
+                link.style.display = 'none';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } else {
+                // 기존 방식: 서버를 통해 다운로드
+                const link = document.createElement('a');
+                link.href = `/sales/diary_board/download/${savedName}`;
+                link.download = originalName;
+                link.style.display = 'none';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        }
+        
+        // 읽음 처리
+        async function markAsRead(announcementId) {
+            try {
+                await fetch(`/sales/diary_board/announcement/${announcementId}/mark-read/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken'),
+                        'Content-Type': 'application/json'
+                    }
+                });
+            } catch (error) {
+                console.error('Error marking as read:', error);
+            }
+        }
+        
+        // 에러 표시
+        function showError(message) {
+            document.getElementById('announcement-content').innerHTML = `
+                <div class="error-message">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    ${escapeHtml(message)}
+                </div>
+            `;
+        }
+        
+        // 콘텐츠 포맷팅
+        function formatContent(content) {
+            // 줄바꿈을 <br> 태그로 변환
+            return escapeHtml(content).replace(/\n/g, '<br>');
+        }
+        
+        // HTML 이스케이프
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // 파일 아이콘 반환
+        function getFileIcon(fileName) {
+            const fileExt = fileName.split('.').pop()?.toLowerCase() || '';
+            
+            const iconMap = {
+                // 이미지 파일
+                'jpg': '🖼️', 'jpeg': '🖼️', 'png': '🖼️', 'gif': '🖼️', 'bmp': '🖼️', 'svg': '🖼️', 'webp': '🖼️',
+                // 문서 파일
+                'pdf': '📄', 'doc': '📝', 'docx': '📝', 'txt': '📄', 'rtf': '📝',
+                // 스프레드시트
+                'xls': '📊', 'xlsx': '📊', 'csv': '📊',
+                // 프레젠테이션
+                'ppt': '📋', 'pptx': '📋',
+                // 압축 파일
+                'zip': '📦', 'rar': '📦', '7z': '📦', 'tar': '📦', 'gz': '📦',
+                // 오디오 파일
+                'mp3': '🎵', 'wav': '🎵', 'flac': '🎵', 'aac': '🎵', 'ogg': '🎵',
+                // 비디오 파일
+                'mp4': '🎬', 'avi': '🎬', 'mov': '🎬', 'wmv': '🎬', 'flv': '🎬', 'mkv': '🎬',
+                // 코드 파일
+                'html': '🌐', 'css': '🎨', 'js': '⚙️', 'py': '🐍', 'java': '☕', 'cpp': '⚙️', 'c': '⚙️',
+                // 기타
+                'json': '📋', 'xml': '📋', 'sql': '🗄️', 'md': '📄'
+            };
+            
+            return iconMap[fileExt] || '📄';
+        }
+        
+        // 파일 크기 포맷팅
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        // CSRF 토큰 가져오기
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    </script>
+</body>
+</html> 
