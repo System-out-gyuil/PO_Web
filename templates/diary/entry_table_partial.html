@@ -288,6 +288,10 @@ th.resizing {
                             </div>
                         {% endif %}
                     </td>
+                {% elif attr.name == '메모' %}
+                    <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" data-width="{{ attr.width|default:150 }}" class="{% if attr.assential %}essential-column{% endif %}" style="text-align:left;">
+                        {{ row.values|get_item:attr.name|get_item:'label' }}
+                    </td>
                 {% else %}
                     <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" data-width="{{ attr.width|default:150 }}"{% if attr.name == '매출' or '매출' in attr.name %} data-raw="{{ row.values|get_item:attr.name|get_item:'value'|default:'0' }}"{% endif %} class="{% if attr.assential %}essential-column{% endif %}">
                         {% if attr.name == '매출' or '매출' in attr.name %}
