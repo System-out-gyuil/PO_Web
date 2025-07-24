@@ -532,7 +532,7 @@
             }
             
             // Office 문서 파일들
-            if (['docx', 'doc', 'pptx', 'ppt', 'xlsx', 'xls'].includes(fileExt) || 
+            if (['docx', 'doc', 'pptx', 'ppt', 'xlsx', 'xls', 'hwp'].includes(fileExt) || 
                 contentType.includes('wordprocessingml') || 
                 contentType.includes('presentationml') || 
                 contentType.includes('spreadsheetml') ||
@@ -661,7 +661,7 @@
             }
             // 오피스 문서 파일들 (Google Docs Viewer 사용)
             else if (
-                ['docx','doc','pptx','ppt','xlsx','xls'].includes(fileExt) ||
+                ['docx','doc','pptx','ppt','xlsx','xls','hwp'].includes(fileExt) ||
                 contentType.includes('wordprocessingml') || contentType.includes('presentationml') || contentType.includes('spreadsheetml') || contentType.includes('msword')
             ) {
                 const encodedUrl = encodeURIComponent(fileUrl);
