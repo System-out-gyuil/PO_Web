@@ -703,6 +703,7 @@
             border-bottom: 1px solid #eee;
             transition: background 0.2s ease;
             position: relative;
+            cursor: pointer;  /* 클릭 가능함을 표시 */
         }
         
         .notification-item:hover {
@@ -890,6 +891,14 @@
         </div>
     </div>
 </header>
+
+<section class="main-section">
+    <div class="main-section-container">
+        <div class="main-section-item1"></div>
+        <div class="main-section-item2"></div>
+        <div class="main-section-item3"></div>
+    </div>
+</section>
 
 <div class="container">
     <!-- 필터 컨트롤 -->
@@ -2343,7 +2352,7 @@ function saveConvertedText() {
 }
 
 // 알림 표시 함수
-function showNotification(message, type = 'info') {
+{% comment %} function showNotification(message, type = 'info') {
     const notification = document.createElement('div');
     notification.style.cssText = `
         position: fixed;
@@ -2367,7 +2376,7 @@ function showNotification(message, type = 'info') {
             notification.parentNode.removeChild(notification);
         }
     }, 3000);
-}
+} {% endcomment %}
     
     
 </script>
@@ -3755,7 +3764,10 @@ function renderNotifications(notifications) {
         }
         
         return `
-            <div class="notification-item ${notification.is_read ? 'read' : 'unread'}" data-id="${notification.id}" onclick="markNotificationRead(${notification.id}, this)">
+            <div class="notification-item ${notification.is_read ? 'read' : 'unread'}" 
+                 data-id="${notification.id}" 
+                 data-alarm-id="${notification.alarm_id || ''}"
+                 onclick="handleNotificationClick(${notification.id}, this, ${notification.alarm_id || 'null'})">
                 <div class="notification-content">
                     <div class="notification-title">${notification.title}</div>
                     <div class="notification-message">${messageText}</div>
@@ -3843,6 +3855,20 @@ function markNotificationRead(notificationId, element) {
     .catch(error => {
         console.error('알림 읽음 상태 변경 오류:', error);
     });
+}
+
+// 알림 클릭 처리 함수
+function handleNotificationClick(notificationId, element, alarmId) {
+    // 먼저 읽음 상태로 표시
+    markNotificationRead(notificationId, element);
+    
+    // 공지 ID가 있으면 해당 공지 상세페이지로 이동
+    if (alarmId && alarmId !== 'null') {
+        // 잠시 후 페이지 이동 (읽음 상태 업데이트가 완료된 후)
+        setTimeout(() => {
+            window.location.href = `/sales/diary_board/announcement/${alarmId}/detail/`;
+        }, 300);
+    }
 }
 
 </script>

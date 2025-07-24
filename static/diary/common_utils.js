@@ -236,6 +236,7 @@ function removeCommaFromNumber(value) {
 
 // 알림 표시 함수 (기존에 없다면 추가)
 function showNotification(message, type = 'info') {
+    console.log("show noti 호출됨")
   // 기존 알림 제거
   const existingNotifications = document.querySelectorAll('.notification');
   existingNotifications.forEach(notification => notification.remove());
@@ -245,7 +246,8 @@ function showNotification(message, type = 'info') {
   notification.style.cssText = `
       position: fixed;
       top: 20px;
-      right: 20px;
+      left: 50%;
+      transform: translateX(-50%);
       padding: 12px 20px;
       border-radius: 6px;
       color: white;
@@ -294,12 +296,12 @@ function showNotification(message, type = 'info') {
       style.id = 'notification-styles';
       style.textContent = `
           @keyframes slideIn {
-              from { transform: translateX(100%); opacity: 0; }
-              to { transform: translateX(0); opacity: 1; }
+              from { transform: translateX(-50%) translateY(-100%); opacity: 0; }
+              to { transform: translateX(-50%) translateY(0); opacity: 1; }
           }
           @keyframes slideOut {
-              from { transform: translateX(0); opacity: 1; }
-              to { transform: translateX(100%); opacity: 0; }
+              from { transform: translateX(-50%) translateY(0); opacity: 1; }
+              to { transform: translateX(-50%) translateY(-100%); opacity: 0; }
           }
       `;
       document.head.appendChild(style);

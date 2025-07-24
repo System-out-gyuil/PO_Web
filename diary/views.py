@@ -4102,6 +4102,7 @@ def get_notifications(request):
             
             notifications.append({
                 'id': user_alarm.id,
+                'alarm_id': user_alarm.alarm.id,  # 공지 ID 추가
                 'title': user_alarm.alarm.title,
                 'message': message,
                 'created_at': user_alarm.alarm.created_at.isoformat(),

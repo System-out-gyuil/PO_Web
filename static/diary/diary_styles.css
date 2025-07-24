@@ -16,6 +16,7 @@ h1 {
     padding: 30px; 
     border-radius: 10px; 
     box-shadow: 0 2px 8px #ddd; 
+    padding-top: 10px;
 }
     
 /* 테이블 컨테이너 스타일 */
@@ -1410,4 +1411,41 @@ th.resizing .attribute-name-text {
     overflow: hidden;
     text-overflow: ellipsis;
     word-break: keep-all;
+}
+
+.main-section-container {
+    display: flex;
+    flex-direction: row;
+    height: 66px;
+    margin-bottom: 10px;
+    justify-content: center;
+    gap: 10px;
+}
+
+.main-section-item1 {
+    /* background-color: #f1f3f6; */
+    background-image: url('/static/images/banner/1.png');
+    background-size: cover;
+    background-position: center;
+    border-radius: 10px;
+    padding: 10px;
+    width: 31%;
+}
+.main-section-item2 {
+    /* background-color: #f1f3f6; */
+    background-image: url('/static/images/banner/2.png');
+    background-size: cover;
+    background-position: center;
+    border-radius: 10px;
+    padding: 10px;
+    width: 31%;
+}
+.main-section-item3 {
+    /* background-color: #f1f3f6; */
+    background-image: url('/static/images/banner/1.png');
+    background-size: cover;
+    background-position: center;
+    border-radius: 10px;
+    padding: 10px;
+    width: 31%;
 }

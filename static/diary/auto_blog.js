@@ -346,58 +346,58 @@ function uploadBlogFile() {
     });
 }
 
-// 알림 메시지 표시 함수
-function showNotification(message, type = 'info') {
-    // 기존 알림 제거
-    const existingNotification = document.querySelector('.blog-notification');
-    if (existingNotification) {
-        existingNotification.remove();
-    }
+// // 알림 메시지 표시 함수
+// function showNotification(message, type = 'info') {
+//     // 기존 알림 제거
+//     const existingNotification = document.querySelector('.blog-notification');
+//     if (existingNotification) {
+//         existingNotification.remove();
+//     }
     
-    // 새 알림 생성
-    const notification = document.createElement('div');
-    notification.className = `blog-notification blog-notification-${type}`;
-    notification.textContent = message;
+//     // 새 알림 생성
+//     const notification = document.createElement('div');
+//     notification.className = `blog-notification blog-notification-${type}`;
+//     notification.textContent = message;
     
-    // 스타일 적용
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        padding: 12px 20px;
-        border-radius: 6px;
-        color: white;
-        font-weight: 500;
-        z-index: 10000;
-        animation: slideInRight 0.3s ease-out;
-        max-width: 400px;
-        word-wrap: break-word;
-    `;
+//     // 스타일 적용
+//     notification.style.cssText = `
+//         position: fixed;
+//         top: 20px;
+//         right: 20px;
+//         padding: 12px 20px;
+//         border-radius: 6px;
+//         color: white;
+//         font-weight: 500;
+//         z-index: 10000;
+//         animation: slideInRight 0.3s ease-out;
+//         max-width: 400px;
+//         word-wrap: break-word;
+//     `;
     
-    // 타입별 색상 설정
-    if (type === 'success') {
-        notification.style.backgroundColor = '#28a745';
-    } else if (type === 'error') {
-        notification.style.backgroundColor = '#dc3545';
-    } else {
-        notification.style.backgroundColor = '#17a2b8';
-    }
+//     // 타입별 색상 설정
+//     if (type === 'success') {
+//         notification.style.backgroundColor = '#28a745';
+//     } else if (type === 'error') {
+//         notification.style.backgroundColor = '#dc3545';
+//     } else {
+//         notification.style.backgroundColor = '#17a2b8';
+//     }
     
-    // 알림 추가
-    document.body.appendChild(notification);
+//     // 알림 추가
+//     document.body.appendChild(notification);
     
-    // 3초 후 자동 제거
-    setTimeout(() => {
-        if (notification.parentNode) {
-            notification.style.animation = 'slideOutRight 0.3s ease-in';
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.remove();
-                }
-            }, 300);
-        }
-    }, 3000);
-}
+//     // 3초 후 자동 제거
+//     setTimeout(() => {
+//         if (notification.parentNode) {
+//             notification.style.animation = 'slideOutRight 0.3s ease-in';
+//             setTimeout(() => {
+//                 if (notification.parentNode) {
+//                     notification.remove();
+//                 }
+//             }, 300);
+//         }
+//     }, 3000);
+// }
 
 // 페이지 로드 시 블로그 div에 클릭 이벤트 추가
 document.addEventListener('DOMContentLoaded', function() {
