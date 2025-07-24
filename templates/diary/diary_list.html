@@ -153,6 +153,17 @@
             color: white;
             border-color: #28a745;
         }
+
+        .board-btn {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+
+        .board-btn:hover {
+            background: #0056b3;
+            border-color: #0056b3;
+        }
         
         .inquiry-btn:hover {
             background: #1e7e34;
@@ -886,6 +897,10 @@
             </div>
             
             <!-- 문의하기 버튼 -->
+            <button class="header-btn board-btn" onclick="toBoard()">
+                게시판
+            </button>
+
             <button class="header-btn inquiry-btn" onclick="openInquiryModal()">
                 문의하기
             </button>
@@ -3729,6 +3744,11 @@ function logout() {
 // 관리자 페이지 이동 함수
 function goToAdminPage() {
     window.location.href = '/sales/diary_admin/board/';
+}
+
+// 게시판 이동 함수
+function toBoard() {
+    window.location.href = '/sales/diary_board/';
 }
 
 // 알림 패널 토글 함수

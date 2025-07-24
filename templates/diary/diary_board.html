@@ -6,7 +6,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>게시판 - 자금왕</title>
-    
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Google Fonts -->
@@ -654,24 +655,65 @@
                 flex-direction: column;
             }
         }
+
+        .header-btn {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 16px;
+          border: none;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 14px;
+          font-weight: 500;
+          transition: all 0.2s ease;
+          text-decoration: none;
+          color: #333;
+          background: #f8f9fa;
+          border: 1px solid #dee2e6;
+      }
+
+      .header-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .logout-btn {
+      padding: 8px 16px;
+      background: #dc3545;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+  }
+  
+  .logout-btn:hover {
+      background: #c82333;
+      transform: translateY(-1px);
+  }
     </style>
 </head>
 <body>
     <!-- Header -->
     <header class="header">
         <div class="header-content">
-            <div class="logo">
+            <div class="logo" onclick="window.location.href='/sales/'" style="cursor: pointer;">
                 <span>💎</span>
                 <span>자금왕</span>
                 <span style="font-size: 0.9rem; color: #6c757d; margin-left: 0.5rem;">정책자금 전용 CRM</span>
             </div>
             <div class="nav-buttons">
-                <a href="{% url 'diary_main' %}" class="btn btn-outline-primary">
-                    <i class="fas fa-home"></i> 메인으로
-                </a>
-                <a href="{% url 'logout' %}" class="btn btn-outline-secondary">
-                    <i class="fas fa-sign-out-alt"></i> 로그아웃
-                </a>
+              <a href="/sales/diary/">
+                <button class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg transition font-medium">
+                    다이어리
+                </button>
+            </a>
+                <button class="header-btn logout-btn" onclick="logout()">
+                  로그아웃
+              </button>
             </div>
         </div>
     </header>
@@ -686,7 +728,7 @@
             </div>
 
             <!-- 탭 버튼 -->
-            <div class="tab-buttons">
+            <div class="tab-buttons" style="display: none;">
                 <button class="tab-button active" onclick="switchTab('announcement')">
                     <i class="fas fa-bullhorn"></i> 공고 게시판
                 </button>
@@ -1720,6 +1762,44 @@
                 modal.remove();
             }
         }
+        // 로그아웃 함수
+function logout() {
+  if (confirm('로그아웃하시겠습니까?')) {
+      // 서버에 로그아웃 요청
+      fetch('/sales/logout/', {
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': getCsrfToken()
+          }
+      })
+      .then(response => response.json())
+      .then(data => {
+          if (data.success) {
+              // 브라우저 캐시 정리
+              if ('caches' in window) {
+                  caches.keys().then(function(names) {
+                      for (let name of names) {
+                          caches.delete(name);
+                      }
+                  });
+              }
+              
+              // 세션 스토리지 정리
+              sessionStorage.clear();
+              
+              // 로그인 페이지로 리다이렉트
+              window.location.href = '/sales/login/';
+          } else {
+              alert('로그아웃 중 오류가 발생했습니다: ' + (data.error || ''));
+          }
+      })
+      .catch(error => {
+          console.error('로그아웃 오류:', error);
+          alert('로그아웃 중 오류가 발생했습니다.');
+      });
+  }
+}
     </script>
 </body>
 </html>
