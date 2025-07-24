@@ -135,7 +135,6 @@ class SignupView(View):
             '매출',        # 3. baseattribute
             '신용점수',    # 5. baseattribute
             '업종',        # 8. baseattribute
-            '지역',        # 2. baseattribute
             '기대출',      # 4. baseattributedetail
             '개업년월',    # 6. baseattribute
             '나이',        # 7. baseattribute
@@ -308,27 +307,13 @@ class SignupView(View):
 
 class LogoutView(View):
     def get(self, request):
-        return render(request, 'diary/logout.html')
+        return render(request, 'diary/diary_main.html')
     
     def post(self, request):
-        try:
-            # 세션에서 diary_member_id 제거
-            if 'diary_member_id' in request.session:
-                del request.session['diary_member_id']
-            
-            # diary_authenticated도 제거
-            if 'diary_authenticated' in request.session:
-                del request.session['diary_authenticated']
-            
-            # 세션 저장
-            request.session.save()
-            
-            return JsonResponse({
-                'success': True,
-                'message': '로그아웃되었습니다.'
-            })
-        except Exception as e:
-            return JsonResponse({
-                'success': False,
-                'error': str(e)
-            })
+        # 세션에서 diary_member_id, diary_authenticated 제거
+        request.session.pop('diary_member_id', None)
+        request.session.pop('diary_authenticated', None)
+        request.session.save()
+        # 로그아웃 후 메인페이지로 리다이렉트
+        from django.shortcuts import redirect
+        return redirect('/sales/')
