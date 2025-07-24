@@ -93,6 +93,12 @@ class SignupView(View):
                 company_name=company_name,
                 phone_number=phone_number
             )
+
+            # 모든 기존 공지(Alarm)를 UserAlarm으로 추가
+            from .models import Alarm, UserAlarm
+            alarms = Alarm.objects.all()
+            for alarm in alarms:
+                UserAlarm.objects.create(user=user, alarm=alarm, is_read=False)
             
             # 기본 속성들을 사용자에게 부여
             self._create_default_attributes(user)
