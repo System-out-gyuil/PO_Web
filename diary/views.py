@@ -92,9 +92,6 @@ def check_login_status(request):
         })
 
 # 다이어리 목록 및 작성 폼
-
-
-
 def diary_list(request):
     host = request.get_host()
     if 'namatji.com' in host:
@@ -116,9 +113,6 @@ def diary_list(request):
         request.session.flush()
         return redirect('login')
     
-    user_id = request.session.get('diary_member_id')
-    user = User.objects.get(id=user_id)
-    
     # URL 파라미터에서 상태 ID 가져오기
     status_id = request.GET.get('status_id', 'all')
     if not status_id or status_id in ['undefined', 'null', None, '']:
@@ -139,26 +133,44 @@ def diary_list(request):
     attributes = filter_attributes_by_status(base_attributes, status_id)
     user_attributes = filter_attributes_by_status(base_user_attributes, status_id)
     
-    # 행 데이터는 모든 행을 가져옴 (필터링은 속성 레벨에서 처리)
     # 쿼리 최적화: select_related와 prefetch_related 적용
+    # 모든 관련 데이터를 한 번에 가져오기
     rows = Row.objects.filter(user=user).select_related('user').prefetch_related(
         'values__attribute__attributeType',
         'values__attribute__dropdown_attributes'
     ).order_by('order')
     
+    # 세션 데이터 파싱 최적화 - 한 번만 파싱
+    session_data = {
+        'column_widths': {},
+        'hidden_attributes': [],
+        'status_tabs': [],
+        'calendar_settings': {}
+    }
+    
+    # 세션 데이터 파싱을 한 번에 처리
+    for key, default_value in session_data.items():
+        try:
+            session_value = request.session.get(key, default_value)
+            if isinstance(session_value, str):
+                session_data[key] = json.loads(session_value)
+            else:
+                session_data[key] = session_value
+        except (json.JSONDecodeError, TypeError):
+            session_data[key] = default_value
+    
     # 각 행의 속성 값들을 가져오기 (필터링된 속성만)
     rows_data = []
+    # 드롭다운 옵션을 미리 캐시
+    dropdown_cache = {}
+    
     for row in rows:
         row_values = {}
+        # 행의 모든 값들을 딕셔너리로 미리 구성
+        row_value_dict = {value.attribute_id: value.value for value in row.values.all()}
+        
         for attr in user_attributes:  # 이미 필터링된 속성들만 사용
-            # prefetch된 데이터에서 찾기
-            attr_value = None
-            for value in row.values.all():
-                if value.attribute_id == attr.id:
-                    attr_value = value
-                    break
-            
-            value = attr_value.value if attr_value else ''
+            value = row_value_dict.get(attr.id, '')
             
             if attr.name == '매출' or '매출' in attr.name:
                 numeric_value = parse_korean_currency(value)
@@ -168,12 +180,14 @@ def diary_list(request):
                     'color': ''
                 }
             elif attr.attributeType and attr.attributeType.name == 'dropdown' and value.isdigit():
-                # prefetch된 dropdown 데이터에서 찾기
-                dropdown = None
-                for dropdown_attr in attr.dropdown_attributes.all():
-                    if dropdown_attr.id == int(value):
-                        dropdown = dropdown_attr
-                        break
+                # 드롭다운 캐시 사용
+                if attr.id not in dropdown_cache:
+                    dropdown_cache[attr.id] = {
+                        dropdown_attr.id: dropdown_attr 
+                        for dropdown_attr in attr.dropdown_attributes.all()
+                    }
+                
+                dropdown = dropdown_cache[attr.id].get(int(value))
                 
                 if dropdown:
                     row_values[attr.name] = {
@@ -194,14 +208,22 @@ def diary_list(request):
                 try:
                     selected_ids = json.loads(value)
                     selected_options = []
-                    for dropdown_attr in attr.dropdown_attributes.all():
-                        if dropdown_attr.id in selected_ids:
-                            selected_options.append({
-                                'id': dropdown_attr.id,
-                                'label': dropdown_attr.option,
-                                'color': dropdown_attr.color
-                            })
                     
+                    # 드롭다운 캐시 사용
+                    if attr.id not in dropdown_cache:
+                        dropdown_cache[attr.id] = {
+                            dropdown_attr.id: dropdown_attr 
+                            for dropdown_attr in attr.dropdown_attributes.all()
+                        }
+                    
+                    for selected_id in selected_ids:
+                        dropdown = dropdown_cache[attr.id].get(selected_id)
+                        if dropdown:
+                            selected_options.append({
+                                'id': dropdown.id,
+                                'label': dropdown.option,
+                                'color': dropdown.color
+                            })
                     
                     if selected_options:
                         # 첫 번째 옵션의 색상을 기본 색상으로 사용
@@ -241,58 +263,22 @@ def diary_list(request):
             'values': row_values
         })
     
-    # 컬럼 너비 정보 가져오기
-    column_widths = {}
-    try:
-        column_widths_data = request.session.get('column_widths', {})
-        if isinstance(column_widths_data, str):
-            column_widths = json.loads(column_widths_data)
-        else:
-            column_widths = column_widths_data
-    except:
-        column_widths = {}
-    
-    # 숨겨진 속성 정보 가져오기
-    hidden_attributes = []
-    try:
-        hidden_attributes_data = request.session.get('hidden_attributes', [])
-        if isinstance(hidden_attributes_data, str):
-            hidden_attributes = json.loads(hidden_attributes_data)
-        else:
-            hidden_attributes = hidden_attributes_data
-    except:
-        hidden_attributes = []
-    
-    # 상태 탭 정보 가져오기
-    status_tabs = []
-    try:
-        status_tabs_data = request.session.get('status_tabs', [])
-        if isinstance(status_tabs_data, str):
-            status_tabs = json.loads(status_tabs_data)
-        else:
-            status_tabs = status_tabs_data
-    except:
-        status_tabs = []
-    
-    # 캘린더 설정 정보 가져오기
-    calendar_settings = {}
-    try:
-        calendar_settings_data = request.session.get('calendar_settings', {})
-        if isinstance(calendar_settings_data, str):
-            calendar_settings = json.loads(calendar_settings_data)
-        else:
-            calendar_settings = calendar_settings_data
-    except:
-        calendar_settings = {}
-    
     # 캐시 무효화를 위한 타임스탬프
     cache_timestamp = int(time.time())
     
-    # 모든 드롭다운 옵션을 한 번에 수집
+    # 모든 드롭다운 옵션을 한 번에 수집 (캐시 활용)
     dropdown_options = {}
     for attr in user_attributes:
         if attr.attributeType and attr.attributeType.name == 'dropdown':
-            dropdown_options[attr.name] = list(attr.dropdown_attributes.values('id', 'option', 'color', 'order').order_by('order'))
+            if attr.id in dropdown_cache:
+                dropdown_options[attr.name] = [
+                    {'id': dropdown_attr.id, 'option': dropdown_attr.option, 'color': dropdown_attr.color, 'order': dropdown_attr.order}
+                    for dropdown_attr in dropdown_cache[attr.id].values()
+                ]
+                # order로 정렬
+                dropdown_options[attr.name].sort(key=lambda x: (x['order'], x['id']))
+            else:
+                dropdown_options[attr.name] = list(attr.dropdown_attributes.values('id', 'option', 'color', 'order').order_by('order'))
     
     context = {
         'rows': rows_data,
@@ -303,15 +289,15 @@ def diary_list(request):
                 'detail': attr.detail,
                 'width': attr.width,
                 'attributeType_name': attr.attributeType.name if attr.attributeType else None,
-                'dropdown_options': list(attr.dropdown_attributes.values('id', 'option', 'color', 'order').order_by('order')) if attr.attributeType and attr.attributeType.name == 'dropdown' else []
+                'dropdown_options': dropdown_options.get(attr.name, [])
             }
             for attr in user_attributes
         ],
         'all_attributes': attributes,
-        'column_widths': column_widths,
-        'hidden_attributes': hidden_attributes,
-        'status_tabs': status_tabs,
-        'calendar_settings': calendar_settings,
+        'column_widths': session_data['column_widths'],
+        'hidden_attributes': session_data['hidden_attributes'],
+        'status_tabs': session_data['status_tabs'],
+        'calendar_settings': session_data['calendar_settings'],
         'cache_timestamp': cache_timestamp,
         'status_id': status_id,
         'show_detail': show_detail,
@@ -339,11 +325,8 @@ def fu_events(request):
         
         events = []
         for row in rows:
-            # 행의 속성값들 가져오기
-            row_values = {}
-            for attr_value in row.values.all():
-                if attr_value.attribute:
-                    row_values[attr_value.attribute.name] = attr_value.value
+            # 행의 속성값들을 딕셔너리로 미리 구성하여 N+1 쿼리 방지
+            row_values = {attr_value.attribute.name: attr_value.value for attr_value in row.values.all() if attr_value.attribute}
             
             # 이벤트 데이터 생성
             event_data = {
@@ -1046,6 +1029,19 @@ def get_row_details(request, row_id):
                 'error': '해당 데이터를 찾을 수 없습니다.'
             })
         
+        # 드롭다운 옵션을 미리 캐시하여 N+1 쿼리 방지
+        dropdown_cache = {}
+        for attr_value in row.values.all():
+            if (attr_value.attribute and 
+                attr_value.attribute.attributeType and 
+                attr_value.attribute.attributeType.name == 'dropdown'):
+                attr_id = attr_value.attribute.id
+                if attr_id not in dropdown_cache:
+                    dropdown_cache[attr_id] = {
+                        dropdown_attr.id: dropdown_attr.option 
+                        for dropdown_attr in attr_value.attribute.dropdown_attributes.all()
+                    }
+        
         # 행의 모든 속성값들 가져오기 (prefetch된 데이터 활용)
         row_data = {}
         for attr_value in row.values.all():
@@ -1076,20 +1072,13 @@ def get_row_details(request, row_id):
                     except (ValueError, TypeError):
                         row_data[attr_name] = 0
                 else:
-                    # 드롭다운 타입인 경우 텍스트 값으로 변환 (prefetch된 데이터 활용)
+                    # 드롭다운 타입인 경우 텍스트 값으로 변환 (캐시 활용)
                     if attr_value.attribute.attributeType and attr_value.attribute.attributeType.name == 'dropdown':
                         if value and value.isdigit():
-                            # prefetch된 dropdown 데이터에서 찾기
-                            dropdown = None
-                            for dropdown_attr in attr_value.attribute.dropdown_attributes.all():
-                                if dropdown_attr.id == int(value):
-                                    dropdown = dropdown_attr
-                                    break
-                            if dropdown:
-                                value = dropdown.option
-                            else:
-                                # dropdown 옵션을 찾지 못한 경우 원본 값 유지
-                                value = value
+                            # 캐시된 dropdown 데이터에서 찾기
+                            attr_id = attr_value.attribute.id
+                            dropdown_options = dropdown_cache.get(attr_id, {})
+                            value = dropdown_options.get(int(value), value)
                         elif value and value.startswith('[') and value.endswith(']'):
                             # 리스트 형태의 값인 경우 (예: [27]) 첫 번째 값만 추출
                             try:
@@ -1097,16 +1086,10 @@ def get_row_details(request, row_id):
                                 list_value = ast.literal_eval(value)
                                 if isinstance(list_value, list) and len(list_value) > 0:
                                     dropdown_id = list_value[0]
-                                    # prefetch된 dropdown 데이터에서 찾기
-                                    dropdown = None
-                                    for dropdown_attr in attr_value.attribute.dropdown_attributes.all():
-                                        if dropdown_attr.id == dropdown_id:
-                                            dropdown = dropdown_attr
-                                            break
-                                    if dropdown:
-                                        value = dropdown.option
-                                    else:
-                                        value = str(dropdown_id)  # 옵션을 찾지 못한 경우 ID 반환
+                                    # 캐시된 dropdown 데이터에서 찾기
+                                    attr_id = attr_value.attribute.id
+                                    dropdown_options = dropdown_cache.get(attr_id, {})
+                                    value = dropdown_options.get(dropdown_id, str(dropdown_id))
                                 else:
                                     value = value  # 빈 리스트인 경우 원본 값 유지
                             except (ValueError, SyntaxError):
@@ -1142,7 +1125,8 @@ def get_user_attributes(request):
         user_id = request.session.get('diary_member_id')
 
         user = User.objects.get(id=user_id)
-        attributes = Attribute.objects.filter(user=user).order_by('-assential', 'id')  # 필수 속성 먼저, 그 다음 id 순
+        # select_related를 추가하여 N+1 쿼리 방지
+        attributes = Attribute.objects.filter(user=user).select_related('attributeType').order_by('-assential', 'id')  # 필수 속성 먼저, 그 다음 id 순
         
         attributes_data = []
         for attr in attributes:

@@ -41,8 +41,15 @@ class DiaryEntry(models.Model):
     amount = models.CharField(max_length=20, blank=True, null=True, default='')
     memo = models.TextField(blank=True, null=True, default='')
     order = models.IntegerField(default=0, db_index=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['order']),
+            models.Index(fields=['created_at']),
+            models.Index(fields=['category', 'status']),
+        ]
 
     def __str__(self):
         return self.name
@@ -94,6 +101,12 @@ class Attribute(models.Model):
 
     class Meta:
         ordering = ['sort_order', 'id']  # sort_order 필드로 기본 정렬
+        indexes = [
+            models.Index(fields=['user', 'sort_order']),
+            models.Index(fields=['user', 'name']),
+            models.Index(fields=['user', 'detail']),
+            models.Index(fields=['attributeType', 'name']),
+        ]
 
     def __str__(self):
         return self.name
@@ -137,6 +150,12 @@ class Row(models.Model):
     original_row_ids = models.JSONField(default=list, blank=True)
     # 복제된 행들의 ID 목록 (원본 행인 경우)
     copied_row_ids = models.JSONField(default=list, blank=True)
+    
+    class Meta:
+        indexes = [
+            models.Index(fields=['user', 'order']),
+            models.Index(fields=['user', 'created_at']),
+        ]
     
     def __str__(self):
         return f"Row {self.id} (user={self.user_id}, order={self.order})"
@@ -195,6 +214,12 @@ class AttributeValue(models.Model):
     value = models.TextField()  # CharField에서 TextField로 변경하여 JSON 저장 가능
     copy_from = models.IntegerField(default=0)
     
+    class Meta:
+        indexes = [
+            models.Index(fields=['row', 'attribute']),
+            models.Index(fields=['attribute', 'row']),
+        ]
+    
     def __str__(self):
         return self.value
     
@@ -221,6 +246,10 @@ class DropdownAttribute(models.Model):
 
     class Meta:
         ordering = ['attribute', 'order', 'id']  # attribute별로 그룹화하고 order로 정렬
+        indexes = [
+            models.Index(fields=['attribute', 'order']),
+            models.Index(fields=['attribute', 'id']),
+        ]
 
     def __str__(self):
         return self.option

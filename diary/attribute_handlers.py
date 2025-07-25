@@ -259,7 +259,8 @@ def get_all_attributes(request):
         user_id = request.session.get('diary_member_id')
 
         user = User.objects.get(id=user_id)
-        attributes = Attribute.objects.filter(user=user, detail=False).order_by('sort_order', 'id')
+        # select_related를 추가하여 N+1 쿼리 방지
+        attributes = Attribute.objects.filter(user=user, detail=False).select_related('attributeType').order_by('sort_order', 'id')
         attributes_data = []
         
         for attr in attributes:
@@ -288,10 +289,11 @@ def get_dropdown_attributes(request):
         status_id = request.GET.get('status_id', 'all')
         
         # 기본 속성 쿼리 (view_select 필터링 제거, detail 필터링 제거)
+        # select_related를 추가하여 N+1 쿼리 방지
         base_dropdown_attributes = Attribute.objects.filter(
             user=user, 
             attributeType__name='dropdown'
-        ).order_by('-assential', 'name')
+        ).select_related('attributeType').order_by('-assential', 'name')
         
         # 상태별 필터링 적용
         dropdown_attributes = filter_attributes_by_status(base_dropdown_attributes, status_id)

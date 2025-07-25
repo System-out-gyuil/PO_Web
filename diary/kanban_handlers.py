@@ -55,22 +55,30 @@ def get_kanban_data(request):
         board_data = []
         dropdown_options = DropdownAttribute.objects.filter(attribute=kanban_attr).order_by('order', 'id')
         
+        # 모든 행과 속성값을 한 번에 가져오기 (쿼리 최적화)
+        rows = Row.objects.filter(user=user).prefetch_related(
+            'values__attribute__attributeType',
+            'values__attribute__dropdown_attributes'
+        ).order_by('order', 'id')
+        
+        # 행별 속성값을 미리 구성하여 N+1 쿼리 방지
+        row_values_cache = {}
+        for row in rows:
+            row_values = {attr_value.attribute.name: attr_value.value for attr_value in row.values.all() if attr_value.attribute}
+            row_values_cache[row.id] = row_values
+        
         for option in dropdown_options:
-            # 해당 상태를 가진 행들 찾기
-            rows = Row.objects.filter(
-                user=user,
-                values__attribute=kanban_attr,
-                values__value=str(option.id)
-            ).order_by('order', 'id')
+            # 해당 상태를 가진 행들 찾기 (이미 prefetch된 데이터 사용)
+            matching_rows = []
+            for row in rows:
+                row_values = row_values_cache.get(row.id, {})
+                if row_values.get(attr_name) == str(option.id):
+                    matching_rows.append(row)
             
             # 각 행의 데이터를 entry 형태로 변환
             entries = []
-            for row in rows:
-                # 행의 속성값들 가져오기
-                row_values = {}
-                for attr_value in row.values.all():
-                    if attr_value.attribute:
-                        row_values[attr_value.attribute.name] = attr_value.value
+            for row in matching_rows:
+                row_values = row_values_cache.get(row.id, {})
                 
                 # 필터 적용
                 if not apply_kanban_filters(row_values, settings):
