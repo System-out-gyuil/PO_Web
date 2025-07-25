@@ -711,9 +711,17 @@
                     다이어리
                 </button>
             </a>
+                {% if is_authenticated %}
                 <button class="header-btn logout-btn" onclick="logout()">
                   로그아웃
               </button>
+                {% else %}
+                <a href="/sales/login/">
+                  <button class="header-btn login-btn">
+                    로그인
+                  </button>
+                </a>
+                {% endif %}
             </div>
         </div>
     </header>
@@ -738,17 +746,24 @@
             <div class="tab-content active" id="announcement-tab">
                 <!-- 검색 및 필터 -->
                 <div class="search-controls">
-                    <div class="search-box">
-                        <input type="text" id="announcement-search" placeholder="공고 검색..." onkeyup="searchAnnouncements()">
-                        <button onclick="searchAnnouncements()">
-                            <i class="fas fa-search"></i>
-                        </button>
+                    <div class="search-box" style="max-width: 420px; width: 100%;">
+                        <div style="position: relative; width: 100%;">
+                            <input type="text" id="announcement-search" placeholder="공고 검색..." onkeyup="searchAnnouncements()"
+                                class="search-input bg-white border border-gray-200 rounded-full pl-5 pr-12 py-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition w-full text-gray-800 placeholder-gray-400" />
+                            <button onclick="searchAnnouncements()" type="button"
+                                style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: #667eea; border: none; border-radius: 50%; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(102,126,234,0.08);"
+                                class="hover:bg-indigo-700 transition">
+                                <i class="fas fa-search" style="color: white; font-size: 1.1rem;"></i>
+                            </button>
+                        </div>
                     </div>
-                    <div class="button-group" id="admin-buttons" style="display: none;">
+                    {% if is_authenticated and is_admin %}
+                    <div class="button-group" id="admin-buttons">
                         <button class="write-button" onclick="showWriteAnnouncementModal()">
                             <i class="fas fa-pen"></i> 공고 작성
                         </button>
                     </div>
+                    {% endif %}
                 </div>
                 
                 <!-- 공고 목록 -->
@@ -920,8 +935,8 @@
             let html = '';
             boards.forEach(board => {
                 const createdDate = new Date(board.created_at).toLocaleDateString('ko-KR');
-                const contentPreview = board.content.length > 100 ? 
-                    board.content.substring(0, 100) + '...' : board.content;
+                const contentPreview = board.content.length > 300 ? 
+                    board.content.substring(0, 300) + '...' : board.content;
                 
                 html += `
                     <div class="announcement-item" onclick="viewBoardDetail(${board.id})">
@@ -1305,6 +1320,15 @@
             return cookieValue;
         }
         
+        // CSRF 토큰 가져오기 함수
+        function getCsrfToken() {
+            const cookieValue = document.cookie
+                .split('; ')
+                .find(row => row.startsWith('csrftoken='))
+                ?.split('=')[1];
+            return cookieValue || '';
+        }
+        
         // 모달 외부 클릭 시 닫기
         window.onclick = function(event) {
             const modal = document.getElementById('writeBoardModal');
@@ -1322,40 +1346,21 @@
         });
 
         // 실시간 업데이트 (30초마다)
-        setInterval(() => {
-            loadAnnouncements();
-        }, 30000);
+        // setInterval(() => {
+        //     loadAnnouncements();
+        // }, 30000);
         
         // 페이지 로드 시 초기 데이터 로드
         document.addEventListener('DOMContentLoaded', function() {
             loadAnnouncements();
-            checkAdminStatus();
-            
+            // checkAdminStatus(); // 삭제: 더 이상 필요 없음
             // 서버에서 전달받은 관리자 권한 정보 확인
-            {% if is_admin %}
-            document.getElementById('admin-buttons').style.display = 'flex';
-            {% endif %}
+            // {% if is_admin %}
+            // document.getElementById('admin-buttons').style.display = 'flex';
+            // {% endif %}
         });
         
-        // 관리자 권한 확인
-        async function checkAdminStatus() {
-            try {
-                const response = await fetch('/sales/diary_board/announcements/');
-                const data = await response.json();
-                
-                console.log('관리자 권한 확인 응답:', data);
-                
-                if (data.success && data.is_admin) {
-                    console.log('관리자 권한 확인됨, 버튼 표시');
-                    document.getElementById('admin-buttons').style.display = 'flex';
-                } else {
-                    console.log('관리자 권한 없음');
-                    document.getElementById('admin-buttons').style.display = 'none';
-                }
-            } catch (error) {
-                console.error('관리자 권한 확인 오류:', error);
-            }
-        }
+        // 관리자 권한 확인 함수 전체 제거
         
         // 공고 작성 모달 표시
         function showWriteAnnouncementModal() {

@@ -145,6 +145,19 @@
         .close-notification-btn:hover {
             color: #333;
         }
+
+        .alarm-message {
+            color: #666;
+            font-size: 13px;
+            line-height: 1.4;
+            margin-bottom: 8px;
+            max-height: 55px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+        }
     </style>
 </head>
 <body class="bg-white">
@@ -154,7 +167,7 @@
             <div class="flex justify-between items-center">
                 <div class="flex items-center">
                     <h1 class="text-2xl font-bold text-blue-600">💎 자금왕</h1>
-                    <span class="ml-3 text-sm text-gray-500">정책자금 전용 CRM</span>
+                    <span class="ml-3 text-sm text-gray-500 ">정책자금 전용 CRM</span>
                 </div>
                 <div class="hidden md:flex space-x-8">
                     <a href="#features" class="text-gray-600 hover:text-blue-600 transition">기능소개</a>
@@ -185,7 +198,7 @@
                     </div>
                     <form method="post" action="{% url 'logout' %}" style="display:inline;">
                         {% csrf_token %}
-                        <button type="submit" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-6 py-2 rounded-lg transition font-medium">
+                        <button type="submit" class="logout-btn bg-red-500 hover:bg-red-400 text-white px-6 py-2 rounded-lg transition font-medium">
                             로그아웃
                         </button>
                     </form>
@@ -1027,7 +1040,7 @@
                 return `
                     <div class="px-4 py-2 border-b last:border-b-0 cursor-pointer ${notification.is_read ? 'bg-gray-50' : 'bg-blue-50'}" onclick="handleNotificationClick(${notification.id}, this, ${notification.alarm_id || 'null'})">
                         <div class="font-semibold text-gray-800">${notification.title}</div>
-                        <div class="text-gray-600 text-sm">${messageText}</div>
+                        <div class="text-gray-600 text-sm alarm-message">${messageText}</div>
                         <div class="text-xs text-gray-400 mt-1">${formatNotificationTime(notification.created_at)}</div>
                         ${!notification.is_read ? '<span class="inline-block w-2 h-2 bg-blue-500 rounded-full ml-1"></span>' : ''}
                     </div>

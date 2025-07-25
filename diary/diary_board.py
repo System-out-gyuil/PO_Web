@@ -19,14 +19,16 @@ def diary_board(request):
     
     if not user_id:
         return render(request, 'diary/diary_board.html', {
-            'error': '로그인이 필요합니다.'
+            'error': '로그인이 필요합니다.',
+            'is_authenticated': False
         })
     
     try:
         user = User.objects.get(id=user_id)
     except User.DoesNotExist:
         return render(request, 'diary/diary_board.html', {
-            'error': '사용자를 찾을 수 없습니다.'
+            'error': '사용자를 찾을 수 없습니다.',
+            'is_authenticated': False
         })
     
     # 탭 파라미터 (기본값: 공고 게시판)
@@ -36,7 +38,8 @@ def diary_board(request):
         'user': user,
         'current_tab': tab,
         'error': None,
-        'is_admin': user.is_admin
+        'is_admin': user.is_admin,
+        'is_authenticated': True
     }
     
     return render(request, 'diary/diary_board.html', context)
@@ -129,7 +132,7 @@ def get_announcements(request):
         announcements_data.append({
             'id': alarm.id,
             'title': alarm.title,
-            'content': text_content[:100] + '...' if len(text_content) > 100 else text_content,
+            'content': text_content[:200] + '...' if len(text_content) > 200 else text_content,
             'full_content': text_content,
             'files': files,
             'file_count': len(files),

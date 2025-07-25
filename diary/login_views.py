@@ -314,6 +314,5 @@ class LogoutView(View):
         request.session.pop('diary_member_id', None)
         request.session.pop('diary_authenticated', None)
         request.session.save()
-        # 로그아웃 후 메인페이지로 리다이렉트
-        from django.shortcuts import redirect
-        return redirect('/sales/')
+        # 로그아웃 후 JSON 반환
+        return JsonResponse({'success': True, 'message': '로그아웃되었습니다.'})
