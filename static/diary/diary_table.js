@@ -1083,19 +1083,22 @@ function processDropdownOptions(options, value, cell) {
                   }
                   
                   // === pill 렌더링 추가 ===
+                  // 처리된 셀 추적 초기화
+                  window.processedCells = new Set();
                   renderDropdownPills();
                   
-                  // 드롭다운 pill 렌더링을 지연시켜 더 안정적으로 처리
+                  // 드롭다운 pill 렌더링을 지연시켜 더 안정적으로 처리 (중복 호출 제거)
                   setTimeout(() => {
+                      // 이미 처리된 셀만 다시 처리
                       renderDropdownPills();
                       console.log('드롭다운 pill 렌더링 완료');
                   }, 100);
                   
-                  // 추가 지연 후 한 번 더 렌더링 (안정성 확보)
-                  setTimeout(() => {
-                      renderDropdownPills();
-                      console.log('드롭다운 pill 렌더링 2차 완료');
-                  }, 300);
+                  // 추가 지연 후 한 번 더 렌더링 (안정성 확보) - 제거
+                  // setTimeout(() => {
+                  //     renderDropdownPills();
+                  //     console.log('드롭다운 pill 렌더링 2차 완료');
+                  // }, 300);
                   
                   // 컬럼 리사이저 재초기화 및 너비 재적용
                   if (typeof reinitializeColumnResizer === 'function') {
@@ -2323,7 +2326,10 @@ function processDropdownOptions(options, value, cell) {
 
   // === 다중선택 드롭다운 셀을 옵션명 pill로 변환하는 함수 ===
   function renderDropdownPills() {
-      console.log('renderDropdownPills 함수 시작');
+      // 이미 처리된 셀을 추적하는 Set
+      if (!window.processedCells) {
+          window.processedCells = new Set();
+      }
       
       // 다중선택 드롭다운 필드 목록 동적 추출
       const dropdownFields = getDropdownFields();
@@ -2332,10 +2338,17 @@ function processDropdownOptions(options, value, cell) {
           const cells = document.querySelectorAll(`td[data-field="${field}"]`);
           
           cells.forEach(cell => {
+              // 이미 처리된 셀인지 확인
+              const cellKey = `${field}_${cell.getAttribute('data-value') || 'empty'}`;
+              if (window.processedCells.has(cellKey)) {
+                  return; // 이미 처리된 셀은 건너뛰기
+              }
+              
               const currentValue = cell.getAttribute('data-value');
               
               if (!currentValue) {
                   cell.innerHTML = '<div class="dropdown-pill" style="background:#f8f9fa; color:#6c757d; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center; border:1px solid #dee2e6;">선택 없음</div>';
+                  window.processedCells.add(cellKey);
                   return;
               }
               
@@ -2356,6 +2369,7 @@ function processDropdownOptions(options, value, cell) {
               if (options) {
                   // 로컬에 있는 옵션 사용
                   processDropdownPillsWithOptions(options, parsed, cell, currentValue);
+                  window.processedCells.add(cellKey);
               } else {
                   // 서버에서 옵션 가져오기 (fallback)
                   fetch('/sales/dropdown_options/?field=' + encodeURIComponent(field))
@@ -2366,27 +2380,24 @@ function processDropdownOptions(options, value, cell) {
                           return response.json();
                       })
                       .then(data => {
-                          console.log(`필드 "${field}" 옵션 데이터:`, data);
-                          
                           if (!data.options) {
-                              console.log(`필드 "${field}" 옵션 데이터가 없음`);
                               cell.innerHTML = `<div class="dropdown-pill" style="background:#f8f9fa; color:#6c757d; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center; border:1px solid #dee2e6;">${parsed}</div>`;
+                              window.processedCells.add(cellKey);
                               return;
                           }
                           
                           processDropdownPillsWithOptions(data.options, parsed, cell, currentValue);
-                          console.log(`셀 ${field} 업데이트 완료`);
+                          window.processedCells.add(cellKey);
                       })
                       .catch(error => {
                           console.error(`드롭다운 옵션 로드 실패 (${field}):`, error);
                           // 오류 발생 시에도 pill 형태로 표시
                           cell.innerHTML = `<div class="dropdown-pill" style="background:#f8f9fa; color:#6c757d; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center; border:1px solid #dee2e6;">${currentValue}</div>`;
+                          window.processedCells.add(cellKey);
                       });
               }
           });
       });
-      
-      console.log('renderDropdownPills 함수 완료');
   }
 
   
@@ -3013,14 +3024,12 @@ function processDropdownPillsWithOptions(options, parsed, cell, currentValue) {
     } else {
         // 단일 선택 값 처리
         const opt = options.find(opt => opt.id == parsed);
-        console.log(`단일선택 옵션 찾기:`, parsed, opt);
         
         if (opt) {
             const color = opt.color ? hexToRgba(opt.color, 0.18) : '#eee';
             htmlContent = `<div class="dropdown-pill" style="background:${color}; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">${opt.option}</div>`;
         } else {
             // 옵션을 찾지 못한 경우에도 pill 형태로 표시
-            console.log(`옵션을 찾지 못함, pill 형태로 표시: ${parsed}`);
             htmlContent = `<div class="dropdown-pill" style="background:#f8f9fa; color:#6c757d; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center; border:1px solid #dee2e6;">${parsed}</div>`;
         }
     }
@@ -3103,9 +3112,10 @@ function refreshTable() {
                                 }).then(res => res.json()).then(data => {
                                     if(!data.success) alert('순서 저장 실패: '+data.error);
                                 }).catch(() => alert('순서 저장 중 오류 발생'));
-                            }
-                        });
-                        console.log('테이블 행 드래그앤드롭 재초기화 완료');
+                                }
+                            });
+                            console.log('테이블 행 드래그앤드롭 재초기화 완료');
+                        }
                     }
                 }
                 
