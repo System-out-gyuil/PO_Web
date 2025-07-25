@@ -288,6 +288,12 @@ def diary_list(request):
     # 캐시 무효화를 위한 타임스탬프
     cache_timestamp = int(time.time())
     
+    # 모든 드롭다운 옵션을 한 번에 수집
+    dropdown_options = {}
+    for attr in user_attributes:
+        if attr.attributeType and attr.attributeType.name == 'dropdown':
+            dropdown_options[attr.name] = list(attr.dropdown_attributes.values('id', 'option', 'color', 'order').order_by('order'))
+    
     context = {
         'rows': rows_data,
         'attributes': [
@@ -309,9 +315,11 @@ def diary_list(request):
         'cache_timestamp': cache_timestamp,
         'status_id': status_id,
         'show_detail': show_detail,
-        'is_admin': user.is_admin  # 관리자 상태 추가
+        'is_admin': user.is_admin,  # 관리자 상태 추가
+        'dropdown_options': dropdown_options  # 모든 드롭다운 옵션 추가
     }
     context['attributes_json'] = json.dumps(context['attributes'], ensure_ascii=False)
+    context['dropdown_options_json'] = json.dumps(dropdown_options, ensure_ascii=False)  # JSON 형태로도 추가
     
     return render(request, 'diary/diary_list.html', context)
 
@@ -2671,6 +2679,12 @@ def upload_note_file(request):
         row_id = request.POST.get('row_id')
         if not file or not row_id:
             return JsonResponse({'success': False, 'error': '파일 또는 row_id 누락'})
+        
+        # 파일 크기 제한 (20MB)
+        max_file_size = 20 * 1024 * 1024  # 20MB
+        if file.size > max_file_size:
+            return JsonResponse({'success': False, 'error': '파일 크기가 20MB를 초과합니다.'})
+        
         s3_client = boto3.client(
             's3',
             aws_access_key_id=settings.AWS_ACCESS_KEY_ID,

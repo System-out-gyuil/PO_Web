@@ -51,6 +51,14 @@ def upload_file(request):
         if uploaded_file:
             print(f"파일명: {uploaded_file.name}")
             
+            # 파일 크기 제한 (20MB)
+            max_file_size = 20 * 1024 * 1024  # 20MB
+            if uploaded_file.size > max_file_size:
+                return JsonResponse({
+                    'success': False,
+                    'error': '파일 크기가 20MB를 초과합니다.'
+                })
+            
             try:
                 # Row와 Attribute 가져오기
                  

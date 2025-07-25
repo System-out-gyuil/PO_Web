@@ -787,7 +787,7 @@
     </style>
     <script>
         window.ATTR_FIELDS = JSON.parse('{{ attributes_json|default:"[]"|escapejs }}');
-        window.DROPDOWN_OPTIONS = JSON.parse('{{ dropdown_options|default:"{}"|escapejs }}');
+        window.DROPDOWN_OPTIONS = JSON.parse('{{ dropdown_options_json|default:"{}"|escapejs }}');
         window.DROPDOWN_ATTRIBUTES = JSON.parse('{{ dropdown_attributes_json|default:"[]"|escapejs }}');
         window.SELECTED_KANBAN_ATTR = '{{ selected_kanban_attr|default:""|escapejs }}';
         
@@ -1822,6 +1822,13 @@ document.addEventListener('DOMContentLoaded', function() {
             notificationPanel.style.display = 'none';
         }
     });
+    
+    // 테이블 필터링/정렬 상태 복원
+    setTimeout(() => {
+        if (typeof restoreTableStateAfterRefresh === 'function') {
+            restoreTableStateAfterRefresh();
+        }
+    }, 200);
 });
 
 // 전역 이벤트 위임 설정 함수
@@ -2953,6 +2960,14 @@ function refreshTable() {
                 
                 console.log('테이블 새로고침 후 모든 이벤트 재초기화 완료');
             }, 100);
+
+            // === 정렬/필터 복원 추가 ===
+            setTimeout(() => {
+                if (typeof restoreTableStateAfterRefresh === 'function') {
+                    console.log('[refreshTable] 테이블 상태 복원 호출');
+                    restoreTableStateAfterRefresh();
+                }
+            }, 500);
         })
         .catch(error => {
             console.error('테이블 새로고침 오류:', error);

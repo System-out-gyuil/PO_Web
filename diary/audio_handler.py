@@ -59,12 +59,12 @@ def upload_audio_file(request):
                 'error': 'row_id가 필요합니다.'
             })
         
-        # 파일 크기 제한 (100MB)
-        max_file_size = 1024 * 1024 * 1024  # 100MB
+        # 파일 크기 제한 (20MB)
+        max_file_size = 20 * 1024 * 1024  # 20MB
         if audio_file.size > max_file_size:
             return JsonResponse({
                 'success': False,
-                'error': '파일 크기가 1GB를 초과합니다.'
+                'error': '파일 크기가 20MB를 초과합니다.'
             })
         
         # 오디오 파일 검증
