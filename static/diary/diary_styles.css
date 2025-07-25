@@ -801,8 +801,8 @@ tr:hover .delete-row-btn {
 }
 
 #audioFilesList {
-    min-height: 650px;
-    max-height: 650px;
+    min-height: 92%;
+    max-height: 92%;
     overflow-y: auto;
 }
 
@@ -1423,7 +1423,7 @@ th.resizing .attribute-name-text {
 }
 
 .main-section-item1 {
-    background-image: url('/static/images/banner/001.jpg');
+    background-image: url('/static/images/banner/002.jpg');
     background-size: cover;
     background-position: center;
     border-radius: 10px;
@@ -1431,7 +1431,7 @@ th.resizing .attribute-name-text {
     width: 31%;
 }
 .main-section-item2 {
-    background-image: url('/static/images/banner/002.jpg');
+    background-image: url('/static/images/banner/003.jpg');
     background-size: cover;
     background-position: center;
     border-radius: 10px;

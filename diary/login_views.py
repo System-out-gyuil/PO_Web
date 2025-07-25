@@ -3,6 +3,7 @@ from django.views import View
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
+from django.contrib.auth.hashers import make_password, check_password
 from .models import User, BaseAttribute, BaseAttributeDetail, Attribute, AttributeValue, DropdownAttribute, Row, CalendarSettings, KanbanSettings
 import json
 
@@ -28,19 +29,27 @@ class LoginView(View):
                 })
 
             try:
-                member = User.objects.get(email=member_id, password=member_pw)
+                # 사용자 조회 (이메일로만 조회)
+                member = User.objects.get(email=member_id)
+                
+                # 비밀번호 검증
+                if check_password(member_pw, member.password):
+                    # 로그인 성공 → 세션 저장
+                    request.session['diary_authenticated'] = True
+                    request.session['diary_member_id'] = member.id
 
-                # 로그인 성공 → 세션 저장
-                request.session['diary_authenticated'] = True
-                request.session['diary_member_id'] = member.id
+                    print(member.id)
 
-                print(member.id)
-
-                return JsonResponse({
-                    'success': True,
-                    'message': '로그인되었습니다.',
-                    'redirect_url': '/sales/diary/'
-                })
+                    return JsonResponse({
+                        'success': True,
+                        'message': '로그인되었습니다.',
+                        'redirect_url': '/sales/diary/'
+                    })
+                else:
+                    return JsonResponse({
+                        'success': False,
+                        'error': '아이디 또는 비밀번호가 틀렸습니다.'
+                    })
 
             except User.DoesNotExist:
                 return JsonResponse({
@@ -84,11 +93,14 @@ class SignupView(View):
                     'error': '이미 존재하는 이메일입니다.'
                 })
             
+            # 비밀번호 암호화
+            hashed_password = make_password(password)
+            
             # 사용자 생성
             user = User.objects.create(
                 name=manager_name,  # 담당자명을 name으로 저장
                 email=email,
-                password=password,
+                password=hashed_password,  # 암호화된 비밀번호 저장
                 manager_name=manager_name,
                 company_name=company_name,
                 phone_number=phone_number
@@ -310,9 +322,99 @@ class LogoutView(View):
         return render(request, 'diary/diary_main.html')
     
     def post(self, request):
-        # 세션에서 diary_member_id, diary_authenticated 제거
-        request.session.pop('diary_member_id', None)
-        request.session.pop('diary_authenticated', None)
-        request.session.save()
-        # 로그아웃 후 JSON 반환
-        return JsonResponse({'success': True, 'message': '로그아웃되었습니다.'})
+        try:
+            # 세션에서 diary_member_id, diary_authenticated 제거
+            request.session.pop('diary_member_id', None)
+            request.session.pop('diary_authenticated', None)
+            request.session.save()
+            
+            # 로그아웃 후 JSON 반환
+            return JsonResponse({
+                'success': True, 
+                'message': '로그아웃되었습니다.'
+            })
+        except Exception as e:
+            # 오류가 발생해도 로그아웃은 성공으로 처리
+            return JsonResponse({
+                'success': True,
+                'message': '로그아웃되었습니다.'
+            })
+
+@method_decorator(csrf_exempt, name='dispatch')
+class ChangePasswordView(View):
+    def get(self, request):
+        # 로그인 상태 확인
+        if not request.session.get('diary_authenticated'):
+            return redirect('/sales/login/')
+        return render(request, 'diary/change_password.html')
+    
+    def post(self, request):
+        try:
+            # 로그인 상태 확인
+            if not request.session.get('diary_authenticated'):
+                return JsonResponse({
+                    'success': False,
+                    'error': '로그인이 필요합니다.'
+                })
+            
+            # JSON 데이터 파싱
+            data = json.loads(request.body)
+            current_password = data.get('current_password')
+            new_password = data.get('new_password')
+            confirm_password = data.get('confirm_password')
+            
+            if not current_password or not new_password or not confirm_password:
+                return JsonResponse({
+                    'success': False,
+                    'error': '모든 필드를 입력해주세요.'
+                })
+            
+            if new_password != confirm_password:
+                return JsonResponse({
+                    'success': False,
+                    'error': '새 비밀번호가 일치하지 않습니다.'
+                })
+            
+            if len(new_password) < 6:
+                return JsonResponse({
+                    'success': False,
+                    'error': '새 비밀번호는 6자 이상이어야 합니다.'
+                })
+            
+            # 현재 사용자 조회
+            user_id = request.session.get('diary_member_id')
+            try:
+                user = User.objects.get(id=user_id)
+            except User.DoesNotExist:
+                return JsonResponse({
+                    'success': False,
+                    'error': '사용자를 찾을 수 없습니다.'
+                })
+            
+            # 현재 비밀번호 확인
+            if not check_password(current_password, user.password):
+                return JsonResponse({
+                    'success': False,
+                    'error': '현재 비밀번호가 틀렸습니다.'
+                })
+            
+            # 새 비밀번호 암호화 및 저장
+            hashed_new_password = make_password(new_password)
+            user.password = hashed_new_password
+            user.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': '비밀번호가 성공적으로 변경되었습니다.'
+            })
+            
+        except json.JSONDecodeError:
+            return JsonResponse({
+                'success': False,
+                'error': '잘못된 요청 형식입니다.'
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': f'비밀번호 변경 중 오류가 발생했습니다: {str(e)}'
+            })

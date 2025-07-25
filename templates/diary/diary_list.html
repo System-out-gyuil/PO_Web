@@ -807,6 +807,11 @@
         
         // 로그인 상태 확인 함수
         function checkLoginStatus() {
+            // 로그아웃 중이면 요청 중단
+            if (window.isLoggingOut) {
+                return;
+            }
+            
             fetch('/sales/check_login_status/', {
                 method: 'GET',
                 headers: {
@@ -814,7 +819,13 @@
                     'X-CSRFToken': getCsrfToken()
                 }
             })
-            .then(response => response.json())
+            .then(response => {
+                // 로그아웃 중이면 요청 중단
+                if (window.isLoggingOut) {
+                    throw new Error('로그아웃 중');
+                }
+                return response.json();
+            })
             .then(data => {
                 if (!data.is_authenticated) {
                     // 로그인되지 않은 경우 로그인 페이지로 리다이렉트
@@ -822,9 +833,12 @@
                 }
             })
             .catch(error => {
-                console.error('로그인 상태 확인 오류:', error);
-                // 오류 발생 시에도 로그인 페이지로 리다이렉트
-                window.location.href = '/sales/login/';
+                // 로그아웃 중이 아닐 때만 오류 처리
+                if (!window.isLoggingOut && error.message !== '로그아웃 중') {
+                    console.error('로그인 상태 확인 오류:', error);
+                    // 오류 발생 시에도 로그인 페이지로 리다이렉트
+                    window.location.href = '/sales/login/';
+                }
             });
         }
         
@@ -837,6 +851,11 @@
         
         // 알림 배지 초기 업데이트
         function updateNotificationBadgeOnLoad() {
+            // 로그아웃 중이면 요청 중단
+            if (window.isLoggingOut) {
+                return;
+            }
+            
             fetch('/sales/diary_board/notifications/', {
                 method: 'GET',
                 headers: {
@@ -844,14 +863,23 @@
                     'X-CSRFToken': getCsrfToken()
                 }
             })
-            .then(response => response.json())
+            .then(response => {
+                // 로그아웃 중이면 요청 중단
+                if (window.isLoggingOut) {
+                    throw new Error('로그아웃 중');
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data.success) {
                     updateNotificationBadge(data.unread_count);
                 }
             })
             .catch(error => {
-                console.error('알림 배지 업데이트 오류:', error);
+                // 로그아웃 중이 아닐 때만 오류 로그 출력
+                if (!window.isLoggingOut && error.message !== '로그아웃 중') {
+                    console.error('알림 배지 업데이트 오류:', error);
+                }
             });
         }
         
@@ -1145,8 +1173,7 @@
         </div>
     </div>
     <div style="margin-top:40px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-            <h3 style="margin:0;color:#333;">캘린더</h3>
+        <div style="display:flex;justify-content:flex-end;align-items:center;margin-bottom:10px;">
             <button onclick="showCalendarSettingsModal()" 
                     style="padding:8px 16px;background:#007bff;color:white;border:none;border-radius:4px;cursor:pointer;font-size:14px;">
                 ⚙️ 캘린더 설정
@@ -3705,6 +3732,26 @@ function addNewModalDropdownOption(rowId, fieldName, newOption, element) {
 // 로그아웃 함수
 function logout() {
     if (confirm('로그아웃하시겠습니까?')) {
+        // 로그아웃 중임을 표시하는 플래그 설정
+        window.isLoggingOut = true;
+        
+        // 모든 진행 중인 fetch 요청을 중단하기 위한 AbortController 생성
+        if (window.currentAbortController) {
+            window.currentAbortController.abort();
+        }
+        
+        // 브라우저 캐시 정리
+        if ('caches' in window) {
+            caches.keys().then(function(names) {
+                for (let name of names) {
+                    caches.delete(name);
+                }
+            });
+        }
+        
+        // 세션 스토리지 정리
+        sessionStorage.clear();
+        
         // 서버에 로그아웃 요청
         fetch('/sales/logout/', {
             method: 'POST',
@@ -3713,30 +3760,29 @@ function logout() {
                 'X-CSRFToken': getCsrfToken()
             }
         })
-        .then(response => response.json())
+        .then(response => {
+            // 응답이 JSON이 아닌 경우를 처리
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                return response.json();
+            } else {
+                // JSON이 아닌 경우 성공으로 처리하고 바로 리다이렉트
+                return { success: true };
+            }
+        })
         .then(data => {
             if (data.success) {
-                // 브라우저 캐시 정리
-                if ('caches' in window) {
-                    caches.keys().then(function(names) {
-                        for (let name of names) {
-                            caches.delete(name);
-                        }
-                    });
-                }
-                
-                // 세션 스토리지 정리
-                sessionStorage.clear();
-                
-                // 로그인 페이지로 리다이렉트
+                // 로그인 페이지로 즉시 리다이렉트
                 window.location.href = '/sales/login/';
             } else {
-                alert('로그아웃 중 오류가 발생했습니다: ' + (data.error || ''));
+                // 오류가 있어도 로그인 페이지로 리다이렉트
+                window.location.href = '/sales/login/';
             }
         })
         .catch(error => {
             console.error('로그아웃 오류:', error);
-            alert('로그아웃 중 오류가 발생했습니다.');
+            // 오류가 발생해도 로그인 페이지로 리다이렉트
+            window.location.href = '/sales/login/';
         });
     }
 }

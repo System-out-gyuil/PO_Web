@@ -9,7 +9,23 @@ def get_kanban_data(request):
     """특정 dropdown 속성에 대한 칸반보드 데이터를 반환하는 API"""
     try:
         user_id = request.session.get('diary_member_id')
-        user = User.objects.get(id=user_id)
+        
+        # 사용자 ID가 없으면 로그인되지 않은 상태
+        if not user_id:
+            return JsonResponse({
+                'success': False,
+                'error': '로그인이 필요합니다.'
+            })
+        
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            # 사용자가 존재하지 않으면 로그인되지 않은 상태
+            return JsonResponse({
+                'success': False,
+                'error': '사용자를 찾을 수 없습니다.'
+            })
+        
         attr_name = request.GET.get('attr_name')
         
         if not attr_name:
@@ -99,14 +115,13 @@ def get_kanban_data(request):
         return JsonResponse({
             'success': True,
             'board': board_data,
-            'selected_attr': attr_name,
             'progress_options': progress_options
         })
         
     except Exception as e:
         return JsonResponse({
             'success': False,
-            'error': str(e)
+            'error': f'칸반보드 데이터 처리 중 오류가 발생했습니다: {str(e)}'
         })
 
 def apply_kanban_filters(row_values, settings):

@@ -512,6 +512,12 @@ function updateKanbanBoard(attrName) {
         // 기준 속성이 없으면 아무것도 하지 않음 (모달/alert도 X)
         return;
     }
+    
+    // 로그아웃 중이면 요청 중단
+    if (window.isLoggingOut) {
+        return;
+    }
+    
     const loadingIndicator = document.getElementById('kanbanLoadingIndicator');
     const boardView = document.getElementById('boardView');
     
@@ -519,82 +525,67 @@ function updateKanbanBoard(attrName) {
     loadingIndicator.style.display = 'block';
     
     fetch('/sales/get_kanban_data/?attr_name=' + encodeURIComponent(attrName))
-        .then(response => response.json())
+        .then(response => {
+            // 로그아웃 중이면 요청 중단
+            if (window.isLoggingOut) {
+                throw new Error('로그아웃 중');
+            }
+            return response.json();
+        })
         .then(data => {
             loadingIndicator.style.display = 'none';
+            
+            // 로그아웃 중이면 처리 중단
+            if (window.isLoggingOut) {
+                return;
+            }
             
             if (data.success) {
                 // 칸반보드 HTML 생성
                 let boardHTML = '<div class="board-container">';
                 
                 data.board.forEach(function(col) {
-                    let colStyle = '';
-                    if (col.status.color) {
-                        colStyle = `background:${hexToRgba(col.status.color, 0.10)};`;
-                    }
-                    
-                    let titleStyle = '';
-                    if (col.status.color) {
-                        titleStyle = `background:${hexToRgba(col.status.color, 0.18)};border-left:6px solid ${col.status.color};padding-left:10px;`;
-                    } else {
-                        titleStyle = 'border-left:6px solid #007bff;padding-left:10px;';
-                    }
-                    
-                    boardHTML += `
-                        <div class="board-col" data-status-id="${col.status.id}" data-attr-name="${attrName}" style="${colStyle}">
-                            <div class="board-col-title" style="${titleStyle}">${col.status.name}</div>
-                            <div class="board-cards">
-                    `;
+                    boardHTML += '<div class="board-col" data-status-id="' + col.status.id + '" data-attr-name="' + attrName + '" style="background:' + (col.status.color ? hexToRgba(col.status.color, 0.10) : '') + ';">';
+                    boardHTML += '<div class="board-col-title" style="background:' + (col.status.color ? hexToRgba(col.status.color, 0.18) : '') + ';border-left:6px solid ' + (col.status.color || '#007bff') + ';padding-left:10px;">' + col.status.name + '</div>';
+                    boardHTML += '<div class="board-cards">';
                     
                     col.entries.forEach(function(entry) {
-                        const entryName = entry.name || '(이름 없음)';
-                        const entryAmount = entry.amount;
-                        const entryProgress = entry.progress || entry.now || '';
-                        
-                        // 진행사항 옵션에서 텍스트 찾기
-                        let progressText = '';
-                        if (entryProgress && data.progress_options) {
-                            const progressOption = data.progress_options.find(option => option.id == entryProgress);
-                            if (progressOption) {
-                                progressText = progressOption.option;
-                            }
+                        boardHTML += '<div class="board-card" data-entry-id="' + entry.id + '">';
+                        boardHTML += '<div class="board-card-title">' + (entry.name || '(회사명 없음)') + '</div>';
+                        if (entry.amount) {
+                            boardHTML += '<div class="board-card-amount">' + formatKoreanCurrency(entry.amount) + '</div>';
                         }
-                        
-                        boardHTML += `
-                            <div class="board-card" data-entry-id="${entry.id}">
-                              <div class="board-card-title">${entryName || '(회사명 없음)'}</div>
-                              <div class="board-card-amount">${entryAmount ? formatKoreanCurrency(entryAmount) : ''}</div>
-                              ${progressText ? `<div class="board-card-progress" style="font-size: 11px; color: #666; margin-top: 4px;">${progressText}</div>` : ''}
-                            </div>
-                        `;
+                        boardHTML += '</div>';
                     });
                     
-                    boardHTML += `
-                            </div>
-                            <button class="add-card-btn" style="display:none;"></button>
-                        </div>
-                    `;
+                    boardHTML += '</div>';
+                    boardHTML += '<button class="add-card-btn" style="display:none;"></button>';
+                    boardHTML += '</div>';
                 });
                 
                 boardHTML += '</div>';
-                
-                // 기존 보드 교체
                 boardView.innerHTML = boardHTML;
                 
-                // 이벤트 바인딩 재설정
+                // 칸반보드 드래그앤드롭 재바인딩
                 bindKanbanSortable();
-                setTimeout(enableKanbanColumnDragDrop, 100);
                 
                 // 전역 변수 업데이트
                 window.SELECTED_KANBAN_ATTR = attrName;
                 
             } else {
-                alert('칸반보드 데이터를 불러오는데 실패했습니다: ' + (data.error || ''));
+                // 로그아웃 중이 아닐 때만 오류 메시지 표시
+                if (!window.isLoggingOut) {
+                    alert('칸반보드 데이터를 불러오는데 실패했습니다: ' + (data.error || ''));
+                }
             }
         })
         .catch(error => {
             loadingIndicator.style.display = 'none';
             console.error('칸반보드 업데이트 오류:', error);
-            alert('칸반보드 업데이트 중 오류가 발생했습니다: ' + error.message);
+            
+            // 로그아웃 중이 아닐 때만 오류 메시지 표시
+            if (!window.isLoggingOut && error.message !== '로그아웃 중') {
+                alert('칸반보드 업데이트 중 오류가 발생했습니다: ' + error.message);
+            }
         });
 }

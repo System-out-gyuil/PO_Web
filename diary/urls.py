@@ -1,7 +1,7 @@
 from django.urls import path
 from . import views
 from .views import upload_note_file, delete_note_file, update_note_order_and_notes, get_file_preview_url, get_file_preview_url_note, get_file_content_note
-from .login_views import LoginView, LogoutView, SignupView
+from .login_views import LoginView, LogoutView, SignupView, ChangePasswordView
 from .main_views import DiaryMainView
 from .file_handler import upload_file, delete_file, download_file, download_file_note
 from .calendar_handlers import get_datetime_attributes, get_calendar_settings, save_calendar_settings, calendar_events
@@ -20,6 +20,7 @@ urlpatterns = [
     path('login/', LoginView.as_view(), name='login'),
     path('logout/', LogoutView.as_view(), name='logout'),
     path('signup/', SignupView.as_view(), name='signup'),
+    path('change_password/', ChangePasswordView.as_view(), name='change_password'),
     path('check_login_status/', views.check_login_status, name='check_login_status'),
     path('diary/', views.diary_list, name='diary_list'),
     path('fu_events/', views.fu_events, name='fu_events'),
