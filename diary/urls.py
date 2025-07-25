@@ -11,7 +11,7 @@ from .attribute_handlers import delete_attribute_value, toggle_attribute_visibil
 from .audio_handler import upload_audio_file, get_audio_files_by_date, delete_audio_file, update_audio_file_order
 from .cascade_handlers import toggle_cascade_attribute, get_cascade_attributes_list
 from .auto_blog import upload_blog_file, get_blog_files
-from .detail_openai import ai_chat, ai_chat_cache_clear
+from .detail_openai import ai_chat, ai_chat_cache_clear, file_cache_management, performance_monitoring
 from .admin_view import admin_dashboard, inquiry_list, inquiry_detail, alarm_list, alarm_create, alarm_edit, alarm_delete, inquiry_delete, admin_api
 from .diary_board import diary_board, get_announcements, get_announcement_detail, mark_as_read, download_announcement_file, announcement_detail_page, create_announcement, upload_announcement_file, get_announcement_file_url
 
@@ -115,6 +115,10 @@ urlpatterns = [
     # AI 채팅 관련 API
     path('ai_chat/', ai_chat, name='ai_chat'),
     path('ai_chat_cache_clear/', ai_chat_cache_clear, name='ai_chat_cache_clear'),
+    
+    # 파일 캐시 관리 및 성능 모니터링 API
+    path('file_cache_management/', file_cache_management, name='file_cache_management'),
+    path('performance_monitoring/', performance_monitoring, name='performance_monitoring'),
     
     # 문의하기 관련 API
     path('submit_inquiry/', views.submit_inquiry, name='submit_inquiry'),

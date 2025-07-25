@@ -17,505 +17,9 @@ import warnings
 import boto3
 from botocore.exceptions import ClientError
 import hashlib
-import asyncio
-import concurrent.futures
-import threading
-from functools import lru_cache
-import mmap
-import io
-import gzip
-import pickle
-from pathlib import Path
-import zipfile
 warnings.filterwarnings("ignore", category=UserWarning)
 
 logger = logging.getLogger(__name__)
-
-# 파일 처리 성능 최적화를 위한 캐시
-file_text_cache = {}
-file_hash_cache = {}
-MAX_CACHE_SIZE = 100  # 최대 캐시 크기
-
-# 스레드 풀 생성 (파일 처리용)
-file_processing_pool = concurrent.futures.ThreadPoolExecutor(max_workers=4)
-
-# 캐시 파일 경로
-CACHE_DIR = Path(tempfile.gettempdir()) / "file_cache"
-CACHE_DIR.mkdir(exist_ok=True)
-
-def get_cached_file_text(file_hash, file_path):
-    """파일 해시 기반 텍스트 캐시 조회 (디스크 + 메모리)"""
-    # 메모리 캐시 확인
-    if file_hash in file_text_cache:
-        logger.info(f"메모리 캐시된 파일 텍스트 사용: {file_hash}")
-        return file_text_cache[file_hash]
-    
-    # 디스크 캐시 확인
-    cache_file = CACHE_DIR / f"{file_hash}.pkl"
-    if cache_file.exists():
-        try:
-            with open(cache_file, 'rb') as f:
-                cached_data = pickle.load(f)
-                # 캐시 유효성 검사 (파일 수정 시간 비교)
-                if os.path.exists(file_path):
-                    file_mtime = os.path.getmtime(file_path)
-                    if cached_data.get('mtime') == file_mtime:
-                        text = cached_data.get('text', '')
-                        # 메모리 캐시에도 저장
-                        set_cached_file_text(file_hash, text)
-                        logger.info(f"디스크 캐시된 파일 텍스트 사용: {file_hash}")
-                        return text
-        except Exception as e:
-            logger.error(f"디스크 캐시 읽기 실패: {e}")
-    
-    return None
-
-def set_cached_file_text(file_hash, text):
-    """파일 텍스트 캐시 저장 (메모리 + 디스크)"""
-    # 메모리 캐시 관리
-    if len(file_text_cache) >= MAX_CACHE_SIZE:
-        # LRU 방식으로 가장 오래된 항목 제거
-        oldest_key = next(iter(file_text_cache))
-        del file_text_cache[oldest_key]
-    
-    file_text_cache[file_hash] = text
-    
-    # 디스크 캐시 저장
-    try:
-        cache_file = CACHE_DIR / f"{file_hash}.pkl"
-        cache_data = {
-            'text': text,
-            'mtime': time.time(),
-            'created': time.time()
-        }
-        with open(cache_file, 'wb') as f:
-            pickle.dump(cache_data, f)
-    except Exception as e:
-        logger.error(f"디스크 캐시 저장 실패: {e}")
-    
-    logger.info(f"파일 텍스트 캐시 저장: {file_hash}")
-
-def calculate_file_hash_fast(file_path):
-    """빠른 파일 해시 계산 (메모리 매핑 사용)"""
-    try:
-        hash_md5 = hashlib.md5()
-        file_size = os.path.getsize(file_path)
-        
-        if file_size == 0:
-            return hashlib.md5(b"").hexdigest()
-        
-        with open(file_path, 'rb') as f:
-            if file_size < 1024 * 1024:  # 1MB 미만
-                # 작은 파일은 전체 해시
-                with mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mm:
-                    hash_md5.update(mm)
-            else:
-                # 큰 파일은 샘플링 방식
-                with mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mm:
-                    # 첫 1KB
-                    hash_md5.update(mm[:1024])
-                    # 중간 부분 (파일 크기의 50% 지점)
-                    mid_pos = file_size // 2
-                    hash_md5.update(mm[mid_pos:mid_pos + 1024])
-                    # 마지막 1KB
-                    hash_md5.update(mm[-1024:])
-        
-        return hash_md5.hexdigest()
-    except Exception as e:
-        logger.error(f"빠른 파일 해시 계산 실패: {e}")
-        return None
-
-def read_file_chunked(file_path, chunk_size=8192):
-    """청크 단위로 파일 읽기 (메모리 효율적)"""
-    try:
-        with open(file_path, 'rb') as f:
-            while True:
-                chunk = f.read(chunk_size)
-                if not chunk:
-                    break
-                yield chunk
-    except Exception as e:
-        logger.error(f"청크 파일 읽기 실패: {e}")
-
-def process_file_async(file_info, field_name):
-    """비동기 파일 처리"""
-    try:
-        file_text, file_hash = extract_file_text(field_name, file_info)
-        return file_text, file_hash
-    except Exception as e:
-        logger.error(f"비동기 파일 처리 실패: {e}")
-        return None, None
-
-def extract_text_from_file_optimized(file_path):
-    """최적화된 파일 텍스트 추출 (메모리 매핑 사용)"""
-    print(f"extract_text_from_file_optimized 시작: {file_path}")
-    
-    if not file_path or not os.path.exists(file_path):
-        print(f"파일이 존재하지 않음: {file_path}")
-        return ""
-    
-    # 파일 크기 체크
-    file_size = os.path.getsize(file_path)
-    print(f"파일 크기: {file_size} bytes")
-    
-    # 매우 큰 파일은 처리 제한
-    if file_size > 50 * 1024 * 1024:  # 50MB
-        print(f"파일이 너무 큼: {file_size / (1024*1024):.1f}MB")
-        return f"파일이 너무 커서 텍스트 추출을 건너뜁니다. (크기: {file_size / (1024*1024):.1f}MB)"
-    
-    # 파일 해시 계산
-    file_hash = calculate_file_hash_fast(file_path)
-    print(f"파일 해시: {file_hash}")
-    
-    # 캐시 확인
-    cached_text = get_cached_file_text(file_hash, file_path)
-    if cached_text:
-        print(f"캐시된 텍스트 사용: {len(cached_text)} characters")
-        return cached_text
-    
-    print(f"캐시 없음, 새로 처리 시작")
-    
-    try:
-        file_extension = os.path.splitext(file_path)[1].lower()
-        print(f"파일 확장자: {file_extension}")
-        
-        if file_path.endswith(".pdf"):
-            print(f"PDF 파일 처리 시작")
-            return extract_pdf_text_optimized(file_path, file_hash)
-        elif file_path.endswith((".jpg", ".jpeg", ".png")):
-            print(f"이미지 파일 처리 시작")
-            return extract_image_text_optimized(file_path, file_hash)
-        elif file_path.endswith(".hwp"):
-            print(f"HWP 파일 처리 시작")
-            return extract_hwp_text_optimized(file_path, file_hash)
-        elif file_path.endswith((".docx", ".doc")):
-            print(f"DOCX 파일 처리 시작")
-            result = extract_docx_text_optimized(file_path, file_hash)
-            print(f"DOCX 처리 결과: {len(result) if result else 0} characters")
-            return result
-        elif file_path.endswith((".txt", ".md", ".markdown", ".rst", ".adoc")):
-            print(f"텍스트 파일 처리 시작")
-            return extract_text_file_optimized(file_path, file_hash)
-        elif file_path.endswith((".csv", ".tsv")):
-            print(f"CSV/TSV 파일 처리 시작")
-            return extract_csv_text_optimized(file_path, file_hash)
-        elif file_path.endswith((".json", ".xml", ".yaml", ".yml")):
-            print(f"구조화된 데이터 파일 처리 시작")
-            return extract_structured_text_optimized(file_path, file_hash)
-        else:
-            print(f"지원하지 않는 파일 형식: {file_extension}")
-            return ""
-    except Exception as e:
-        logger.error(f"최적화된 텍스트 추출 실패: {e}")
-        print(f"텍스트 추출 중 오류 발생: {e}")
-        return ""
-
-def extract_pdf_text_optimized(file_path, file_hash):
-    """최적화된 PDF 텍스트 추출 (메모리 효율적)"""
-    try:
-        with pdfplumber.open(file_path) as pdf:
-            # 페이지 수에 따른 처리 방식 변경
-            num_pages = len(pdf.pages)
-            
-            if num_pages > 50:  # 50페이지 이상은 첫 10페이지만 처리
-                pages_to_process = pdf.pages[:10]
-                result = "대용량 PDF - 첫 10페이지만 처리됨\n\n"
-            else:
-                pages_to_process = pdf.pages
-                result = ""
-            
-            all_tables = []
-            text_content = []
-            
-            for i, page in enumerate(pages_to_process):
-                # 표 우선 추출
-                tables = page.extract_tables()
-                if tables:
-                    for table in tables:
-                        all_tables.append(table)
-                
-                # 텍스트 추출
-                page_text = page.extract_text()
-                if page_text:
-                    text_content.append(page_text)
-            
-            # 표가 있으면 표 우선, 없으면 텍스트
-            if all_tables:
-                table_texts = []
-                for table in all_tables:
-                    table_texts.append('\n'.join(['\t'.join([cell if cell is not None else '' for cell in row]) for row in table if row]))
-                result += '\n\n'.join(table_texts)
-            else:
-                result += '\n'.join(text_content)
-            
-            # 캐시 저장
-            set_cached_file_text(file_hash, result)
-            return result
-            
-    except Exception as e:
-        logger.error(f"PDF 텍스트 추출 실패: {e}")
-        return ""
-
-def extract_image_text_optimized(file_path, file_hash):
-    """최적화된 이미지 텍스트 추출 (메모리 효율적)"""
-    try:
-        # 이미지 크기 체크 및 리사이즈
-        with Image.open(file_path) as img:
-            width, height = img.size
-            if width * height > 4000 * 3000:  # 너무 큰 이미지는 리사이즈
-                img.thumbnail((4000, 3000), Image.Resampling.LANCZOS)
-                temp_path = tempfile.mktemp(suffix='.jpg')
-                img.save(temp_path, 'JPEG', optimize=True, quality=85)
-                result = clova_ocr(temp_path, 'jpg')
-                os.remove(temp_path)
-            else:
-                result = clova_ocr(file_path, 'jpg')
-        
-        # 캐시 저장
-        set_cached_file_text(file_hash, result)
-        return result
-        
-    except Exception as e:
-        logger.error(f"이미지 텍스트 추출 실패: {e}")
-        return ""
-
-def extract_hwp_text_optimized(file_path, file_hash):
-    """최적화된 HWP 텍스트 추출"""
-    try:
-        pdf_path = convert_hwp_to_pdf(file_path)
-        if os.path.exists(pdf_path):
-            result = extract_text_from_file_optimized(pdf_path)
-            os.remove(pdf_path)
-            return result
-        else:
-            return "HWP 파일 변환 실패"
-    except Exception as e:
-        logger.error(f"HWP 텍스트 추출 실패: {e}")
-        return ""
-
-def extract_docx_text_optimized(file_path, file_hash):
-    """최적화된 DOCX 텍스트 추출"""
-    try:
-        from docx import Document
-        
-        # DOCX 파일 열기
-        doc = Document(file_path)
-        
-        # 모든 단락의 텍스트 추출
-        paragraphs = []
-        for paragraph in doc.paragraphs:
-            if paragraph.text.strip():
-                paragraphs.append(paragraph.text.strip())
-        
-        # 모든 테이블의 텍스트 추출
-        tables = []
-        for table in doc.tables:
-            table_text = []
-            for row in table.rows:
-                row_text = []
-                for cell in row.cells:
-                    if cell.text.strip():
-                        row_text.append(cell.text.strip())
-                if row_text:
-                    table_text.append(' | '.join(row_text))
-            if table_text:
-                tables.append('\n'.join(table_text))
-        
-        # 결과 조합
-        result = []
-        if paragraphs:
-            result.append('\n'.join(paragraphs))
-        if tables:
-            result.append('\n\n'.join(tables))
-        
-        final_result = '\n\n'.join(result) if result else "DOCX 파일에서 텍스트를 추출할 수 없습니다."
-        
-        # 캐시 저장
-        set_cached_file_text(file_hash, final_result)
-        return final_result
-        
-    except ImportError:
-        logger.error("python-docx 라이브러리가 설치되지 않았습니다.")
-        return "DOCX 파일 처리를 위해 python-docx 라이브러리가 필요합니다."
-    except Exception as e:
-        logger.error(f"DOCX 텍스트 추출 실패: {e}")
-        return f"DOCX 텍스트 추출 실패: {str(e)}"
-
-def extract_text_file_optimized(file_path, file_hash):
-    """최적화된 텍스트 파일 추출 (메모리 매핑 사용)"""
-    try:
-        # 파일 크기 체크
-        file_size = os.path.getsize(file_path)
-        if file_size > 10 * 1024 * 1024:  # 10MB 이상은 첫 1MB만 읽기
-            with open(file_path, 'r', encoding='utf-8') as f:
-                content = f.read(1024 * 1024) + "\n\n[파일이 너무 커서 일부만 표시됩니다.]"
-        else:
-            # 메모리 매핑을 사용한 효율적인 읽기
-            content = ""
-            encodings = ['utf-8', 'cp949', 'euc-kr', 'latin-1']
-            
-            for encoding in encodings:
-                try:
-                    with open(file_path, 'rb') as f:
-                        with mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mm:
-                            content = mm.read().decode(encoding)
-                    break
-                except (UnicodeDecodeError, Exception):
-                    continue
-            
-            if not content:
-                return "텍스트 파일 인코딩을 확인할 수 없습니다."
-        
-        # 캐시 저장
-        set_cached_file_text(file_hash, content.strip())
-        return content.strip()
-        
-    except Exception as e:
-        logger.error(f"텍스트 파일 추출 실패: {e}")
-        return f"텍스트 파일 읽기 실패: {str(e)}"
-
-def extract_csv_text_optimized(file_path, file_hash):
-    """최적화된 CSV/TSV 텍스트 추출 (스트리밍 처리)"""
-    try:
-        import csv
-        
-        delimiter = ',' if file_path.endswith('.csv') else '\t'
-        result = ""
-        row_count = 0
-        max_rows = 1000
-        
-        with open(file_path, 'r', encoding='utf-8') as f:
-            reader = csv.reader(f, delimiter=delimiter)
-            
-            for i, row in enumerate(reader):
-                if i == 0:  # 헤더
-                    result += f"헤더: {' | '.join(row)}\n"
-                else:  # 데이터
-                    result += f"행 {i}: {' | '.join(row)}\n"
-                
-                row_count += 1
-                if row_count >= max_rows:
-                    result += f"\n[대용량 파일 - 첫 {max_rows}행만 처리됨]\n"
-                    break
-        
-        if not result.strip():
-            result = "빈 CSV/TSV 파일"
-        
-        # 캐시 저장
-        set_cached_file_text(file_hash, result)
-        return result
-        
-    except Exception as e:
-        logger.error(f"CSV/TSV 텍스트 추출 실패: {e}")
-        return f"CSV/TSV 파일 읽기 실패: {str(e)}"
-
-def extract_structured_text_optimized(file_path, file_hash):
-    """최적화된 구조화된 데이터 파일 추출"""
-    try:
-        file_size = os.path.getsize(file_path)
-        if file_size > 5 * 1024 * 1024:  # 5MB 이상은 일부만 읽기
-            with open(file_path, 'r', encoding='utf-8') as f:
-                content = f.read(1024 * 1024) + "\n\n[파일이 너무 커서 일부만 표시됩니다.]"
-        else:
-            # 메모리 매핑을 사용한 효율적인 읽기
-            with open(file_path, 'rb') as f:
-                with mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mm:
-                    content = mm.read().decode('utf-8')
-        
-        result = f"구조화된 데이터 파일 내용:\n{content.strip()}"
-        
-        # 캐시 저장
-        set_cached_file_text(file_hash, result)
-        return result
-        
-    except Exception as e:
-        logger.error(f"구조화된 데이터 파일 추출 실패: {e}")
-        return f"구조화된 데이터 파일 읽기 실패: {str(e)}"
-
-def download_file_from_s3_optimized(s3_key):
-    """최적화된 S3 파일 다운로드 (스트리밍 + 캐싱)"""
-    try:
-        # 캐시된 파일 경로 확인
-        cache_key = f"s3_download_{hashlib.md5(s3_key.encode()).hexdigest()}"
-        cached_path = file_hash_cache.get(cache_key)
-        
-        if cached_path and os.path.exists(cached_path):
-            # 캐시된 파일이 유효한지 확인 (5분 이내)
-            file_age = time.time() - os.path.getmtime(cached_path)
-            if file_age < 300:  # 5분
-                logger.info(f"S3 파일 캐시 사용: {s3_key}")
-                return cached_path
-        
-        # S3 클라이언트 생성 (연결 풀링 + 최적화)
-        s3_client = boto3.client(
-            's3',
-            aws_access_key_id=AWS_S3_ACCESS_KEY,
-            aws_secret_access_key=AWS_S3_SECRET_KEY,
-            region_name=AWS_S3_REGION,
-            config=boto3.session.Config(
-                max_pool_connections=50,
-                retries={'max_attempts': 3},
-                read_timeout=30,
-                connect_timeout=10
-            )
-        )
-        
-        # 임시 파일 생성
-        temp_dir = tempfile.gettempdir()
-        file_name = s3_key.split('/')[-1]
-        temp_path = os.path.join(temp_dir, f"s3_{file_name}")
-        
-        # S3에서 파일 다운로드 (스트리밍)
-        s3_client.download_file(AWS_S3_BUCKET_NAME, s3_key, temp_path)
-        
-        # 캐시 저장
-        file_hash_cache[cache_key] = temp_path
-        
-        return temp_path
-        
-    except Exception as e:
-        logger.error(f"최적화된 S3 파일 다운로드 실패: {e}")
-        return None
-
-def download_file_from_url_optimized(url):
-    """최적화된 URL 파일 다운로드 (스트리밍 + 캐싱)"""
-    try:
-        # S3 URL인 경우 최적화된 S3 다운로드 사용
-        if 's3.ap-northeast-2.amazonaws.com' in url:
-            return download_file_from_s3_optimized(url)
-        
-        # 캐시된 파일 경로 확인
-        cache_key = f"url_download_{hashlib.md5(url.encode()).hexdigest()}"
-        cached_path = file_hash_cache.get(cache_key)
-        
-        if cached_path and os.path.exists(cached_path):
-            # 캐시된 파일이 유효한지 확인 (5분 이내)
-            file_age = time.time() - os.path.getmtime(cached_path)
-            if file_age < 300:  # 5분
-                logger.info(f"URL 파일 캐시 사용: {url}")
-                return cached_path
-        
-        # 일반 URL인 경우 requests 사용 (스트리밍 + 최적화)
-        temp_dir = tempfile.gettempdir()
-        file_name = url.split('/')[-1].split('?')[0]
-        temp_path = os.path.join(temp_dir, f"url_{file_name}")
-        
-        # 파일 다운로드 (스트리밍, 타임아웃 단축, 청크 크기 최적화)
-        response = requests.get(url, stream=True, timeout=15)
-        response.raise_for_status()
-        
-        with open(temp_path, 'wb') as f:
-            for chunk in response.iter_content(chunk_size=8192):
-                f.write(chunk)
-        
-        # 캐시 저장
-        file_hash_cache[cache_key] = temp_path
-        
-        return temp_path
-        
-    except Exception as e:
-        logger.error(f"최적화된 URL 파일 다운로드 실패: {e}")
-        return None
 
 @csrf_exempt
 def ai_chat(request):
@@ -787,10 +291,6 @@ def ai_chat(request):
                     # 파일 속성값들 처리
                     file_attribute_values = AttributeValue.objects.filter(row=row, attribute__attributeType__name='file')
                     
-                    # 파일들을 크기별로 분류하여 처리
-                    small_files = []  # 1MB 미만
-                    large_files = []  # 1MB 이상
-                    
                     for attr_value in file_attribute_values:
                         attr_name = attr_value.attribute.name
                         
@@ -811,12 +311,29 @@ def ai_chat(request):
                                                 file_texts.append(f"[{attr_name} - {file_info.get('original_filename', '파일')}]: 파일이 너무 커서 텍스트 추출을 건너뜁니다.")
                                                 continue
                                             
-                                            # 파일 크기에 따라 분류
-                                            if file_size < 1024 * 1024:  # 1MB 미만
-                                                small_files.append((attr_name, file_info))
-                                            else:
-                                                large_files.append((attr_name, file_info))
-                                            
+                                            try:
+                                                file_path = None
+                                                # S3 키가 있으면 직접 사용
+                                                s3_key = file_info.get('s3_key')
+                                                if s3_key:
+                                                    file_path = download_file_from_s3_key(s3_key)
+                                                # S3 키가 없고 download_url이 있으면 사용
+                                                elif file_info.get('download_url'):
+                                                    file_path = download_file_from_url(file_info['download_url'])
+                                                
+                                                if file_path and os.path.exists(file_path):
+                                                    file_text = extract_text_from_file(file_path)
+                                                    file_hash = calculate_file_hash(file_path)
+                                                    if file_text:
+                                                        file_texts.append(f"[{attr_name} - {file_info.get('original_filename', '파일')}]:\n{file_text}")
+                                                    # 임시 파일 정리
+                                                    try:
+                                                        os.remove(file_path)
+                                                    except:
+                                                        pass
+                                            except Exception as e:
+                                                logger.error(f"음성파일 텍스트 추출 실패: {e}")
+
                                         elif file_info.get('type') == 'text':
                                             # text 타입은 항상 새로 처리 (캐시 무시)
                                             print(f'text 타입 파일 새로 처리: {file_info.get("text")}')
@@ -834,21 +351,38 @@ def ai_chat(request):
                                             file_texts.append(f"[{attr_name} - {file_info.get('original_filename', '파일')}]: 파일이 너무 커서 텍스트 추출을 건너뜁니다.")
                                             continue
                                         
-                                        # 파일 크기에 따라 분류
-                                        if file_size < 1024 * 1024:  # 1MB 미만
-                                            small_files.append((attr_name, file_info))
-                                        else:
-                                            large_files.append((attr_name, file_info))
+                                        try:
+                                            file_path = None
+                                            # S3 키가 있으면 직접 사용
+                                            s3_key = file_info.get('s3_key')
+                                            if s3_key:
+                                                file_path = download_file_from_s3_key(s3_key)
+                                            # S3 키가 없고 download_url이 있으면 사용
+                                            elif file_info.get('download_url'):
+                                                file_path = download_file_from_url(file_info['download_url'])
+                                            
+                                            if file_path and os.path.exists(file_path):
+                                                file_text = extract_text_from_file(file_path)
+                                                file_hash = calculate_file_hash(file_path)
+                                                if file_text:
+                                                    file_texts.append(f"[{attr_name} - {file_info.get('original_filename', '파일')}]:\n{file_text}")
+                                                # 임시 파일 정리
+                                                try:
+                                                    os.remove(file_path)
+                                                except:
+                                                    pass
+                                        except Exception as e:
+                                            logger.error(f"일반파일 텍스트 추출 실패: {e}")
                                 
                                 # 단일 파일 경로인 경우
                                 else:
                                     file_path = attr_value.value
                                     if file_path.startswith('http'):
-                                        file_path = download_file_from_url_optimized(file_path)
+                                        file_path = download_file_from_url(file_path)
                                     
                                     if file_path and os.path.exists(file_path):
-                                        file_text = extract_text_from_file_optimized(file_path)
-                                        file_hash = calculate_file_hash_fast(file_path)
+                                        file_text = extract_text_from_file(file_path)
+                                        file_hash = calculate_file_hash(file_path)
                                         if file_text:
                                             file_texts.append(f"[{attr_name} 파일 내용]:\n{file_text}")
                                         
@@ -861,41 +395,6 @@ def ai_chat(request):
                                                             
                             except Exception as e:
                                 logger.error(f"파일 텍스트 추출 실패: {e}")
-                    
-                    # 작은 파일들을 병렬로 처리
-                    if small_files:
-                        print(f"작은 파일 병렬 처리 시작: {len(small_files)}개")
-                        small_file_results = process_files_parallel([file_info for _, file_info in small_files], "small_files")
-                        for i, (attr_name, _) in enumerate(small_files):
-                            if i < len(small_file_results):
-                                file_texts.append(small_file_results[i])
-                    
-                    # 큰 파일들을 순차적으로 처리 (메모리 효율성)
-                    if large_files:
-                        print(f"큰 파일 순차 처리 시작: {len(large_files)}개")
-                        for attr_name, file_info in large_files:
-                            try:
-                                file_path = None
-                                # S3 키가 있으면 직접 사용
-                                s3_key = file_info.get('s3_key')
-                                if s3_key:
-                                    file_path = download_file_from_s3_optimized(s3_key)
-                                # S3 키가 없고 download_url이 있으면 사용
-                                elif file_info.get('download_url'):
-                                    file_path = download_file_from_url_optimized(file_info['download_url'])
-                                
-                                if file_path and os.path.exists(file_path):
-                                    file_text = extract_text_from_file_optimized(file_path)
-                                    file_hash = calculate_file_hash_fast(file_path)
-                                    if file_text:
-                                        file_texts.append(f"[{attr_name} - {file_info.get('original_filename', '파일')}]:\n{file_text}")
-                                    # 임시 파일 정리
-                                    try:
-                                        os.remove(file_path)
-                                    except:
-                                        pass
-                            except Exception as e:
-                                logger.error(f"큰 파일 텍스트 추출 실패: {e}")
                     
                     # 캐시 업데이트
                     cache_data = {
@@ -988,98 +487,27 @@ def ai_chat(request):
                             
                             original_file_texts_count = len(file_texts)
                             
-                            # 삭제할 파일의 식별자들
-                            target_filename = file_info.get('original_filename')
-                            target_file_hash = file_info.get('file_hash')
-                            target_file_id = file_info.get('fileId')
-                            target_s3_key = file_info.get('s3_key')
-                            
-                            print(f"  삭제 대상 파일 식별자:")
-                            print(f"    파일명: {target_filename}")
-                            print(f"    파일해시: {target_file_hash}")
-                            print(f"    파일ID: {target_file_id}")
-                            print(f"    S3키: {target_s3_key}")
-                            
-                            print(f"  기존 캐시 파일들 ({len(file_texts)}개):")
-                            for i, text in enumerate(file_texts):
-                                print(f"    캐시 파일 {i+1}: {text[:100]}...")
-                            
-                            # 정확한 파일 매칭을 위한 필터링 함수
-                            def should_keep_file_text(text):
-                                # text 타입 파일은 항상 유지 (삭제 대상 아님)
-                                if text.startswith(f"[{field_name} - 텍스트]:"):
-                                    return True
-                                
-                                # 삭제 대상 파일인지 확인
-                                is_target_file = False
-                                
-                                # 1. 필드명 + 파일명으로 매칭 (정확한 매칭)
-                                if target_filename and f"[{field_name} - {target_filename}]:" in text:
-                                    is_target_file = True
-                                    print(f"    필드명+파일명 매칭으로 삭제 대상 확인: {field_name} - {target_filename}")
-                                    print(f"    매칭된 텍스트: {text[:200]}...")
-                                
-                                # 2. 파일명만으로 매칭 (필드명과 관계없이)
-                                elif target_filename and f" - {target_filename}]:" in text:
-                                    is_target_file = True
-                                    print(f"    파일명만 매칭으로 삭제 대상 확인: {target_filename}")
-                                    print(f"    매칭된 텍스트: {text[:200]}...")
-                                
-                                # 3. fileId로 매칭 (음성파일의 경우)
-                                elif target_file_id and f"fileId: {target_file_id}" in text:
-                                    is_target_file = True
-                                    print(f"    fileId 매칭으로 삭제 대상 확인: {target_file_id}")
-                                    print(f"    매칭된 텍스트: {text[:200]}...")
-                                
-                                # 4. s3_key로 매칭
-                                elif target_s3_key and target_s3_key in text:
-                                    is_target_file = True
-                                    print(f"    s3_key 매칭으로 삭제 대상 확인: {target_s3_key}")
-                                    print(f"    매칭된 텍스트: {text[:200]}...")
-                                
-                                # 5. 해시로 매칭 (정확한 해시 정보가 있는 경우)
-                                elif target_file_hash and f"해시: {target_file_hash}" in text:
-                                    is_target_file = True
-                                    print(f"    해시 매칭으로 삭제 대상 확인: {target_file_hash}")
-                                    print(f"    매칭된 텍스트: {text[:200]}...")
-                                
-                                # 삭제 대상이면 False 반환 (제거), 아니면 True 반환 (유지)
-                                if is_target_file:
-                                    print(f"    삭제 대상 파일 확인됨 - 제거 예정")
-                                return not is_target_file
-                            
-                            # 파일 텍스트 필터링
-                            file_texts = [text for text in file_texts if should_keep_file_text(text)]
-                            
-                            # 삭제된 파일의 캐시도 정리
-                            if target_file_hash:
-                                # 메모리 캐시에서 제거
-                                if target_file_hash in file_text_cache:
-                                    del file_text_cache[target_file_hash]
-                                    print(f"    메모리 캐시에서 파일 해시 제거: {target_file_hash}")
-                                
-                                # 디스크 캐시에서 제거
-                                cache_file = CACHE_DIR / f"{target_file_hash}.pkl"
-                                if cache_file.exists():
-                                    try:
-                                        cache_file.unlink()
-                                        print(f"    디스크 캐시에서 파일 해시 제거: {target_file_hash}")
-                                    except Exception as e:
-                                        print(f"    디스크 캐시 제거 실패: {e}")
-                            
-                            # s3_key 기반 캐시도 정리
-                            if target_s3_key:
-                                cache_key = f"s3_download_{hashlib.md5(target_s3_key.encode()).hexdigest()}"
-                                if cache_key in file_hash_cache:
-                                    cached_path = file_hash_cache[cache_key]
-                                    if os.path.exists(cached_path):
-                                        try:
-                                            os.remove(cached_path)
-                                            print(f"    S3 캐시 파일 제거: {cached_path}")
-                                        except Exception as e:
-                                            print(f"    S3 캐시 파일 제거 실패: {e}")
-                                    del file_hash_cache[cache_key]
-                                    print(f"    S3 캐시 키 제거: {cache_key}")
+                            # 파일명이 있으면 해당 파일만 삭제
+                            if file_info and file_info.get('original_filename'):
+                                filename = file_info.get('original_filename')
+                                file_texts = [text for text in file_texts if not text.startswith(f"[{field_name} - {filename}")]
+                                print(f"  파일명 기반 삭제: {filename}")
+                            # 파일 해시가 있으면 해당 파일만 삭제
+                            elif file_info and file_info.get('file_hash'):
+                                file_hash = file_info.get('file_hash')
+                                # 해시 정보로는 직접 매칭이 어려우므로 해당 필드의 모든 파일 텍스트 제거
+                                file_texts = [text for text in file_texts if not text.startswith(f"[{field_name} -")]
+                                print(f"  해시 기반 삭제: {file_hash}")
+                            # fileId가 있으면 해당 파일만 삭제
+                            elif file_info and file_info.get('fileId'):
+                                file_id = file_info.get('fileId')
+                                # fileId로는 직접 매칭이 어려우므로 해당 필드의 모든 파일 텍스트 제거
+                                file_texts = [text for text in file_texts if not text.startswith(f"[{field_name} -")]
+                                print(f"  fileId 기반 삭제: {file_id}")
+                            else:
+                                # 기본적으로 해당 필드의 모든 파일 텍스트 제거
+                                file_texts = [text for text in file_texts if not text.startswith(f"[{field_name} -")]
+                                print(f"  필드 전체 삭제: {field_name}")
                             
                             removed_count = original_file_texts_count - len(file_texts)
                             print(f"  제거된 파일 텍스트 수: {removed_count}")
@@ -1135,12 +563,6 @@ def ai_chat(request):
                             except Exception as e:
                                 logger.error(f"수정된 파일 텍스트 추출 실패: {e}")
                                 print(f"파일 수정 처리 중 오류: {e}")
-                    
-                    # 파일 변경사항이 있었으면 캐시 무효화 강화
-                    if deleted_files or added_files or modified_files:
-                        print(f"파일 변경사항으로 인한 캐시 무효화 강화")
-                        # 관련된 모든 캐시 정리
-                        cleanup_related_caches(deleted_files, added_files, modified_files)
                     
                     # 캐시 업데이트
                     cache_data = {
@@ -1323,64 +745,6 @@ def ai_chat_cache_clear(request):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
 
-@csrf_exempt
-def file_cache_management(request):
-    """파일 캐시 관리 API"""
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            action = data.get('action')
-            
-            if action == 'clear_all':
-                success = clear_all_caches()
-                return JsonResponse({
-                    'success': success,
-                    'message': '모든 캐시가 정리되었습니다.' if success else '캐시 정리 중 오류가 발생했습니다.'
-                })
-            elif action == 'get_stats':
-                stats = get_cache_stats()
-                return JsonResponse({
-                    'success': True,
-                    'stats': stats
-                })
-            else:
-                return JsonResponse({'success': False, 'error': '지원하지 않는 액션입니다.'})
-        except Exception as e:
-            return JsonResponse({'success': False, 'error': str(e)})
-    else:
-        # GET 요청으로 캐시 통계 반환
-        stats = get_cache_stats()
-        return JsonResponse({
-            'success': True,
-            'stats': stats
-        })
-
-@csrf_exempt
-def performance_monitoring(request):
-    """성능 모니터링 API"""
-    if request.method == 'GET':
-        try:
-            # 현재 캐시 상태
-            cache_stats = get_cache_stats()
-            
-            # 시스템 정보
-            import psutil
-            system_info = {
-                'cpu_percent': psutil.cpu_percent(interval=1),
-                'memory_percent': psutil.virtual_memory().percent,
-                'disk_usage': psutil.disk_usage('/').percent
-            }
-            
-            return JsonResponse({
-                'success': True,
-                'cache_stats': cache_stats,
-                'system_info': system_info
-            })
-        except Exception as e:
-            return JsonResponse({'success': False, 'error': str(e)})
-    else:
-        return JsonResponse({'success': False, 'error': 'GET 요청만 지원합니다'})
-
 def extract_text_from_file(file_path):
     """파일에서 텍스트 추출 (update_bizinfo.py 참고) - PDF 표 우선 추출, 텍스트 부족시 OCR 자동 fallback"""
     import os
@@ -1447,67 +811,6 @@ def extract_text_from_file(file_path):
                 return extracted_text
             else:
                 return "HWP 파일 변환 실패"
-        elif file_path.endswith((".docx", ".doc")):
-            # DOCX 파일 처리
-            try:
-                from docx import Document
-                
-                # DOCX 파일 열기
-                doc = Document(file_path)
-                print(f"  DOCX 파일 열기 성공")
-                
-                # 모든 단락의 텍스트 추출
-                paragraphs = []
-                for paragraph in doc.paragraphs:
-                    if paragraph.text.strip():
-                        paragraphs.append(paragraph.text.strip())
-                        print(f"  단락 {paragraph.text.strip()[:100]}...")
-                
-                print(f"  추출된 단락 수: {len(paragraphs)}")
-                
-                # 모든 테이블의 텍스트 추출
-                tables = []
-                for table_idx, table in enumerate(doc.tables):
-                    print(f"  테이블 {table_idx+1} 처리 중...")
-                    table_text = []
-                    for row_idx, row in enumerate(table.rows):
-                        row_text = []
-                        for cell_idx, cell in enumerate(row.cells):
-                            if cell.text.strip():
-                                row_text.append(cell.text.strip())
-                                print(f"    셀 {row_idx+1}-{cell_idx+1}: {cell.text.strip()[:50]}...")
-                        if row_text:
-                            table_text.append(' | '.join(row_text))
-                    if table_text:
-                        tables.append('\n'.join(table_text))
-                        print(f"  테이블 {table_idx+1} 텍스트 완성")
-                
-                print(f"  추출된 테이블 수: {len(tables)}")
-                
-                # 결과 조합
-                result = []
-                if paragraphs:
-                    result.append('\n'.join(paragraphs))
-                    print(f"  단락 텍스트 추가됨")
-                if tables:
-                    result.append('\n\n'.join(tables))
-                    print(f"  테이블 텍스트 추가됨")
-                
-                final_result = '\n\n'.join(result) if result else "DOCX 파일에서 텍스트를 추출할 수 없습니다."
-                
-                print(f"  최종 결과 길이: {len(final_result)}")
-                print(f"  최종 결과 미리보기: {final_result[:200]}...")
-                
-                return final_result
-                
-            except ImportError:
-                logger.error("python-docx 라이브러리가 설치되지 않았습니다.")
-                print(f"  오류: python-docx 라이브러리가 설치되지 않았습니다.")
-                return "DOCX 파일 처리를 위해 python-docx 라이브러리가 필요합니다."
-            except Exception as e:
-                logger.error(f"DOCX 텍스트 추출 실패: {e}")
-                print(f"  오류: DOCX 텍스트 추출 실패 - {e}")
-                return f"DOCX 텍스트 추출 실패: {str(e)}"
         elif file_path.endswith((".txt", ".md", ".markdown", ".rst", ".adoc")):
             # 텍스트 파일과 마크다운 파일 처리
             try:
@@ -1712,276 +1015,3 @@ def download_file_from_s3_key(s3_key):
     except Exception as e:
         logger.error(f"S3 키를 사용한 파일 다운로드 실패: {e}")
         return None
-
-def process_files_parallel(file_infos, field_name):
-    """병렬로 여러 파일 처리"""
-    try:
-        # 스레드 풀을 사용하여 병렬 처리
-        futures = []
-        for file_info in file_infos:
-            future = file_processing_pool.submit(process_file_async, file_info, field_name)
-            futures.append(future)
-        
-        # 결과 수집
-        results = []
-        for future in concurrent.futures.as_completed(futures, timeout=60):
-            try:
-                file_text, file_hash = future.result()
-                if file_text:
-                    results.append(file_text)
-            except Exception as e:
-                logger.error(f"병렬 파일 처리 실패: {e}")
-        
-        return results
-    except Exception as e:
-        logger.error(f"병렬 파일 처리 실패: {e}")
-        return []
-
-def cleanup_temp_files():
-    """임시 파일 정리 (개선된 버전)"""
-    try:
-        temp_dir = tempfile.gettempdir()
-        current_time = time.time()
-        cleaned_count = 0
-        
-        # 임시 파일들 정리
-        for filename in os.listdir(temp_dir):
-            if filename.startswith(('s3_', 'url_')):
-                file_path = os.path.join(temp_dir, filename)
-                try:
-                    file_age = current_time - os.path.getmtime(file_path)
-                    if file_age > 3600:  # 1시간
-                        os.remove(file_path)
-                        cleaned_count += 1
-                except:
-                    pass
-        
-        # 캐시 디렉토리 정리
-        if CACHE_DIR.exists():
-            for cache_file in CACHE_DIR.glob("*.pkl"):
-                try:
-                    file_age = current_time - cache_file.stat().st_mtime
-                    if file_age > 86400:  # 24시간
-                        cache_file.unlink()
-                        cleaned_count += 1
-                except:
-                    pass
-        
-        if cleaned_count > 0:
-            logger.info(f"임시 파일 정리 완료: {cleaned_count}개 파일 삭제")
-            
-    except Exception as e:
-        logger.error(f"임시 파일 정리 실패: {e}")
-
-def monitor_performance(func):
-    """성능 모니터링 데코레이터"""
-    def wrapper(*args, **kwargs):
-        start_time = time.time()
-        start_memory = os.getpid()  # 간단한 메모리 추적
-        
-        try:
-            result = func(*args, **kwargs)
-            end_time = time.time()
-            execution_time = end_time - start_time
-            
-            # 성능 로깅
-            if execution_time > 1.0:  # 1초 이상 걸리는 작업만 로깅
-                logger.info(f"성능 모니터링 - {func.__name__}: {execution_time:.2f}초")
-            
-            return result
-        except Exception as e:
-            end_time = time.time()
-            execution_time = end_time - start_time
-            logger.error(f"성능 모니터링 - {func.__name__} 실패: {execution_time:.2f}초, 오류: {e}")
-            raise
-    
-    return wrapper
-
-@monitor_performance
-def extract_text_from_file_optimized(file_path):
-    """최적화된 파일 텍스트 추출 (성능 모니터링 포함)"""
-    if not file_path or not os.path.exists(file_path):
-        return ""
-    
-    # 파일 크기 체크
-    file_size = os.path.getsize(file_path)
-    
-    # 매우 큰 파일은 처리 제한
-    if file_size > 50 * 1024 * 1024:  # 50MB
-        return f"파일이 너무 커서 텍스트 추출을 건너뜁니다. (크기: {file_size / (1024*1024):.1f}MB)"
-    
-    # 파일 해시 계산
-    file_hash = calculate_file_hash_fast(file_path)
-    
-    # 캐시 확인
-    cached_text = get_cached_file_text(file_hash, file_path)
-    if cached_text:
-        return cached_text
-    
-    try:
-        if file_path.endswith(".pdf"):
-            return extract_pdf_text_optimized(file_path, file_hash)
-        elif file_path.endswith((".jpg", ".jpeg", ".png")):
-            return extract_image_text_optimized(file_path, file_hash)
-        elif file_path.endswith(".hwp"):
-            return extract_hwp_text_optimized(file_path, file_hash)
-        elif file_path.endswith((".txt", ".md", ".markdown", ".rst", ".adoc")):
-            return extract_text_file_optimized(file_path, file_hash)
-        elif file_path.endswith((".csv", ".tsv")):
-            return extract_csv_text_optimized(file_path, file_hash)
-        elif file_path.endswith((".json", ".xml", ".yaml", ".yml")):
-            return extract_structured_text_optimized(file_path, file_hash)
-        return ""
-    except Exception as e:
-        logger.error(f"최적화된 텍스트 추출 실패: {e}")
-        return ""
-
-def get_cache_stats():
-    """캐시 통계 정보 반환"""
-    try:
-        memory_cache_size = len(file_text_cache)
-        disk_cache_files = len(list(CACHE_DIR.glob("*.pkl"))) if CACHE_DIR.exists() else 0
-        
-        # 디스크 캐시 크기 계산
-        disk_cache_size = 0
-        if CACHE_DIR.exists():
-            for cache_file in CACHE_DIR.glob("*.pkl"):
-                disk_cache_size += cache_file.stat().st_size
-        
-        return {
-            'memory_cache_size': memory_cache_size,
-            'disk_cache_files': disk_cache_files,
-            'disk_cache_size_mb': disk_cache_size / (1024 * 1024),
-            'max_cache_size': MAX_CACHE_SIZE
-        }
-    except Exception as e:
-        logger.error(f"캐시 통계 조회 실패: {e}")
-        return {}
-
-def clear_all_caches():
-    """모든 캐시 정리"""
-    try:
-        # 메모리 캐시 정리
-        file_text_cache.clear()
-        file_hash_cache.clear()
-        
-        # 디스크 캐시 정리
-        if CACHE_DIR.exists():
-            for cache_file in CACHE_DIR.glob("*.pkl"):
-                try:
-                    cache_file.unlink()
-                except:
-                    pass
-        
-        # 임시 파일 정리
-        cleanup_temp_files()
-        
-        logger.info("모든 캐시가 정리되었습니다.")
-        return True
-    except Exception as e:
-        logger.error(f"캐시 정리 실패: {e}")
-        return False
-
-def cleanup_related_caches(deleted_files, added_files, modified_files):
-    """파일 변경사항에 관련된 캐시 정리"""
-    try:
-        cleaned_count = 0
-        
-        # 삭제된 파일들의 캐시 정리
-        for deleted_file in deleted_files:
-            file_info = deleted_file.get('fileInfo', {})
-            if file_info:
-                # 파일 해시 기반 캐시 정리
-                file_hash = file_info.get('file_hash')
-                if file_hash:
-                    # 메모리 캐시에서 제거
-                    if file_hash in file_text_cache:
-                        del file_text_cache[file_hash]
-                        cleaned_count += 1
-                    
-                    # 디스크 캐시에서 제거
-                    cache_file = CACHE_DIR / f"{file_hash}.pkl"
-                    if cache_file.exists():
-                        try:
-                            cache_file.unlink()
-                            cleaned_count += 1
-                        except Exception as e:
-                            logger.error(f"디스크 캐시 제거 실패: {e}")
-                
-                # s3_key 기반 캐시 정리
-                s3_key = file_info.get('s3_key')
-                if s3_key:
-                    cache_key = f"s3_download_{hashlib.md5(s3_key.encode()).hexdigest()}"
-                    if cache_key in file_hash_cache:
-                        cached_path = file_hash_cache[cache_key]
-                        if os.path.exists(cached_path):
-                            try:
-                                os.remove(cached_path)
-                                cleaned_count += 1
-                            except Exception as e:
-                                logger.error(f"S3 캐시 파일 제거 실패: {e}")
-                        del file_hash_cache[cache_key]
-                        cleaned_count += 1
-        
-        # 수정된 파일들의 캐시 정리 (기존 캐시 무효화)
-        for modified_file in modified_files:
-            file_info = modified_file.get('fileInfo', {})
-            if file_info:
-                # 파일 해시 기반 캐시 정리
-                file_hash = file_info.get('file_hash')
-                if file_hash:
-                    # 메모리 캐시에서 제거 (새로 생성될 예정)
-                    if file_hash in file_text_cache:
-                        del file_text_cache[file_hash]
-                        cleaned_count += 1
-                    
-                    # 디스크 캐시에서 제거
-                    cache_file = CACHE_DIR / f"{file_hash}.pkl"
-                    if cache_file.exists():
-                        try:
-                            cache_file.unlink()
-                            cleaned_count += 1
-                        except Exception as e:
-                            logger.error(f"디스크 캐시 제거 실패: {e}")
-        
-        if cleaned_count > 0:
-            logger.info(f"관련 캐시 정리 완료: {cleaned_count}개 항목 제거")
-            print(f"관련 캐시 정리 완료: {cleaned_count}개 항목 제거")
-        
-    except Exception as e:
-        logger.error(f"관련 캐시 정리 실패: {e}")
-        print(f"관련 캐시 정리 실패: {e}")
-
-# 주기적으로 임시 파일 정리 (서버 시작 시)
-cleanup_temp_files()
-
-# 성능 모니터링을 위한 주기적 캐시 정리 (24시간마다)
-def schedule_cache_cleanup():
-    """주기적 캐시 정리 스케줄러"""
-    import threading
-    import time
-    
-    def cleanup_worker():
-        while True:
-            try:
-                time.sleep(86400)  # 24시간 대기
-                cleanup_temp_files()
-                
-                # 캐시 크기 체크 및 정리
-                stats = get_cache_stats()
-                if stats.get('memory_cache_size', 0) > MAX_CACHE_SIZE * 0.8:
-                    # 메모리 캐시가 80% 이상 차면 오래된 항목들 정리
-                    oldest_keys = sorted(file_text_cache.keys())[:MAX_CACHE_SIZE // 4]
-                    for key in oldest_keys:
-                        del file_text_cache[key]
-                    logger.info(f"메모리 캐시 정리: {len(oldest_keys)}개 항목 제거")
-                
-            except Exception as e:
-                logger.error(f"주기적 캐시 정리 실패: {e}")
-    
-    # 백그라운드 스레드로 실행
-    cleanup_thread = threading.Thread(target=cleanup_worker, daemon=True)
-    cleanup_thread.start()
-
-# 캐시 정리 스케줄러 시작
-schedule_cache_cleanup()
