@@ -1182,7 +1182,7 @@ function createImageFileElement(fileData, index) {
               
               <!-- 이미지 썸네일 영역 -->
               <div style="position: relative; display: inline-block; cursor: pointer;" onclick="showImagePreview('${fileId}', '${fileInfo.original_filename || fileInfo.filename}')">
-                  <div id="image-thumbnail-${fileId}" style="width: 250px; height: 200px; border-radius: 6px; border: 1px solid #ddd; background: #f8f9fa; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease;">
+                  <div id="image-thumbnail-${fileId}" style=" border-radius: 6px; border: 1px solid #ddd; background: #f8f9fa; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease;">
                       <div style="text-align: center; color: #6c757d;">
                           <div style="font-size: 24px; margin-bottom: 8px;">⏳</div>
                           <div style="font-size: 12px;">이미지 로딩 중...</div>

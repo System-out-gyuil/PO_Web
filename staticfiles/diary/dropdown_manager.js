@@ -1245,6 +1245,14 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
             // 테이블 실시간 업데이트 - 리렌더링으로 모든 드롭다운 pill 업데이트
             if (typeof refreshTable === 'function') {
                 refreshTable();
+                
+                // 테이블 리랜더링 후 정렬 상태 복원 (더 긴 지연 시간)
+                setTimeout(() => {
+                    if (typeof restoreTableStateAfterRefresh === 'function') {
+                        console.log('드롭다운 선택 후 테이블 상태 복원 호출');
+                        restoreTableStateAfterRefresh();
+                    }
+                }, 800);
             }
             
             // 종속된 행들 찾아서 업데이트

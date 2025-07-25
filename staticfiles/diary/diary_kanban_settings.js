@@ -45,7 +45,8 @@ function showKanbanSettingsModal() {
                 <div style="margin-top:18px;">
                     <div style="font-weight:bold;color:#333;margin-bottom:8px;">조건부 필터 설정</div>
                     <div style="font-size:12px;color:#666;margin-bottom:12px;">
-                        특정 조건이 만족될 때만 칸반보드에 표시되도록 설정합니다.
+                        특정 조건이 만족될 때만 칸반보드에 표시되도록 설정합니다.<br>
+                        예시) 상태속성의 값이 '진행중'인 경우만 표시
                     </div>
                     <div id="filtersList">
                         ${filters.map((filter, idx) => `
@@ -54,17 +55,16 @@ function showKanbanSettingsModal() {
                                     ${attributes.map(attr => 
                                         `<option value="${attr.name}" ${filter.attribute === attr.name ? 'selected' : ''}>${attr.name}</option>`
                                     ).join('')}
+                                </select>(이)가
+                                <select class="filter-value" data-idx="${idx}" style="width:150px;padding:4px;border:1px solid #ddd;border-radius:4px;">
+                                ${getFilterValueOptions(filter.attribute, filter.value)}
                                 </select>
-                                <select class="filter-operator" data-idx="${idx}" style="width:80px;padding:4px;border:1px solid #ddd;border-radius:4px;">
-                                    <option value="equals" ${filter.operator === 'equals' ? 'selected' : ''}>같음</option>
-                                    <option value="not_equals" ${filter.operator === 'not_equals' ? 'selected' : ''}>다름</option>
-                                    <option value="contains" ${filter.operator === 'contains' ? 'selected' : ''}>포함</option>
-                                    <option value="not_contains" ${filter.operator === 'not_contains' ? 'selected' : ''}>포함안함</option>
-                                </select>
-                                <select class="filter-value" data-idx="${idx}" style="width:120px;padding:4px;border:1px solid #ddd;border-radius:4px;">
-                                    ${getFilterValueOptions(filter.attribute, filter.value)}
-                                </select>
-                                <button type="button" class="remove-filter" data-idx="${idx}" style="color:#fff;background:#dc3545;border:none;border-radius:3px;padding:4px 8px;cursor:pointer;">삭제</button>
+                                <select class="filter-operator" data-idx="${idx}" style="width:100px;padding:4px;border:1px solid #ddd;border-radius:4px;">
+                                    <option value="equals" ${filter.operator === 'equals' ? 'selected' : ''}>이라면</option>
+                                    <option value="not_equals" ${filter.operator === 'not_equals' ? 'selected' : ''}>아니라면</option>
+                                    
+                                </select>표시
+                                <button type="button" class="remove-filter" data-idx="${idx}" style="margin-left: 15%; color:#fff;background:#dc3545;border:none;border-radius:3px;padding:4px 8px;cursor:pointer;">삭제</button>
                             </div>
                         `).join('')}
                     </div>
@@ -92,7 +92,7 @@ function showKanbanSettingsModal() {
         function renderCustomRulesSection() {
             const rules = settings.custom_rules || [];
             return `
-                <div style="margin-top:18px;">
+                <div style="margin-top:18px; display: none;">
                     <div style="font-weight:bold;color:#333;margin-bottom:8px;">커스텀 규칙 설정</div>
                     <div style="font-size:12px;color:#666;margin-bottom:12px;">
                         복잡한 조건을 설정하여 특정 상황에서만 카드가 표시되도록 합니다.

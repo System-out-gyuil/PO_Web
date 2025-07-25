@@ -5,139 +5,190 @@ function initializeTableData() {
   if (tbody) {
       window.originalRows = Array.from(tbody.querySelectorAll('tr'));
   }
+  
+  // 저장된 상태 복원
+  restoreTableState();
+}
+
+// 테이블 상태 저장
+function saveTableState() {
+  const state = {
+    currentSort: window.currentSort,
+    filters: window.filters,
+    timestamp: Date.now()
+  };
+  localStorage.setItem('tableState', JSON.stringify(state));
+}
+
+// 테이블 상태 복원
+function restoreTableState(retryCount = 0) {
+  console.log('restoreTableState 호출됨, retryCount:', retryCount);
+  
+  try {
+    const savedState = localStorage.getItem('tableState');
+    if (savedState) {
+      const state = JSON.parse(savedState);
+      const oneHour = 60 * 60 * 1000;
+      if (Date.now() - state.timestamp < oneHour) {
+        window.currentSort = state.currentSort || { column: null, direction: null };
+        window.filters = state.filters || {};
+        
+        console.log('저장된 상태 로드됨:', state);
+        
+        // tbody가 없으면 100ms 후 재시도 (최대 10회)
+        const tbody = document.getElementById('entryTbody');
+        if (!tbody && retryCount < 10) {
+          console.log('tbody를 찾을 수 없음, 재시도:', retryCount);
+          setTimeout(() => restoreTableState(retryCount + 1), 100);
+          return;
+        }
+        
+        if (tbody) {
+          console.log('tbody 찾음, 필터 및 정렬 복원 시작');
+          // 저장된 필터 상태 복원
+          restoreFilters();
+          // 저장된 정렬 상태 복원 (필터 복원 후)
+          setTimeout(() => {
+            restoreSort();
+          }, 50);
+        } else {
+          console.log('최대 재시도 횟수 초과, tbody를 찾을 수 없음');
+        }
+      } else {
+        console.log('저장된 상태가 너무 오래되어 무시됨');
+        localStorage.removeItem('tableState');
+      }
+    } else {
+      console.log('저장된 테이블 상태가 없음');
+    }
+  } catch (e) {
+    console.error('테이블 상태 복원 오류:', e);
+  }
+}
+
+// 필터 상태 복원
+function restoreFilters() {
+  if (!window.filters) return;
+  
+  Object.keys(window.filters).forEach(column => {
+    const filterValue = window.filters[column];
+    if (filterValue) {
+      // 필터 입력 필드에 값 설정
+      const filterInput = document.querySelector(`input[data-column="${column}"]`);
+      if (filterInput) {
+        filterInput.value = filterValue;
+        // 필터 적용
+        filterTable(column, filterValue);
+      }
+    }
+  });
+}
+
+// 정렬 상태 복원 (재시도 로직 추가)
+function restoreSort(retry = 0) {
+  const entryTbody = document.querySelector('#entryTbody');
+  if (!entryTbody || entryTbody.rows.length === 0) {
+    if (retry < 5) {
+      console.log(`[restoreSort] tbody나 행이 없음, 재시도... (${retry})`);
+      setTimeout(() => restoreSort(retry + 1), 100);
+    } else {
+      console.log('[restoreSort] 5회 재시도 후 포기');
+    }
+    return;
+  }
+  console.log(`[restoreSort] ${entryTbody.rows.length}개 행에 정렬 적용, 현재 정렬:`, window.currentSort);
+  if (!window.currentSort || !window.currentSort.column || !window.currentSort.direction) {
+    console.log('정렬 상태가 없어서 복원하지 않음');
+    return;
+  }
+  // 정렬 버튼 상태 업데이트
+  updateSortButtonStates(window.currentSort.column, window.currentSort.direction);
+  // 실제 정렬 적용
+  const column = window.currentSort.column;
+  const direction = window.currentSort.direction;
+  const rows = Array.from(entryTbody.querySelectorAll('tr'));
+  rows.sort((a, b) => {
+    const aValue = getCellValue(a, column);
+    const bValue = getCellValue(b, column);
+    let comparison = 0;
+    if (column.includes('매출') || column.includes('금액') || column.includes('가격')) {
+      const aNum = parseFloat(aValue.replace(/[^\d.-]/g, '')) || 0;
+      const bNum = parseFloat(bValue.replace(/[^\d.-]/g, '')) || 0;
+      comparison = aNum - bNum;
+    } else if (column.includes('날짜') || column.includes('일정')) {
+      const aDate = parseDate(aValue);
+      const bDate = parseDate(bValue);
+      comparison = (aDate || 0) - (bDate || 0);
+    } else {
+      comparison = aValue.localeCompare(bValue, 'ko');
+    }
+    return direction === 'asc' ? comparison : -comparison;
+  });
+  rows.forEach(row => entryTbody.appendChild(row));
+  console.log('[restoreSort] 정렬 적용 완료');
 }
 
 function sortTable(column, direction) {
-    console.log("sortTable 호출됨");
+    console.log("sortTable 호출됨:", column, direction);
   const tbody = document.getElementById('entryTbody');
-  if (!tbody) return;
+  if (!tbody) {
+    console.log('tbody를 찾을 수 없음');
+    return;
+  }
 
   // 토글 기능: 같은 컬럼과 방향을 다시 클릭하면 정렬 해제
   if (window.currentSort.column === column && window.currentSort.direction === direction) {
+      console.log('정렬 해제');
       // 정렬 해제
       window.currentSort = { column: null, direction: null };
       updateSortButtonStates();
       
       // 원래 순서로 복원 (필터링된 행들만)
-      const visibleRows = window.originalRows.filter(row => row.style.display !== 'none');
-      visibleRows.forEach(row => tbody.appendChild(row));
+      restoreOriginalOrder();
+  } else {
+      console.log('새로운 정렬 적용:', column, direction);
+      // 새로운 정렬 적용
+      window.currentSort = { column, direction };
+      updateSortButtonStates(column, direction);
       
-      updateFilterStatus();
-      return;
-  }
+      const rows = Array.from(tbody.querySelectorAll('tr'));
+      if (rows.length === 0) {
+        console.log('정렬할 행이 없음');
+        return;
+      }
 
-  // 현재 정렬 상태 업데이트
-  window.currentSort = { column, direction };
-  
-  // 정렬 버튼 활성화 상태 업데이트
-  updateSortButtonStates(column, direction);
-
-  // 현재 표시된 행들을 가져오기
-  const rows = Array.from(tbody.querySelectorAll('tr:not([style*="display: none"])'));
-  
-  // 정렬 실행
-  rows.sort((a, b) => {
-      const aValue = getCellValue(a, column);
-      const bValue = getCellValue(b, column);
-      
-      let comparison = 0;
-      
-      // 빈 값 체크 (공백, null, undefined, 빈 문자열, 한 칸 공백 등)
-      const aIsEmpty = !aValue || aValue.trim() === '' || aValue === ' ';
-      const bIsEmpty = !bValue || bValue.trim() === '' || bValue === ' ';
-      
-      // 둘 다 빈 값이거나 둘 다 값이 있는 경우
-      if (aIsEmpty && bIsEmpty) {
-          comparison = 0; // 빈 값끼리는 순서 유지
-      } else if (aIsEmpty && !bIsEmpty) {
-          comparison = 1; // a가 빈 값이면 뒤로
-      } else if (!aIsEmpty && bIsEmpty) {
-          comparison = -1; // b가 빈 값이면 뒤로
-      } else {
-          // 둘 다 값이 있는 경우 기존 로직 사용
-          // datetime 타입인지 확인
-          const aCell = getCellByColumn(a, column);
-          const bCell = getCellByColumn(b, column);
-          const isDateTime = aCell && aCell.getAttribute('data-type') === 'datetime';
+      rows.sort((a, b) => {
+          const aValue = getCellValue(a, column);
+          const bValue = getCellValue(b, column);
           
-          // 매출 컬럼인 경우 특별 처리
-          if (column === '매출') {
-              // 숫자만 추출 (쉼표, 원, 공백 등 제거)
-              const aNum = parseFloat(aValue.replace(/[^0-9.-]/g, ''));
-              const bNum = parseFloat(bValue.replace(/[^0-9.-]/g, ''));
-              
-              if (!isNaN(aNum) && !isNaN(bNum)) {
-                  // 숫자 크기로 비교
-                  comparison = aNum - bNum;
-              } else {
-                  // 숫자가 아닌 경우 문자열 비교
-                  comparison = aValue.localeCompare(bValue, 'ko');
-              }
-          } else if (isDateTime) {
-              // datetime 타입인 경우 날짜 비교
+          let comparison = 0;
+          
+          // 숫자 필드인지 확인 (매출 관련 필드)
+          if (column.includes('매출') || column.includes('금액') || column.includes('가격')) {
+              const aNum = parseFloat(aValue.replace(/[^\d.-]/g, '')) || 0;
+              const bNum = parseFloat(bValue.replace(/[^\d.-]/g, '')) || 0;
+              comparison = aNum - bNum;
+          } else if (column.includes('날짜') || column.includes('일정')) {
+              // 날짜 필드
               const aDate = parseDate(aValue);
               const bDate = parseDate(bValue);
-              
-              if (aDate && bDate) {
-                  // 날짜 객체로 비교
-                  comparison = aDate.getTime() - bDate.getTime();
-              } else if (aDate && !bDate) {
-                  // a만 유효한 날짜인 경우 a를 앞으로
-                  comparison = -1;
-              } else if (!aDate && bDate) {
-                  // b만 유효한 날짜인 경우 b를 앞으로
-                  comparison = 1;
-              } else {
-                  // 둘 다 유효하지 않은 경우 문자열 비교
-                  comparison = aValue.localeCompare(bValue, 'ko');
-              }
+              comparison = (aDate || 0) - (bDate || 0);
           } else {
-              // 전화번호 형식인지 확인 (하이픈이 포함된 경우)
-              const aPhoneMatch = aValue.match(/^(\d{2,3})-(\d{3,4})-(\d{4})$/);
-              const bPhoneMatch = bValue.match(/^(\d{2,3})-(\d{3,4})-(\d{4})$/);
-              
-              if (aPhoneMatch && bPhoneMatch) {
-                  // 둘 다 전화번호 형식인 경우 숫자로 비교
-                  const aPhoneNum = aValue.replace(/[^0-9]/g, '');
-                  const bPhoneNum = bValue.replace(/[^0-9]/g, '');
-                  comparison = aPhoneNum.localeCompare(bPhoneNum);
-              } else if (aPhoneMatch && !bPhoneMatch) {
-                  // a만 전화번호 형식인 경우 a를 앞으로
-                  comparison = -1;
-              } else if (!aPhoneMatch && bPhoneMatch) {
-                  // b만 전화번호 형식인 경우 b를 앞으로
-                  comparison = 1;
-              } else {
-                  // 둘 다 전화번호 형식이 아닌 경우 기존 로직 사용
-                  // 숫자인지 확인
-                  const aNum = parseFloat(aValue.replace(/[^0-9.-]/g, ''));
-                  const bNum = parseFloat(bValue.replace(/[^0-9.-]/g, ''));
-                  
-                  if (!isNaN(aNum) && !isNaN(bNum)) {
-                      // 숫자 비교
-                      comparison = aNum - bNum;
-                  } else {
-                      // 문자열 비교
-                      comparison = aValue.localeCompare(bValue, 'ko');
-                  }
-              }
+              // 텍스트 필드
+              comparison = aValue.localeCompare(bValue, 'ko');
           }
-      }
-      
-      // 빈 값은 항상 아래로, 나머지는 방향에 따라 정렬
-      if (aIsEmpty || bIsEmpty) {
-          // 빈 값이 포함된 경우는 comparison 그대로 사용 (이미 빈 값이 뒤로 가도록 설정됨)
-          return comparison;
-      } else {
-          // 빈 값이 없는 경우만 방향 적용
+          
           return direction === 'asc' ? comparison : -comparison;
-      }
-  });
-
-  // 정렬된 행들을 다시 DOM에 추가
-  rows.forEach(row => tbody.appendChild(row));
+      });
+      
+      // 정렬된 행들을 테이블에 다시 추가
+      rows.forEach(row => tbody.appendChild(row));
+      console.log('정렬 완료');
+  }
   
-  updateFilterStatus();
+  // 상태 저장
+  saveTableState();
+  console.log('정렬 상태 저장됨');
 }
 
 // 날짜 파싱 함수 추가
@@ -211,128 +262,394 @@ function getCellValue(row, column) {
 }
 
 function filterTable(column, filterValue) {
-  const tbody = document.getElementById('entryTbody');
-  if (!tbody) return;
+    console.log(`filterTable 호출됨: ${column} = ${filterValue}`);
+    
+    // 필터 상태 업데이트
+    if (filterValue.trim() === '') {
+        delete window.filters[column];
+    } else {
+        window.filters[column] = filterValue;
+    }
+    
+    const tbody = document.getElementById('entryTbody');
+    if (!tbody) return;
 
-  // 필터 값 업데이트
-  if (filterValue.trim() === '') {
-      delete window.filters[column];
-  } else {
-      window.filters[column] = filterValue.toLowerCase();
-  }
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    let visibleCount = 0;
 
-  // 모든 행에 대해 필터 적용
-  window.originalRows.forEach(row => {
-      let shouldShow = true;
-      
-      // 모든 활성 필터 검사
-      for (const [filterColumn, filterVal] of Object.entries(window.filters)) {
-          const cellValue = getCellValue(row, filterColumn).toLowerCase();
-          if (!cellValue.includes(filterVal)) {
-              shouldShow = false;
-              break;
-          }
-      }
-      
-      row.style.display = shouldShow ? '' : 'none';
-  });
+    rows.forEach(row => {
+        const cell = getCellByColumn(row, column);
+        if (!cell) {
+            row.style.display = 'none';
+            return;
+        }
 
-  // 현재 정렬이 활성화되어 있으면 다시 정렬
-  if (window.currentSort.column) {
-      sortTable(window.currentSort.column, window.currentSort.direction);
-  }
-  
-  updateFilterStatus();
+        const cellValue = getCellValue(row, column).toLowerCase();
+        const filterLower = filterValue.toLowerCase();
+        
+        // 필터 조건 확인
+        let shouldShow = false;
+        
+        if (filterValue.trim() === '') {
+            // 필터가 비어있으면 모든 행 표시
+            shouldShow = true;
+        } else {
+            // 다양한 필터 조건 지원
+            if (filterLower.startsWith('>=')) {
+                // 숫자 비교 (이상)
+                const numValue = parseFloat(cellValue.replace(/[^\d.-]/g, '')) || 0;
+                const filterNum = parseFloat(filterLower.substring(2)) || 0;
+                shouldShow = numValue >= filterNum;
+            } else if (filterLower.startsWith('<=')) {
+                // 숫자 비교 (이하)
+                const numValue = parseFloat(cellValue.replace(/[^\d.-]/g, '')) || 0;
+                const filterNum = parseFloat(filterLower.substring(2)) || 0;
+                shouldShow = numValue <= filterNum;
+            } else if (filterLower.startsWith('>')) {
+                // 숫자 비교 (초과)
+                const numValue = parseFloat(cellValue.replace(/[^\d.-]/g, '')) || 0;
+                const filterNum = parseFloat(filterLower.substring(1)) || 0;
+                shouldShow = numValue > filterNum;
+            } else if (filterLower.startsWith('<')) {
+                // 숫자 비교 (미만)
+                const numValue = parseFloat(cellValue.replace(/[^\d.-]/g, '')) || 0;
+                const filterNum = parseFloat(filterLower.substring(1)) || 0;
+                shouldShow = numValue < filterNum;
+            } else {
+                // 일반 텍스트 검색
+                shouldShow = cellValue.includes(filterLower);
+            }
+        }
+        
+        row.style.display = shouldShow ? '' : 'none';
+        if (shouldShow) visibleCount++;
+    });
+
+    // 필터 상태 업데이트
+    updateFilterStatus();
+    
+    // 상태 저장
+    saveTableState();
 }
 
 function clearAllFilters() {
-  // 모든 필터 입력창 초기화
-  const filterInputs = document.querySelectorAll('.filter-input');
-  filterInputs.forEach(input => {
-      input.value = '';
-  });
-
-  // 필터 상태 초기화
-  window.filters = {};
-
-  // 모든 행 표시
-  window.originalRows.forEach(row => {
-      row.style.display = '';
-  });
-
-  // 정렬 상태 초기화
-  window.currentSort = { column: null, direction: null };
-  updateSortButtonStates();
-  
-  // 탭 상태 초기화
-  window.currentStatusTab = null;
-  document.querySelectorAll('.status-tab').forEach(tab => {
-      tab.classList.remove('active');
-  });
-  // 전체 탭 활성화
-  const allTab = document.querySelector('.status-tab');
-  if (allTab) allTab.classList.add('active');
-  
-  updateFilterStatus();
+    console.log("clearAllFilters 호출됨");
+    
+    // 모든 필터 입력 필드 초기화
+    const filterInputs = document.querySelectorAll('.filter-input');
+    filterInputs.forEach(input => {
+        input.value = '';
+    });
+    
+    // 모든 행 표시
+    const tbody = document.getElementById('entryTbody');
+    if (tbody) {
+        const rows = tbody.querySelectorAll('tr');
+        rows.forEach(row => {
+            row.style.display = '';
+        });
+    }
+    
+    // 정렬 상태도 초기화
+    window.currentSort = { column: null, direction: null };
+    updateSortButtonStates();
+    
+    // 필터 상태 초기화
+    window.filters = {};
+    
+    // 필터 상태 업데이트
+    updateFilterStatus();
+    
+    // 상태 저장
+    saveTableState();
 }
 
 function updateSortButtonStates(activeColumn = null, activeDirection = null) {
-  // 모든 정렬 버튼 비활성화
-  document.querySelectorAll('.sort-btn').forEach(btn => {
-      btn.classList.remove('active');
-  });
-
-  // 활성 정렬 버튼 표시 (정렬이 활성화된 경우에만)
-  if (activeColumn && activeDirection) {
-      const headerTh = document.querySelector(`th[data-column="${activeColumn}"]`);
-      if (headerTh) {
-          const buttons = headerTh.querySelectorAll('.sort-btn');
-          buttons.forEach(btn => {
-              if ((activeDirection === 'asc' && btn.textContent === '▲') ||
-                  (activeDirection === 'desc' && btn.textContent === '▼')) {
-                  btn.classList.add('active');
-              }
-          });
-      }
-  }
+    console.log('updateSortButtonStates 호출됨:', activeColumn, activeDirection);
+    
+    // 모든 정렬 버튼 초기화
+    const sortButtons = document.querySelectorAll('.sort-btn');
+    sortButtons.forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // 활성 정렬 버튼 강조
+    if (activeColumn && activeDirection) {
+        const activeButtons = document.querySelectorAll(`.sort-btn[onclick*="${activeColumn}"][onclick*="${activeDirection}"]`);
+        activeButtons.forEach(btn => {
+            btn.classList.add('active');
+        });
+        console.log('정렬 버튼 활성화:', activeColumn, activeDirection);
+    }
+    
+    // 정렬 상태가 변경되었을 때 실제 정렬 적용
+    if (activeColumn && activeDirection && window.currentSort) {
+        // 현재 정렬 상태와 다른 경우에만 정렬 적용
+        if (window.currentSort.column !== activeColumn || window.currentSort.direction !== activeDirection) {
+            console.log('정렬 상태 변경됨, 실제 정렬 적용');
+            window.currentSort = { column: activeColumn, direction: activeDirection };
+            // 실제 정렬 적용
+            const tbody = document.getElementById('entryTbody');
+            if (tbody) {
+                const rows = Array.from(tbody.querySelectorAll('tr'));
+                if (rows.length > 0) {
+                    rows.sort((a, b) => {
+                        const aValue = getCellValue(a, activeColumn);
+                        const bValue = getCellValue(b, activeColumn);
+                        
+                        let comparison = 0;
+                        
+                        // 숫자 필드인지 확인 (매출 관련 필드)
+                        if (activeColumn.includes('매출') || activeColumn.includes('금액') || activeColumn.includes('가격')) {
+                            const aNum = parseFloat(aValue.replace(/[^\d.-]/g, '')) || 0;
+                            const bNum = parseFloat(bValue.replace(/[^\d.-]/g, '')) || 0;
+                            comparison = aNum - bNum;
+                        } else if (activeColumn.includes('날짜') || activeColumn.includes('일정')) {
+                            // 날짜 필드
+                            const aDate = parseDate(aValue);
+                            const bDate = parseDate(bValue);
+                            comparison = (aDate || 0) - (bDate || 0);
+                        } else {
+                            // 텍스트 필드
+                            comparison = aValue.localeCompare(bValue, 'ko');
+                        }
+                        
+                        return activeDirection === 'asc' ? comparison : -comparison;
+                    });
+                    
+                    // 정렬된 행들을 테이블에 다시 추가
+                    rows.forEach(row => tbody.appendChild(row));
+                    console.log('정렬 적용 완료');
+                }
+            }
+        } else {
+            console.log('정렬 상태가 동일함, 실제 정렬 생략');
+        }
+    }
 }
 
 function updateFilterStatus(someObj) {
-    console.log("updateFilterStatus 호출됨");
-    if (!someObj) return;
-  const statusElement = document.getElementById('filterStatus');
-  if (!statusElement) return;
-
-  const totalRows = window.originalRows.length;
-  const visibleRows = window.originalRows.filter(row => 
-      row.style.display !== 'none'
-  ).length;
-
-  const activeFilters = Object.keys(window.filters).length;
-  const sortActive = window.currentSort.column !== null;
-  const tabActive = window.currentStatusTab !== null;
-
-  let statusText = '';
-  
-  if (activeFilters === 0 && !sortActive && !tabActive) {
-      statusText = `전체 데이터 표시 중 (${totalRows}건)`;
-  } else {
-      statusText = `${visibleRows}/${totalRows}건 표시`;
-      
-      if (activeFilters > 0) {
-          statusText += ` (필터 ${activeFilters}개 적용)`;
-      }
-      
-      if (sortActive) {
-          statusText += ` (${window.currentSort.column} ${window.currentSort.direction === 'asc' ? '오름차순' : '내림차순'} 정렬)`;
-      }
-      
-      if (tabActive) {
-          const activeTab = document.querySelector('.status-tab.active');
-          const tabName = activeTab ? activeTab.textContent : '상태';
-          statusText += ` (${tabName} 탭 선택)`;
-      }
-  }
-
-  statusElement.textContent = statusText;
+    const filterStatus = document.getElementById('filterStatus');
+    if (!filterStatus) return;
+    
+    let statusText = '전체 데이터 표시 중';
+    let hasFilters = false;
+    
+    // 활성 필터 확인
+    if (window.filters) {
+        const activeFilters = Object.keys(window.filters).filter(key => 
+            window.filters[key] && window.filters[key].trim() !== ''
+        );
+        
+        if (activeFilters.length > 0) {
+            hasFilters = true;
+            const filterDescriptions = activeFilters.map(key => 
+                `${key}: ${window.filters[key]}`
+            );
+            statusText = `필터 적용 중: ${filterDescriptions.join(', ')}`;
+        }
+    }
+    
+    // 정렬 상태 확인
+    if (window.currentSort && window.currentSort.column) {
+        const sortText = `${window.currentSort.column} ${window.currentSort.direction === 'asc' ? '오름차순' : '내림차순'}`;
+        if (hasFilters) {
+            statusText += ` | 정렬: ${sortText}`;
+        } else {
+            statusText = `정렬: ${sortText}`;
+        }
+    }
+    
+    filterStatus.textContent = statusText;
 }
+
+// 원래 순서로 복원 (필터링된 행들만)
+function restoreOriginalOrder() {
+    const tbody = document.getElementById('entryTbody');
+    if (!tbody || !window.originalRows) return;
+    
+    // 현재 표시된 행들만 원래 순서로 정렬
+    const visibleRows = Array.from(tbody.querySelectorAll('tr')).filter(row => 
+        row.style.display !== 'none'
+    );
+    
+    // 원래 순서에 따라 정렬
+    visibleRows.sort((a, b) => {
+        const aIndex = window.originalRows.findIndex(row => row.getAttribute('data-id') === a.getAttribute('data-id'));
+        const bIndex = window.originalRows.findIndex(row => row.getAttribute('data-id') === b.getAttribute('data-id'));
+        return aIndex - bIndex;
+    });
+    
+    // 정렬된 행들을 테이블에 다시 추가
+    visibleRows.forEach(row => tbody.appendChild(row));
+}
+
+// 디버깅을 위한 상태 확인 함수
+function debugTableState() {
+  console.log('=== 테이블 상태 디버깅 ===');
+  console.log('window.currentSort:', window.currentSort);
+  console.log('window.filters:', window.filters);
+  
+  const tbody = document.getElementById('entryTbody');
+  if (tbody) {
+    const rows = tbody.querySelectorAll('tr');
+    console.log('tbody 행 수:', rows.length);
+    
+    // 정렬 버튼 상태 확인
+    const sortButtons = document.querySelectorAll('.sort-btn');
+    const activeButtons = document.querySelectorAll('.sort-btn.active');
+    console.log('전체 정렬 버튼 수:', sortButtons.length);
+    console.log('활성 정렬 버튼 수:', activeButtons.length);
+    
+    if (window.currentSort && window.currentSort.column) {
+      const expectedButtons = document.querySelectorAll(`.sort-btn[onclick*="${window.currentSort.column}"][onclick*="${window.currentSort.direction}"]`);
+      console.log('예상 활성 버튼 수:', expectedButtons.length);
+    }
+  } else {
+    console.log('tbody를 찾을 수 없음');
+  }
+  console.log('=== 디버깅 완료 ===');
+}
+
+// 수동 테스트 함수 (브라우저 콘솔에서 호출 가능)
+function testSortingFunctionality() {
+  console.log('=== 정렬 기능 테스트 시작 ===');
+  
+  // 1. 현재 상태 확인
+  console.log('1. 현재 정렬 상태:', window.currentSort);
+  console.log('1. 현재 필터 상태:', window.filters);
+  
+  // 2. 테이블 구조 확인
+  const tbody = document.getElementById('entryTbody');
+  if (!tbody) {
+    console.error('tbody를 찾을 수 없음');
+    return;
+  }
+  
+  const rows = tbody.querySelectorAll('tr');
+  console.log('2. 테이블 행 수:', rows.length);
+  
+  // 3. 정렬 버튼 확인
+  const sortButtons = document.querySelectorAll('.sort-btn');
+  console.log('3. 정렬 버튼 수:', sortButtons.length);
+  
+  // 4. 첫 번째 컬럼으로 정렬 테스트
+  if (sortButtons.length > 0) {
+    const firstButton = sortButtons[0];
+    const onclick = firstButton.getAttribute('onclick');
+    console.log('4. 첫 번째 정렬 버튼 onclick:', onclick);
+    
+    // 정렬 실행
+    if (onclick && onclick.includes('sortTable')) {
+      console.log('5. 정렬 테스트 실행...');
+      eval(onclick);
+      
+      // 결과 확인
+      setTimeout(() => {
+        console.log('6. 정렬 후 상태:', window.currentSort);
+        debugTableState();
+      }, 100);
+    }
+  }
+  
+  console.log('=== 정렬 기능 테스트 완료 ===');
+}
+
+// 테이블 새로고침 후 상태 복원을 위한 함수
+function restoreTableStateAfterRefresh() {
+  console.log('테이블 상태 복원 시작 (새로고침 후)');
+  
+  // 약간의 지연 후 상태 복원 (DOM이 완전히 로드된 후)
+  setTimeout(() => {
+    try {
+      const savedState = localStorage.getItem('tableState');
+      if (savedState) {
+        const state = JSON.parse(savedState);
+        
+        // 1시간 이내의 상태만 복원 (오래된 상태는 무시)
+        const oneHour = 60 * 60 * 1000;
+        if (Date.now() - state.timestamp < oneHour) {
+          window.currentSort = state.currentSort || { column: null, direction: null };
+          window.filters = state.filters || {};
+          
+          console.log('저장된 상태 복원:', state);
+          
+          // 저장된 필터 상태 복원
+          restoreFilters();
+          
+          // 저장된 정렬 상태 복원 (필터 복원 후)
+          setTimeout(() => {
+            console.log('정렬 상태 복원 시작:', window.currentSort);
+            if (window.currentSort && window.currentSort.column && window.currentSort.direction) {
+              // 정렬 버튼 상태 업데이트
+              updateSortButtonStates(window.currentSort.column, window.currentSort.direction);
+              
+              // 실제 정렬 적용
+              const tbody = document.getElementById('entryTbody');
+              if (tbody) {
+                const rows = Array.from(tbody.querySelectorAll('tr'));
+                if (rows.length > 0) {
+                  console.log('정렬 적용 시작:', window.currentSort.column, window.currentSort.direction, '행 수:', rows.length);
+                  
+                  // 행들을 정렬
+                  rows.sort((a, b) => {
+                    const aValue = getCellValue(a, window.currentSort.column);
+                    const bValue = getCellValue(b, window.currentSort.column);
+                    let comparison = 0;
+                    
+                    if (window.currentSort.column.includes('매출') || window.currentSort.column.includes('금액') || window.currentSort.column.includes('가격')) {
+                      const aNum = parseFloat(aValue.replace(/[^\d.-]/g, '')) || 0;
+                      const bNum = parseFloat(bValue.replace(/[^\d.-]/g, '')) || 0;
+                      comparison = aNum - bNum;
+                    } else if (window.currentSort.column.includes('날짜') || window.currentSort.column.includes('일정')) {
+                      const aDate = parseDate(aValue);
+                      const bDate = parseDate(bValue);
+                      comparison = (aDate || 0) - (bDate || 0);
+                    } else {
+                      comparison = aValue.localeCompare(bValue, 'ko');
+                    }
+                    
+                    return window.currentSort.direction === 'asc' ? comparison : -comparison;
+                  });
+                  
+                  // 정렬된 행들을 테이블에 다시 추가
+                  rows.forEach(row => tbody.appendChild(row));
+                  console.log('정렬 적용 완료');
+                }
+              }
+            }
+            
+            // 디버깅 정보 출력
+            setTimeout(() => {
+              debugTableState();
+            }, 100);
+          }, 200);
+          
+          console.log('테이블 상태 복원 완료:', state);
+        } else {
+          console.log('저장된 상태가 너무 오래되어 무시됨');
+          localStorage.removeItem('tableState');
+        }
+      } else {
+        console.log('저장된 테이블 상태가 없음');
+      }
+    } catch (error) {
+      console.error('테이블 상태 복원 중 오류:', error);
+      localStorage.removeItem('tableState');
+    }
+  }, 500);
+}
+
+// 페이지 로드 시 상태 복원
+document.addEventListener('DOMContentLoaded', function() {
+  // 초기 테이블 데이터 로드
+  initializeTableData();
+  
+  // 상태 복원
+  restoreTableStateAfterRefresh();
+});
+
+// 테이블 리랜더링 후 상태 복원을 위한 전역 함수
+window.restoreTableStateAfterRefresh = restoreTableStateAfterRefresh;
+window.debugTableState = debugTableState;
+window.testSortingFunctionality = testSortingFunctionality;
