@@ -661,16 +661,13 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                     justOpened = false;
                     return;
                 }
-                if (window.dropdown && !window.dropdown.contains(e.target) && !td.contains(e.target)) {
-                    if (window.dropdown.parentNode) {
+                if (dropdown && !dropdown.contains(e.target) && !btn.contains(e.target)) {
+                    if (dropdown.parentNode) {
                         console.log('드롭다운 외부 클릭으로 제거');
-                        window.dropdown.parentNode.removeChild(window.dropdown);
+                        dropdown.parentNode.removeChild(dropdown);
                         window.dropdown = null;
                     }
-                    // 스크롤 이벤트 리스너 제거
-                    window.removeEventListener('scroll', subregionScrollHandler);
-                    window.removeEventListener('resize', subregionScrollHandler);
-                    document.removeEventListener('mousedown', closeHandler);
+                    document.removeEventListener('click', closeHandler);
                 }
             });
         }, 100);
@@ -763,6 +760,11 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                     
                     // 실시간 동기화
                     syncTableAndKanban(fieldType);
+                    
+                    // 칸반보드 리렌더링
+                    if (window.currentKanbanAttribute && window.currentKanbanAttribute === fieldType) {
+                        updateKanbanBoard(fieldType);
+                    }
                     
                     // 상태 속성인 경우 상태 탭 새로고침
                     if (window.statusAttributeName && fieldType === window.statusAttributeName) {
@@ -1092,6 +1094,11 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                         console.log('옵션 삭제 성공:', data);
                         optionContainer.remove();
                         syncTableAndKanban(fieldType);
+                        
+                        // 칸반보드 리렌더링
+                        if (window.currentKanbanAttribute && window.currentKanbanAttribute === fieldType) {
+                            updateKanbanBoard(fieldType);
+                        }
                         
                         // 상태 속성인 경우 상태 탭 새로고침
                         if (window.statusAttributeName && fieldType === window.statusAttributeName) {
@@ -1781,6 +1788,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
     }
     
     const currentValue = td.getAttribute('data-value') || '';
+    const id = td.parentElement.getAttribute('data-id');
     
     // 모달과 동일한 깔끔한 구조로 변경
     let html = `<div style="padding: 8px; border-bottom: 1px solid #eee;"><b>${type} 선택</b></div>`;
@@ -2034,6 +2042,14 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                         // 실시간 동기화
                         if (typeof syncTableAndKanban === 'function') {
                             syncTableAndKanban(type);
+                        }
+                        // 칸반보드 리렌더링
+                        if (window.currentKanbanAttribute && window.currentKanbanAttribute === type) {
+                            updateKanbanBoard(type);
+                        }
+                        // 상태 속성인 경우 상태 탭 새로고침
+                        if (window.statusAttributeName && type === window.statusAttributeName && typeof refreshStatusTabs === 'function') {
+                            setTimeout(() => { refreshStatusTabs(); }, 100);
                         }
                     } else {
                         throw new Error(data.error || '업데이트 실패');

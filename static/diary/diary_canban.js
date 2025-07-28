@@ -604,6 +604,7 @@ function updateKanbanBoard(attrName) {
                 
                 // 전역 변수 업데이트
                 window.SELECTED_KANBAN_ATTR = attrName;
+                window.currentKanbanAttribute = attrName;
                 
             } else {
                 // 로그아웃 중이 아닐 때만 오류 메시지 표시
