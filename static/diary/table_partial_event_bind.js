@@ -67,6 +67,13 @@
       }, 100);
   }
   
+  // 드롭다운 옵션 실시간 업데이트를 위한 전역 이벤트 리스너 재설정
+  if (typeof setupDropdownUpdateListeners === 'function') {
+      setTimeout(() => {
+          setupDropdownUpdateListeners();
+      }, 50);
+  }
+  
   // 드래그앤드롭 재초기화
   if (typeof reinitializeDragDrop === 'function') {
       setTimeout(() => {
@@ -149,14 +156,20 @@
   
   // 이벤트 위임을 통한 동적 요소 이벤트 처리
   document.addEventListener('click', function(e) {
-      // 드롭다운 셀 클릭 처리
+      // 드롭다운 셀 클릭 처리 - openDropdown 함수 사용
       if (e.target.closest('td[data-type="dropdown"]')) {
           const cell = e.target.closest('td[data-type="dropdown"]');
           const rowId = cell.closest('tr').getAttribute('data-id');
           const fieldName = cell.getAttribute('data-field');
+          const currentValue = cell.getAttribute('data-value') || '';
           
-          if (typeof showDropdownOptions === 'function') {
-              showDropdownOptions(rowId, fieldName, e.target);
+          // 이미 드롭다운이 열려있으면 무시
+          if (document.querySelector('.dropdown-edit')) {
+              return;
+          }
+          
+          if (typeof openDropdown === 'function') {
+              openDropdown(cell, fieldName, rowId, currentValue);
           }
       }
       

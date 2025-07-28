@@ -300,10 +300,10 @@ def delete_file(request):
             
             # AttributeValue 조회
             try:
-                attribute_value = AttributeValue.objects.get(row=row, attribute=attribute)
+                attribute_value = AttributeValue.objects.filter(row=row, attribute=attribute).first()
                 
                 # 파일 정보 파싱
-                if attribute_value.value:
+                if attribute_value and attribute_value.value:
                     try:
                         files_data = json.loads(attribute_value.value)
                         
@@ -509,9 +509,9 @@ def download_file(request, row_id, field_name, fileId):
         
         # AttributeValue 조회
         try:
-            attribute_value = AttributeValue.objects.get(row=row, attribute=attribute)
+            attribute_value = AttributeValue.objects.filter(row=row, attribute=attribute).first()
             
-            if attribute_value.value:
+            if attribute_value and attribute_value.value:
                 try:
                     file_infos = json.loads(attribute_value.value)
                     file_info = None
@@ -638,7 +638,7 @@ def download_file_note(request, fileId):
             attribute_value = AttributeValue.objects.get(row=row, attribute=attribute)
         except AttributeValue.DoesNotExist:
             return JsonResponse({'success': False, 'error': '노트/음성파일 데이터가 없습니다.'})
-        if not attribute_value.value:
+        if not attribute_value or not attribute_value.value:
             return JsonResponse({'success': False, 'error': '노트/음성파일 데이터가 비어 있습니다.'})
         try:
             note_data = json.loads(attribute_value.value)

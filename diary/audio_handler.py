@@ -481,8 +481,8 @@ def delete_audio_file(request):
         
         # 기존 AttributeValue 조회
         try:
-            attr_value = AttributeValue.objects.get(row=row, attribute=audio_attribute)
-            current_data = json.loads(attr_value.value) if attr_value.value else {}
+            attr_value = AttributeValue.objects.filter(row=row, attribute=audio_attribute).first()
+            current_data = json.loads(attr_value.value) if attr_value and attr_value.value else {}
         except AttributeValue.DoesNotExist:
             return JsonResponse({'success': False, 'error': '음성파일 데이터를 찾을 수 없습니다.'})
         except json.JSONDecodeError:
@@ -595,8 +595,8 @@ def update_audio_file_order(request):
         
         # 기존 AttributeValue 가져오기
         try:
-            attr_value = AttributeValue.objects.get(row=row, attribute=audio_attribute)
-            current_data = json.loads(attr_value.value) if attr_value.value else {}
+            attr_value = AttributeValue.objects.filter(row=row, attribute=audio_attribute).first()
+            current_data = json.loads(attr_value.value) if attr_value and attr_value.value else {}
         except AttributeValue.DoesNotExist:
             return JsonResponse({'success': False, 'error': '음성파일 데이터를 찾을 수 없습니다.'})
         except json.JSONDecodeError:

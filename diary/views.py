@@ -1592,11 +1592,11 @@ def get_debt_details(request, row_id):
         # 기대출 속성 가져오기
         try:
             debt_attribute = Attribute.objects.get(user=user, name='기대출')
-            attr_value = AttributeValue.objects.get(row=row, attribute=debt_attribute)
+            attr_value = AttributeValue.objects.filter(row=row, attribute=debt_attribute).first()
             
             # JSON 데이터 파싱
             try:
-                debt_data = json.loads(attr_value.value) if attr_value.value else {}
+                debt_data = json.loads(attr_value.value) if attr_value and attr_value.value else {}
             except json.JSONDecodeError:
                 debt_data = {}
                 
@@ -2032,8 +2032,8 @@ def _get_attribute_value(user, row, attribute_name):
     """속성 값을 가져오는 헬퍼 함수"""
     try:
         attribute = Attribute.objects.get(user=user, name=attribute_name)
-        attr_value = AttributeValue.objects.get(row=row, attribute=attribute)
-        return attr_value.value
+        attr_value = AttributeValue.objects.filter(row=row, attribute=attribute).first()
+        return attr_value.value if attr_value else None
     except (Attribute.DoesNotExist, AttributeValue.DoesNotExist):
         return None
 
@@ -2042,9 +2042,9 @@ def _get_debt_data(user, row):
     """기대출 데이터를 가져오는 헬퍼 함수"""
     try:
         attribute = Attribute.objects.get(user=user, name='기대출')
-        attr_value = AttributeValue.objects.get(row=row, attribute=attribute)
+        attr_value = AttributeValue.objects.filter(row=row, attribute=attribute).first()
         
-        if attr_value.value:
+        if attr_value and attr_value.value:
             if isinstance(attr_value.value, dict):
                 return attr_value.value
             elif isinstance(attr_value.value, str) and attr_value.value.startswith('{'):
@@ -3713,13 +3713,22 @@ def get_dependent_rows(request):
             # 각 관련 행에 대해 해당 필드의 값을 가져와서 종속된 행 목록에 추가
             for dep_row in unique_related_rows:
                 try:
-                    attr_value = AttributeValue.objects.get(row=dep_row, attribute=cascade_attribute)
-                    dependent_rows.append({
-                        'row_id': dep_row.id,
-                        'field': field,
-                        'value': attr_value.value
-                    })
-                    print(f"종속된 행 추가: {dep_row.id}, {field}, {attr_value.value}")
+                    attr_value = AttributeValue.objects.filter(row=dep_row, attribute=cascade_attribute).first()
+                    if attr_value:
+                        dependent_rows.append({
+                            'row_id': dep_row.id,
+                            'field': field,
+                            'value': attr_value.value
+                        })
+                        print(f"종속된 행 추가: {dep_row.id}, {field}, {attr_value.value}")
+                    else:
+                        # 해당 속성의 값이 없으면 빈 값으로 설정
+                        dependent_rows.append({
+                            'row_id': dep_row.id,
+                            'field': field,
+                            'value': ''
+                        })
+                        print(f"종속된 행 추가 (빈 값): {dep_row.id}, {field}")
                 except AttributeValue.DoesNotExist:
                     # 해당 속성의 값이 없으면 빈 값으로 설정
                     dependent_rows.append({
@@ -3856,13 +3865,22 @@ def get_dependent_rows(request):
             # 각 관련 행에 대해 해당 필드의 값을 가져와서 종속된 행 목록에 추가
             for dep_row in unique_related_rows:
                 try:
-                    attr_value = AttributeValue.objects.get(row=dep_row, attribute=cascade_attribute)
-                    dependent_rows.append({
-                        'row_id': dep_row.id,
-                        'field': field,
-                        'value': attr_value.value
-                    })
-                    print(f"종속된 행 추가: {dep_row.id}, {field}, {attr_value.value}")
+                    attr_value = AttributeValue.objects.filter(row=dep_row, attribute=cascade_attribute).first()
+                    if attr_value:
+                        dependent_rows.append({
+                            'row_id': dep_row.id,
+                            'field': field,
+                            'value': attr_value.value
+                        })
+                        print(f"종속된 행 추가: {dep_row.id}, {field}, {attr_value.value}")
+                    else:
+                        # 해당 속성의 값이 없으면 빈 값으로 설정
+                        dependent_rows.append({
+                            'row_id': dep_row.id,
+                            'field': field,
+                            'value': ''
+                        })
+                        print(f"종속된 행 추가 (빈 값): {dep_row.id}, {field}")
                 except AttributeValue.DoesNotExist:
                     # 해당 속성의 값이 없으면 빈 값으로 설정
                     dependent_rows.append({

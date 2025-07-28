@@ -36,25 +36,36 @@ function closeDropdown() {
         windowHandler: window.dropdownCloseHandler
     });
     
-    // 로컬 dropdown 변수 정리
-    if (dropdown && dropdown.parentNode) {
+    // 로컬 dropdown 변수 정리 (지역/상세지역 드롭다운 제외)
+    if (dropdown && dropdown.parentNode && !dropdown.hasAttribute('data-region-type')) {
         console.log('로컬 dropdown 제거');
         dropdown.parentNode.removeChild(dropdown);
         dropdown = null;
     }
     
-    // 전역 window.dropdown 변수 정리
-    if (window.dropdown && window.dropdown.parentNode) {
+    // 전역 window.dropdown 변수 정리 (지역/상세지역 드롭다운 제외)
+    if (window.dropdown && window.dropdown.parentNode && !window.dropdown.hasAttribute('data-region-type')) {
         console.log('전역 dropdown 제거');
         window.dropdown.parentNode.removeChild(window.dropdown);
         window.dropdown = null;
     }
     
-    // 모든 dropdown-edit 클래스 요소들 제거 (혹시 남아있는 것들)
-    const remainingDropdowns = document.querySelectorAll('.dropdown-edit');
-    if (remainingDropdowns.length > 0) {
-        console.log('남아있는 드롭다운 요소들 제거:', remainingDropdowns.length);
-        remainingDropdowns.forEach(function(element) {
+    // 모달 드롭다운만 제거 (일반 드롭다운은 유지, 지역/상세지역 드롭다운 제외)
+    const modalDropdowns = document.querySelectorAll('.dropdown-edit[data-modal="true"]:not([data-region-type])');
+    if (modalDropdowns.length > 0) {
+        console.log('모달 드롭다운 요소들 제거:', modalDropdowns.length);
+        modalDropdowns.forEach(function(element) {
+            if (element.parentNode) {
+                element.parentNode.removeChild(element);
+            }
+        });
+    }
+    
+    // 일반 드롭다운 제거 (지역/상세지역 드롭다운 제외)
+    const regularDropdowns = document.querySelectorAll('.dropdown-edit:not([data-region-type]):not([data-modal="true"])');
+    if (regularDropdowns.length > 0) {
+        console.log('일반 드롭다운 요소들 제거:', regularDropdowns.length);
+        regularDropdowns.forEach(function(element) {
             if (element.parentNode) {
                 element.parentNode.removeChild(element);
             }
