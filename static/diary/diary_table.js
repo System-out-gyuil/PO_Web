@@ -341,7 +341,8 @@ function processDropdownOptions(options, value, cell) {
               
               td._clickHandler = clickHandler;
               td.addEventListener('click', clickHandler);
-          } else if (dataType === 'memo') {
+          } else if (dataType === 'memo' || (type === '메모' || type.includes('메모'))) {
+              console.log('메모 필드 클릭 이벤트')
               // 메모 필드 클릭 이벤트
               const clickHandler = function() {
                   if (td.querySelector('textarea')) return;
@@ -352,35 +353,142 @@ function processDropdownOptions(options, value, cell) {
                   const oldValue = td.innerText.trim();
                   const id = td.parentElement.getAttribute('data-id');
                   
+                  // 메모 필드 편집 시 td의 overflow를 visible로 변경
+                  td.style.overflow = 'visible';
+                  td.style.textOverflow = 'ellipsis';
+                  td.style.whiteSpace = 'nowrap';
+                  td.style.wordWrap = 'break-word';
+                  td.style.position = 'relative'; // td를 relative로 설정하여 textarea의 absolute 위치 기준점 제공
+                  td.innerHTML = "";
+
                   const textarea = document.createElement('textarea');
                   textarea.value = oldValue;
-                  textarea.className = 'table-edit-input';
+                  textarea.className = 'table-edit-text-area';
                   textarea.style.position = 'absolute';
                   textarea.style.left = '0';
                   textarea.style.top = '0';
-                  textarea.style.width = 'max-content';
-                  textarea.style.minWidth = '100%';
-                  textarea.style.minHeight = '60px';
-                  textarea.style.maxHeight = '200px';
+                  textarea.style.width = td.offsetWidth + 'px'; // td 너비로 고정
+                  textarea.style.minHeight = '55px';
+                  textarea.style.maxHeight = '300px';
                   textarea.style.background = '#fffbe6';
                   textarea.style.zIndex = '10';
-                  textarea.style.border = 'none';
+                  textarea.style.border = '1px solid #ddd';
+                  textarea.style.borderRadius = '4px';
                   textarea.style.fontSize = 'inherit';
                   textarea.style.fontFamily = 'inherit';
-                  textarea.style.lineHeight = 'inherit';
-                  textarea.style.padding = '4px';
+                  textarea.style.lineHeight = '1.4';
+                  textarea.style.padding = '8px';
                   textarea.style.margin = '0';
                   textarea.style.resize = 'vertical';
+                  textarea.style.overflowY = 'auto';
+                  textarea.style.wordWrap = 'break-word';
+                  textarea.style.whiteSpace = 'pre-wrap';
+                  textarea.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+                  
+                  // textarea를 DOM에 추가하기 전에 높이 계산
+                  const tempDiv = document.createElement('div');
+                  tempDiv.style.cssText = `
+                      position: absolute;
+                      visibility: hidden;
+                      white-space: pre-wrap;
+                      word-wrap: break-word;
+                      width: ${td.offsetWidth}px;
+                      font-size: inherit;
+                      font-family: inherit;
+                      line-height: 1.4;
+                      padding: 8px;
+                      border: 1px solid #ddd;
+                      box-sizing: border-box;
+                  `;
+                  tempDiv.textContent = oldValue;
+                  document.body.appendChild(tempDiv);
+                  
+                  const contentHeight = tempDiv.offsetHeight;
+                  document.body.removeChild(tempDiv);
+                  
+                  const minHeight = 55;
+                  const maxHeight = 300;
+                  const finalHeight = Math.max(minHeight, Math.min(contentHeight, maxHeight));
+                  console.log('finalHeight', finalHeight)
+                  
+                  // textarea 높이를 명시적으로 설정 (minHeight를 먼저 설정하고 height를 나중에 설정)
+                  textarea.style.minHeight = minHeight + 'px';
+                  textarea.style.maxHeight = finalHeight + 'px';
+                  
+                  console.log(`메모 textarea 초기 높이 설정: 텍스트="${oldValue.substring(0, 50)}...", 내용 높이=${contentHeight}px, 최종 높이=${finalHeight}px`);
+                  console.log(`textarea 실제 높이 설정: ${textarea.style.height}`);
                   
                   td.appendChild(textarea);
                   textarea.focus();
                   
-                  // 자동 크기 조정
-                  adjustMemoInputSize();
+                  // DOM에 추가된 후 height 설정 (다른 스타일이 덮어쓰지 않도록)
+                  setTimeout(() => {
+                      textarea.style.height = finalHeight + 'px';
+                      console.log(`textarea DOM 추가 후 실제 높이: ${textarea.offsetHeight}px, 설정된 높이: ${textarea.style.height}`);
+                  }, 10);
                   
+                  // 자동 크기 조정 함수 - scrollHeight를 사용하여 자연스럽게 조정
+                  function adjustMemoTextareaSize() {
+                      const text = textarea.value;
+                      
+                      // 텍스트를 임시 div에 넣어서 실제 줄 수 계산
+                      const tempDiv = document.createElement('div');
+                      tempDiv.style.cssText = `
+                          position: absolute;
+                          visibility: hidden;
+                          white-space: pre-wrap;
+                          word-wrap: break-word;
+                          width: ${textarea.offsetWidth}px;
+                          font-size: ${getComputedStyle(textarea).fontSize};
+                          font-family: ${getComputedStyle(textarea).fontFamily};
+                          line-height: ${getComputedStyle(textarea).lineHeight};
+                          padding: ${getComputedStyle(textarea).padding};
+                          border: ${getComputedStyle(textarea).border};
+                          box-sizing: border-box;
+                      `;
+                      tempDiv.textContent = text;
+                      document.body.appendChild(tempDiv);
+                      
+                      const contentHeight = tempDiv.offsetHeight;
+                      document.body.removeChild(tempDiv);
+                      
+                      const minHeight = 60;
+                      const maxHeight = 300;
+                      const finalHeight = Math.max(minHeight, Math.min(contentHeight, maxHeight));
+                      
+                      textarea.style.height = finalHeight + 'px';
+                      
+                      // 줄 수 계산
+                      const lineHeight = parseInt(getComputedStyle(textarea).lineHeight) || 20;
+                      const estimatedLines = Math.ceil(contentHeight / lineHeight);
+                      
+                      console.log(`메모 textarea 높이 조정: 텍스트="${text.substring(0, 50)}...", 내용 높이=${contentHeight}px, 최종 높이=${finalHeight}px, 예상 줄 수=${estimatedLines}`);
+                  }
+                  
+                  // 입력 시 크기 조정
+                  textarea.addEventListener('input', adjustMemoTextareaSize);
+                  textarea.addEventListener('keydown', adjustMemoTextareaSize);
+                  textarea.addEventListener('keyup', adjustMemoTextareaSize);
+                  textarea.addEventListener('paste', adjustMemoTextareaSize);
+                  textarea.addEventListener('cut', adjustMemoTextareaSize);
+                  
+                  // 편집 완료 시 td 스타일 복원 함수
+                  function restoreTdStyle() {
+                      td.style.overflow = 'hidden';
+                      td.style.textOverflow = 'ellipsis';
+                      td.style.whiteSpace = 'nowrap';
+                      td.style.position = 'static'; // 원래 위치로 복원
+                  }
+                  
+                  // 임시로 blur 이벤트를 주석 처리하여 textarea가 사라지지 않도록 함
                   textarea.onblur = function() {
                       const newValue = textarea.value;
-                      td.innerText = newValue;
+                      // 줄바꿈을 <br>로 변환하여 표시
+                      const displayValue = newValue.replace(/\n/g, '<br>');
+                      td.innerHTML = displayValue;
+                      
+                      // td 스타일 복원
+                      restoreTdStyle();
                       
                       // 테이블 편집 상태 해제
                       setTableEditingState(false);
@@ -390,7 +498,7 @@ function processDropdownOptions(options, value, cell) {
                           saveNewRowField(td.parentElement, type, newValue);
                       } else {
                           // 기존 행인 경우
-                          console.log('update_row_field, 테이블5')
+                          console.log('update_row_field, 메모 필드')
                           fetch('/sales/update_row_field/', {
                               method: 'POST',
                               headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -417,20 +525,10 @@ function processDropdownOptions(options, value, cell) {
                           });
                       }
                   };
-                  
-                  textarea.onkeydown = function(e) {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                          textarea.blur();
-                      } else if (e.key === 'Escape') {
-                          td.innerText = oldValue;
-                          setTableEditingState(false);
-                      }
-                  };
               };
               
               td._clickHandler = clickHandler;
               td.addEventListener('click', clickHandler);
-              
           } else {
               // 일반 텍스트 필드 클릭 이벤트
               const clickHandler = function(e) {
@@ -1383,104 +1481,154 @@ function processDropdownOptions(options, value, cell) {
                       
                       // 메모 필드인 경우 특별한 스타일 적용
                       console.log('필드 타입 확인:', type, 'data-type:', dataType);
-                      if (type === '메모' || type.includes('메모') || dataType === 'memo' || dataType === 'text') {
+                      if (type === '메모' || type.includes('메모') || dataType === 'memo') {
                           console.log('메모 필드 특별 스타일 적용 - 타입:', type, '데이터타입:', dataType);
+                          
+                          // input을 textarea로 변경
+                          const textarea = document.createElement('textarea');
+                          textarea.value = input.value;
+                          textarea.className = 'table-edit-input';
                           
                           // 메모 필드 편집 시 td의 overflow를 visible로 변경
                           td.style.overflow = 'visible';
                           td.style.textOverflow = 'clip';
                           td.style.whiteSpace = 'normal';
+                          td.style.position = 'relative'; // td를 relative로 설정하여 textarea의 absolute 위치 기준점 제공
+                          td.style.width = td.offsetWidth + 'px'; // td 너비 고정
+                          td.style.height = td.offsetHeight + 'px';
                           
-                          input.style.cssText = `
+                          textarea.style.cssText = `
                               position: absolute;
                               left: 0;
                               top: 0;
-                              width: max-content;
-                              min-width: 100%;
+                              width: ${td.offsetWidth}px;
+                              min-height: 60px;
+                              max-height: 300px;
                               background: #fffbe6;
                               z-index: 10;
-                              border: none;
+                              border: 1px solid #ddd;
+                              border-radius: 4px;
                               font-size: inherit;
                               font-family: inherit;
-                              line-height: inherit;
-                              padding: 4px 8px;
+                              line-height: 1.4;
+                              padding: 8px;
                               margin: 0;
-                              border-radius: 4px;
+                              resize: vertical;
+                              overflow-y: auto;
+                              word-wrap: break-word;
+                              white-space: pre-wrap;
                               box-shadow: 0 2px 8px rgba(0,0,0,0.1);
                           `;
                           
-                          // 메모 필드의 경우 자동 크기 조정 함수
-                          function adjustMemoInputSize() {
-                              const textLength = input.value.length;
-                              console.log('메모 필드 크기 조정 시작 - 텍스트 길이:', textLength);
+                          // 메모 필드의 경우 자동 크기 조정 함수 - scrollHeight를 사용하여 자연스럽게 조정
+                          function adjustMemoTextareaSize() {
+                              const text = textarea.value;
                               
-                              // 강제로 최소 크기 설정
-                              const minWidth = Math.max(td.offsetWidth, 300); // 최소 300px로 증가
-                              const charWidth = 12; // 글자당 12px로 증가
-                              const calculatedWidth = textLength * charWidth + 100; // 여백 100px 추가
-                              const maxWidth = Math.max(minWidth, calculatedWidth);
+                              // 텍스트를 임시 div에 넣어서 실제 줄 수 계산
+                              const tempDiv = document.createElement('div');
+                              tempDiv.style.cssText = `
+                                  position: absolute;
+                                  visibility: hidden;
+                                  white-space: pre-wrap;
+                                  word-wrap: break-word;
+                                  width: ${textarea.offsetWidth}px;
+                                  font-size: ${getComputedStyle(textarea).fontSize};
+                                  font-family: ${getComputedStyle(textarea).fontFamily};
+                                  line-height: ${getComputedStyle(textarea).lineHeight};
+                                  padding: ${getComputedStyle(textarea).padding};
+                                  border: ${getComputedStyle(textarea).border};
+                                  box-sizing: border-box;
+                              `;
+                              tempDiv.textContent = text;
+                              document.body.appendChild(tempDiv);
                               
-                              // 화면 너비를 벗어나지 않도록 제한 (여백 50px)
-                              const maxAllowedWidth = window.innerWidth - 50;
-                              const finalWidth = Math.min(maxWidth, maxAllowedWidth);
+                              const contentHeight = tempDiv.offsetHeight;
+                              document.body.removeChild(tempDiv);
                               
-                              input.style.width = finalWidth + 'px';
-                              
-                              // 높이도 텍스트 길이에 따라 조정
-                              const lines = Math.ceil(textLength / 80); // 한 줄당 80자로 계산
-                              const lineHeight = 24; // 줄 높이
-                              const minHeight = 36;
+                              const minHeight = 60;
                               const maxHeight = 300;
-                              const calculatedHeight = Math.max(minHeight, lines * lineHeight);
-                              const finalHeight = Math.min(calculatedHeight, maxHeight);
+                              const finalHeight = Math.max(minHeight, Math.min(contentHeight, maxHeight));
                               
-                              input.style.height = finalHeight + 'px';
+                              textarea.style.height = finalHeight + 'px';
                               
-                              console.log(`메모 크기 조정 완료: 텍스트 길이=${textLength}, 너비=${finalWidth}px, 높이=${finalHeight}px`);
+                              // 줄 수 계산
+                              const lineHeight = parseInt(getComputedStyle(textarea).lineHeight) || 20;
+                              const estimatedLines = Math.ceil(contentHeight / lineHeight);
+                              
+                              console.log(`메모 textarea 높이 조정: 텍스트="${text.substring(0, 50)}...", 내용 높이=${contentHeight}px, 최종 높이=${finalHeight}px, 예상 줄 수=${estimatedLines}`);
                           }
                           
-                          // 초기 크기 조정
-                          setTimeout(adjustMemoInputSize, 10);
+                          // input을 textarea로 교체
+                          td.innerHTML = '';
+                          td.appendChild(textarea);
+                          textarea.focus();
                           
-                          // 입력 시 크기 조정 (더 자주 호출)
-                          input.addEventListener('input', adjustMemoInputSize);
-                          input.addEventListener('keydown', adjustMemoInputSize);
-                          input.addEventListener('keyup', adjustMemoInputSize);
-                          input.addEventListener('paste', adjustMemoInputSize);
-                          input.addEventListener('cut', adjustMemoInputSize);
+                          // 초기 크기 조정 - textarea가 DOM에 추가된 후 실행
+                          setTimeout(adjustMemoTextareaSize, 10);
                           
-                          // 포커스 시에도 크기 조정
-                          input.addEventListener('focus', adjustMemoInputSize);
-                          
-                          console.log('메모 필드 이벤트 리스너 설정 완료');
+                          // 입력 시 크기 조정
+                          textarea.addEventListener('input', adjustMemoTextareaSize);
+                          textarea.addEventListener('keydown', adjustMemoTextareaSize);
+                          textarea.addEventListener('keyup', adjustMemoTextareaSize);
+                          textarea.addEventListener('paste', adjustMemoTextareaSize);
+                          textarea.addEventListener('cut', adjustMemoTextareaSize);
                           
                           // 편집 완료 시 td 스타일 복원 함수
                           function restoreTdStyle() {
                               td.style.overflow = 'hidden';
                               td.style.textOverflow = 'ellipsis';
                               td.style.whiteSpace = 'nowrap';
+                              td.style.position = 'static'; // 원래 위치로 복원
                           }
                           
-                          // 기존 onblur 이벤트에 td 스타일 복원 추가
-                          const originalOnblur = input.onblur;
-                          input.onblur = function() {
+                          // 기존 onblur 이벤트를 textarea용으로 수정
+                          textarea.onblur = function() {
+                              const newValue = textarea.value;
+                              // 줄바꿈을 <br>로 변환하여 표시
+                              const displayValue = newValue.replace(/\n/g, '<br>');
+                              td.innerHTML = displayValue;
+                              td.style.width = '';
+                              
+                              // td 스타일 복원
                               restoreTdStyle();
-                              if (originalOnblur) {
-                                  originalOnblur.call(this);
-                              }
+                              
+                              console.log('update_row_field, 새 행 메모 필드')
+                              fetch('/sales/update_row_field/', {
+                                  method: 'POST',
+                                  headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                                  body: 'id='+id+'&field='+encodeURIComponent(type)+'&value='+encodeURIComponent(newValue)
+                              }).then(function(response) {
+                                  return response.json();
+                              }).then(function(data) {
+                                  if (!data.success) {
+                                      alert('수정 실패: ' + (data.error || ''));
+                                      return;
+                                  }
+                                  
+                                  // 현재 셀 즉시 업데이트
+                                  updateTableCell(id, type, newValue);
+                                  
+                                  // 종속된 행들 찾아서 업데이트
+                                  updateDependentRows(id, type, newValue);
+                                  
+                                  // 필요시 테이블/보드 갱신
+                                  refreshCalendarSettings();
+                              }).catch(function(error) {
+                                  console.error('업데이트 중 오류:', error);
+                                  alert('업데이트 중 오류가 발생했습니다.');
+                              });
                           };
                           
-                          // ESC 키 처리에도 td 스타일 복원 추가
-                          const originalOnkeydown = input.onkeydown;
-                          input.onkeydown = function(e) {
-                              if (e.key === 'Escape') {
+                          // ESC 키 처리
+                          textarea.onkeydown = function(e) {
+                              if (e.key === 'Enter' && !e.shiftKey) {
+                                  textarea.blur();
+                              } else if (e.key === 'Escape') {
+                                  td.innerHTML = oldValue.replace(/\n/g, '<br>');
                                   restoreTdStyle();
-                              }
-                              if (originalOnkeydown) {
-                                  originalOnkeydown.call(this, e);
+                                  setTableEditingState(false);
                               }
                           };
-                          
                       } else {
                           console.log('일반 필드 스타일 적용 - 타입:', type);
                           // 일반 필드의 경우 기존 스타일 유지

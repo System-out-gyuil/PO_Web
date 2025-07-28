@@ -1237,8 +1237,12 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
             
             // 호버 효과와 클릭 이벤트 바인딩
             dropdown.querySelectorAll('.dropdown-item[data-option-id]').forEach(function(item) {
+                // 기존 이벤트 리스너 제거 (중복 방지)
+                const newItem = item.cloneNode(true);
+                item.parentNode.replaceChild(newItem, item);
+                
                 // 호버 효과
-                item.addEventListener('mouseenter', function() {
+                newItem.addEventListener('mouseenter', function() {
                     if (!this.style.borderLeft.includes('#007bff')) {
                         const color = this.getAttribute('data-color');
                         if (color && color !== 'null' && color !== 'undefined') {
@@ -1249,7 +1253,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                     }
                 });
                 // mouseleave → mouseout
-                item.addEventListener('mouseout', function() {
+                newItem.addEventListener('mouseout', function() {
                     if (!this.style.borderLeft.includes('#007bff')) {
                         const color = this.getAttribute('data-color');
                         if (color && color !== 'null' && color !== 'undefined') {
@@ -1261,23 +1265,41 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                 });
                 
                 // 클릭 이벤트
-                item.addEventListener('click', function(e) {
+                newItem.addEventListener('click', function(e) {
                     e.preventDefault();
                     e.stopPropagation();
+                    
+                    // 이미 처리 중인지 확인
+                    if (this.dataset.processing === 'true') {
+                        console.log('이미 처리 중인 옵션 클릭 무시');
+                        return;
+                    }
+                    
+                    // 처리 중 상태로 설정
+                    this.dataset.processing = 'true';
                     
                     const selectedOptionId = this.getAttribute('data-option-id');
                     const selectedOptionText = this.getAttribute('data-option-text');
                     const selectedColor = this.getAttribute('data-color');
+                    
+                    // 드롭다운 닫기
                     if (dropdown && dropdown.parentNode) {
                         dropdown.parentNode.removeChild(dropdown);
                         window.dropdown = null;
                     }
+                    
                     // 버튼 배경색 변경
                     btn.textContent = selectedOptionText;
                     btn.style.background = selectedColor ? hexToRgba(selectedColor, 0.18) : '#f8f9fa';
                     btn.style.color = '#333';
+                    
                     // 드롭다운 옵션 선택 처리
                     selectModalDropdownOption(rowId, fieldName, selectedOptionId, selectedOptionText, btn, selectedColor);
+                    
+                    // 처리 완료 후 상태 제거 (약간의 지연 후)
+                    setTimeout(() => {
+                        this.dataset.processing = 'false';
+                    }, 1000);
                 });
             });
             
@@ -1310,6 +1332,19 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
   function selectModalDropdownOption(rowId, fieldName, optionId, optionText, btn, color) {
     console.log('selectModalDropdownOption 호출됨:', rowId, fieldName, optionId, optionText);
     
+    // 중복 요청 방지를 위한 디바운싱
+    const requestKey = `${rowId}_${fieldName}_${optionId}`;
+    if (window.pendingRequests && window.pendingRequests[requestKey]) {
+      console.log('중복 요청 방지:', requestKey);
+      return;
+    }
+    
+    // 요청 상태 추적
+    if (!window.pendingRequests) {
+      window.pendingRequests = {};
+    }
+    window.pendingRequests[requestKey] = true;
+    
     // 버튼 텍스트 즉시 업데이트
     btn.textContent = optionText;
     btn.style.background = color ? hexToRgba(color, 0.18) : '#f8f9fa';
@@ -1335,6 +1370,9 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
     })
     .then(response => response.json())
     .then(data => {
+        // 요청 완료 후 상태 제거
+        delete window.pendingRequests[requestKey];
+        
         if (data.success) {
             console.log('모달 드롭다운 업데이트 성공:', fieldName, optionId);
             
@@ -1372,6 +1410,9 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
         }
     })
     .catch(error => {
+        // 요청 실패 시에도 상태 제거
+        delete window.pendingRequests[requestKey];
+        
         console.error('모달 드롭다운 업데이트 요청 오류:', error);
         showNotification('업데이트 중 오류가 발생했습니다.', 'error');
         // 실패 시 버튼 텍스트 복원
