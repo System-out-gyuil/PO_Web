@@ -3661,7 +3661,6 @@ function bindDetailButtonEvents() {
     
     // 회사명 셀의 상세보기 버튼들
     const moreButtons = document.querySelectorAll('td[data-field="회사명"] .more-btn');
-    console.log(`찾은 상세보기 버튼 개수: ${moreButtons.length}`);
     
     if (moreButtons.length === 0) {
         console.log('상세보기 버튼을 찾을 수 없습니다. DOM 구조 확인 필요.');
@@ -3681,16 +3680,6 @@ function bindDetailButtonEvents() {
     }
     
     moreButtons.forEach((btn, index) => {
-        console.log(`상세보기 버튼 ${index} 바인딩 중...`);
-        console.log(`버튼 ${index} 정보:`, {
-            element: btn,
-            parentTr: btn.closest('tr'),
-            rowId: btn.closest('tr')?.getAttribute('data-id') || btn.closest('tr')?.getAttribute('data-row-id'),
-            computedStyle: window.getComputedStyle(btn),
-            display: window.getComputedStyle(btn).display,
-            visibility: window.getComputedStyle(btn).visibility,
-            pointerEvents: window.getComputedStyle(btn).pointerEvents
-        });
         
         // 버튼이 클릭 가능하도록 스타일 설정
         btn.style.cursor = 'pointer';
@@ -3780,10 +3769,8 @@ function bindDetailButtonEvents() {
                 });
         });
         
-        console.log(`상세보기 버튼 ${index} 이벤트 바인딩 완료`);
     });
     
-    console.log(`상세보기 버튼 ${moreButtons.length}개 이벤트 바인딩 완료`);
     console.log('=== bindDetailButtonEvents 함수 완료 ===');
 }
 

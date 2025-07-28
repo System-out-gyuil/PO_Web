@@ -7,47 +7,132 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
       window.dropdown = null;
     }
     
-    // 모든 기존 드롭다운 요소들 제거
-    document.querySelectorAll('.dropdown-edit').forEach(el => el.remove());
+    // 모든 기존 드롭다운 요소들 제거 (지역/상세지역 제외)
+    document.querySelectorAll('.dropdown-edit:not([data-region-type])').forEach(el => el.remove());
     
     // 클릭된 셀의 위치 정보 가져오기
     const rect = td.getBoundingClientRect();
     const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
     const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
     
-    // 새 드롭다운 생성 - select 태그처럼 자연스럽게
+    // 새 드롭다운 생성
     window.dropdown = document.createElement('div');
     window.dropdown.className = 'dropdown-edit';
     window.dropdown.id = 'current-dropdown-' + Date.now();
+    
+    // 지역/상세지역 드롭다운임을 표시하는 특별한 속성 추가
+    if (type === 'region' || type === 'region_detail') {
+        window.dropdown.setAttribute('data-region-type', type);
+        window.dropdown.setAttribute('data-protected', 'true');
+    }
+    
+    // 드롭다운이 성공적으로 생성되었는지 확인
+    if (!window.dropdown) {
+        console.error('드롭다운 생성 실패');
+        return;
+    }
+    
+    // 로컬 변수로 드롭다운 참조 저장
+    const currentDropdown = window.dropdown;
     
     // 셀 바로 아래에 위치하도록 계산
     const topPosition = rect.bottom + scrollTop + 2;
     const leftPosition = rect.left + scrollLeft;
     
-    // select 태그처럼 자연스러운 스타일 적용
-    window.dropdown.setAttribute('style', `
-      position: absolute !important;
-      background: white !important;
-      border: 1px solid #ccc !important;
-      border-radius: 4px !important;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
-      z-index: 1000 !important;
-      min-width: ${rect.width}px !important;
-      max-height: 200px !important;
-      overflow-y: auto !important;
-      display: block !important;
-      visibility: visible !important;
-      opacity: 1 !important;
-      font-size: 14px !important;
-      font-family: inherit !important;
-      top: ${topPosition}px !important;
-      left: ${leftPosition}px !important;
-      padding: 4px 0 !important;
-    `);
+    // 화면 경계 체크 및 조정
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const dropdownWidth = Math.max(rect.width, 150);
+    const dropdownHeight = 200; // max-height
     
-    console.log('드롭다운 위치 설정:', {top: topPosition, left: leftPosition, cellWidth: rect.width});
-  
-    if(type === 'region') {
+    // 오른쪽 경계 체크
+    let adjustedLeft = leftPosition;
+    if (leftPosition + dropdownWidth > viewportWidth) {
+        adjustedLeft = viewportWidth - dropdownWidth - 10;
+    }
+    
+    // 아래쪽 경계 체크
+    let adjustedTop = topPosition;
+    if (topPosition + dropdownHeight > viewportHeight + scrollTop) {
+        // 셀 위에 표시
+        adjustedTop = rect.top + scrollTop - dropdownHeight - 2;
+    }
+    
+    // 최소 위치 보장
+    adjustedLeft = Math.max(10, adjustedLeft);
+    adjustedTop = Math.max(10, adjustedTop);
+    
+    // 드롭다운 스타일 설정 - 더 명확하고 강제적인 스타일 적용
+    Object.assign(currentDropdown.style, {
+        position: 'absolute',
+        background: 'white',
+        border: '1px solid #ddd',
+        borderRadius: '4px',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+        zIndex: '9999',
+        maxHeight: '200px',
+        overflowY: 'auto',
+        minWidth: '300px',
+        width: dropdownWidth + 'px',
+        fontSize: '14px',
+        fontFamily: 'inherit',
+        top: adjustedTop + 'px',
+        left: adjustedLeft + 'px',
+        padding: '4px 0',
+        display: 'block',
+        visibility: 'visible',
+        opacity: '1',
+        backgroundColor: 'white',
+        color: '#333'
+    });
+    
+    console.log('드롭다운 위치 설정:', {top: adjustedTop, left: adjustedLeft, cellWidth: rect.width});
+    
+    // 스크롤 시 드롭다운 위치 업데이트 함수 (지역/상세지역용)
+    function updateDropdownPosition() {
+        if (currentDropdown && td) {
+            const rect = td.getBoundingClientRect();
+            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+            
+            // 화면 경계 체크 및 조정
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            const dropdownWidth = Math.max(rect.width, 150);
+            const dropdownHeight = 200;
+            
+            // 오른쪽 경계 체크
+            let adjustedLeft = rect.left + scrollLeft;
+            if (adjustedLeft + dropdownWidth > viewportWidth) {
+                adjustedLeft = viewportWidth - dropdownWidth - 10;
+            }
+            
+            // 아래쪽 경계 체크
+            let adjustedTop = rect.bottom + scrollTop + 2;
+            if (adjustedTop + dropdownHeight > viewportHeight + scrollTop) {
+                // 셀 위에 표시
+                adjustedTop = rect.top + scrollTop - dropdownHeight - 2;
+            }
+            
+            // 최소 위치 보장
+            adjustedLeft = Math.max(10, adjustedLeft);
+            adjustedTop = Math.max(10, adjustedTop);
+            
+            currentDropdown.style.top = adjustedTop + 'px';
+            currentDropdown.style.left = adjustedLeft + 'px';
+        }
+    }
+    
+    // 스크롤 이벤트 리스너 추가 (지역/상세지역용)
+    const scrollHandler = function() {
+        updateDropdownPosition();
+    };
+    
+    window.addEventListener('scroll', scrollHandler);
+    window.addEventListener('resize', scrollHandler);
+    
+    if (type === 'region') {
+        console.log('지역 드롭다운 처리');
         // 지역 드롭다운
         var regionNames = ['서울','경기','인천','대구','경북', '경남', '부산','광주','대전','울산','세종','강원','충북','충남','전북','전남'];
         let selectedRegion = currentId || '서울';
@@ -67,17 +152,95 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
             `;
         });
         
-        window.dropdown.innerHTML = html;
+        currentDropdown.innerHTML = html;
         
         console.log('지역 드롭다운 HTML 생성 완료');
         
+        // DOM에 추가하기 전에 스타일 재확인
+        console.log('DOM 추가 전 드롭다운 스타일:', currentDropdown.style.cssText);
+        
         // DOM에 추가
-        document.body.appendChild(window.dropdown);
+        document.body.appendChild(currentDropdown);
+        
+        // 즉시 확인
+        console.log('드롭다운 DOM 추가 직후 확인:');
+        console.log('드롭다운 요소:', currentDropdown);
+        console.log('드롭다운 부모:', currentDropdown.parentNode);
+        console.log('드롭다운 스타일:', currentDropdown.style.cssText);
+        
+        // 즉시 위치 확인
+        const immediateRect = currentDropdown.getBoundingClientRect();
+        console.log('즉시 위치 확인:', immediateRect);
         
         console.log('지역 드롭다운 DOM 추가 완료');
         
+        // 드롭다운이 실제로 보이는지 확인하고 필요시 강제 표시
+        setTimeout(() => {
+            // DOM에서 제거되었는지 확인
+            if (!currentDropdown.parentNode) {
+                console.error('드롭다운이 DOM에서 제거되었습니다. 다시 추가합니다.');
+                document.body.appendChild(currentDropdown);
+            }
+            
+            const rect = currentDropdown.getBoundingClientRect();
+            console.log('드롭다운 실제 위치:', rect);
+            console.log('드롭다운 크기:', {width: rect.width, height: rect.height});
+            
+            // 추가 디버깅 정보
+            console.log('드롭다운 부모 요소:', currentDropdown.parentNode);
+            const computedStyle = window.getComputedStyle(currentDropdown);
+            console.log('드롭다운 computed 스타일:', {
+                display: computedStyle.display,
+                visibility: computedStyle.visibility,
+                opacity: computedStyle.opacity,
+                zIndex: computedStyle.zIndex,
+                position: computedStyle.position
+            });
+            
+            // 드롭다운이 화면에 보이는지 확인
+            const isVisible = rect.width > 0 && rect.height > 0 && 
+                            rect.top >= 0 && rect.left >= 0 && 
+                            rect.bottom <= window.innerHeight && 
+                            rect.right <= window.innerWidth;
+            console.log('드롭다운 화면 표시 여부:', isVisible);
+            
+            if (!isVisible || rect.width === 0 || rect.height === 0) {
+                console.warn('드롭다운이 화면에 표시되지 않습니다. 강제로 화면 중앙에 표시합니다.');
+                
+                // 강제로 화면 중앙에 표시
+                Object.assign(currentDropdown.style, {
+                    position: 'fixed',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    zIndex: '10000',
+                    minWidth: '300px',
+                    maxHeight: '400px',
+                    overflowY: 'auto',
+                    backgroundColor: 'white',
+                    border: '2px solid #007bff',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+                    display: 'block',
+                    visibility: 'visible',
+                    opacity: '1'
+                });
+                
+                // 다시 표시 확인
+                setTimeout(() => {
+                    const newRect = currentDropdown.getBoundingClientRect();
+                    console.log('재조정 후 드롭다운 크기:', {width: newRect.width, height: newRect.height});
+                    if (newRect.width === 0 || newRect.height === 0) {
+                        console.error('드롭다운이 여전히 표시되지 않습니다. DOM 문제일 수 있습니다.');
+                        // 최후의 수단으로 alert로 사용자에게 알림
+                        alert('드롭다운 표시에 문제가 있습니다. 페이지를 새로고침해주세요.');
+                    }
+                }, 50);
+            }
+        }, 100);
+        
         // 호버 효과와 클릭 이벤트 바인딩
-        window.dropdown.querySelectorAll('.dropdown-item[data-region]').forEach(function(item) {
+        currentDropdown.querySelectorAll('.dropdown-item[data-region]').forEach(function(item) {
             // 호버 효과
             item.addEventListener('mouseenter', function() {
                 if (!this.style.background.includes('#007bff')) {
@@ -100,8 +263,20 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                 const selectedRegion = this.getAttribute('data-region');
                 
                 // UI 업데이트
-                td.innerHTML = `<div style="display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">${selectedRegion}</div>`;
-                td.setAttribute('data-value', selectedRegion);
+                if (td) { 
+                    td.innerHTML = `<div style="display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">${selectedRegion}</div>`; 
+                    td.setAttribute('data-value', selectedRegion); 
+                }
+                
+                // 커스텀 이벤트 발생
+                const rowId = td.parentElement.getAttribute('data-id');
+                document.dispatchEvent(new CustomEvent('dropdownOptionChanged', {
+                    detail: {
+                        fieldName: '지역',
+                        newValue: selectedRegion,
+                        rowId: rowId
+                    }
+                }));
                 
                 // 상세지역 td도 같이 변경 (첫 번째 값으로 초기화)
                 var subTd = td.parentElement.querySelector('td[data-field="상세지역"]');
@@ -129,8 +304,8 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                 }
                 
                 // 드롭다운 제거
-                if (window.dropdown && window.dropdown.parentNode) {
-                  window.dropdown.parentNode.removeChild(window.dropdown);
+                if (currentDropdown && currentDropdown.parentNode) {
+                  currentDropdown.parentNode.removeChild(currentDropdown);
                   window.dropdown = null;
                 }
                 
@@ -155,14 +330,18 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                         console.log('서버 응답 데이터:', data);
                         if (data.success) {
                             // 부분 업데이트로 변경
-                            updateTableCell(id, '지역', selectedRegion);
+                            if (typeof updateTableCell === 'function') {
+                                updateTableCell(id, '지역', selectedRegion);
+                            }
                             
                             // 종속된 행들 찾아서 업데이트
-                            updateDependentRows(id, '지역', selectedRegion);
+                            if (typeof updateDependentRows === 'function') {
+                                updateDependentRows(id, '지역', selectedRegion);
+                            }
                             
-                            // 테이블 리렌더링으로 모든 드롭다운 pill 업데이트
-                            if (typeof refreshTable === 'function') {
-                                refreshTable();
+                            // 실시간 동기화
+                            if (typeof syncTableAndKanban === 'function') {
+                                syncTableAndKanban('지역');
                             }
                             
                             // 상태 필터가 활성화되어 있고, 변경된 필드가 상태 속성인 경우
@@ -206,13 +385,22 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
         
         // 외부 클릭 시 드롭다운 닫기
         setTimeout(() => {
-            document.addEventListener('click', function closeHandler(e) {
+            let justOpened = true;
+            document.addEventListener('mousedown', function closeHandler(e) {
+                if (justOpened) {
+                    justOpened = false;
+                    return;
+                }
                 if (window.dropdown && !window.dropdown.contains(e.target) && !td.contains(e.target)) {
                     if (window.dropdown.parentNode) {
+                        console.log('드롭다운 외부 클릭으로 제거');
                         window.dropdown.parentNode.removeChild(window.dropdown);
                         window.dropdown = null;
                     }
-                    document.removeEventListener('click', closeHandler);
+                    // 스크롤 이벤트 리스너 제거
+                    window.removeEventListener('scroll', scrollHandler);
+                    window.removeEventListener('resize', scrollHandler);
+                    document.removeEventListener('mousedown', closeHandler);
                 }
             });
         }, 100);
@@ -258,17 +446,96 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
             `;
         });
         
-        window.dropdown.innerHTML = html;
+        currentDropdown.innerHTML = html;
         
         console.log('상세지역 드롭다운 HTML 생성 완료');
         
         // DOM에 추가
-        document.body.appendChild(window.dropdown);
+        document.body.appendChild(currentDropdown);
         
         console.log('상세지역 드롭다운 DOM 추가 완료');
         
+        // 상세지역 드롭다운도 동일한 표시 확인 로직 적용
+        setTimeout(() => {
+            // DOM에서 제거되었는지 확인
+            if (!currentDropdown.parentNode) {
+                console.error('상세지역 드롭다운이 DOM에서 제거되었습니다. 다시 추가합니다.');
+                document.body.appendChild(currentDropdown);
+            }
+            
+            const rect = currentDropdown.getBoundingClientRect();
+            console.log('상세지역 드롭다운 실제 위치:', rect);
+            console.log('상세지역 드롭다운 크기:', {width: rect.width, height: rect.height});
+            
+            if (rect.width === 0 || rect.height === 0) {
+                console.warn('상세지역 드롭다운이 화면에 표시되지 않습니다. 강제로 화면 중앙에 표시합니다.');
+                
+                // 강제로 화면 중앙에 표시
+                Object.assign(currentDropdown.style, {
+                    position: 'fixed',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    zIndex: '10000',
+                    minWidth: '300px',
+                    maxHeight: '400px',
+                    overflowY: 'auto',
+                    backgroundColor: 'white',
+                    border: '2px solid #007bff',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+                    display: 'block',
+                    visibility: 'visible',
+                    opacity: '1'
+                });
+            }
+        }, 100);
+        
+        // 스크롤 시 드롭다운 위치 업데이트 함수 (상세지역용)
+        function updateSubregionDropdownPosition() {
+            if (currentDropdown && td) {
+                const rect = td.getBoundingClientRect();
+                const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+                
+                // 화면 경계 체크 및 조정
+                const viewportWidth = window.innerWidth;
+                const viewportHeight = window.innerHeight;
+                const dropdownWidth = Math.max(rect.width, 150);
+                const dropdownHeight = 200;
+                
+                // 오른쪽 경계 체크
+                let adjustedLeft = rect.left + scrollLeft;
+                if (adjustedLeft + dropdownWidth > viewportWidth) {
+                    adjustedLeft = viewportWidth - dropdownWidth - 10;
+                }
+                
+                // 아래쪽 경계 체크
+                let adjustedTop = rect.bottom + scrollTop + 2;
+                if (adjustedTop + dropdownHeight > viewportHeight + scrollTop) {
+                    // 셀 위에 표시
+                    adjustedTop = rect.top + scrollTop - dropdownHeight - 2;
+                }
+                
+                // 최소 위치 보장
+                adjustedLeft = Math.max(10, adjustedLeft);
+                adjustedTop = Math.max(10, adjustedTop);
+                
+                currentDropdown.style.top = adjustedTop + 'px';
+                currentDropdown.style.left = adjustedLeft + 'px';
+            }
+        }
+        
+        // 스크롤 이벤트 리스너 추가 (상세지역용)
+        const subregionScrollHandler = function() {
+            updateSubregionDropdownPosition();
+        };
+        
+        window.addEventListener('scroll', subregionScrollHandler);
+        window.addEventListener('resize', subregionScrollHandler);
+        
         // 호버 효과와 클릭 이벤트 바인딩
-        window.dropdown.querySelectorAll('.dropdown-item[data-subregion]').forEach(function(item) {
+        currentDropdown.querySelectorAll('.dropdown-item[data-subregion]').forEach(function(item) {
             // 호버 효과
             item.addEventListener('mouseenter', function() {
                 if (!this.style.background.includes('#007bff')) {
@@ -291,12 +558,24 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                 const selectedSubregion = this.getAttribute('data-subregion');
                 
                 // UI 업데이트
-                td.innerHTML = `<div style="display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">${selectedSubregion}</div>`;
-                td.setAttribute('data-value', selectedSubregion);
+                if (td) { 
+                    td.innerHTML = `<div style="display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">${selectedSubregion}</div>`; 
+                    td.setAttribute('data-value', selectedSubregion); 
+                }
+                
+                // 커스텀 이벤트 발생
+                const rowId = td.parentElement.getAttribute('data-id');
+                document.dispatchEvent(new CustomEvent('dropdownOptionChanged', {
+                    detail: {
+                        fieldName: '상세지역',
+                        newValue: selectedSubregion,
+                        rowId: rowId
+                    }
+                }));
                 
                 // 드롭다운 제거
-                if (window.dropdown && window.dropdown.parentNode) {
-                  window.dropdown.parentNode.removeChild(window.dropdown);
+                if (currentDropdown && currentDropdown.parentNode) {
+                  currentDropdown.parentNode.removeChild(currentDropdown);
                   window.dropdown = null;
                 }
                 
@@ -320,15 +599,19 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                     .then(data => {
                         console.log('서버 응답 데이터:', data);
                         if (data.success) {
-                            // 실시간 동기화
-                            syncTableAndKanban('상세지역');
+                            // 부분 업데이트로 변경
+                            if (typeof updateTableCell === 'function') {
+                                updateTableCell(id, '상세지역', selectedSubregion);
+                            }
                             
                             // 종속된 행들 찾아서 업데이트
-                            updateDependentRows(id, '상세지역', selectedSubregion);
+                            if (typeof updateDependentRows === 'function') {
+                                updateDependentRows(id, '상세지역', selectedSubregion);
+                            }
                             
-                            // 테이블 리렌더링으로 모든 드롭다운 pill 업데이트
-                            if (typeof refreshTable === 'function') {
-                                refreshTable();
+                            // 실시간 동기화
+                            if (typeof syncTableAndKanban === 'function') {
+                                syncTableAndKanban('상세지역');
                             }
                             
                             // 상태 필터가 활성화되어 있고, 변경된 필드가 상태 속성인 경우
@@ -372,10 +655,16 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
         
         // 외부 클릭 시 드롭다운 닫기
         setTimeout(() => {
-            document.addEventListener('click', function closeHandler(e) {
-                if (window.dropdown && !window.dropdown.contains(e.target) && !td.contains(e.target)) {
-                    if (window.dropdown.parentNode) {
-                        window.dropdown.parentNode.removeChild(window.dropdown);
+            let justOpened = true;
+            document.addEventListener('mousedown', function closeHandler(e) {
+                if (justOpened) {
+                    justOpened = false;
+                    return;
+                }
+                if (dropdown && !dropdown.contains(e.target) && !btn.contains(e.target)) {
+                    if (dropdown.parentNode) {
+                        console.log('드롭다운 외부 클릭으로 제거');
+                        dropdown.parentNode.removeChild(dropdown);
                         window.dropdown = null;
                     }
                     document.removeEventListener('click', closeHandler);
@@ -385,257 +674,48 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
         
         return;
     } else {
-        // 일반 드롭다운 (구분, 영업진행 등) 처리
+        // 일반 드롭다운 (구분, 영업진행 등) 및 지역/상세지역 처리
         console.log('일반 드롭다운 처리 시작:', {type, id});
         
-        fetch('/sales/dropdown_options/?field=' + encodeURIComponent(type))
-            .then(r => r.json())
-            .then(function(data) {
-                console.log('드롭다운 옵션 로드됨:', data);
-                if (data.options) {
-                    const options = data.options;
-                    const currentValue = td.getAttribute('data-value') || '';
+        let options = [];
+        
+        if (type === 'region') {
+            // 지역 옵션 생성
+            const regionNames = ['서울','경기','인천','대구','경북', '경남', '부산','광주','대전','울산','세종','강원','충북','충남','전북','전남'];
+            options = regionNames.map((region, index) => ({
+                id: index + 1,
+                option: region,
+                color: '#007bff'
+            }));
+        } else if (type === 'region_detail') {
+            // 상세지역 옵션 생성
+            const currentRegion = currentId || '서울';
+            const subregions = getSubregions(currentRegion);
+            options = subregions.map((subregion, index) => ({
+                id: index + 1,
+                option: subregion,
+                color: '#28a745'
+            }));
+        } else {
+            // 서버에서 옵션 가져오기
+            fetch('/sales/dropdown_options/?field=' + encodeURIComponent(type))
+                .then(r => r.json())
+                .then(function(data) {
+                    console.log('드롭다운 옵션 로드됨:', data);
                     
-                    // 모달과 동일한 깔끔한 구조로 변경
-                    let html = `<div style="padding: 8px; border-bottom: 1px solid #eee;"><b>${type} 선택</b></div>`;
-                    
-                    // 옵션 목록 컨테이너
-                    html += '<div style="max-height: 150px; overflow-y: auto;">';
-                    
-                    options.forEach(function(opt) {
-                        // 단일선택 값 처리
-                        let isSelected = false;
-                        const currentValue = td.getAttribute('data-value') || '';
-                        if (currentValue) {
-                            try {
-                                const parsed = JSON.parse(currentValue);
-                                if (Array.isArray(parsed) && parsed.length > 0) {
-                                    isSelected = Number(opt.id) === Number(parsed[0]);
-                                } else {
-                                    isSelected = Number(opt.id) === Number(parsed);
-                                }
-                            } catch (e) {
-                                isSelected = Number(opt.id) === Number(currentValue);
-                            }
-                        }
-                        const backgroundColor = opt.color ? hexToRgba(opt.color, 0.18) : 'white';
-                        html += `
-                          <div class="dropdown-option-container" style="padding: 4px 8px; border-bottom: 1px solid #f0f0f0;">
-                            <div class="dropdown-item" data-option-id="${opt.id}" 
-                                 style="cursor: pointer; 
-                                        background: ${backgroundColor}; 
-                                        border-radius: 4px; 
-                                        padding: 6px 8px; 
-                                        margin-bottom: 4px;
-                                        ${isSelected ? 'border: 2px solid #007bff; font-weight: bold;' : 'border: 1px solid #ddd;'}
-                                        transition: all 0.2s;
-                                        display: flex;
-                                        align-items: center;
-                                        justify-content: space-between;
-                                        position: relative;">
-                              <div style="display: flex; align-items: center; flex: 1; min-width: 0;">
-                                <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${opt.option}</span>
-                              </div>
-                              <div class="option-controls" style="display: flex; gap: 4px; align-items: center; margin-left: 8px;">
-                                <input type="color" value="${opt.color||'#eeeeee'}" data-color-edit="${opt.id}" 
-                                       style="padding: 0; width: 20px; height: 20px; border: none; cursor: pointer; border-radius: 2px; background: transparent; position: relative;" title="색상 변경">
-                                <button data-edit="${opt.id}" 
-                                        style="background: none; border: none; cursor: pointer; font-size: 12px; padding: 2px; color: #666; transition: color 0.2s;" 
-                                        title="수정"
-                                        onmouseover="this.style.color='#007bff'"
-                                        onmouseout="this.style.color='#666'">✏️</button>
-                                <button data-del="${opt.id}" 
-                                        style="background: none; border: none; cursor: pointer; font-size: 12px; padding: 2px; color: #666; transition: color 0.2s;" 
-                                        title="삭제"
-                                        onmouseover="this.style.color='#dc3545'"
-                                        onmouseout="this.style.color='#666'">🗑️</button>
-                              </div>
-                            </div>
-                          </div>
-                        `;
-                    });
-                    
-                    // "선택 없음" 옵션 추가
-                    html += `
-                      <div class="dropdown-option-container" style="padding: 4px 8px; border-bottom: 1px solid #f0f0f0;">
-                        <div class="dropdown-item" data-option-id="none" 
-                             style="cursor: pointer; 
-                                    background: #f8f9fa; 
-                                    border-radius: 4px; 
-                                    padding: 6px 8px; 
-                                    margin-bottom: 4px;
-                                    border: 1px solid #ddd;
-                                    transition: all 0.2s;
-                                    display: flex;
-                                    align-items: center;
-                                    justify-content: space-between;
-                                    position: relative;">
-                          <div style="display: flex; align-items: center; flex: 1; min-width: 0;">
-                            <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #999; font-style: italic;">선택 없음</span>
-                          </div>
-                        </div>
-                      </div>
-                    `;
-                    
-                    html += '</div>';
-                    // 새 옵션 추가 영역은 그대로 유지
-                    html += `<div style="border-top: 1px solid #eee; padding: 8px; background: #f8f9fa;">
-                      <div style="display: flex; gap: 4px; align-items: center;">
-                        <input type="text" placeholder="새 옵션 추가" 
-                               style="flex: 1; padding: 4px 8px; border: 1px solid #ddd; border-radius: 3px; font-size: 12px;">
-                        <button class="add-btn" 
-                                style="padding: 4px 12px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 12px; transition: background-color 0.2s;"
-                                onmouseover="this.style.background='#0056b3'"
-                                onmouseout="this.style.background='#007bff'">추가</button>
-                      </div>
-                    </div>`;
-                    window.dropdown.innerHTML = html;
-                    document.body.appendChild(window.dropdown);
-                    
-                    // === 드롭다운 모달 이벤트 바인딩 추가 ===
-                    bindDropdownModalEvents(window.dropdown, type, options);
-                    
-                    // 단일선택: 옵션 클릭 시 바로 선택
-                    window.dropdown.querySelectorAll('.dropdown-item[data-option-id]').forEach(function(item) {
-                        item.addEventListener('click', function(e) {
-                            e.stopPropagation();
-                            const optionId = this.getAttribute('data-option-id');
-                            
-                            // "선택 없음" 옵션 처리
-                            if (optionId === 'none') {
-                                // UI 업데이트
-                                td.innerHTML = `<div class="dropdown-pill" style="background:#eee; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">선택 없음</div>`;
-                                td.setAttribute('data-value', '');
-                                
-                                // 서버에서 해당 속성 값 삭제
-                                if (id && id.startsWith('temp_')) {
-                                    // 새 행인 경우 로컬에서만 처리
-                                    console.log('새 행에서 선택 없음 처리');
-                                } else {
-                                    // 기존 행인 경우 서버에서 삭제
-                                    fetch('/sales/delete_attribute_value/', {
-                                        method: 'POST',
-                                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                                        body: 'id='+id+'&field='+encodeURIComponent(type)
-                                    })
-                                    .then(response => response.json())
-                                    .then(data => {
-                                        if (data.success) {
-                                            console.log('속성 값 삭제 성공');
-                                            
-                                            // 테이블 리렌더링으로 모든 드롭다운 pill 업데이트
-                                            if (typeof refreshTable === 'function') {
-                                                refreshTable();
-                                            }
-                                            
-                                            // 종속된 행들 찾아서 업데이트
-                                            if (typeof updateDependentRows === 'function') {
-                                                updateDependentRows(id, type, '');
-                                            }
-                                            
-                                            syncTableAndKanban(type);
-                                        } else {
-                                            throw new Error(data.error || '삭제 실패');
-                                        }
-                                    })
-                                    .catch(error => {
-                                        console.error('속성 값 삭제 실패:', error);
-                                        alert('삭제 중 오류가 발생했습니다: ' + error.message);
-                                    });
-                                }
-                                
-                                // 드롭다운 닫기
-                                if (window.dropdown && window.dropdown.parentNode) {
-                                    window.dropdown.parentNode.removeChild(window.dropdown);
-                                    window.dropdown = null;
-                                }
-                                return;
-                            }
-                            
-                            const option = options.find(o => String(o.id) === String(optionId));
-                            // UI 업데이트 - 즉시 실행
-                            if (option) {
-                                const color = option.color ? hexToRgba(option.color, 0.18) : '#eee';
-                                td.innerHTML = `<div class="dropdown-pill" style="background:${color}; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">${option.option}</div>`;
-                                td.setAttribute('data-value', optionId);
-                            } else {
-                                // 옵션을 찾지 못한 경우에도 pill 형태로 표시
-                                console.log(`옵션을 찾지 못함, pill 형태로 표시: ${optionId}`);
-                                td.innerHTML = `<div class="dropdown-pill" style="background:#f8f9fa; color:#6c757d; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center; border:1px solid #dee2e6;">${optionId}</div>`;
-                                td.setAttribute('data-value', optionId);
-                            }
-                            
-                            // 드롭다운 닫기 - 즉시 실행
-                            if (window.dropdown && window.dropdown.parentNode) {
-                                window.dropdown.parentNode.removeChild(window.dropdown);
-                                window.dropdown = null;
-                            }
-                            
-                            // 상태 필터가 활성화되어 있고, 변경된 필드가 상태 속성인 경우
-                            if (window.currentStatusTab !== null && type === window.statusAttributeName) {
-                                // 해당 행의 상태 셀 업데이트
-                                const row = document.querySelector(`tr[data-id="${id}"]`);
-                                if (row) {
-                                    const statusCell = row.querySelector(`td[data-field="${type}"]`);
-                                    if (statusCell) {
-                                        // 새로운 값으로 data-value 업데이트
-                                        statusCell.setAttribute('data-value', optionId);
-                                        
-                                        // 상태 필터 즉시 재적용
-                                        setTimeout(() => {
-                                            if (typeof applyStatusFilter === 'function') {
-                                                applyStatusFilter();
-                                            }
-                                        }, 50);
-                                    }
-                                }
-                            }
-                            
-                            // 서버 업데이트 - 단일 값으로 저장
-                            if (id && id.startsWith('temp_')) {
-                                saveNewRowField(td.parentElement, type, optionId);
-                            } else {
-                                fetch('/sales/update_row_field/', {
-                                    method: 'POST',
-                                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                                    body: 'id='+id+'&field='+encodeURIComponent(type)+'&value='+encodeURIComponent(optionId)
-                                })
-                                .then(response => response.json())
-                                .then(data => {
-                                    if (data.success) {
-                                        // 테이블 리렌더링으로 모든 드롭다운 pill 업데이트
-                                        if (typeof refreshTable === 'function') {
-                                            refreshTable();
-                                        }
-                                        
-                                        // 종속된 행들 찾아서 업데이트 (ID 전달)
-                                        updateDependentRows(id, type, optionId);
-                                        
-                                        syncTableAndKanban(type);
-                                        // 칸반보드 새로고침
-                                        triggerKanbanRefreshIfNeeded();
-                                    } else {
-                                        throw new Error(data.error || '업데이트 실패');
-                                    }
-                                })
-                                .catch(error => {
-                                    console.error('업데이트 실패:', error);
-                                    alert('업데이트 중 오류가 발생했습니다: ' + error.message);
-                                });
-                            }
-                            // 드롭다운 닫기
-                            if (window.dropdown && window.dropdown.parentNode) {
-                                window.dropdown.parentNode.removeChild(window.dropdown);
-                                window.dropdown = null;
-                            }
-                        });
-                    });
-                }
-            })
-            .catch(function(error) {
-                console.error('드롭다운 옵션 로드 실패:', error);
-                alert('드롭다운 옵션을 불러오는데 실패했습니다: ' + error.message);
-            });
+                    if (data.options) {
+                        options = data.options;
+                        renderDropdownOptions(options, type, td, currentDropdown);
+                    }
+                })
+                .catch(error => {
+                    console.error('드롭다운 옵션 로드 실패:', error);
+                });
+            return;
+        }
+        
+        // 지역/상세지역 옵션 렌더링
+        renderDropdownOptions(options, type, td, currentDropdown);
     }
   }
   
@@ -680,6 +760,11 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                     
                     // 실시간 동기화
                     syncTableAndKanban(fieldType);
+                    
+                    // 칸반보드 리렌더링
+                    if (window.currentKanbanAttribute && window.currentKanbanAttribute === fieldType) {
+                        updateKanbanBoard(fieldType);
+                    }
                     
                     // 상태 속성인 경우 상태 탭 새로고침
                     if (window.statusAttributeName && fieldType === window.statusAttributeName) {
@@ -1010,6 +1095,11 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                         optionContainer.remove();
                         syncTableAndKanban(fieldType);
                         
+                        // 칸반보드 리렌더링
+                        if (window.currentKanbanAttribute && window.currentKanbanAttribute === fieldType) {
+                            updateKanbanBoard(fieldType);
+                        }
+                        
                         // 상태 속성인 경우 상태 탭 새로고침
                         if (window.statusAttributeName && fieldType === window.statusAttributeName) {
                             console.log('상태 속성 옵션 삭제됨, 상태 탭 새로고침 시작');
@@ -1087,7 +1177,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
               border-radius: 4px !important;
               box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
               z-index: 10000 !important;
-              min-width: ${Math.max(rect.width, 150)}px !important;
+              min-width: ${Math.max(rect.width, 300)}px !important;
               max-height: 200px !important;
               overflow-y: auto !important;
               display: block !important;
@@ -1147,8 +1237,12 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
             
             // 호버 효과와 클릭 이벤트 바인딩
             dropdown.querySelectorAll('.dropdown-item[data-option-id]').forEach(function(item) {
+                // 기존 이벤트 리스너 제거 (중복 방지)
+                const newItem = item.cloneNode(true);
+                item.parentNode.replaceChild(newItem, item);
+                
                 // 호버 효과
-                item.addEventListener('mouseenter', function() {
+                newItem.addEventListener('mouseenter', function() {
                     if (!this.style.borderLeft.includes('#007bff')) {
                         const color = this.getAttribute('data-color');
                         if (color && color !== 'null' && color !== 'undefined') {
@@ -1159,7 +1253,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                     }
                 });
                 // mouseleave → mouseout
-                item.addEventListener('mouseout', function() {
+                newItem.addEventListener('mouseout', function() {
                     if (!this.style.borderLeft.includes('#007bff')) {
                         const color = this.getAttribute('data-color');
                         if (color && color !== 'null' && color !== 'undefined') {
@@ -1171,31 +1265,55 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                 });
                 
                 // 클릭 이벤트
-                item.addEventListener('click', function(e) {
+                newItem.addEventListener('click', function(e) {
                     e.preventDefault();
                     e.stopPropagation();
+                    
+                    // 이미 처리 중인지 확인
+                    if (this.dataset.processing === 'true') {
+                        console.log('이미 처리 중인 옵션 클릭 무시');
+                        return;
+                    }
+                    
+                    // 처리 중 상태로 설정
+                    this.dataset.processing = 'true';
                     
                     const selectedOptionId = this.getAttribute('data-option-id');
                     const selectedOptionText = this.getAttribute('data-option-text');
                     const selectedColor = this.getAttribute('data-color');
+                    
+                    // 드롭다운 닫기
                     if (dropdown && dropdown.parentNode) {
                         dropdown.parentNode.removeChild(dropdown);
                         window.dropdown = null;
                     }
+                    
                     // 버튼 배경색 변경
                     btn.textContent = selectedOptionText;
                     btn.style.background = selectedColor ? hexToRgba(selectedColor, 0.18) : '#f8f9fa';
                     btn.style.color = '#333';
+                    
                     // 드롭다운 옵션 선택 처리
                     selectModalDropdownOption(rowId, fieldName, selectedOptionId, selectedOptionText, btn, selectedColor);
+                    
+                    // 처리 완료 후 상태 제거 (약간의 지연 후)
+                    setTimeout(() => {
+                        this.dataset.processing = 'false';
+                    }, 1000);
                 });
             });
             
             // 드롭다운 외부 클릭 시 닫기
             setTimeout(() => {
-                document.addEventListener('click', function closeHandler(e) {
+                let justOpened = true;
+                document.addEventListener('mousedown', function closeHandler(e) {
+                    if (justOpened) {
+                        justOpened = false;
+                        return;
+                    }
                     if (dropdown && !dropdown.contains(e.target) && !btn.contains(e.target)) {
                         if (dropdown.parentNode) {
+                            console.log('드롭다운 외부 클릭으로 제거');
                             dropdown.parentNode.removeChild(dropdown);
                             window.dropdown = null;
                         }
@@ -1213,6 +1331,19 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
   // 모달용 드롭다운 옵션 선택 함수
   function selectModalDropdownOption(rowId, fieldName, optionId, optionText, btn, color) {
     console.log('selectModalDropdownOption 호출됨:', rowId, fieldName, optionId, optionText);
+    
+    // 중복 요청 방지를 위한 디바운싱
+    const requestKey = `${rowId}_${fieldName}_${optionId}`;
+    if (window.pendingRequests && window.pendingRequests[requestKey]) {
+      console.log('중복 요청 방지:', requestKey);
+      return;
+    }
+    
+    // 요청 상태 추적
+    if (!window.pendingRequests) {
+      window.pendingRequests = {};
+    }
+    window.pendingRequests[requestKey] = true;
     
     // 버튼 텍스트 즉시 업데이트
     btn.textContent = optionText;
@@ -1239,56 +1370,49 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
     })
     .then(response => response.json())
     .then(data => {
+        // 요청 완료 후 상태 제거
+        delete window.pendingRequests[requestKey];
+        
         if (data.success) {
             console.log('모달 드롭다운 업데이트 성공:', fieldName, optionId);
-            
-            // 테이블 실시간 업데이트 - 리렌더링으로 모든 드롭다운 pill 업데이트
-            if (typeof refreshTable === 'function') {
-                refreshTable();
-                
-                // 테이블 리랜더링 후 정렬 상태 복원 (더 긴 지연 시간)
-                setTimeout(() => {
-                    if (typeof restoreTableStateAfterRefresh === 'function') {
-                        console.log('드롭다운 선택 후 테이블 상태 복원 호출');
-                        restoreTableStateAfterRefresh();
-                    }
-                }, 800);
-            }
             
             // 종속된 행들 찾아서 업데이트
             if (typeof updateDependentRows === 'function') {
                 updateDependentRows(rowId, fieldName, optionId);
             }
             
-            // 칸반보드 실시간 업데이트 - 현재 칸반보드 속성과 일치하는 경우
-            const currentKanbanAttr = document.getElementById('kanbanAttributeSelect') ? 
-                document.getElementById('kanbanAttributeSelect').value : 
-                window.SELECTED_KANBAN_ATTR || window.kanbanAttribute;
-            let shouldRefreshKanban = false;
-            if (currentKanbanAttr && fieldName === currentKanbanAttr) {
-                shouldRefreshKanban = true;
+            // 실시간 동기화
+            if (typeof syncTableAndKanban === 'function') {
+                syncTableAndKanban(fieldName);
             }
-            // 조건부 필터에 사용된 속성도 새로고침
-            if (
-                window.kanbanSettings &&
-                Array.isArray(window.kanbanSettings.filters) &&
-                window.kanbanSettings.filters.some(f => f.attribute === fieldName)
-            ) {
-                shouldRefreshKanban = true;
+            
+            // 상태 필터가 활성화되어 있고, 변경된 필드가 상태 속성인 경우
+            if (window.currentStatusTab !== null && fieldName === window.statusAttributeName) {
+                // 해당 행의 상태 셀 업데이트
+                const row = document.querySelector(`tr[data-id="${rowId}"]`);
+                if (row) {
+                    const statusCell = row.querySelector(`td[data-field="${fieldName}"]`);
+                    if (statusCell) {
+                        // 새로운 값으로 data-value 업데이트
+                        statusCell.setAttribute('data-value', optionId);
+                        
+                        // 상태 필터 즉시 재적용
+                        setTimeout(() => {
+                            if (typeof applyStatusFilter === 'function') {
+                                applyStatusFilter();
+                            }
+                        }, 50);
+                    }
+                }
             }
-            if (shouldRefreshKanban && typeof refreshKanban === 'function') {
-                refreshKanban();
-            }
-            // 칸반보드 새로고침
-            triggerKanbanRefreshIfNeeded();
         } else {
-            console.error('모달 드롭다운 업데이트 실패:', data.error);
-            showNotification('업데이트 실패: ' + data.error, 'error');
-            // 실패 시 버튼 텍스트 복원
-            btn.textContent = btn.textContent; // 이전 값으로 복원 (실제로는 서버에서 가져와야 함)
+            throw new Error(data.error || '업데이트 실패');
         }
     })
     .catch(error => {
+        // 요청 실패 시에도 상태 제거
+        delete window.pendingRequests[requestKey];
+        
         console.error('모달 드롭다운 업데이트 요청 오류:', error);
         showNotification('업데이트 중 오류가 발생했습니다.', 'error');
         // 실패 시 버튼 텍스트 복원
@@ -1341,7 +1465,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
       border-radius: 4px !important;
       box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
       z-index: 10000 !important;
-      min-width: ${Math.max(rect.width, 150)}px !important;
+      min-width: ${Math.max(rect.width, 300)}px !important;
       max-height: 200px !important;
       overflow-y: auto !important;
       display: block !important;
@@ -1430,9 +1554,15 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
     
     // 드롭다운 외부 클릭 시 닫기
     setTimeout(() => {
-        document.addEventListener('click', function closeHandler(e) {
+        let justOpened = true;
+        document.addEventListener('mousedown', function closeHandler(e) {
+            if (justOpened) {
+                justOpened = false;
+                return;
+            }
             if (dropdown && !dropdown.contains(e.target) && !btn.contains(e.target)) {
                 if (dropdown.parentNode) {
+                    console.log('드롭다운 외부 클릭으로 제거');
                     dropdown.parentNode.removeChild(dropdown);
                     window.dropdown = null;
                 }
@@ -1556,7 +1686,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
           border-radius: 4px !important;
           box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
           z-index: 10000 !important;
-          min-width: ${Math.max(rect.width, 150)}px !important;
+          min-width: ${Math.max(rect.width, 300)}px !important;
           max-height: 200px !important;
           overflow-y: auto !important;
           display: block !important;
@@ -1645,9 +1775,15 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
         
         // 드롭다운 외부 클릭 시 닫기
         setTimeout(() => {
-            document.addEventListener('click', function closeHandler(e) {
+            let justOpened = true;
+            document.addEventListener('mousedown', function closeHandler(e) {
+                if (justOpened) {
+                    justOpened = false;
+                    return;
+                }
                 if (dropdown && !dropdown.contains(e.target) && !btn.contains(e.target)) {
                     if (dropdown.parentNode) {
+                        console.log('드롭다운 외부 클릭으로 제거');
                         dropdown.parentNode.removeChild(dropdown);
                         window.dropdown = null;
                     }
@@ -1684,3 +1820,329 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
           }
       }, 80);
   }
+  
+  // 드롭다운 옵션을 렌더링하는 공통 함수
+  function renderDropdownOptions(options, type, td, currentDropdown) {
+    if (!currentDropdown) {
+        console.error('currentDropdown이 null입니다. 드롭다운 처리를 중단합니다.');
+        return;
+    }
+    
+    const currentValue = td.getAttribute('data-value') || '';
+    const id = td.parentElement.getAttribute('data-id');
+    
+    // 모달과 동일한 깔끔한 구조로 변경
+    let html = `<div style="padding: 8px; border-bottom: 1px solid #eee;"><b>${type} 선택</b></div>`;
+    
+    // 옵션 목록 컨테이너
+    html += '<div style="max-height: 150px; overflow-y: auto;">';
+    
+    options.forEach(function(opt) {
+        // 단일선택 값 처리
+        let isSelected = false;
+        if (currentValue) {
+            try {
+                const parsed = JSON.parse(currentValue);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    isSelected = Number(opt.id) === Number(parsed[0]);
+                } else {
+                    isSelected = Number(opt.id) === Number(parsed);
+                }
+            } catch (e) {
+                isSelected = Number(opt.id) === Number(currentValue);
+            }
+        }
+        const backgroundColor = opt.color ? hexToRgba(opt.color, 0.18) : 'white';
+        html += `
+          <div class="dropdown-option-container" style="padding: 6px 10px; border-bottom: 1px solid #f0f0f0;">
+            <div class="dropdown-item" data-option-id="${opt.id}" 
+                 style="cursor: pointer; 
+                        background: ${backgroundColor}; 
+                        border-radius: 4px; 
+                        padding: 6px 8px; 
+                        margin-bottom: 4px;
+                        ${isSelected ? 'border: 2px solid #007bff; font-weight: bold;' : 'border: 1px solid #ddd;'}
+                        transition: all 0.2s;
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        position: relative;">
+              <div style="display: flex; align-items: center; flex: 1; min-width: 0;">
+                <span style="flex: 1; word-wrap: break-word; word-break: break-all; color: #333; font-size: 14px; line-height: 1.4; padding: 2px 0;">${opt.option}</span>
+              </div>
+              ${type !== 'region' && type !== 'region_detail' ? `
+              <div class="option-controls" style="display: flex; gap: 4px; align-items: center; margin-left: 8px;">
+                <input type="color" value="${opt.color||'#eeeeee'}" data-color-edit="${opt.id}" 
+                       style="padding: 0; width: 20px; height: 20px; border: none; cursor: pointer; border-radius: 2px; background: transparent; position: relative;" title="색상 변경">
+                <button data-edit="${opt.id}" 
+                        style="background: none; border: none; cursor: pointer; font-size: 12px; padding: 2px; color: #666; transition: color 0.2s;" 
+                        title="수정"
+                        onmouseover="this.style.color='#007bff'"
+                        onmouseout="this.style.color='#666'">✏️</button>
+                <button data-del="${opt.id}" 
+                        style="background: none; border: none; cursor: pointer; font-size: 12px; padding: 2px; color: #666; transition: color 0.2s;" 
+                        title="삭제"
+                        onmouseover="this.style.color='#dc3545'"
+                        onmouseout="this.style.color='#666'">🗑️</button>
+              </div>
+              ` : ''}
+            </div>
+          </div>
+        `;
+    });
+    
+    // "선택 없음" 옵션 추가 (지역/상세지역이 아닌 경우에만)
+    if (type !== 'region' && type !== 'region_detail') {
+        html += `
+          <div class="dropdown-option-container" style="padding: 6px 10px; border-bottom: 1px solid #f0f0f0;">
+            <div class="dropdown-item" data-option-id="none" 
+                 style="cursor: pointer; 
+                        background: #f8f9fa; 
+                        border-radius: 4px; 
+                        padding: 6px 8px; 
+                        margin-bottom: 4px;
+                        border: 1px solid #ddd;
+                        transition: all 0.2s;
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        position: relative;">
+              <div style="display: flex; align-items: center; flex: 1; min-width: 0;">
+                <span style="flex: 1; word-wrap: break-word; word-break: break-all; color: #999; font-style: italic; font-size: 14px; line-height: 1.4; padding: 2px 0;">선택 없음</span>
+              </div>
+            </div>
+          </div>
+        `;
+    }
+    
+    html += '</div>';
+    
+    // 새 옵션 추가 영역 (지역/상세지역이 아닌 경우에만)
+    if (type !== 'region' && type !== 'region_detail') {
+        html += `<div style="border-top: 1px solid #eee; padding: 8px; background: #f8f9fa;">
+          <div style="display: flex; gap: 4px; align-items: center;">
+            <input type="text" placeholder="새 옵션 추가" 
+                   style="flex: 1; padding: 4px 8px; border: 1px solid #ddd; border-radius: 3px; font-size: 12px;">
+            <button class="add-btn" 
+                    style="padding: 4px 12px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 12px; transition: background-color 0.2s;"
+                    onmouseover="this.style.background='#0056b3'"
+                    onmouseout="this.style.background='#007bff'">추가</button>
+          </div>
+        </div>`;
+    }
+    
+    currentDropdown.innerHTML = html;
+    document.body.appendChild(currentDropdown);
+    
+    // === 드롭다운 모달 이벤트 바인딩 추가 ===
+    if (type !== 'region' && type !== 'region_detail') {
+        bindDropdownModalEvents(currentDropdown, type, options);
+    }
+    
+    // 단일선택: 옵션 클릭 시 바로 선택
+    currentDropdown.querySelectorAll('.dropdown-item[data-option-id]').forEach(function(item) {
+        item.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const optionId = this.getAttribute('data-option-id');
+            
+            // "선택 없음" 옵션 처리
+            if (optionId === 'none') {
+                // UI 업데이트
+                if (td) { td.innerHTML = `<div class="dropdown-pill" style="background:#eee; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">선택 없음</div>`; td.setAttribute('data-value', ''); }
+                
+                // 서버에서 해당 속성 값 삭제
+                if (id && id.startsWith('temp_')) {
+                    // 새 행인 경우 로컬에서만 처리
+                    console.log('새 행에서 선택 없음 처리');
+                } else {
+                    // 기존 행인 경우 서버에서 삭제
+                    fetch('/sales/delete_attribute_value/', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                        body: 'id='+id+'&field='+encodeURIComponent(type)
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            console.log('속성 값 삭제 성공');
+                            
+                            // 커스텀 이벤트 발생으로 실시간 업데이트 보장
+                            const rowId = td.parentElement.getAttribute('data-id');
+                            document.dispatchEvent(new CustomEvent('dropdownOptionChanged', {
+                                detail: {
+                                    fieldName: type,
+                                    newValue: '',
+                                    rowId: rowId
+                                }
+                            }));
+                            
+                            // 종속된 행들 찾아서 업데이트
+                            if (typeof updateDependentRows === 'function') {
+                                updateDependentRows(id, type, '');
+                            }
+                            
+                            syncTableAndKanban(type);
+                        } else {
+                            throw new Error(data.error || '삭제 실패');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('속성 값 삭제 실패:', error);
+                        alert('삭제 중 오류가 발생했습니다: ' + error.message);
+                    });
+                }
+                
+                // 드롭다운 닫기
+                if (currentDropdown && currentDropdown.parentNode) {
+                    currentDropdown.parentNode.removeChild(currentDropdown);
+                    window.dropdown = null;
+                }
+                return;
+            }
+            
+            const option = options.find(o => String(o.id) === String(optionId));
+            // UI 업데이트 - 즉시 실행
+            if (option) {
+                const color = option.color ? hexToRgba(option.color, 0.18) : '#eee';
+                if (td) { 
+                    td.innerHTML = `<div class="dropdown-pill" style="background:${color}; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">${option.option}</div>`; 
+                    td.setAttribute('data-value', optionId); 
+                }
+                
+                // 커스텀 이벤트 발생으로 실시간 업데이트 보장
+                const rowId = td.parentElement.getAttribute('data-id');
+                document.dispatchEvent(new CustomEvent('dropdownOptionChanged', {
+                    detail: {
+                        fieldName: type,
+                        newValue: optionId,
+                        rowId: rowId
+                    }
+                }));
+            } else {
+                // 옵션을 찾지 못한 경우에도 pill 형태로 표시
+                console.log(`옵션을 찾지 못함, pill 형태로 표시: ${optionId}`);
+                if (td) { 
+                    td.innerHTML = `<div class="dropdown-pill" style="background:#f8f9fa; color:#6c757d; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center; border:1px solid #dee2e6;">${optionId}</div>`; 
+                    td.setAttribute('data-value', optionId); 
+                }
+                
+                // 커스텀 이벤트 발생
+                const rowId = td.parentElement.getAttribute('data-id');
+                document.dispatchEvent(new CustomEvent('dropdownOptionChanged', {
+                    detail: {
+                        fieldName: type,
+                        newValue: optionId,
+                        rowId: rowId
+                    }
+                }));
+            }
+            
+            // 드롭다운 닫기 - 즉시 실행
+            if (currentDropdown && currentDropdown.parentNode) {
+                currentDropdown.parentNode.removeChild(currentDropdown);
+                window.dropdown = null;
+            }
+            
+            // 상태 필터가 활성화되어 있고, 변경된 필드가 상태 속성인 경우
+            if (window.currentStatusTab !== null && type === window.statusAttributeName) {
+                // 해당 행의 상태 셀 업데이트
+                const row = document.querySelector(`tr[data-id="${id}"]`);
+                if (row) {
+                    const statusCell = row.querySelector(`td[data-field="${type}"]`);
+                    if (statusCell) {
+                        // 새로운 값으로 data-value 업데이트
+                        statusCell.setAttribute('data-value', optionId);
+                        
+                        // 상태 필터 즉시 재적용
+                        setTimeout(() => {
+                            if (typeof applyStatusFilter === 'function') {
+                                applyStatusFilter();
+                            }
+                        }, 50);
+                    }
+                }
+            }
+            
+            // 서버 업데이트 - 단일 값으로 저장
+            if (id && id.startsWith('temp_')) {
+                saveNewRowField(td.parentElement, type, optionId);
+            } else {
+                fetch('/sales/update_row_field/', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: 'id='+id+'&field='+encodeURIComponent(type)+'&value='+encodeURIComponent(optionId)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // 종속된 행들 찾아서 업데이트 (ID 전달)
+                        if (typeof updateDependentRows === 'function') {
+                            updateDependentRows(id, type, optionId);
+                        }
+                        
+                        // 실시간 동기화
+                        if (typeof syncTableAndKanban === 'function') {
+                            syncTableAndKanban(type);
+                        }
+                        // 칸반보드 리렌더링
+                        if (window.currentKanbanAttribute && window.currentKanbanAttribute === type) {
+                            updateKanbanBoard(type);
+                        }
+                        // 상태 속성인 경우 상태 탭 새로고침
+                        if (window.statusAttributeName && type === window.statusAttributeName && typeof refreshStatusTabs === 'function') {
+                            setTimeout(() => { refreshStatusTabs(); }, 100);
+                        }
+                    } else {
+                        throw new Error(data.error || '업데이트 실패');
+                    }
+                })
+                .catch(error => {
+                    console.error('드롭다운 옵션 업데이트 실패:', error);
+                    alert('업데이트 중 오류가 발생했습니다: ' + error.message);
+                });
+            }
+            // 드롭다운 닫기
+            if (currentDropdown && currentDropdown.parentNode) {
+                currentDropdown.parentNode.removeChild(currentDropdown);
+                window.dropdown = null;
+            }
+        });
+    });
+    
+    // 드롭다운 외부 클릭 시 닫기 이벤트 리스너 추가
+    setTimeout(() => {
+        let justOpened = true;
+        document.addEventListener('mousedown', function closeHandler(e) {
+            if (justOpened) {
+                justOpened = false;
+                return;
+            }
+            if (currentDropdown && !currentDropdown.contains(e.target) && !td.contains(e.target)) {
+                if (currentDropdown.parentNode) {
+                    console.log('드롭다운 외부 클릭으로 제거');
+                    currentDropdown.parentNode.removeChild(currentDropdown);
+                    window.dropdown = null;
+                }
+                document.removeEventListener('mousedown', closeHandler);
+                document.removeEventListener('scroll', scrollHandler);
+            }
+        });
+        
+        // 일반 드롭다운용 스크롤 이벤트 (기존 방식 유지)
+        function scrollHandler() {
+            if (currentDropdown && td) {
+                const rect = td.getBoundingClientRect();
+                const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+                
+                const topPosition = rect.bottom + scrollTop + 2;
+                const leftPosition = rect.left + scrollLeft;
+                
+                currentDropdown.style.top = topPosition + 'px';
+                currentDropdown.style.left = leftPosition + 'px';
+            }
+        }
+        
+        document.addEventListener('scroll', scrollHandler);
+    }, 100);
+}

@@ -188,6 +188,26 @@ input, select {
     min-height: 36px !important;
     max-height: 200px !important;
 }
+/* 테이블 편집용 input 스타일 */
+.table-edit-text-area {
+    border: 2px solid #007bff !important;
+    border-radius: 4px !important;
+    background: white !important;
+}
+/* 
+.table-edit-text-area:focus {
+    border-color: #0056b3 !important;
+    box-shadow: 0 2px 8px rgba(0, 123, 255, 0.35) !important;
+    white-space: pre-wrap !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    overflow: visible !important;
+    text-overflow: unset !important;
+    word-break: break-all !important;
+    height: auto !important;
+    min-height: 36px !important;
+    max-height: 200px !important;
+} */
 .add-btn { background: #007bff; color: #fff; border: none; padding: 7px 15px; border-radius: 5px; cursor: pointer; }
 .add-btn:hover { background: #0056b3; }
 .dropdown-edit { position: absolute; background: #fff; border: 1px solid #ccc; z-index: 4000; min-width: 180px; box-shadow: 0 2px 8px #ddd; padding: 10px; border-radius: 6px; }

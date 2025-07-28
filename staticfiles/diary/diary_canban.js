@@ -158,94 +158,127 @@ function bindKanbanSortable() {
 }
 
 // 칸반보드 필터 기능 추가
+// 칸반보드 업데이트 상태 관리
+let kanbanUpdateInProgress = false;
+let lastKanbanData = null;
+
 function updateKanbanBoard(attrName) {
   if (!attrName || attrName === 'undefined') {
       alert('칸반보드 기준 속성을 먼저 설정하세요.');
       return;
   }
+  
+  // 이미 업데이트 중이면 중복 실행 방지
+  if (kanbanUpdateInProgress) {
+      console.log('칸반보드 업데이트가 이미 진행 중입니다.');
+      return;
+  }
+  
+  kanbanUpdateInProgress = true;
   const loadingIndicator = document.getElementById('kanbanLoadingIndicator');
   const boardView = document.getElementById('boardView');
   
   // 로딩 표시
-  loadingIndicator.style.display = 'block';
+  if (loadingIndicator) {
+      loadingIndicator.style.display = 'block';
+  }
   
   fetch('/sales/get_kanban_data/?attr_name=' + encodeURIComponent(attrName))
       .then(response => response.json())
       .then(data => {
-          loadingIndicator.style.display = 'none';
+          if (loadingIndicator) {
+              loadingIndicator.style.display = 'none';
+          }
           
           if (data.success) {
-              // 칸반보드 HTML 생성
-              let boardHTML = '<div class="board-container">';
+              // 데이터가 변경되었는지 확인
+              const dataChanged = !lastKanbanData || 
+                  JSON.stringify(lastKanbanData) !== JSON.stringify(data);
               
-              data.board.forEach(function(col) {
-                  let colStyle = '';
-                  if (col.status.color) {
-                      colStyle = `background:${hexToRgba(col.status.color, 0.10)};`;
-                  }
+              if (dataChanged) {
+                  // 칸반보드 HTML 생성
+                  let boardHTML = '<div class="board-container">';
                   
-                  let titleStyle = '';
-                  if (col.status.color) {
-                      titleStyle = `background:${hexToRgba(col.status.color, 0.18)};border-left:6px solid ${col.status.color};padding-left:10px;`;
-                  } else {
-                      titleStyle = 'border-left:6px solid #007bff;padding-left:10px;';
-                  }
-                  
-                  boardHTML += `
-                      <div class="board-col" data-status-id="${col.status.id}" data-attr-name="${attrName}" style="${colStyle}">
-                          <div class="board-col-title" style="${titleStyle}">${col.status.name}</div>
-                          <div class="board-cards">
-                  `;
-                  
-                  col.entries.forEach(function(entry) {
-                      const entryName = entry.name || '(이름 없음)';
-                      const entryAmount = entry.amount;
-                      const entryProgress = entry.progress || entry.now || '';
+                  data.board.forEach(function(col) {
+                      let colStyle = '';
+                      if (col.status.color) {
+                          colStyle = `background:${hexToRgba(col.status.color, 0.10)};`;
+                      }
                       
-                      // 진행사항 옵션에서 텍스트 찾기
-                      let progressText = '';
-                      if (entryProgress && data.progress_options) {
-                          const progressOption = data.progress_options.find(option => option.id == entryProgress);
-                          if (progressOption) {
-                              progressText = progressOption.option;
-                          }
+                      let titleStyle = '';
+                      if (col.status.color) {
+                          titleStyle = `background:${hexToRgba(col.status.color, 0.18)};border-left:6px solid ${col.status.color};padding-left:10px;`;
+                      } else {
+                          titleStyle = 'border-left:6px solid #007bff;padding-left:10px;';
                       }
                       
                       boardHTML += `
-                          <div class="board-card" data-entry-id="${entry.id}">
-                            <div class="board-card-title">${entryName || '(회사명 없음)'}</div>
-                            <div class="board-card-amount">${entryAmount ? formatKoreanCurrency(entryAmount) : ''}</div>
-                            ${progressText ? `<div class="board-card-progress" style="font-size: 11px; color: #666; margin-top: 4px;">${progressText}</div>` : ''}
+                          <div class="board-col" data-status-id="${col.status.id}" data-attr-name="${attrName}" style="${colStyle}">
+                              <div class="board-col-title" style="${titleStyle}">${col.status.name}</div>
+                              <div class="board-cards">
+                      `;
+                      
+                      col.entries.forEach(function(entry) {
+                          const entryName = entry.name || '(이름 없음)';
+                          const entryAmount = entry.amount;
+                          const entryProgress = entry.progress || entry.now || '';
+                          
+                          // 진행사항 옵션에서 텍스트 찾기
+                          let progressText = '';
+                          if (entryProgress && data.progress_options) {
+                              const progressOption = data.progress_options.find(option => option.id == entryProgress);
+                              if (progressOption) {
+                                  progressText = progressOption.option;
+                              }
+                          }
+                          
+                          boardHTML += `
+                              <div class="board-card" data-entry-id="${entry.id}">
+                                <div class="board-card-title">${entryName || '(회사명 없음)'}</div>
+                                <div class="board-card-amount">${entryAmount ? formatKoreanCurrency(entryAmount) : ''}</div>
+                                ${progressText ? `<div class="board-card-progress" style="font-size: 11px; color: #666; margin-top: 4px;">${progressText}</div>` : ''}
+                              </div>
+                          `;
+                      });
+                      
+                      boardHTML += `
+                              </div>
+                              <button class="add-card-btn" style="display:none;"></button>
                           </div>
                       `;
                   });
                   
-                  boardHTML += `
-                          </div>
-                          <button class="add-card-btn" style="display:none;"></button>
-                      </div>
-                  `;
-              });
-              
-              boardHTML += '</div>';
-              
-              // 기존 보드 교체
-              boardView.innerHTML = boardHTML;
-              
-              // 이벤트 바인딩 재설정
-              bindKanbanSortable();
-              
-              // 전역 변수 업데이트
-              window.SELECTED_KANBAN_ATTR = attrName;
-              
+                  boardHTML += '</div>';
+                  
+                  // 기존 보드 교체
+                  boardView.innerHTML = boardHTML;
+                  
+                  // 이벤트 바인딩 재설정
+                  bindKanbanSortable();
+                  
+                  // 전역 변수 업데이트
+                  window.SELECTED_KANBAN_ATTR = attrName;
+                  
+                  // 마지막 데이터 저장
+                  lastKanbanData = data;
+                  
+                  console.log('칸반보드 업데이트 완료');
+              } else {
+                  console.log('칸반보드 데이터가 변경되지 않아 업데이트를 건너뜁니다.');
+              }
           } else {
               alert('칸반보드 데이터를 불러오는데 실패했습니다: ' + (data.error || ''));
           }
       })
       .catch(error => {
-          loadingIndicator.style.display = 'none';
+          if (loadingIndicator) {
+              loadingIndicator.style.display = 'none';
+          }
           console.error('칸반보드 업데이트 오류:', error);
           alert('칸반보드 업데이트 중 오류가 발생했습니다: ' + error.message);
+      })
+      .finally(() => {
+          kanbanUpdateInProgress = false;
       });
 }
 
@@ -571,6 +604,7 @@ function updateKanbanBoard(attrName) {
                 
                 // 전역 변수 업데이트
                 window.SELECTED_KANBAN_ATTR = attrName;
+                window.currentKanbanAttribute = attrName;
                 
             } else {
                 // 로그아웃 중이 아닐 때만 오류 메시지 표시
