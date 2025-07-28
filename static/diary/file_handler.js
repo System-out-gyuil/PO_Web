@@ -168,31 +168,56 @@ function showFilePreview(fileId, fileInfo, rowId, fieldName) {
                         </audio>
                     </div>
                 `;
-            } else if (['docx', 'doc', 'pptx', 'ppt', 'xlsx', 'xls'].includes(fileExt) || 
+            } else if (['docx', 'doc', 'pptx', 'ppt', 'xlsx', 'xls', 'hwp'].includes(fileExt) || 
                        contentType.includes('wordprocessingml') || 
                        contentType.includes('presentationml') || 
                        contentType.includes('spreadsheetml') ||
-                       contentType.includes('msword')) {
-                // Office 문서 파일들 - Google Docs Viewer 사용
+                       contentType.includes('msword') ||
+                       contentType.includes('x-hwp') ||
+                       contentType.includes('application/x-hwp')) {
+                // Office 문서 파일들 + HWP 파일
                 const encodedUrl = encodeURIComponent(fileUrl);
-                previewContent = `
-                    <div style="width: 100%; height: 100%; display: flex; flex-direction: column;">
-                        <iframe src="https://docs.google.com/viewer?url=${encodedUrl}&embedded=true"
-                                style="flex: 1; border: none; border-radius: 8px;"
-                                title="${fileName}">
-                        </iframe>
-                        <div style="text-align: center; margin-top: 15px; padding: 10px;">
-                            <button onclick="window.open('${fileUrl}', '_blank')" 
-                                    style="padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">
-                                새 창에서 열기
-                            </button>
-                            <button onclick="downloadFile(rowId, fieldName)" 
-                                    style="padding: 8px 16px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                                다운로드
-                            </button>
+                
+                // HWP 파일인 경우 LibreOffice로 PDF 변환 후 미리보기
+                if (fileExt === 'hwp' || contentType.includes('hwp')) {
+                    // 로딩 상태 표시
+                    const contentDiv = modal.querySelector('div[style*="position: absolute; top: 60px"]');
+                    if (contentDiv) {
+                        contentDiv.innerHTML = `
+                            <div style="text-align: center; background: #f8f9fa; padding: 40px; border-radius: 8px;">
+                                <div style="font-size: 48px; margin-bottom: 20px;">⏳</div>
+                                <div style="font-size: 16px; color: #666;">HWP 파일을 PDF로 변환 중...</div>
+                                <div style="font-size: 14px; color: #999; margin-top: 10px;">
+                                    LibreOffice를 사용하여 변환하고 있습니다.
+                                </div>
+                            </div>
+                        `;
+                    }
+                    
+                    // LibreOffice PDF 변환 요청
+                    convertHwpToPdf(rowId, fieldName, fileId, fileUrl, fileName);
+                    return; // 아래에서 contentDiv.innerHTML을 또 바꾸지 않도록 return
+                } else {
+                    // 일반 Office 문서 - Google Docs Viewer 사용
+                    previewContent = `
+                        <div style="width: 100%; height: 100%; display: flex; flex-direction: column;">
+                            <iframe src="https://docs.google.com/viewer?url=${encodedUrl}&embedded=true"
+                                    style="flex: 1; border: none; border-radius: 8px;"
+                                    title="${fileName}">
+                            </iframe>
+                            <div style="text-align: center; margin-top: 15px; padding: 10px;">
+                                <button onclick="window.open('${fileUrl}', '_blank')" 
+                                        style="padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">
+                                    새 창에서 열기
+                                </button>
+                                <button onclick="downloadFile('${rowId}', '${fieldName}', '${fileId}')" 
+                                        style="padding: 8px 16px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                    다운로드
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                `;
+                    `;
+                }
             } else {
                 // 지원하지 않는 파일 타입
                 previewContent = `
@@ -593,4 +618,182 @@ function handleFileUpload(rowId, fieldName, fileInput) {
   
   // 파일 입력 초기화
   fileInput.value = '';
+}
+
+// HWP 파일 미리보기 시도 함수
+function tryHwpPreview(fileUrl, fileName) {
+    console.log('HWP 파일 Google Docs 미리보기 시도:', fileUrl, fileName);
+    
+    const modal = document.getElementById('filePreviewModal');
+    if (!modal) {
+        console.error('미리보기 모달을 찾을 수 없습니다.');
+        return;
+    }
+    
+    const contentDiv = modal.querySelector('div[style*="position: absolute; top: 60px"]');
+    if (!contentDiv) {
+        console.error('콘텐츠 영역을 찾을 수 없습니다.');
+        return;
+    }
+    
+    // 로딩 상태 표시
+    contentDiv.innerHTML = `
+        <div style="text-align: center; background: #f8f9fa; padding: 40px; border-radius: 8px;">
+            <div style="font-size: 48px; margin-bottom: 20px;">⏳</div>
+            <div style="font-size: 16px; color: #666;">Google Docs에서 HWP 파일을 로딩 중...</div>
+            <div style="font-size: 14px; color: #999; margin-top: 10px;">
+                일부 HWP 파일은 Google Docs에서 지원되지 않을 수 있습니다.
+            </div>
+        </div>
+    `;
+    
+    // Google Docs Viewer로 시도
+    const encodedUrl = encodeURIComponent(fileUrl);
+    const googleDocsUrl = `https://docs.google.com/viewer?url=${encodedUrl}&embedded=true`;
+    
+    // iframe으로 Google Docs Viewer 로드
+    contentDiv.innerHTML = `
+        <div style="width: 100%; height: 100%; display: flex; flex-direction: column;">
+            <div style="background: #f8f9fa; padding: 10px; border-bottom: 1px solid #dee2e6; font-size: 14px; color: #666;">
+                <strong>Google Docs Viewer</strong> - HWP 파일 미리보기 시도 중...
+            </div>
+            <iframe src="${googleDocsUrl}"
+                    style="flex: 1; border: none; border-radius: 8px;"
+                    title="${fileName}"
+                    onload="console.log('Google Docs iframe 로드 완료')"
+                    onerror="console.log('Google Docs iframe 로드 실패')">
+            </iframe>
+            <div style="text-align: center; margin-top: 15px; padding: 10px; background: #f8f9fa; border-top: 1px solid #dee2e6;">
+                <div style="font-size: 12px; color: #666; margin-bottom: 10px;">
+                    Google Docs에서 파일을 볼 수 없는 경우, 한글 뷰어를 설치하거나 파일을 다운로드해주세요.
+                </div>
+                <button onclick="window.open('https://www.hancom.com/board/devlist.do?artId=38223', '_blank')" 
+                        style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px; font-size: 12px;">
+                    한글 뷰어 다운로드
+                </button>
+                <button onclick="window.open('${fileUrl}', '_blank')" 
+                        style="padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                    새 창에서 열기
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+// HTML 이스케이프 함수 (기존에 없을 경우)
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// HWP 파일을 LibreOffice로 PDF 변환하는 함수
+function convertHwpToPdf(rowId, fieldName, fileId, fileUrl, fileName) {
+    console.log('HWP to PDF 변환 시작:', rowId, fieldName, fileId, fileName);
+    
+    const modal = document.getElementById('filePreviewModal');
+    if (!modal) {
+        console.error('미리보기 모달을 찾을 수 없습니다.');
+        return;
+    }
+    
+    const contentDiv = modal.querySelector('div[style*="position: absolute; top: 60px"]');
+    if (!contentDiv) {
+        console.error('콘텐츠 영역을 찾을 수 없습니다.');
+        return;
+    }
+    
+    // 서버에 PDF 변환 요청
+    fetch('/sales/convert_hwp_to_pdf/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify({
+            row_id: rowId,
+            field_name: fieldName,
+            file_id: fileId,
+            file_url: fileUrl,
+            file_name: fileName
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('PDF 변환 응답:', data);
+        
+        if (data.success && data.pdf_url) {
+            // 변환 성공 - PDF 미리보기 표시
+            contentDiv.innerHTML = `
+                <div style="width: 100%; height: 100%; display: flex; flex-direction: column;">
+                    <div style="background: #f8f9fa; padding: 10px; border-bottom: 1px solid #dee2e6; font-size: 14px; color: #666;">
+                        <strong>PDF 미리보기</strong> - ${fileName} (변환됨)
+                    </div>
+                    <iframe src="${data.pdf_url}" 
+                            style="flex: 1; border: none; border-radius: 8px;"
+                            title="${fileName}">
+                    </iframe>
+                    <div style="text-align: center; margin-top: 15px; padding: 10px; background: #f8f9fa; border-top: 1px solid #dee2e6;">
+                        <button onclick="window.open('${fileUrl}', '_blank')" 
+                                style="padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px; font-size: 12px;">
+                            원본 파일 열기
+                        </button>
+                        <button onclick="downloadFile('${rowId}', '${fieldName}', '${fileId}')" 
+                                style="padding: 8px 16px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                            다운로드
+                        </button>
+                    </div>
+                </div>
+            `;
+        } else {
+            // 변환 실패
+            let errorMessage = 'HWP 파일을 PDF로 변환하는 중 오류가 발생했습니다.';
+            if (data.error) {
+                errorMessage = data.error;
+            }
+            
+            contentDiv.innerHTML = `
+                <div style="text-align: center; background: #f8f9fa; padding: 40px; border-radius: 8px;">
+                    <div style="font-size: 48px; margin-bottom: 20px;">❌</div>
+                    <div style="font-size: 18px; margin-bottom: 20px; color: #333;">변환 실패</div>
+                    <div style="font-size: 14px; color: #666; margin-bottom: 20px;">
+                        ${errorMessage}
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 10px; align-items: center;">
+                        <button onclick="window.open('${fileUrl}', '_blank')" 
+                                style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; font-weight: 500; cursor: pointer; width: 200px;">
+                            새 창에서 열기
+                        </button>
+                        <button onclick="downloadFile('${rowId}', '${fieldName}', '${fileId}')" 
+                                style="padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 4px; font-weight: 500; cursor: pointer; width: 200px;">
+                            다운로드
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        console.error('PDF 변환 요청 오류:', error);
+        
+        contentDiv.innerHTML = `
+            <div style="text-align: center; background: #f8f9fa; padding: 40px; border-radius: 8px;">
+                <div style="font-size: 48px; margin-bottom: 20px;">❌</div>
+                <div style="font-size: 18px; margin-bottom: 20px; color: #333;">변환 실패</div>
+                <div style="font-size: 14px; color: #666; margin-bottom: 20px;">
+                    서버 연결 오류가 발생했습니다.
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 10px; align-items: center;">
+                    <button onclick="window.open('${fileUrl}', '_blank')" 
+                            style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; font-weight: 500; cursor: pointer; width: 200px;">
+                        새 창에서 열기
+                    </button>
+                    <button onclick="downloadFile('${rowId}', '${fieldName}', '${fileId}')" 
+                            style="padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 4px; font-weight: 500; cursor: pointer; width: 200px;">
+                        다운로드
+                    </button>
+                </div>
+            </div>
+        `;
+    });
 }
