@@ -4248,15 +4248,32 @@ def convert_hwp_to_pdf(request):
                     cmd,
                     capture_output=True,
                     text=True,
-                    timeout=60  # 60초 타임아웃
+                    timeout=300  # 300초(5분) 타임아웃으로 증가
                 )
                 
+                # 첫 번째 시도가 실패하면 다른 방법 시도
                 if result.returncode != 0:
-                    print(f"LibreOffice 변환 오류: {result.stderr}")
-                    return JsonResponse({
-                        'success': False, 
-                        'error': 'HWP 파일을 PDF로 변환하는데 실패했습니다. LibreOffice가 설치되어 있는지 확인해주세요.'
-                    })
+                    print(f"첫 번째 LibreOffice 변환 시도 실패: {result.stderr}")
+                    
+                    # 두 번째 시도: 다른 옵션으로
+                    cmd2 = [
+                        'libreoffice', '--headless', '--convert-to', 'pdf:writer_pdf_Export',
+                        '--outdir', temp_dir, hwp_path
+                    ]
+                    
+                    result = subprocess.run(
+                        cmd2,
+                        capture_output=True,
+                        text=True,
+                        timeout=300
+                    )
+                    
+                    if result.returncode != 0:
+                        print(f"두 번째 LibreOffice 변환 시도도 실패: {result.stderr}")
+                        return JsonResponse({
+                            'success': False, 
+                            'error': 'HWP 파일을 PDF로 변환하는데 실패했습니다. LibreOffice가 설치되어 있는지 확인해주세요.'
+                        })
                 
                 # 변환된 PDF 파일 확인
                 if not os.path.exists(pdf_path):
