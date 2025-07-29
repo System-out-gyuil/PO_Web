@@ -718,7 +718,15 @@ function convertHwpToPdf(rowId, fieldName, fileId, fileUrl, fileName) {
             file_name: fileName
         })
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            // HTTP 오류 응답 처리
+            return response.text().then(text => {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}. Response: ${text}`);
+            });
+        }
+        return response.json();
+    })
     .then(data => {
         console.log('PDF 변환 응답:', data);
         
@@ -776,12 +784,26 @@ function convertHwpToPdf(rowId, fieldName, fileId, fileUrl, fileName) {
     .catch(error => {
         console.error('PDF 변환 요청 오류:', error);
         
+        // 오류 메시지 추출
+        let errorMessage = '서버 연결 오류가 발생했습니다.';
+        if (error.message) {
+            if (error.message.includes('HTTP 500')) {
+                errorMessage = '서버 내부 오류가 발생했습니다. LibreOffice가 설치되어 있는지 확인해주세요.';
+            } else if (error.message.includes('HTTP 404')) {
+                errorMessage = '요청한 리소스를 찾을 수 없습니다.';
+            } else if (error.message.includes('HTTP 403')) {
+                errorMessage = '접근 권한이 없습니다.';
+            } else {
+                errorMessage = error.message;
+            }
+        }
+        
         contentDiv.innerHTML = `
             <div style="text-align: center; background: #f8f9fa; padding: 40px; border-radius: 8px;">
                 <div style="font-size: 48px; margin-bottom: 20px;">❌</div>
                 <div style="font-size: 18px; margin-bottom: 20px; color: #333;">변환 실패</div>
-                <div style="font-size: 14px; color: #666; margin-bottom: 20px;">
-                    서버 연결 오류가 발생했습니다.
+                <div style="font-size: 14px; color: #666; margin-bottom: 20px; max-width: 400px; word-wrap: break-word;">
+                    ${errorMessage}
                 </div>
                 <div style="display: flex; flex-direction: column; gap: 10px; align-items: center;">
                     <button onclick="window.open('${fileUrl}', '_blank')" 

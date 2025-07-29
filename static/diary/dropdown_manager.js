@@ -1,14 +1,72 @@
+// 통합된 드롭다운 관리 시스템
+function closeAllDropdowns() {
+    console.log('모든 드롭다운 닫기 실행');
+    
+    // 전역 dropdown 변수 정리
+    if (window.dropdown && window.dropdown.parentNode) {
+        window.dropdown.parentNode.removeChild(window.dropdown);
+        window.dropdown = null;
+    }
+    
+    // 모든 드롭다운 요소들 제거
+    document.querySelectorAll('.dropdown-edit').forEach(el => {
+        if (el.parentNode) {
+            el.parentNode.removeChild(el);
+        }
+    });
+    
+    // 모든 모달 드롭다운 제거
+    document.querySelectorAll('[id^="modal-"]').forEach(el => {
+        if (el.parentNode) {
+            el.parentNode.removeChild(el);
+        }
+    });
+}
+
+function closeDropdown() {
+    console.log('closeDropdown 함수 실행');
+    closeAllDropdowns();
+}
+
+function isDropdownOpen() {
+    return document.querySelectorAll('.dropdown-edit').length > 0 || 
+           document.querySelectorAll('[id^="modal-"]').length > 0 ||
+           (window.dropdown && window.dropdown.parentNode);
+}
+
+// 외부 클릭 이벤트 리스너 관리
+let globalClickHandler = null;
+
+function removeGlobalClickHandler() {
+    if (globalClickHandler) {
+        document.removeEventListener('mousedown', globalClickHandler);
+        globalClickHandler = null;
+    }
+}
+
+function addGlobalClickHandler(dropdown, triggerElement) {
+    removeGlobalClickHandler();
+    
+    globalClickHandler = function(e) {
+        if (dropdown && !dropdown.contains(e.target) && 
+            (!triggerElement || !triggerElement.contains(e.target))) {
+            console.log('외부 클릭으로 드롭다운 닫기');
+            closeAllDropdowns();
+            removeGlobalClickHandler();
+        }
+    };
+    
+    // 약간의 지연 후 이벤트 리스너 추가 (즉시 닫히는 것을 방지)
+    setTimeout(() => {
+        document.addEventListener('mousedown', globalClickHandler);
+    }, 100);
+}
+
 function openDropdown(td, type, id, currentId, currentSubregion) {
     console.log('openDropdown 호출됨:', {td, type, id, currentId, currentSubregion});
     
-    // 기존 드롭다운 완전히 제거
-    if (window.dropdown && window.dropdown.parentNode) {
-      window.dropdown.parentNode.removeChild(window.dropdown);
-      window.dropdown = null;
-    }
-    
-    // 모든 기존 드롭다운 요소들 제거 (지역/상세지역 제외)
-    document.querySelectorAll('.dropdown-edit:not([data-region-type])').forEach(el => el.remove());
+    // 기존 모든 드롭다운 닫기
+    closeAllDropdowns();
     
     // 클릭된 셀의 위치 정보 가져오기
     const rect = td.getBoundingClientRect();
@@ -384,26 +442,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
         });
         
         // 외부 클릭 시 드롭다운 닫기
-        setTimeout(() => {
-            let justOpened = true;
-            document.addEventListener('mousedown', function closeHandler(e) {
-                if (justOpened) {
-                    justOpened = false;
-                    return;
-                }
-                if (window.dropdown && !window.dropdown.contains(e.target) && !td.contains(e.target)) {
-                    if (window.dropdown.parentNode) {
-                        console.log('드롭다운 외부 클릭으로 제거');
-                        window.dropdown.parentNode.removeChild(window.dropdown);
-                        window.dropdown = null;
-                    }
-                    // 스크롤 이벤트 리스너 제거
-                    window.removeEventListener('scroll', scrollHandler);
-                    window.removeEventListener('resize', scrollHandler);
-                    document.removeEventListener('mousedown', closeHandler);
-                }
-            });
-        }, 100);
+        addGlobalClickHandler(window.dropdown, td);
         
         return;
         
@@ -654,23 +693,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
         });
         
         // 외부 클릭 시 드롭다운 닫기
-        setTimeout(() => {
-            let justOpened = true;
-            document.addEventListener('mousedown', function closeHandler(e) {
-                if (justOpened) {
-                    justOpened = false;
-                    return;
-                }
-                if (dropdown && !dropdown.contains(e.target) && !btn.contains(e.target)) {
-                    if (dropdown.parentNode) {
-                        console.log('드롭다운 외부 클릭으로 제거');
-                        dropdown.parentNode.removeChild(dropdown);
-                        window.dropdown = null;
-                    }
-                    document.removeEventListener('click', closeHandler);
-                }
-            });
-        }, 100);
+        addGlobalClickHandler(window.dropdown, td);
         
         return;
     } else {
@@ -1304,23 +1327,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
             });
             
             // 드롭다운 외부 클릭 시 닫기
-            setTimeout(() => {
-                let justOpened = true;
-                document.addEventListener('mousedown', function closeHandler(e) {
-                    if (justOpened) {
-                        justOpened = false;
-                        return;
-                    }
-                    if (dropdown && !dropdown.contains(e.target) && !btn.contains(e.target)) {
-                        if (dropdown.parentNode) {
-                            console.log('드롭다운 외부 클릭으로 제거');
-                            dropdown.parentNode.removeChild(dropdown);
-                            window.dropdown = null;
-                        }
-                        document.removeEventListener('click', closeHandler);
-                    }
-                });
-            }, 100);
+            addGlobalClickHandler(dropdown, btn);
         })
         .catch(function(error) {
             console.error('모달 드롭다운 옵션 로드 실패:', error);
@@ -1426,10 +1433,8 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
     
     const regionNames = ['서울','경기','인천', '경북', '경남', '대구','부산','광주','대전','울산','세종','강원','충북','충남','전북','전남'];
     
-    // 기존 드롭다운이 있으면 닫기 - 완전한 정리
-    if (typeof closeDropdown === 'function') {
-      closeDropdown();
-    }
+    // 기존 모든 드롭다운 닫기
+    closeAllDropdowns();
     
     // 추가적으로 남아있을 수 있는 모든 드롭다운 요소들 제거
     const existingDropdowns = document.querySelectorAll('.dropdown-edit');
@@ -1553,23 +1558,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
     });
     
     // 드롭다운 외부 클릭 시 닫기
-    setTimeout(() => {
-        let justOpened = true;
-        document.addEventListener('mousedown', function closeHandler(e) {
-            if (justOpened) {
-                justOpened = false;
-                return;
-            }
-            if (dropdown && !dropdown.contains(e.target) && !btn.contains(e.target)) {
-                if (dropdown.parentNode) {
-                    console.log('드롭다운 외부 클릭으로 제거');
-                    dropdown.parentNode.removeChild(dropdown);
-                    window.dropdown = null;
-                }
-                document.removeEventListener('click', closeHandler);
-            }
-        });
-    }, 100);
+    addGlobalClickHandler(dropdown, btn);
   }
   
   // 상세 모달용 드롭다운 오픈 함수
@@ -1774,23 +1763,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
         });
         
         // 드롭다운 외부 클릭 시 닫기
-        setTimeout(() => {
-            let justOpened = true;
-            document.addEventListener('mousedown', function closeHandler(e) {
-                if (justOpened) {
-                    justOpened = false;
-                    return;
-                }
-                if (dropdown && !dropdown.contains(e.target) && !btn.contains(e.target)) {
-                    if (dropdown.parentNode) {
-                        console.log('드롭다운 외부 클릭으로 제거');
-                        dropdown.parentNode.removeChild(dropdown);
-                        window.dropdown = null;
-                    }
-                    document.removeEventListener('click', closeHandler);
-                }
-            });
-        }, 100);
+        addGlobalClickHandler(dropdown, btn);
       })
       .catch(error => {
         console.error('상세지역 드롭다운 로딩 오류:', error);

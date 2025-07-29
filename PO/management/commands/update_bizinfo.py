@@ -30,6 +30,11 @@ class Command(BaseCommand):
     help = "DB 업데이트"
 
     def handle(self, *args, **kwargs):
+        # LibreOffice 상태 확인
+        if not self.check_libreoffice_status():
+            self.stderr.write(self.style.ERROR("LibreOffice가 설치되지 않았거나 실행할 수 없습니다."))
+            return
+            
         self.delete_bizinfo_by_date()
 
         url = "https://www.bizinfo.go.kr/uss/rss/bizinfoApi.do"
@@ -195,27 +200,77 @@ class Command(BaseCommand):
             full_text += field['inferText'] + " "
         return full_text.strip()
 
+    def check_libreoffice_status(self):
+        """LibreOffice 설치 상태와 버전을 확인합니다."""
+        try:
+            result = subprocess.run([
+                "libreoffice", "--version"
+            ], stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30)
+            
+            if result.returncode == 0:
+                version = result.stdout.decode().strip()
+                print(f"✅ LibreOffice 설치 확인: {version}")
+                return True
+            else:
+                print(f"❌ LibreOffice 실행 실패: {result.stderr.decode()}")
+                return False
+        except Exception as e:
+            print(f"❌ LibreOffice 확인 실패: {e}")
+            return False
+
     def convert_hwp_to_pdf(self, hwp_path):
         output_dir = os.path.dirname(hwp_path)
         try:
+            # 파일 크기 확인
+            file_size = os.path.getsize(hwp_path)
+            print(f"📄 HWP 파일 크기: {file_size / (1024*1024):.2f} MB")
+            
+            # 파일 크기에 따른 timeout 조정
+            if file_size > 50 * 1024 * 1024:  # 50MB 이상
+                timeout = 1800  # 30분
+                print("⏰ 대용량 파일 감지, timeout을 30분으로 설정")
+            elif file_size > 10 * 1024 * 1024:  # 10MB 이상
+                timeout = 900   # 15분
+                print("⏰ 중간 크기 파일 감지, timeout을 15분으로 설정")
+            else:
+                timeout = 600   # 10분 (기본값)
+                print("⏰ 기본 timeout 10분 설정")
+            
+            # LibreOffice 프로세스 시작 전 메모리 상태 확인
+            print("🖥️ LibreOffice 변환 시작...")
+            
             result = subprocess.run([
                 "libreoffice",
                 "--headless",
                 "--convert-to", "pdf:writer_pdf_Export",
                 hwp_path,
                 "--outdir", output_dir
-            ], stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60)
+            ], stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=timeout)
 
             print("🖥️ libreoffice stdout:", result.stdout.decode())
+            if result.stderr:
+                print("🖥️ libreoffice stderr:", result.stderr.decode())
 
             basename = os.path.splitext(os.path.basename(hwp_path))[0] + ".pdf"
             converted_pdf = os.path.join(output_dir, basename)
 
             if os.path.exists(converted_pdf):
+                pdf_size = os.path.getsize(converted_pdf)
+                print(f"✅ 변환 성공: {pdf_size / (1024*1024):.2f} MB")
                 return converted_pdf
             else:
                 print(f"[❌ 변환 실패] {converted_pdf} 파일이 존재하지 않습니다.")
                 return ""
+                
+        except subprocess.TimeoutExpired:
+            print(f"[⏰ Timeout 발생] {timeout}초 초과로 변환 실패")
+            # LibreOffice 프로세스 강제 종료
+            try:
+                subprocess.run(["pkill", "-f", "libreoffice"], timeout=10)
+                print("🔄 LibreOffice 프로세스 강제 종료 완료")
+            except:
+                print("⚠️ LibreOffice 프로세스 종료 실패")
+            return ""
         except Exception as e:
             print(f"[예외 발생] HWP → PDF 변환 실패: {e}")
             return ""
