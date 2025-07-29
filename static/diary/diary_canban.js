@@ -235,8 +235,6 @@ function updateKanbanBoard(attrName) {
                           boardHTML += `
                               <div class="board-card" data-entry-id="${entry.id}">
                                 <div class="board-card-title">${entryName || '(회사명 없음)'}</div>
-                                <div class="board-card-amount">${entryAmount ? formatKoreanCurrency(entryAmount) : ''}</div>
-                                ${progressText ? `<div class="board-card-progress" style="font-size: 11px; color: #666; margin-top: 4px;">${progressText}</div>` : ''}
                               </div>
                           `;
                       });
@@ -585,9 +583,6 @@ function updateKanbanBoard(attrName) {
                     col.entries.forEach(function(entry) {
                         boardHTML += '<div class="board-card" data-entry-id="' + entry.id + '">';
                         boardHTML += '<div class="board-card-title">' + (entry.name || '(회사명 없음)') + '</div>';
-                        if (entry.amount) {
-                            boardHTML += '<div class="board-card-amount">' + formatKoreanCurrency(entry.amount) + '</div>';
-                        }
                         boardHTML += '</div>';
                     });
                     

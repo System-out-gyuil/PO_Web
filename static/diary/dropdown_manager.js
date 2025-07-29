@@ -1,4 +1,9 @@
 // 통합된 드롭다운 관리 시스템
+
+// 전역 변수로 현재 열린 드롭다운 추적
+let currentOpenDropdown = null;
+let currentTriggerElement = null;
+
 function closeAllDropdowns() {
     console.log('모든 드롭다운 닫기 실행');
     
@@ -21,6 +26,13 @@ function closeAllDropdowns() {
             el.parentNode.removeChild(el);
         }
     });
+    
+    // 전역 변수 초기화
+    currentOpenDropdown = null;
+    currentTriggerElement = null;
+    
+    // 전역 클릭 핸들러 제거
+    removeGlobalClickHandler();
 }
 
 function closeDropdown() {
@@ -31,7 +43,8 @@ function closeDropdown() {
 function isDropdownOpen() {
     return document.querySelectorAll('.dropdown-edit').length > 0 || 
            document.querySelectorAll('[id^="modal-"]').length > 0 ||
-           (window.dropdown && window.dropdown.parentNode);
+           (window.dropdown && window.dropdown.parentNode) ||
+           currentOpenDropdown !== null;
 }
 
 // 외부 클릭 이벤트 리스너 관리
@@ -48,11 +61,11 @@ function addGlobalClickHandler(dropdown, triggerElement) {
     removeGlobalClickHandler();
     
     globalClickHandler = function(e) {
+        // 드롭다운이나 트리거 요소 내부 클릭이 아닌 경우에만 닫기
         if (dropdown && !dropdown.contains(e.target) && 
             (!triggerElement || !triggerElement.contains(e.target))) {
             console.log('외부 클릭으로 드롭다운 닫기');
             closeAllDropdowns();
-            removeGlobalClickHandler();
         }
     };
     
@@ -64,6 +77,13 @@ function addGlobalClickHandler(dropdown, triggerElement) {
 
 function openDropdown(td, type, id, currentId, currentSubregion) {
     console.log('openDropdown 호출됨:', {td, type, id, currentId, currentSubregion});
+    
+    // 이미 같은 셀에서 드롭다운이 열려있는지 확인
+    if (currentOpenDropdown && currentTriggerElement === td) {
+        console.log('같은 셀에서 이미 드롭다운이 열려있음, 닫기만 실행');
+        closeAllDropdowns();
+        return;
+    }
     
     // 기존 모든 드롭다운 닫기
     closeAllDropdowns();
@@ -92,6 +112,10 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
     
     // 로컬 변수로 드롭다운 참조 저장
     const currentDropdown = window.dropdown;
+    
+    // 전역 변수에 현재 드롭다운 정보 저장
+    currentOpenDropdown = currentDropdown;
+    currentTriggerElement = td;
     
     // 셀 바로 아래에 위치하도록 계산
     const topPosition = rect.bottom + scrollTop + 2;
@@ -146,6 +170,9 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
     
     console.log('드롭다운 위치 설정:', {top: adjustedTop, left: adjustedLeft, cellWidth: rect.width});
     
+    // 전역 클릭 핸들러 추가
+    addGlobalClickHandler(currentDropdown, td);
+    
     // 스크롤 시 드롭다운 위치 업데이트 함수 (지역/상세지역용)
     function updateDropdownPosition() {
         if (currentDropdown && td) {
@@ -199,503 +226,172 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
         regionNames.forEach(function(region) {
             const isSelected = region === selectedRegion;
             html += `
-              <div class="dropdown-item" data-region="${region}" 
-                   style="padding: 8px 12px !important; 
-                          cursor: pointer !important; 
-                          border-bottom: 1px solid #f0f0f0 !important;
-                          ${isSelected ? 'background: #007bff !important; color: white !important;' : 'background: white !important; color: #333 !important;'}
-                          transition: background-color 0.2s !important;">
-                ${region}
+              <div class="dropdown-option-container" style="padding: 6px 10px; border-bottom: 1px solid #f0f0f0;">
+                <div class="dropdown-item" data-option-id="${region}" 
+                     style="cursor: pointer; 
+                            background: ${isSelected ? '#e3f2fd' : 'white'}; 
+                            border-radius: 4px; 
+                            padding: 6px 8px; 
+                            margin-bottom: 4px;
+                            ${isSelected ? 'border: 2px solid #007bff; font-weight: bold;' : 'border: 1px solid #ddd;'}
+                            transition: all 0.2s;
+                            display: flex;
+                            align-items: center;
+                            justify-content: space-between;
+                            position: relative;">
+                  <div style="display: flex; align-items: center; flex: 1; min-width: 0;">
+                    <span style="flex: 1; word-wrap: break-word; word-break: break-all; color: #333; font-size: 14px; line-height: 1.4; padding: 2px 0;">${region}</span>
+                  </div>
+                </div>
               </div>
             `;
         });
         
         currentDropdown.innerHTML = html;
-        
-        console.log('지역 드롭다운 HTML 생성 완료');
-        
-        // DOM에 추가하기 전에 스타일 재확인
-        console.log('DOM 추가 전 드롭다운 스타일:', currentDropdown.style.cssText);
-        
-        // DOM에 추가
         document.body.appendChild(currentDropdown);
         
-        // 즉시 확인
-        console.log('드롭다운 DOM 추가 직후 확인:');
-        console.log('드롭다운 요소:', currentDropdown);
-        console.log('드롭다운 부모:', currentDropdown.parentNode);
-        console.log('드롭다운 스타일:', currentDropdown.style.cssText);
-        
-        // 즉시 위치 확인
-        const immediateRect = currentDropdown.getBoundingClientRect();
-        console.log('즉시 위치 확인:', immediateRect);
-        
-        console.log('지역 드롭다운 DOM 추가 완료');
-        
-        // 드롭다운이 실제로 보이는지 확인하고 필요시 강제 표시
-        setTimeout(() => {
-            // DOM에서 제거되었는지 확인
-            if (!currentDropdown.parentNode) {
-                console.error('드롭다운이 DOM에서 제거되었습니다. 다시 추가합니다.');
-                document.body.appendChild(currentDropdown);
-            }
-            
-            const rect = currentDropdown.getBoundingClientRect();
-            console.log('드롭다운 실제 위치:', rect);
-            console.log('드롭다운 크기:', {width: rect.width, height: rect.height});
-            
-            // 추가 디버깅 정보
-            console.log('드롭다운 부모 요소:', currentDropdown.parentNode);
-            const computedStyle = window.getComputedStyle(currentDropdown);
-            console.log('드롭다운 computed 스타일:', {
-                display: computedStyle.display,
-                visibility: computedStyle.visibility,
-                opacity: computedStyle.opacity,
-                zIndex: computedStyle.zIndex,
-                position: computedStyle.position
-            });
-            
-            // 드롭다운이 화면에 보이는지 확인
-            const isVisible = rect.width > 0 && rect.height > 0 && 
-                            rect.top >= 0 && rect.left >= 0 && 
-                            rect.bottom <= window.innerHeight && 
-                            rect.right <= window.innerWidth;
-            console.log('드롭다운 화면 표시 여부:', isVisible);
-            
-            if (!isVisible || rect.width === 0 || rect.height === 0) {
-                console.warn('드롭다운이 화면에 표시되지 않습니다. 강제로 화면 중앙에 표시합니다.');
-                
-                // 강제로 화면 중앙에 표시
-                Object.assign(currentDropdown.style, {
-                    position: 'fixed',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    zIndex: '10000',
-                    minWidth: '300px',
-                    maxHeight: '400px',
-                    overflowY: 'auto',
-                    backgroundColor: 'white',
-                    border: '2px solid #007bff',
-                    borderRadius: '8px',
-                    boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
-                    display: 'block',
-                    visibility: 'visible',
-                    opacity: '1'
-                });
-                
-                // 다시 표시 확인
-                setTimeout(() => {
-                    const newRect = currentDropdown.getBoundingClientRect();
-                    console.log('재조정 후 드롭다운 크기:', {width: newRect.width, height: newRect.height});
-                    if (newRect.width === 0 || newRect.height === 0) {
-                        console.error('드롭다운이 여전히 표시되지 않습니다. DOM 문제일 수 있습니다.');
-                        // 최후의 수단으로 alert로 사용자에게 알림
-                        alert('드롭다운 표시에 문제가 있습니다. 페이지를 새로고침해주세요.');
-                    }
-                }, 50);
-            }
-        }, 100);
-        
-        // 호버 효과와 클릭 이벤트 바인딩
-        currentDropdown.querySelectorAll('.dropdown-item[data-region]').forEach(function(item) {
-            // 호버 효과
-            item.addEventListener('mouseenter', function() {
-                if (!this.style.background.includes('#007bff')) {
-                    this.style.background = '#f8f9fa !important';
-                }
-            });
-            
-            item.addEventListener('mouseleave', function() {
-                if (!this.style.background.includes('#007bff')) {
-                    this.style.background = 'white !important';
-                }
-            });
-            
-            // 클릭 이벤트
+        // 지역 선택 이벤트 리스너
+        currentDropdown.querySelectorAll('.dropdown-item').forEach(function(item) {
             item.addEventListener('click', function(e) {
-                e.preventDefault();
                 e.stopPropagation();
-                
-                console.log('지역 클릭됨:', this.getAttribute('data-region'));
-                const selectedRegion = this.getAttribute('data-region');
+                const selectedRegion = this.getAttribute('data-option-id');
                 
                 // UI 업데이트
                 if (td) { 
-                    td.innerHTML = `<div style="display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">${selectedRegion}</div>`; 
+                    td.innerHTML = `<div class="dropdown-pill" style="background:#e3f2fd; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">${selectedRegion}</div>`; 
                     td.setAttribute('data-value', selectedRegion); 
                 }
                 
-                // 커스텀 이벤트 발생
-                const rowId = td.parentElement.getAttribute('data-id');
-                document.dispatchEvent(new CustomEvent('dropdownOptionChanged', {
-                    detail: {
-                        fieldName: '지역',
-                        newValue: selectedRegion,
-                        rowId: rowId
-                    }
-                }));
-                
-                // 상세지역 td도 같이 변경 (첫 번째 값으로 초기화)
-                var subTd = td.parentElement.querySelector('td[data-field="상세지역"]');
-                if(subTd) {
-                    var regionMap = {
-                        '서울': ['관악구','금천구','강남구','강서구','강동구','강북구','광진구','구로구','노원구','도봉구','동대문구','동작구','마포구','서대문구','서초구','성동구','성북구','송파구','양천구','영등포구','용산구','은평구','종로구','중구','중랑구'],
-                        '경기': ['수원시','고양시','성남시','용인시','부천시','안산시','안양시','남양주시','화성시','평택시','의정부시','시흥시','파주시','광명시','김포시','군포시','광주시','오산시','이천시','안성시','의왕시','하남시','여주시','양평군','동두천시','과천시','가평군','연천군'],
-                        '인천': ['계양구','남동구','동구','미추홀구','부평구','서구','연수구','중구','강화군','옹진군'],
-                        '대구': ['중구','동구','서구','남구','북구','수성구','달서구','달성군'],
-                        '경북': ['포항시','경주시','김천시','안동시','구미시','영주시','영천시','상주시','문경시','경산시','군위군','의성군','청송군','영양군','영덕군','청도군','고령군','성주군','칠곡군','예천군','봉화군','울진군','울릉군'],
-                        '경남': ['창원시','진주시','통영시','사천시','김해시','밀양시','거제시','양산시','의령군','함안군','창녕군','고성군','남해군','하동군','산청군','함양군','거창군','합천군'],
-                        '부산': ['중구','서구','동구','영도구','부산진구','동래구','남구','북구','해운대구','사하구','금정구','강서구','연제구','수영구','사상구','기장군'],
-                        '광주': ['동구','서구','남구','북구','광산구'],
-                        '대전': ['동구','중구','서구','유성구','대덕구'],
-                        '울산': ['중구','남구','동구','북구','울주군'],
-                        '세종': ['세종특별자치시'],
-                        '강원': ['춘천시','원주시','강릉시','동해시','태백시','속초시','삼척시','홍천군','횡성군','영월군','평창군','정선군','철원군','화천군','양구군','인제군','고성군','양양군'],
-                        '충북': ['청주시','충주시','제천시','보은군','옥천군','영동군','증평군','진천군','괴산군','음성군','단양군'],
-                        '충남': ['천안시','공주시','보령시','아산시','서산시','논산시','계룡시','당진시','금산군','부여군','서천군','청양군','홍성군','예산군','태안군'],
-                        '전북': ['전주시','군산시','익산시','정읍시','남원시','김제시','완주군','진안군','무주군','장수군','임실군','순창군','고창군','부안군'],
-                        '전남': ['목포시','여수시','순천시','나주시','광양시','담양군','곡성군','구례군','고흥군','보성군','화순군','장흥군','강진군','해남군','영암군','무안군','함평군','영광군','장성군','완도군','진도군','신안군']
-                    };
-                    var firstSubregion = (regionMap[selectedRegion] || [])[0] || '';
-                    subTd.innerText = firstSubregion;
-                }
-                
-                // 드롭다운 제거
-                if (currentDropdown && currentDropdown.parentNode) {
-                  currentDropdown.parentNode.removeChild(currentDropdown);
-                  window.dropdown = null;
-                }
-                
                 // 서버 업데이트
-                console.log('서버 업데이트 시작:', {id, selectedRegion});
-                
-                // 새 행인 경우
                 if (id && id.startsWith('temp_')) {
-                    saveNewRowField(td.parentElement, '지역', selectedRegion);
+                    saveNewRowField(td.parentElement, 'region', selectedRegion);
                 } else {
-                    // 기존 행인 경우
-                    fetch('/sales/update/', {
+                    fetch('/sales/update_row_field/', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                        body: 'id='+id+'&field=지역&value='+encodeURIComponent(selectedRegion)
+                        body: 'id='+id+'&field=region&value='+encodeURIComponent(selectedRegion)
                     })
-                    .then(response => {
-                        console.log('서버 응답 상태:', response.status);
-                        return response.json();
-                    })
+                    .then(response => response.json())
                     .then(data => {
-                        console.log('서버 응답 데이터:', data);
                         if (data.success) {
-                            // 부분 업데이트로 변경
-                            if (typeof updateTableCell === 'function') {
-                                updateTableCell(id, '지역', selectedRegion);
-                            }
-                            
+                            console.log('지역 업데이트 성공');
                             // 종속된 행들 찾아서 업데이트
                             if (typeof updateDependentRows === 'function') {
-                                updateDependentRows(id, '지역', selectedRegion);
+                                updateDependentRows(id, 'region', selectedRegion);
                             }
-                            
                             // 실시간 동기화
                             if (typeof syncTableAndKanban === 'function') {
-                                syncTableAndKanban('지역');
+                                syncTableAndKanban('region');
                             }
-                            
-                            // 상태 필터가 활성화되어 있고, 변경된 필드가 상태 속성인 경우
-                            if (window.currentStatusTab !== null && '지역' === window.statusAttributeName) {
-                                // 해당 행의 상태 셀 업데이트
-                                const row = document.querySelector(`tr[data-id="${id}"]`);
-                                if (row) {
-                                    const statusCell = row.querySelector(`td[data-field="지역"]`);
-                                    if (statusCell) {
-                                        // 새로운 값으로 data-value 업데이트
-                                        statusCell.setAttribute('data-value', selectedRegion);
-                                        
-                                        // 상태 필터 즉시 재적용
-                                        setTimeout(() => {
-                                            if (typeof applyStatusFilter === 'function') {
-                                                applyStatusFilter();
-                                            }
-                                        }, 50);
-                                    }
-                                }
-                            }
-                            
-                            // 모달 업데이트 콜백이 있는 경우 실행
-                            if (typeof window._modalAfterUpdateAll === 'function') {
-                                window._modalAfterUpdateAll(id); 
-                                window._modalAfterUpdateAll = null; 
-                            }
-                            // 칸반보드 새로고침
-                            triggerKanbanRefreshIfNeeded();
                         } else {
                             throw new Error(data.error || '업데이트 실패');
                         }
                     })
                     .catch(error => {
-                        console.error('업데이트 실패:', error);
+                        console.error('지역 업데이트 실패:', error);
                         alert('업데이트 중 오류가 발생했습니다: ' + error.message);
                     });
                 }
+                
+                // 드롭다운 닫기
+                closeAllDropdowns();
             });
         });
         
-        // 외부 클릭 시 드롭다운 닫기
-        addGlobalClickHandler(window.dropdown, td);
+        // 상세지역 드롭다운 열기
+        currentDropdown.querySelectorAll('.dropdown-item').forEach(function(item) {
+            item.addEventListener('dblclick', function(e) {
+                e.stopPropagation();
+                const selectedRegion = this.getAttribute('data-option-id');
+                
+                // 상세지역 드롭다운 열기
+                openDetailDropdown(id, 'region_detail', td, selectedRegion);
+            });
+        });
         
-        return;
-        
-    } else if(type === 'region_detail') {
+    } else if (type === 'region_detail') {
+        console.log('상세지역 드롭다운 처리');
         // 상세지역 드롭다운
-        var regionMap = {
-            '서울': ['관악구','금천구','강남구','강서구','강동구','강북구','광진구','구로구','노원구','도봉구','동대문구','동작구','마포구','서대문구','서초구','성동구','성북구','송파구','양천구','영등포구','용산구','은평구','종로구','중구','중랑구'],
-            '경기': ['수원시','고양시','성남시','용인시','부천시','안산시','안양시','남양주시','화성시','평택시','의정부시','시흥시','파주시','광명시','김포시','군포시','광주시','오산시','이천시','안성시','의왕시','하남시','여주시','양평군','동두천시','과천시','가평군','연천군'],
-            '인천': ['계양구','남동구','동구','미추홀구','부평구','서구','연수구','중구','강화군','옹진군'],
-            '대구': ['중구','동구','서구','남구','북구','수성구','달서구','달성군'],
-            '경북': ['포항시','경주시','김천시','안동시','구미시','영주시','영천시','상주시','문경시','경산시','군위군','의성군','청송군','영양군','영덕군','청도군','고령군','성주군','칠곡군','예천군','봉화군','울진군','울릉군'],
-            '경남': ['창원시','진주시','통영시','사천시','김해시','밀양시','거제시','양산시','의령군','함안군','창녕군','고성군','남해군','하동군','산청군','함양군','거창군','합천군'],
-            '부산': ['중구','서구','동구','영도구','부산진구','동래구','남구','북구','해운대구','사하구','금정구','강서구','연제구','수영구','사상구','기장군'],
-            '광주': ['동구','서구','남구','북구','광산구'],
-            '대전': ['동구','중구','서구','유성구','대덕구'],
-            '울산': ['중구','남구','동구','북구','울주군'],
-            '세종': ['세종특별자치시'],
-            '강원': ['춘천시','원주시','강릉시','동해시','태백시','속초시','삼척시','홍천군','횡성군','영월군','평창군','정선군','철원군','화천군','양구군','인제군','고성군','양양군'],
-            '충북': ['청주시','충주시','제천시','보은군','옥천군','영동군','증평군','진천군','괴산군','음성군','단양군'],
-            '충남': ['천안시','공주시','보령시','아산시','서산시','논산시','계룡시','당진시','금산군','부여군','서천군','청양군','홍성군','예산군','태안군'],
-            '전북': ['전주시','군산시','익산시','정읍시','남원시','김제시','완주군','진안군','무주군','장수군','임실군','순창군','고창군','부안군'],
-            '전남': ['목포시','여수시','순천시','나주시','광양시','담양군','곡성군','구례군','고흥군','보성군','화순군','장흥군','강진군','해남군','영암군','무안군','함평군','영광군','장성군','완도군','진도군','신안군']
-        };
-        var currentRegion = td.parentElement.querySelector('td[data-field="지역"]').innerText.trim();
-        var subregions = regionMap[currentRegion] || [];
+        const currentRegion = currentId || '서울';
+        const subregions = getSubregions(currentRegion);
         let selectedSubregion = currentSubregion || '';
         
         let html = '';
-        subregions.forEach(function(sub) {
-            const isSelected = sub === selectedSubregion;
+        subregions.forEach(function(subregion) {
+            const isSelected = subregion === selectedSubregion;
             html += `
-              <div class="dropdown-item" data-subregion="${sub}" 
-                   style="padding: 8px 12px !important; 
-                          cursor: pointer !important; 
-                          border-bottom: 1px solid #f0f0f0 !important;
-                          ${isSelected ? 'background: #007bff !important; color: white !important;' : 'background: white !important; color: #333 !important;'}
-                          transition: background-color 0.2s !important;">
-                ${sub}
+              <div class="dropdown-option-container" style="padding: 6px 10px; border-bottom: 1px solid #f0f0f0;">
+                <div class="dropdown-item" data-option-id="${subregion}" 
+                     style="cursor: pointer; 
+                            background: ${isSelected ? '#e8f5e8' : 'white'}; 
+                            border-radius: 4px; 
+                            padding: 6px 8px; 
+                            margin-bottom: 4px;
+                            ${isSelected ? 'border: 2px solid #28a745; font-weight: bold;' : 'border: 1px solid #ddd;'}
+                            transition: all 0.2s;
+                            display: flex;
+                            align-items: center;
+                            justify-content: space-between;
+                            position: relative;">
+                  <div style="display: flex; align-items: center; flex: 1; min-width: 0;">
+                    <span style="flex: 1; word-wrap: break-word; word-break: break-all; color: #333; font-size: 14px; line-height: 1.4; padding: 2px 0;">${subregion}</span>
+                  </div>
+                </div>
               </div>
             `;
         });
         
         currentDropdown.innerHTML = html;
-        
-        console.log('상세지역 드롭다운 HTML 생성 완료');
-        
-        // DOM에 추가
         document.body.appendChild(currentDropdown);
         
-        console.log('상세지역 드롭다운 DOM 추가 완료');
-        
-        // 상세지역 드롭다운도 동일한 표시 확인 로직 적용
-        setTimeout(() => {
-            // DOM에서 제거되었는지 확인
-            if (!currentDropdown.parentNode) {
-                console.error('상세지역 드롭다운이 DOM에서 제거되었습니다. 다시 추가합니다.');
-                document.body.appendChild(currentDropdown);
-            }
-            
-            const rect = currentDropdown.getBoundingClientRect();
-            console.log('상세지역 드롭다운 실제 위치:', rect);
-            console.log('상세지역 드롭다운 크기:', {width: rect.width, height: rect.height});
-            
-            if (rect.width === 0 || rect.height === 0) {
-                console.warn('상세지역 드롭다운이 화면에 표시되지 않습니다. 강제로 화면 중앙에 표시합니다.');
-                
-                // 강제로 화면 중앙에 표시
-                Object.assign(currentDropdown.style, {
-                    position: 'fixed',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    zIndex: '10000',
-                    minWidth: '300px',
-                    maxHeight: '400px',
-                    overflowY: 'auto',
-                    backgroundColor: 'white',
-                    border: '2px solid #007bff',
-                    borderRadius: '8px',
-                    boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
-                    display: 'block',
-                    visibility: 'visible',
-                    opacity: '1'
-                });
-            }
-        }, 100);
-        
-        // 스크롤 시 드롭다운 위치 업데이트 함수 (상세지역용)
-        function updateSubregionDropdownPosition() {
-            if (currentDropdown && td) {
-                const rect = td.getBoundingClientRect();
-                const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-                const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
-                
-                // 화면 경계 체크 및 조정
-                const viewportWidth = window.innerWidth;
-                const viewportHeight = window.innerHeight;
-                const dropdownWidth = Math.max(rect.width, 150);
-                const dropdownHeight = 200;
-                
-                // 오른쪽 경계 체크
-                let adjustedLeft = rect.left + scrollLeft;
-                if (adjustedLeft + dropdownWidth > viewportWidth) {
-                    adjustedLeft = viewportWidth - dropdownWidth - 10;
-                }
-                
-                // 아래쪽 경계 체크
-                let adjustedTop = rect.bottom + scrollTop + 2;
-                if (adjustedTop + dropdownHeight > viewportHeight + scrollTop) {
-                    // 셀 위에 표시
-                    adjustedTop = rect.top + scrollTop - dropdownHeight - 2;
-                }
-                
-                // 최소 위치 보장
-                adjustedLeft = Math.max(10, adjustedLeft);
-                adjustedTop = Math.max(10, adjustedTop);
-                
-                currentDropdown.style.top = adjustedTop + 'px';
-                currentDropdown.style.left = adjustedLeft + 'px';
-            }
-        }
-        
-        // 스크롤 이벤트 리스너 추가 (상세지역용)
-        const subregionScrollHandler = function() {
-            updateSubregionDropdownPosition();
-        };
-        
-        window.addEventListener('scroll', subregionScrollHandler);
-        window.addEventListener('resize', subregionScrollHandler);
-        
-        // 호버 효과와 클릭 이벤트 바인딩
-        currentDropdown.querySelectorAll('.dropdown-item[data-subregion]').forEach(function(item) {
-            // 호버 효과
-            item.addEventListener('mouseenter', function() {
-                if (!this.style.background.includes('#007bff')) {
-                    this.style.background = '#f8f9fa !important';
-                }
-            });
-            
-            item.addEventListener('mouseleave', function() {
-                if (!this.style.background.includes('#007bff')) {
-                    this.style.background = 'white !important';
-                }
-            });
-            
-            // 클릭 이벤트
+        // 상세지역 선택 이벤트 리스너
+        currentDropdown.querySelectorAll('.dropdown-item').forEach(function(item) {
             item.addEventListener('click', function(e) {
-                e.preventDefault();
                 e.stopPropagation();
-                
-                console.log('상세지역 클릭됨:', this.getAttribute('data-subregion'));
-                const selectedSubregion = this.getAttribute('data-subregion');
+                const selectedSubregion = this.getAttribute('data-option-id');
                 
                 // UI 업데이트
                 if (td) { 
-                    td.innerHTML = `<div style="display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">${selectedSubregion}</div>`; 
+                    td.innerHTML = `<div class="dropdown-pill" style="background:#e8f5e8; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">${selectedSubregion}</div>`; 
                     td.setAttribute('data-value', selectedSubregion); 
                 }
                 
-                // 커스텀 이벤트 발생
-                const rowId = td.parentElement.getAttribute('data-id');
-                document.dispatchEvent(new CustomEvent('dropdownOptionChanged', {
-                    detail: {
-                        fieldName: '상세지역',
-                        newValue: selectedSubregion,
-                        rowId: rowId
-                    }
-                }));
-                
-                // 드롭다운 제거
-                if (currentDropdown && currentDropdown.parentNode) {
-                  currentDropdown.parentNode.removeChild(currentDropdown);
-                  window.dropdown = null;
-                }
-                
                 // 서버 업데이트
-                console.log('서버 업데이트 시작:', {id, selectedSubregion});
-                
-                // 새 행인 경우
                 if (id && id.startsWith('temp_')) {
-                    saveNewRowField(td.parentElement, '상세지역', selectedSubregion);
+                    saveNewRowField(td.parentElement, 'region_detail', selectedSubregion);
                 } else {
-                    // 기존 행인 경우
-                    fetch('/sales/update/', {
+                    fetch('/sales/update_row_field/', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                        body: 'id='+id+'&field=상세지역&value='+encodeURIComponent(selectedSubregion)
+                        body: 'id='+id+'&field=region_detail&value='+encodeURIComponent(selectedSubregion)
                     })
-                    .then(response => {
-                        console.log('서버 응답 상태:', response.status);
-                        return response.json();
-                    })
+                    .then(response => response.json())
                     .then(data => {
-                        console.log('서버 응답 데이터:', data);
                         if (data.success) {
-                            // 부분 업데이트로 변경
-                            if (typeof updateTableCell === 'function') {
-                                updateTableCell(id, '상세지역', selectedSubregion);
-                            }
-                            
+                            console.log('상세지역 업데이트 성공');
                             // 종속된 행들 찾아서 업데이트
                             if (typeof updateDependentRows === 'function') {
-                                updateDependentRows(id, '상세지역', selectedSubregion);
+                                updateDependentRows(id, 'region_detail', selectedSubregion);
                             }
-                            
                             // 실시간 동기화
                             if (typeof syncTableAndKanban === 'function') {
-                                syncTableAndKanban('상세지역');
+                                syncTableAndKanban('region_detail');
                             }
-                            
-                            // 상태 필터가 활성화되어 있고, 변경된 필드가 상태 속성인 경우
-                            if (window.currentStatusTab !== null && '상세지역' === window.statusAttributeName) {
-                                // 해당 행의 상태 셀 업데이트
-                                const row = document.querySelector(`tr[data-id="${id}"]`);
-                                if (row) {
-                                    const statusCell = row.querySelector(`td[data-field="상세지역"]`);
-                                    if (statusCell) {
-                                        // 새로운 값으로 data-value 업데이트
-                                        statusCell.setAttribute('data-value', selectedSubregion);
-                                        
-                                        // 상태 필터 즉시 재적용
-                                        setTimeout(() => {
-                                            if (typeof applyStatusFilter === 'function') {
-                                                applyStatusFilter();
-                                            }
-                                        }, 50);
-                                    }
-                                }
-                            }
-                            
-                            // 모달 업데이트 콜백이 있는 경우 실행
-                            if (typeof window._modalAfterUpdateAll === 'function') {
-                                window._modalAfterUpdateAll(id); 
-                                window._modalAfterUpdateAll = null; 
-                            }
-                            // 칸반보드 새로고침
-                            triggerKanbanRefreshIfNeeded();
                         } else {
                             throw new Error(data.error || '업데이트 실패');
                         }
                     })
                     .catch(error => {
-                        console.error('업데이트 실패:', error);
+                        console.error('상세지역 업데이트 실패:', error);
                         alert('업데이트 중 오류가 발생했습니다: ' + error.message);
                     });
                 }
+                
+                // 드롭다운 닫기
+                closeAllDropdowns();
             });
         });
         
-        // 외부 클릭 시 드롭다운 닫기
-        addGlobalClickHandler(window.dropdown, td);
-        
-        return;
     } else {
         // 일반 드롭다운 (구분, 영업진행 등) 및 지역/상세지역 처리
         console.log('일반 드롭다운 처리 시작:', {type, id});
@@ -1966,10 +1662,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                 }
                 
                 // 드롭다운 닫기
-                if (currentDropdown && currentDropdown.parentNode) {
-                    currentDropdown.parentNode.removeChild(currentDropdown);
-                    window.dropdown = null;
-                }
+                closeAllDropdowns();
                 return;
             }
             
@@ -2011,10 +1704,7 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
             }
             
             // 드롭다운 닫기 - 즉시 실행
-            if (currentDropdown && currentDropdown.parentNode) {
-                currentDropdown.parentNode.removeChild(currentDropdown);
-                window.dropdown = null;
-            }
+            closeAllDropdowns();
             
             // 상태 필터가 활성화되어 있고, 변경된 필드가 상태 속성인 경우
             if (window.currentStatusTab !== null && type === window.statusAttributeName) {
@@ -2074,48 +1764,29 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                     alert('업데이트 중 오류가 발생했습니다: ' + error.message);
                 });
             }
-            // 드롭다운 닫기
-            if (currentDropdown && currentDropdown.parentNode) {
-                currentDropdown.parentNode.removeChild(currentDropdown);
-                window.dropdown = null;
-            }
         });
     });
     
-    // 드롭다운 외부 클릭 시 닫기 이벤트 리스너 추가
-    setTimeout(() => {
-        let justOpened = true;
-        document.addEventListener('mousedown', function closeHandler(e) {
-            if (justOpened) {
-                justOpened = false;
-                return;
-            }
-            if (currentDropdown && !currentDropdown.contains(e.target) && !td.contains(e.target)) {
-                if (currentDropdown.parentNode) {
-                    console.log('드롭다운 외부 클릭으로 제거');
-                    currentDropdown.parentNode.removeChild(currentDropdown);
-                    window.dropdown = null;
-                }
-                document.removeEventListener('mousedown', closeHandler);
-                document.removeEventListener('scroll', scrollHandler);
-            }
-        });
-        
-        // 일반 드롭다운용 스크롤 이벤트 (기존 방식 유지)
-        function scrollHandler() {
-            if (currentDropdown && td) {
-                const rect = td.getBoundingClientRect();
-                const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-                const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
-                
-                const topPosition = rect.bottom + scrollTop + 2;
-                const leftPosition = rect.left + scrollLeft;
-                
-                currentDropdown.style.top = topPosition + 'px';
-                currentDropdown.style.left = leftPosition + 'px';
-            }
+    // 전역 클릭 핸들러 추가 (이미 openDropdown에서 추가되었지만 중복 방지)
+    if (!globalClickHandler) {
+        addGlobalClickHandler(currentDropdown, td);
+    }
+    
+    // 스크롤 이벤트 리스너 추가
+    const scrollHandler = function() {
+        if (currentDropdown && td) {
+            const rect = td.getBoundingClientRect();
+            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+            
+            const topPosition = rect.bottom + scrollTop + 2;
+            const leftPosition = rect.left + scrollLeft;
+            
+            currentDropdown.style.top = topPosition + 'px';
+            currentDropdown.style.left = leftPosition + 'px';
         }
-        
-        document.addEventListener('scroll', scrollHandler);
-    }, 100);
+    };
+    
+    document.addEventListener('scroll', scrollHandler);
+    window.addEventListener('resize', scrollHandler);
 }
