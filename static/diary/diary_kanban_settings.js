@@ -375,17 +375,15 @@ function createFilterRow(idx) {
             <select class="filter-attr" data-idx="${idx}" style="width:120px;padding:4px;border:1px solid #ddd;border-radius:4px;">
                 <option value="">속성을 선택하세요</option>
                 ${attrOptions}
-            </select>
-            <select class="filter-operator" data-idx="${idx}" style="width:80px;padding:4px;border:1px solid #ddd;border-radius:4px;">
-                <option value="equals">같음</option>
-                <option value="not_equals">다름</option>
-                <option value="contains">포함</option>
-                <option value="not_contains">포함안함</option>
-            </select>
-            <select class="filter-value" data-idx="${idx}" style="width:120px;padding:4px;border:1px solid #ddd;border-radius:4px;">
+            </select>(이)가
+            <select class="filter-value" data-idx="${idx}" style="width:150px;padding:4px;border:1px solid #ddd;border-radius:4px;">
                 <option value="">속성을 먼저 선택하세요</option>
             </select>
-            <button type="button" class="remove-filter" data-idx="${idx}" style="color:#fff;background:#dc3545;border:none;border-radius:3px;padding:4px 8px;cursor:pointer;">삭제</button>
+            <select class="filter-operator" data-idx="${idx}" style="width:100px;padding:4px;border:1px solid #ddd;border-radius:4px;">
+                <option value="equals">이라면</option>
+                <option value="not_equals">아니라면</option>
+            </select>표시
+            <button type="button" class="remove-filter" data-idx="${idx}" style="margin-left: 15%; color:#fff;background:#dc3545;border:none;border-radius:3px;padding:4px 8px;cursor:pointer;">삭제</button>
         </div>
     `;
 }
