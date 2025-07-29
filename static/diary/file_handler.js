@@ -687,6 +687,35 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+// LibreOffice 상태 확인 함수
+function checkLibreOfficeAvailability() {
+    return fetch('/sales/test_libreoffice/', {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('LibreOffice 상태 확인:', data);
+        return data;
+    })
+    .catch(error => {
+        console.error('LibreOffice 상태 확인 오류:', error);
+        return {
+            success: False,
+            libreoffice_available: False,
+            error: error.message
+        };
+    });
+}
+
 // HWP 파일을 LibreOffice로 PDF 변환하는 함수
 function convertHwpToPdf(rowId, fieldName, fileId, fileUrl, fileName) {
     console.log('HWP to PDF 변환 시작:', rowId, fieldName, fileId, fileName);
@@ -703,68 +732,164 @@ function convertHwpToPdf(rowId, fieldName, fileId, fileUrl, fileName) {
         return;
     }
     
-    // 서버에 PDF 변환 요청
-    fetch('/sales/convert_hwp_to_pdf/', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCsrfToken()
-        },
-        body: JSON.stringify({
-            row_id: rowId,
-            field_name: fieldName,
-            file_id: fileId,
-            file_url: fileUrl,
-            file_name: fileName
-        })
-    })
-    .then(response => {
-        if (!response.ok) {
-            // HTTP 오류 응답 처리
-            return response.text().then(text => {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}. Response: ${text}`);
-            });
-        }
-        return response.json();
-    })
-    .then(data => {
-        console.log('PDF 변환 응답:', data);
-        
-        if (data.success && data.pdf_url) {
-            // 변환 성공 - PDF 미리보기 표시
-            contentDiv.innerHTML = `
-                <div style="width: 100%; height: 100%; display: flex; flex-direction: column;">
-                    <div style="background: #f8f9fa; padding: 10px; border-bottom: 1px solid #dee2e6; font-size: 14px; color: #666;">
-                        <strong>PDF 미리보기</strong> - ${fileName} (변환됨)
+    // 로딩 상태 표시
+    contentDiv.innerHTML = `
+        <div style="text-align: center; background: #f8f9fa; padding: 40px; border-radius: 8px;">
+            <div style="font-size: 48px; margin-bottom: 20px;">⏳</div>
+            <div style="font-size: 18px; margin-bottom: 20px; color: #333;">PDF 변환 준비 중...</div>
+            <div style="font-size: 14px; color: #666; margin-bottom: 20px;">
+                LibreOffice 상태를 확인하고 있습니다.
+            </div>
+        </div>
+    `;
+    
+    // 먼저 LibreOffice 상태 확인
+    checkLibreOfficeAvailability()
+        .then(libreofficeStatus => {
+            if (!libreofficeStatus.libreoffice_available) {
+                // LibreOffice가 사용 불가능한 경우
+                contentDiv.innerHTML = `
+                    <div style="text-align: center; background: #f8f9fa; padding: 40px; border-radius: 8px;">
+                        <div style="font-size: 48px; margin-bottom: 20px;">⚠️</div>
+                        <div style="font-size: 18px; margin-bottom: 20px; color: #333;">PDF 변환 불가</div>
+                        <div style="font-size: 14px; color: #666; margin-bottom: 20px; max-width: 400px; word-wrap: break-word;">
+                            ${libreofficeStatus.message || 'LibreOffice가 설치되어 있지 않습니다.'}
+                        </div>
+                        <div style="font-size: 12px; color: #999; margin-bottom: 20px;">
+                            HWP 파일은 LibreOffice가 필요합니다. 원본 파일을 다운로드하여 사용해주세요.
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 10px; align-items: center;">
+                            <button onclick="window.open('${fileUrl}', '_blank')" 
+                                    style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; font-weight: 500; cursor: pointer; width: 200px;">
+                                새 창에서 열기
+                            </button>
+                            <button onclick="downloadFile('${rowId}', '${fieldName}', '${fileId}')" 
+                                    style="padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 4px; font-weight: 500; cursor: pointer; width: 200px;">
+                                다운로드
+                            </button>
+                        </div>
                     </div>
-                    <iframe src="${data.pdf_url}" 
-                            style="flex: 1; border: none; border-radius: 8px;"
-                            title="${fileName}">
-                    </iframe>
-                    <div style="text-align: center; margin-top: 15px; padding: 10px; background: #f8f9fa; border-top: 1px solid #dee2e6;">
-                        <button onclick="window.open('${fileUrl}', '_blank')" 
-                                style="padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px; font-size: 12px;">
-                            원본 파일 열기
-                        </button>
-                        <button onclick="downloadFile('${rowId}', '${fieldName}', '${fileId}')" 
-                                style="padding: 8px 16px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
-                            다운로드
-                        </button>
+                `;
+                return;
+            }
+            
+            // LibreOffice가 사용 가능한 경우 변환 시도
+            contentDiv.innerHTML = `
+                <div style="text-align: center; background: #f8f9fa; padding: 40px; border-radius: 8px;">
+                    <div style="font-size: 48px; margin-bottom: 20px;">⏳</div>
+                    <div style="font-size: 18px; margin-bottom: 20px; color: #333;">PDF 변환 중...</div>
+                    <div style="font-size: 14px; color: #666; margin-bottom: 20px;">
+                        HWP 파일을 PDF로 변환하고 있습니다. 잠시만 기다려주세요.
                     </div>
                 </div>
             `;
-        } else {
-            // 변환 실패
-            let errorMessage = 'HWP 파일을 PDF로 변환하는 중 오류가 발생했습니다.';
-            if (data.error) {
-                errorMessage = data.error;
+            
+            // 서버에 PDF 변환 요청
+            return fetch('/sales/convert_hwp_to_pdf/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: JSON.stringify({
+                    row_id: rowId,
+                    field_name: fieldName,
+                    file_id: fileId,
+                    file_url: fileUrl,
+                    file_name: fileName
+                })
+            });
+        })
+        .then(response => {
+            if (!response) return; // LibreOffice가 사용 불가능한 경우
+            
+            if (!response.ok) {
+                // HTTP 오류 응답 처리
+                return response.text().then(text => {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}. Response: ${text}`);
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('PDF 변환 응답:', data);
+            
+            if (data.success && data.pdf_url) {
+                // 변환 성공 - PDF 미리보기 표시
+                contentDiv.innerHTML = `
+                    <div style="width: 100%; height: 100%; display: flex; flex-direction: column;">
+                        <div style="background: #f8f9fa; padding: 10px; border-bottom: 1px solid #dee2e6; font-size: 14px; color: #666;">
+                            <strong>PDF 미리보기</strong> - ${fileName} (변환됨)
+                        </div>
+                        <iframe src="${data.pdf_url}" 
+                                style="flex: 1; border: none; border-radius: 8px;"
+                                title="${fileName}">
+                        </iframe>
+                        <div style="text-align: center; margin-top: 15px; padding: 10px; background: #f8f9fa; border-top: 1px solid #dee2e6;">
+                            <button onclick="window.open('${fileUrl}', '_blank')" 
+                                    style="padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px; font-size: 12px;">
+                                원본 파일 열기
+                            </button>
+                            <button onclick="downloadFile('${rowId}', '${fieldName}', '${fileId}')" 
+                                    style="padding: 8px 16px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                                다운로드
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } else {
+                // 변환 실패
+                let errorMessage = 'HWP 파일을 PDF로 변환하는 중 오류가 발생했습니다.';
+                if (data.error) {
+                    errorMessage = data.error;
+                }
+                
+                contentDiv.innerHTML = `
+                    <div style="text-align: center; background: #f8f9fa; padding: 40px; border-radius: 8px;">
+                        <div style="font-size: 48px; margin-bottom: 20px;">⚠️</div>
+                        <div style="font-size: 18px; margin-bottom: 20px; color: #333;">PDF 변환 실패</div>
+                        <div style="font-size: 14px; color: #666; margin-bottom: 20px; max-width: 400px; word-wrap: break-word;">
+                            ${errorMessage}
+                        </div>
+                        <div style="font-size: 12px; color: #999; margin-bottom: 20px;">
+                            서버에서 PDF 변환을 처리할 수 없습니다. 원본 파일을 다운로드하여 사용해주세요.
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 10px; align-items: center;">
+                            <button onclick="window.open('${fileUrl}', '_blank')" 
+                                    style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; font-weight: 500; cursor: pointer; width: 200px;">
+                                새 창에서 열기
+                            </button>
+                            <button onclick="downloadFile('${rowId}', '${fieldName}', '${fileId}')" 
+                                    style="padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 4px; font-weight: 500; cursor: pointer; width: 200px;">
+                                다운로드
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('PDF 변환 요청 오류:', error);
+            
+            // 오류 메시지 추출
+            let errorMessage = '서버 연결 오류가 발생했습니다.';
+            if (error.message) {
+                if (error.message.includes('HTTP 500')) {
+                    errorMessage = '서버 내부 오류가 발생했습니다. LibreOffice가 설치되어 있는지 확인해주세요.';
+                } else if (error.message.includes('HTTP 404')) {
+                    errorMessage = '요청한 리소스를 찾을 수 없습니다.';
+                } else if (error.message.includes('HTTP 403')) {
+                    errorMessage = '접근 권한이 없습니다.';
+                } else {
+                    errorMessage = error.message;
+                }
             }
             
             contentDiv.innerHTML = `
                 <div style="text-align: center; background: #f8f9fa; padding: 40px; border-radius: 8px;">
                     <div style="font-size: 48px; margin-bottom: 20px;">❌</div>
                     <div style="font-size: 18px; margin-bottom: 20px; color: #333;">변환 실패</div>
-                    <div style="font-size: 14px; color: #666; margin-bottom: 20px;">
+                    <div style="font-size: 14px; color: #666; margin-bottom: 20px; max-width: 400px; word-wrap: break-word;">
                         ${errorMessage}
                     </div>
                     <div style="display: flex; flex-direction: column; gap: 10px; align-items: center;">
@@ -779,43 +904,5 @@ function convertHwpToPdf(rowId, fieldName, fileId, fileUrl, fileName) {
                     </div>
                 </div>
             `;
-        }
-    })
-    .catch(error => {
-        console.error('PDF 변환 요청 오류:', error);
-        
-        // 오류 메시지 추출
-        let errorMessage = '서버 연결 오류가 발생했습니다.';
-        if (error.message) {
-            if (error.message.includes('HTTP 500')) {
-                errorMessage = '서버 내부 오류가 발생했습니다. LibreOffice가 설치되어 있는지 확인해주세요.';
-            } else if (error.message.includes('HTTP 404')) {
-                errorMessage = '요청한 리소스를 찾을 수 없습니다.';
-            } else if (error.message.includes('HTTP 403')) {
-                errorMessage = '접근 권한이 없습니다.';
-            } else {
-                errorMessage = error.message;
-            }
-        }
-        
-        contentDiv.innerHTML = `
-            <div style="text-align: center; background: #f8f9fa; padding: 40px; border-radius: 8px;">
-                <div style="font-size: 48px; margin-bottom: 20px;">❌</div>
-                <div style="font-size: 18px; margin-bottom: 20px; color: #333;">변환 실패</div>
-                <div style="font-size: 14px; color: #666; margin-bottom: 20px; max-width: 400px; word-wrap: break-word;">
-                    ${errorMessage}
-                </div>
-                <div style="display: flex; flex-direction: column; gap: 10px; align-items: center;">
-                    <button onclick="window.open('${fileUrl}', '_blank')" 
-                            style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; font-weight: 500; cursor: pointer; width: 200px;">
-                        새 창에서 열기
-                    </button>
-                    <button onclick="downloadFile('${rowId}', '${fieldName}', '${fileId}')" 
-                            style="padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 4px; font-weight: 500; cursor: pointer; width: 200px;">
-                        다운로드
-                    </button>
-                </div>
-            </div>
-        `;
-    });
+        });
 }

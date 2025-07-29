@@ -4166,6 +4166,36 @@ def convert_hwp_to_pdf(request):
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'POST 요청만 허용됩니다.'})
     
+    # LibreOffice 설치 확인
+    try:
+        result = subprocess.run(['libreoffice', '--version'], 
+                              capture_output=True, text=True, timeout=10)
+        if result.returncode != 0:
+            logger.error(f"LibreOffice 버전 확인 실패: {result.stderr}")
+            return JsonResponse({
+                'success': False, 
+                'error': 'LibreOffice가 설치되어 있지 않거나 실행할 수 없습니다. 서버에 LibreOffice를 설치해주세요.'
+            })
+        logger.info(f"LibreOffice 버전: {result.stdout.strip()}")
+    except FileNotFoundError:
+        logger.error("LibreOffice가 설치되어 있지 않음")
+        return JsonResponse({
+            'success': False, 
+            'error': 'LibreOffice가 설치되어 있지 않습니다. 서버에 LibreOffice를 설치해주세요.'
+        })
+    except subprocess.TimeoutExpired:
+        logger.error("LibreOffice 버전 확인 시간 초과")
+        return JsonResponse({
+            'success': False, 
+            'error': 'LibreOffice 응답 시간이 초과되었습니다.'
+        })
+    except Exception as e:
+        logger.error(f"LibreOffice 확인 중 오류: {e}")
+        return JsonResponse({
+            'success': False, 
+            'error': f'LibreOffice 확인 중 오류가 발생했습니다: {str(e)}'
+        })
+    
     try:
         data = json.loads(request.body)
         row_id = data.get('row_id')
@@ -4354,19 +4384,19 @@ def convert_hwp_to_pdf(request):
                 logger.error("LibreOffice 변환 시간 초과")
                 return JsonResponse({
                     'success': False, 
-                    'error': '파일 변환 시간이 초과되었습니다.'
+                    'error': '파일 변환 시간이 초과되었습니다. 원본 파일을 다운로드하여 사용해주세요.'
                 })
             except FileNotFoundError:
                 logger.error("LibreOffice가 설치되어 있지 않음")
                 return JsonResponse({
                     'success': False, 
-                    'error': 'LibreOffice가 설치되어 있지 않습니다. 서버에 LibreOffice를 설치해주세요.'
+                    'error': 'LibreOffice가 설치되어 있지 않습니다. 원본 파일을 다운로드하여 사용해주세요.'
                 })
             except Exception as e:
                 logger.error(f"LibreOffice 변환 중 예상치 못한 오류: {e}")
                 return JsonResponse({
                     'success': False, 
-                    'error': f'파일 변환 중 오류가 발생했습니다: {str(e)}'
+                    'error': f'파일 변환 중 오류가 발생했습니다. 원본 파일을 다운로드하여 사용해주세요. 오류: {str(e)}'
                 })
                 
     except User.DoesNotExist:
@@ -4387,3 +4417,46 @@ def convert_hwp_to_pdf(request):
     except Exception as e:
         logger.error(f"convert_hwp_to_pdf 함수에서 예상치 못한 오류: {e}")
         return JsonResponse({'success': False, 'error': f'오류가 발생했습니다: {str(e)}'})
+
+@csrf_exempt
+def test_libreoffice(request):
+    """LibreOffice 설치 상태를 확인하는 테스트 엔드포인트"""
+    try:
+        result = subprocess.run(['libreoffice', '--version'], 
+                              capture_output=True, text=True, timeout=10)
+        
+        if result.returncode == 0:
+            return JsonResponse({
+                'success': True,
+                'libreoffice_available': True,
+                'version': result.stdout.strip(),
+                'message': 'LibreOffice가 정상적으로 설치되어 있습니다.'
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'libreoffice_available': False,
+                'error': result.stderr,
+                'message': 'LibreOffice가 설치되어 있지만 실행할 수 없습니다.'
+            })
+    except FileNotFoundError:
+        return JsonResponse({
+            'success': False,
+            'libreoffice_available': False,
+            'error': 'LibreOffice가 설치되어 있지 않습니다.',
+            'message': '서버에 LibreOffice를 설치해주세요.'
+        })
+    except subprocess.TimeoutExpired:
+        return JsonResponse({
+            'success': False,
+            'libreoffice_available': False,
+            'error': 'LibreOffice 응답 시간이 초과되었습니다.',
+            'message': 'LibreOffice가 응답하지 않습니다.'
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'libreoffice_available': False,
+            'error': str(e),
+            'message': f'LibreOffice 확인 중 오류가 발생했습니다: {str(e)}'
+        })
