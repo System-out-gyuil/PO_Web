@@ -4166,37 +4166,8 @@ def convert_hwp_to_pdf(request):
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'POST 요청만 허용됩니다.'})
     
-    # LibreOffice 설치 확인
     try:
-        result = subprocess.run(['libreoffice', '--version'], 
-                              capture_output=True, text=True, timeout=10)
-        if result.returncode != 0:
-            logger.error(f"LibreOffice 버전 확인 실패: {result.stderr}")
-            return JsonResponse({
-                'success': False, 
-                'error': 'LibreOffice가 설치되어 있지 않거나 실행할 수 없습니다. 서버에 LibreOffice를 설치해주세요.'
-            })
-        logger.info(f"LibreOffice 버전: {result.stdout.strip()}")
-    except FileNotFoundError:
-        logger.error("LibreOffice가 설치되어 있지 않음")
-        return JsonResponse({
-            'success': False, 
-            'error': 'LibreOffice가 설치되어 있지 않습니다. 서버에 LibreOffice를 설치해주세요.'
-        })
-    except subprocess.TimeoutExpired:
-        logger.error("LibreOffice 버전 확인 시간 초과")
-        return JsonResponse({
-            'success': False, 
-            'error': 'LibreOffice 응답 시간이 초과되었습니다.'
-        })
-    except Exception as e:
-        logger.error(f"LibreOffice 확인 중 오류: {e}")
-        return JsonResponse({
-            'success': False, 
-            'error': f'LibreOffice 확인 중 오류가 발생했습니다: {str(e)}'
-        })
-    
-    try:
+        logger.info("=== HWP to PDF 변환 시작 ===")
         data = json.loads(request.body)
         row_id = data.get('row_id')
         field_name = data.get('field_name')
@@ -4205,35 +4176,43 @@ def convert_hwp_to_pdf(request):
         file_name = data.get('file_name')
         saved_name = data.get('saved_name')  # 게시판 파일용
         
-        logger.info(f"HWP to PDF 변환 요청: row_id={row_id}, field_name={field_name}, file_id={file_id}, file_name={file_name}")
+        logger.info(f"요청 데이터: row_id={row_id}, field_name={field_name}, file_id={file_id}, file_name={file_name}")
         
         # 게시판 파일인지 일반 파일인지 확인
         is_board_file = saved_name is not None
         
         if is_board_file:
+            logger.info("게시판 파일 처리 모드")
             # 게시판 파일 처리
             if not all([file_url, file_name, saved_name]):
+                logger.error("게시판 파일 필수 파라미터 누락")
                 return JsonResponse({'success': False, 'error': '게시판 파일의 필수 파라미터가 누락되었습니다.'})
             
             # 게시판 파일의 S3 키는 saved_name과 동일
             s3_key = saved_name
             file_id_for_pdf = saved_name
+            logger.info(f"게시판 파일 S3 키: {s3_key}")
         else:
+            logger.info("일반 파일 처리 모드")
             # 일반 파일 처리
             if not all([row_id, field_name, file_id, file_url, file_name]):
+                logger.error("일반 파일 필수 파라미터 누락")
                 return JsonResponse({'success': False, 'error': '필수 파라미터가 누락되었습니다.'})
             
             # 사용자와 파일 정보 조회
             user_id = request.session.get('diary_member_id')
             if not user_id:
+                logger.error("로그인되지 않은 사용자")
                 return JsonResponse({'success': False, 'error': '로그인이 필요합니다.'})
             
             try:
+                logger.info(f"사용자 정보 조회: user_id={user_id}")
                 user = User.objects.get(id=user_id)
                 row = Row.objects.get(id=row_id, user=user)
                 attr = Attribute.objects.get(name=field_name, user=user)
                 attr_value = AttributeValue.objects.get(row=row, attribute=attr)
                 file_data = json.loads(attr_value.value)
+                logger.info("데이터베이스 조회 성공")
             except (User.DoesNotExist, Row.DoesNotExist, Attribute.DoesNotExist, AttributeValue.DoesNotExist) as e:
                 logger.error(f"데이터베이스 조회 오류: {e}")
                 return JsonResponse({'success': False, 'error': f'데이터베이스 조회 오류: {str(e)}'})
@@ -4250,154 +4229,194 @@ def convert_hwp_to_pdf(request):
                     file_info = file_data
             
             if not file_info:
+                logger.error("파일 정보를 찾을 수 없음")
                 return JsonResponse({'success': False, 'error': '파일 정보를 찾을 수 없습니다.'})
             
             s3_key = file_info['s3_key']
             file_id_for_pdf = file_id
+            logger.info(f"일반 파일 S3 키: {s3_key}")
         
         # S3에서 파일 다운로드
-        s3_client = boto3.client(
-            's3',
-            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-            region_name=settings.AWS_S3_REGION_NAME
-        )
+        logger.info("S3 클라이언트 초기화 시작")
+        try:
+            s3_client = boto3.client(
+                's3',
+                aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+                aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+                region_name=settings.AWS_S3_REGION_NAME
+            )
+            logger.info("S3 클라이언트 초기화 성공")
+        except Exception as e:
+            logger.error(f"S3 클라이언트 초기화 오류: {e}")
+            return JsonResponse({'success': False, 'error': f'S3 클라이언트 초기화 오류: {str(e)}'})
         
         # 임시 디렉토리 생성
-        with tempfile.TemporaryDirectory() as temp_dir:
-            # HWP 파일 다운로드
-            hwp_path = os.path.join(temp_dir, f"{file_id_for_pdf}.hwp")
-            try:
-                s3_client.download_file(
-                    settings.AWS_STORAGE_BUCKET_NAME,
-                    s3_key,
-                    hwp_path
-                )
-                logger.info(f"S3에서 파일 다운로드 완료: {s3_key}")
-            except Exception as e:
-                logger.error(f"S3 파일 다운로드 오류: {e}")
-                return JsonResponse({'success': False, 'error': f'S3 파일 다운로드 오류: {str(e)}'})
-            
-            # PDF 파일 경로
-            pdf_path = os.path.join(temp_dir, f"{file_id_for_pdf}.pdf")
-            
-            try:
-                # LibreOffice를 사용하여 HWP를 PDF로 변환
-                # LibreOffice가 설치되어 있어야 함
-                cmd = [
-                    'libreoffice', '--headless', '--convert-to', 'pdf',
-                    '--outdir', temp_dir, hwp_path
-                ]
+        logger.info("임시 디렉토리 생성 시작")
+        try:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                logger.info(f"임시 디렉토리 생성 성공: {temp_dir}")
                 
-                logger.info(f"LibreOffice 변환 명령어: {' '.join(cmd)}")
-                
-                result = subprocess.run(
-                    cmd,
-                    capture_output=True,
-                    text=True,
-                    timeout=300  # 300초(5분) 타임아웃으로 증가
-                )
-                
-                logger.info(f"LibreOffice 변환 결과: returncode={result.returncode}, stdout={result.stdout[:200]}, stderr={result.stderr[:200]}")
-                
-                # 첫 번째 시도가 실패하면 다른 방법 시도
-                if result.returncode != 0:
-                    logger.warning(f"첫 번째 LibreOffice 변환 시도 실패: {result.stderr}")
+                # HWP 파일 다운로드
+                hwp_path = os.path.join(temp_dir, f"{file_id_for_pdf}.hwp")
+                logger.info(f"HWP 파일 다운로드 시작: {hwp_path}")
+                try:
+                    s3_client.download_file(
+                        settings.AWS_STORAGE_BUCKET_NAME,
+                        s3_key,
+                        hwp_path
+                    )
+                    logger.info(f"S3에서 파일 다운로드 완료: {s3_key}")
                     
-                    # 두 번째 시도: 다른 옵션으로
-                    cmd2 = [
-                        'libreoffice', '--headless', '--convert-to', 'pdf:writer_pdf_Export',
+                    # 파일 크기 확인
+                    file_size = os.path.getsize(hwp_path)
+                    logger.info(f"다운로드된 파일 크기: {file_size} bytes")
+                    
+                except Exception as e:
+                    logger.error(f"S3 파일 다운로드 오류: {e}")
+                    return JsonResponse({'success': False, 'error': f'S3 파일 다운로드 오류: {str(e)}'})
+                
+                # PDF 파일 경로
+                pdf_path = os.path.join(temp_dir, f"{file_id_for_pdf}.pdf")
+                logger.info(f"PDF 파일 경로: {pdf_path}")
+                
+                try:
+                    # LibreOffice를 사용하여 HWP를 PDF로 변환
+                    logger.info("LibreOffice 변환 시작")
+                    cmd = [
+                        'libreoffice', '--headless', '--convert-to', 'pdf',
                         '--outdir', temp_dir, hwp_path
                     ]
                     
+                    logger.info(f"LibreOffice 변환 명령어: {' '.join(cmd)}")
+                    
                     result = subprocess.run(
-                        cmd2,
+                        cmd,
                         capture_output=True,
                         text=True,
-                        timeout=300
+                        timeout=300  # 300초(5분) 타임아웃으로 증가
                     )
                     
-                    logger.info(f"두 번째 LibreOffice 변환 결과: returncode={result.returncode}, stdout={result.stdout[:200]}, stderr={result.stderr[:200]}")
+                    logger.info(f"LibreOffice 변환 결과: returncode={result.returncode}")
+                    logger.info(f"LibreOffice stdout: {result.stdout[:500]}")
+                    logger.info(f"LibreOffice stderr: {result.stderr[:500]}")
                     
+                    # 첫 번째 시도가 실패하면 다른 방법 시도
                     if result.returncode != 0:
-                        logger.error(f"두 번째 LibreOffice 변환 시도도 실패: {result.stderr}")
-                        return JsonResponse({
-                            'success': False, 
-                            'error': 'HWP 파일을 PDF로 변환하는데 실패했습니다. LibreOffice가 설치되어 있는지 확인해주세요.'
-                        })
-                
-                # 변환된 PDF 파일 확인
-                if not os.path.exists(pdf_path):
-                    # LibreOffice는 원본 파일명을 유지하므로 다른 경로 확인
-                    pdf_files = [f for f in os.listdir(temp_dir) if f.endswith('.pdf')]
-                    if pdf_files:
-                        pdf_path = os.path.join(temp_dir, pdf_files[0])
-                        logger.info(f"PDF 파일 찾음: {pdf_path}")
-                    else:
-                        logger.error(f"PDF 변환 파일을 찾을 수 없습니다. 임시 디렉토리 내용: {os.listdir(temp_dir)}")
-                        return JsonResponse({
-                            'success': False, 
-                            'error': 'PDF 변환 파일을 찾을 수 없습니다.'
-                        })
-                
-                # PDF 파일을 S3에 업로드 (임시용)
-                pdf_s3_key = f"temp_pdf/{file_id_for_pdf}_{int(time.time())}.pdf"
-                
-                try:
-                    with open(pdf_path, 'rb') as pdf_file:
-                        s3_client.upload_fileobj(
-                            pdf_file,
-                            settings.AWS_STORAGE_BUCKET_NAME,
-                            pdf_s3_key,
-                            ExtraArgs={
-                                'ContentType': 'application/pdf',
-                                'ContentDisposition': 'inline'
-                            }
+                        logger.warning(f"첫 번째 LibreOffice 변환 시도 실패: {result.stderr}")
+                        
+                        # 두 번째 시도: 다른 옵션으로
+                        cmd2 = [
+                            'libreoffice', '--headless', '--convert-to', 'pdf:writer_pdf_Export',
+                            '--outdir', temp_dir, hwp_path
+                        ]
+                        
+                        logger.info(f"두 번째 LibreOffice 변환 명령어: {' '.join(cmd2)}")
+                        
+                        result = subprocess.run(
+                            cmd2,
+                            capture_output=True,
+                            text=True,
+                            timeout=300
                         )
-                    logger.info(f"PDF 파일 S3 업로드 완료: {pdf_s3_key}")
+                        
+                        logger.info(f"두 번째 LibreOffice 변환 결과: returncode={result.returncode}")
+                        logger.info(f"두 번째 LibreOffice stdout: {result.stdout[:500]}")
+                        logger.info(f"두 번째 LibreOffice stderr: {result.stderr[:500]}")
+                        
+                        if result.returncode != 0:
+                            logger.error(f"두 번째 LibreOffice 변환 시도도 실패: {result.stderr}")
+                            return JsonResponse({
+                                'success': False, 
+                                'error': 'HWP 파일을 PDF로 변환하는데 실패했습니다. LibreOffice가 설치되어 있는지 확인해주세요.'
+                            })
+                    
+                    # 변환된 PDF 파일 확인
+                    logger.info("PDF 파일 확인 시작")
+                    if not os.path.exists(pdf_path):
+                        # LibreOffice는 원본 파일명을 유지하므로 다른 경로 확인
+                        pdf_files = [f for f in os.listdir(temp_dir) if f.endswith('.pdf')]
+                        logger.info(f"임시 디렉토리의 모든 파일: {os.listdir(temp_dir)}")
+                        logger.info(f"PDF 파일들: {pdf_files}")
+                        
+                        if pdf_files:
+                            pdf_path = os.path.join(temp_dir, pdf_files[0])
+                            logger.info(f"PDF 파일 찾음: {pdf_path}")
+                        else:
+                            logger.error(f"PDF 변환 파일을 찾을 수 없습니다. 임시 디렉토리 내용: {os.listdir(temp_dir)}")
+                            return JsonResponse({
+                                'success': False, 
+                                'error': 'PDF 변환 파일을 찾을 수 없습니다.'
+                            })
+                    
+                    # PDF 파일 크기 확인
+                    pdf_size = os.path.getsize(pdf_path)
+                    logger.info(f"변환된 PDF 파일 크기: {pdf_size} bytes")
+                    
+                    # PDF 파일을 S3에 업로드 (임시용)
+                    pdf_s3_key = f"temp_pdf/{file_id_for_pdf}_{int(time.time())}.pdf"
+                    logger.info(f"PDF S3 업로드 시작: {pdf_s3_key}")
+                    
+                    try:
+                        with open(pdf_path, 'rb') as pdf_file:
+                            s3_client.upload_fileobj(
+                                pdf_file,
+                                settings.AWS_STORAGE_BUCKET_NAME,
+                                pdf_s3_key,
+                                ExtraArgs={
+                                    'ContentType': 'application/pdf',
+                                    'ContentDisposition': 'inline'
+                                }
+                            )
+                        logger.info(f"PDF 파일 S3 업로드 완료: {pdf_s3_key}")
+                    except Exception as e:
+                        logger.error(f"PDF 파일 S3 업로드 오류: {e}")
+                        return JsonResponse({'success': False, 'error': f'PDF 파일 업로드 오류: {str(e)}'})
+                    
+                    # 서명된 URL 생성 (1시간 유효)
+                    logger.info("PDF URL 생성 시작")
+                    try:
+                        pdf_url = s3_client.generate_presigned_url(
+                            'get_object',
+                            Params={
+                                'Bucket': settings.AWS_STORAGE_BUCKET_NAME,
+                                'Key': pdf_s3_key
+                            },
+                            ExpiresIn=3600  # 1시간
+                        )
+                        logger.info(f"PDF URL 생성 완료: {pdf_url[:100]}...")
+                    except Exception as e:
+                        logger.error(f"PDF URL 생성 오류: {e}")
+                        return JsonResponse({'success': False, 'error': f'PDF URL 생성 오류: {str(e)}'})
+                    
+                    logger.info("=== HWP to PDF 변환 완료 ===")
+                    return JsonResponse({
+                        'success': True,
+                        'pdf_url': pdf_url,
+                        'message': 'HWP 파일이 성공적으로 PDF로 변환되었습니다.'
+                    })
+                    
+                except subprocess.TimeoutExpired:
+                    logger.error("LibreOffice 변환 시간 초과")
+                    return JsonResponse({
+                        'success': False, 
+                        'error': '파일 변환 시간이 초과되었습니다. 원본 파일을 다운로드하여 사용해주세요.'
+                    })
+                except FileNotFoundError:
+                    logger.error("LibreOffice가 설치되어 있지 않음")
+                    return JsonResponse({
+                        'success': False, 
+                        'error': 'LibreOffice가 설치되어 있지 않습니다. 원본 파일을 다운로드하여 사용해주세요.'
+                    })
                 except Exception as e:
-                    logger.error(f"PDF 파일 S3 업로드 오류: {e}")
-                    return JsonResponse({'success': False, 'error': f'PDF 파일 업로드 오류: {str(e)}'})
-                
-                # 서명된 URL 생성 (1시간 유효)
-                try:
-                    pdf_url = s3_client.generate_presigned_url(
-                        'get_object',
-                        Params={
-                            'Bucket': settings.AWS_STORAGE_BUCKET_NAME,
-                            'Key': pdf_s3_key
-                        },
-                        ExpiresIn=3600  # 1시간
-                    )
-                    logger.info(f"PDF URL 생성 완료: {pdf_url[:100]}...")
-                except Exception as e:
-                    logger.error(f"PDF URL 생성 오류: {e}")
-                    return JsonResponse({'success': False, 'error': f'PDF URL 생성 오류: {str(e)}'})
-                
-                return JsonResponse({
-                    'success': True,
-                    'pdf_url': pdf_url,
-                    'message': 'HWP 파일이 성공적으로 PDF로 변환되었습니다.'
-                })
-                
-            except subprocess.TimeoutExpired:
-                logger.error("LibreOffice 변환 시간 초과")
-                return JsonResponse({
-                    'success': False, 
-                    'error': '파일 변환 시간이 초과되었습니다. 원본 파일을 다운로드하여 사용해주세요.'
-                })
-            except FileNotFoundError:
-                logger.error("LibreOffice가 설치되어 있지 않음")
-                return JsonResponse({
-                    'success': False, 
-                    'error': 'LibreOffice가 설치되어 있지 않습니다. 원본 파일을 다운로드하여 사용해주세요.'
-                })
-            except Exception as e:
-                logger.error(f"LibreOffice 변환 중 예상치 못한 오류: {e}")
-                return JsonResponse({
-                    'success': False, 
-                    'error': f'파일 변환 중 오류가 발생했습니다. 원본 파일을 다운로드하여 사용해주세요. 오류: {str(e)}'
-                })
+                    logger.error(f"LibreOffice 변환 중 예상치 못한 오류: {e}")
+                    return JsonResponse({
+                        'success': False, 
+                        'error': f'파일 변환 중 오류가 발생했습니다. 원본 파일을 다운로드하여 사용해주세요. 오류: {str(e)}'
+                    })
+                    
+        except Exception as e:
+            logger.error(f"임시 디렉토리 생성 오류: {e}")
+            return JsonResponse({'success': False, 'error': f'임시 디렉토리 생성 오류: {str(e)}'})
                 
     except User.DoesNotExist:
         logger.error("사용자를 찾을 수 없음")
