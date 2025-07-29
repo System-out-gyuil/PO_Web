@@ -659,11 +659,18 @@ def create_new_row(request):
         status_field = request.POST.get('status_field')
         status_value = request.POST.get('status_value')
         
+        print(f"=== 새 행 생성 요청 ===")
+        print(f"field: {field}")
+        print(f"value: {value}")
+        print(f"status_field: {status_field}")
+        print(f"status_value: {status_value}")
+        
         if not field:
             return JsonResponse({'success': False, 'error': 'Missing field'})
             
          
         user_id = request.session.get('diary_member_id')
+        print(f"user_id: {user_id}")
 
         user = User.objects.get(id=user_id)
         
@@ -672,6 +679,7 @@ def create_new_row(request):
         new_order = (max_order + 1) if max_order is not None else 0
         
         new_row = Row.objects.create(order=new_order, user=user)
+        print(f"새 행 생성됨: row_id={new_row.id}, order={new_order}")
         
         # 첫 번째 필드 값 설정
         try:
@@ -702,6 +710,7 @@ def create_new_row(request):
             attribute=attribute,
             value=value_to_save
         )
+        print(f"첫 번째 필드 값 설정: {field}={value_to_save}")
         
         # 상태 필드가 있으면 추가로 생성
         if status_field and status_value:
@@ -722,9 +731,11 @@ def create_new_row(request):
                     attribute=status_attr,
                     value=status_value_to_save
                 )
+                print(f"상태 필드 값 설정: {status_field}={status_value_to_save}")
             except Exception as e:
                 print(f"상태 필드 생성 오류: {e}")
         
+        print(f"=== 새 행 생성 완료: row_id={new_row.id} ===")
         return JsonResponse({'success': True, 'id': new_row.id})
         
     return JsonResponse({'success': False, 'error': 'Invalid request'})
@@ -2512,8 +2523,13 @@ def entry_table_partial(request):
         # 상태 속성 찾기
         status_attribute = Attribute.objects.filter(user=user, name='상태').first()
         if status_attribute:
-            # 해당 상태를 가진 행들만 필터링
-            rows = rows.filter(values__attribute=status_attribute, values__value=status_id)
+            # 해당 상태를 가진 행들만 필터링 (distinct 추가로 중복 방지)
+            rows = rows.filter(values__attribute=status_attribute, values__value=status_id).distinct()
+            print(f"상태 필터링 적용: status_id={status_id}, 필터링된 행 수: {rows.count()}")
+        else:
+            print(f"상태 속성을 찾을 수 없음: status_id={status_id}")
+    else:
+        print(f"전체 상태 표시: status_id={status_id}, 전체 행 수: {rows.count()}")
     
     rows_data = []
     for row in rows:
@@ -2648,12 +2664,14 @@ def entry_table_partial(request):
         for attr in user_attributes
     ]
 
-    # 캐시 헤더 추가로 브라우저 캐싱 활성화
+    # 캐시 헤더 추가로 브라우저 캐싱 비활성화 (새 행 생성 후 즉시 반영을 위해)
     response = render(request, 'diary/entry_table_partial.html', {
         'attributes': attributes_list,
         'rows': rows_data,
     })
-    response['Cache-Control'] = 'public, max-age=30'  # 30초 캐시
+    response['Cache-Control'] = 'no-cache, no-store, must-revalidate'  # 캐시 비활성화
+    response['Pragma'] = 'no-cache'
+    response['Expires'] = '0'
     return response
 
 

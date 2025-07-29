@@ -891,298 +891,7 @@ function processDropdownOptions(options, value, cell) {
       }
   }
   
-  // 기존 refreshTable 함수를 최적화된 버전으로 수정
-  function refreshTable() {
-      console.log('refreshTable 함수 시작');
-      
-      // 현재 속성 설정 백업
-      const currentAttributeSettings = {};
-      if (window.allAttributes) {
-          window.allAttributes.forEach(attr => {
-              if (attr.view_select) {
-                  currentAttributeSettings[attr.id] = { ...attr.view_select };
-              }
-          });
-      }
-      
-      // 현재 스크롤 위치 저장
-      const tableView = document.getElementById('tableView');
-      const scrollTop = tableView ? tableView.scrollTop : 0;
-      const scrollLeft = tableView ? tableView.scrollLeft : 0;
-      
-      // status_id를 항상 올바르게 전달
-      const url = new URL('/sales/entry_table_partial/', window.location.origin);
-      if (
-        window.currentStatusTab !== null &&
-        window.currentStatusTab !== undefined &&
-        window.currentStatusTab !== 'undefined' &&
-        window.currentStatusTab !== 'null'
-      ) {
-          url.searchParams.set('status_id', window.currentStatusTab);
-      }
-      
-      fetch(url)
-      .then(r => {
-          if (!r.ok) {
-              throw new Error('Network response was not ok: ' + r.status);
-          }
-          return r.text();
-      })
-      .then(html => {
-          const temp = document.createElement('div');
-          temp.innerHTML = html;
-          const newTable = temp.querySelector('#entryTable');
-          
-          if (newTable) {
-              const currentTable = document.getElementById('entryTable');
-              
-              if (currentTable) {
-                  currentTable.innerHTML = newTable.innerHTML;
-                  
-                  // 속성 설정 복원
-                  if (window.allAttributes && Object.keys(currentAttributeSettings).length > 0) {
-                      window.allAttributes.forEach(attr => {
-                          if (currentAttributeSettings[attr.id]) {
-                              attr.view_select = { ...currentAttributeSettings[attr.id] };
-                          }
-                      });
-                  }
-                  
-                  // 테이블 레이아웃을 fixed로 강제 설정
-                  currentTable.style.tableLayout = 'fixed';
-                  currentTable.style.width = '100%';
-                  
-                  // 모든 th와 td의 width를 강제로 설정
-                  const headers = currentTable.querySelectorAll('thead th');
-                  headers.forEach((th, index) => {
-                      if (th.style.width) {
-                          const width = th.style.width;
-                          // 해당 컬럼의 모든 td에도 같은 width 적용
-                          const tbody = currentTable.querySelector('tbody');
-                          if (tbody) {
-                              const rows = tbody.querySelectorAll('tr');
-                              rows.forEach(row => {
-                                  const td = row.children[index];
-                                  if (td) {
-                                      td.style.width = width;
-                                      td.style.minWidth = width;
-                                      td.style.maxWidth = width;
-                                      td.style.overflow = 'hidden';
-                                      td.style.textOverflow = 'ellipsis';
-                                      td.style.whiteSpace = 'nowrap';
-                                  }
-                              });
-                          }
-                      }
-                  });
-                  
-                  // 체크박스 상태 초기화
-                  resetCheckboxes();
-                  
-                  // 스크롤 위치 복원
-                  const tableView = document.getElementById('tableView');
-                  if (tableView) {
-                      tableView.scrollTop = scrollTop;
-                      tableView.scrollLeft = scrollLeft;
-                  }
-                  
-                  // --- SCROLL TO BOTTOM IF FLAG IS SET ---
-                  if (window.scrollTableToBottomAfterRefresh) {
-                      const tableView = document.getElementById('tableView');
-                      if (tableView) {
-                          tableView.scrollTop = tableView.scrollHeight;
-                      }
-                      window.scrollTableToBottomAfterRefresh = false;
-                  }
-                  
-                  bindTableCellEvents(); // 테이블 이벤트 복구
-                  
-                  // 체크박스와 상세보기 버튼 이벤트 재바인딩
-                  if (typeof bindCheckboxEvents === 'function') {
-                      bindCheckboxEvents();
-                  }
-                  
-                  // 상세보기 버튼 이벤트 바인딩 (약간의 지연 후 실행)
-                  setTimeout(() => {
-                      if (typeof bindDetailButtonEvents === 'function') {
-                          bindDetailButtonEvents();
-                      } else {
-                          console.log('bindDetailButtonEvents 함수를 찾을 수 없습니다.');
-                      }
-                  }, 100);
-                  
-                  // 컬럼 드래그앤드롭 재초기화
-                  if (typeof reinitializeDragDrop === 'function') {
-                      reinitializeDragDrop();
-                      console.log('드래그앤드롭 재초기화 완료');
-                  }
-                  
-                  // 행 드래그앤드롭 재초기화 추가
-                  if (typeof reinitializeRowDragDrop === 'function') {
-                      reinitializeRowDragDrop();
-                      console.log('행 드래그앤드롭 재초기화 완료');
-                  }
-                  
-                  // 정렬/필터 데이터 재초기화
-                  if (typeof initializeTableData === 'function') {
-                      initializeTableData();
-                      console.log('테이블 데이터 초기화 완료');
-                  }
-                  
-                  // 현재 필터 상태 재적용
-                  if (window.filters && Object.keys(window.filters).length > 0) {
-                      Object.entries(window.filters).forEach(([column, filterValue]) => {
-                          // 필터 입력창에 값 복원
-                          const filterInput = document.querySelector(`input[data-column="${column}"]`);
-                          if (filterInput) {
-                              filterInput.value = filterValue;
-                          }
-                          
-                          // 필터 재적용
-                          if (window.originalRows) {
-                              window.originalRows.forEach(row => {
-                                  let shouldShow = true;
-                                  
-                                  for (const [filterColumn, filterVal] of Object.entries(window.filters)) {
-                                      const cellValue = getCellValue(row, filterColumn).toLowerCase();
-                                      if (!cellValue.includes(filterVal)) {
-                                          shouldShow = false;
-                                          break;
-                                      }
-                                  }
-                                  
-                                  row.style.display = shouldShow ? '' : 'none';
-                              });
-                          }
-                      });
-                      console.log('필터 상태 재적용 완료');
-                  }
-                  
-                  // 현재 정렬 상태 재적용
-                  if (window.currentSort && window.currentSort.column) {
-                      if (typeof sortTable === 'function') {
-                          sortTable(window.currentSort.column, window.currentSort.direction);
-                          console.log('정렬 상태 재적용 완료');
-                      }
-                  }
-                  
-                  if (typeof updateFilterStatus === 'function') {
-                      updateFilterStatus();
-                      console.log('필터 상태 업데이트 완료');
-                  }
-                  
-                  // Sticky 헤더 재초기화 - 여러 번 시도
-                  if (typeof initializeStickyHeader === 'function') {
-                      // 즉시 실행
-                      initializeStickyHeader();
-                      console.log('Sticky 헤더 재초기화 완료');
-                      
-                      // 50ms 후 재시도
-                      setTimeout(() => {
-                          initializeStickyHeader();
-                          console.log('Sticky 헤더 재초기화 1차 재시도 완료');
-                      }, 50);
-                      
-                      // 150ms 후 재시도
-                      setTimeout(() => {
-                          initializeStickyHeader();
-                          console.log('Sticky 헤더 재초기화 2차 재시도 완료');
-                      }, 150);
-                      
-                      // 300ms 후 재시도
-                      setTimeout(() => {
-                          initializeStickyHeader();
-                          console.log('Sticky 헤더 재초기화 3차 재시도 완료');
-                      }, 300);
-                  }
-                  
-                  // === pill 렌더링 추가 ===
-                  renderDropdownPills();
-                  
-                  // 드롭다운 pill 렌더링을 지연시켜 더 안정적으로 처리
-                  setTimeout(() => {
-                      renderDropdownPills();
-                      console.log('드롭다운 pill 렌더링 완료');
-                  }, 100);
-                  
-                  // 추가 지연 후 한 번 더 렌더링 (안정성 확보)
-                  setTimeout(() => {
-                      renderDropdownPills();
-                      console.log('드롭다운 pill 렌더링 2차 완료');
-                  }, 300);
-                  
-                  // 컬럼 리사이저 재초기화 및 너비 재적용
-                  if (typeof reinitializeColumnResizer === 'function') {
-                      reinitializeColumnResizer();
-                      console.log('컬럼 리사이저 재초기화 완료');
-                      
-                      // 저장된 컬럼 width 재적용
-                      setTimeout(() => {
-                          if (window.columnResizer && typeof window.columnResizer.loadColumnWidths === 'function') {
-                              window.columnResizer.loadColumnWidths();
-                              console.log('저장된 컬럼 너비 재적용 완료');
-                          } else {
-                              // fallback: 직접 너비 복원
-                              const headers = document.querySelectorAll('#entryTable thead th[data-column]');
-                              headers.forEach((header) => {
-                                  const attrName = header.getAttribute('data-column');
-                                  if (attrName) {
-                                      const savedWidth = localStorage.getItem(`column_width_${attrName}`);
-                                      const dataWidth = header.getAttribute('data-width');
-                                      
-                                      // 우선순위: localStorage > data-width > 기본값
-                                      let width = null;
-                                      if (savedWidth) {
-                                          width = parseInt(savedWidth);
-                                      } else if (dataWidth) {
-                                          width = parseInt(dataWidth);
-                                      }
-                                      
-                                      if (width) {
-                                          header.style.width = width + 'px';
-                                          header.style.minWidth = width + 'px';
-                                          header.style.maxWidth = width + 'px';
-                                          
-                                          const cells = document.querySelectorAll(`#entryTable td[data-field="${attrName}"]`);
-                                          cells.forEach(cell => {
-                                              cell.style.width = width + 'px';
-                                              cell.style.minWidth = width + 'px';
-                                              cell.style.maxWidth = width + 'px';
-                                              cell.style.overflow = 'hidden';
-                                              cell.style.textOverflow = 'ellipsis';
-                                              cell.style.whiteSpace = 'nowrap';
-                                          });
-                                          
-                                      }
-                                  }
-                              });
-                          }
-                      }, 100);
-                  }
-                  
-                  // 테이블 상태 복원 (정렬/필터)
-                  setTimeout(() => {
-                      if (typeof restoreTableStateAfterRefresh === 'function') {
-                          console.log('테이블 상태 복원 호출');
-                          restoreTableStateAfterRefresh();
-                      }
-                  }, 400);
-                  
-                  console.log('refreshTable 완료');
-              } else {
-                  console.error('현재 테이블을 찾을 수 없음');
-              }
-          } else {
-              console.error('새 테이블을 찾을 수 없음');
-          }
-      })
-      .catch(error => {
-          console.error('refreshTable 오류:', error);
-          // 실패 시 페이지 새로고침으로 폴백
-          console.log('페이지 새로고침으로 폴백');
-          location.reload();
-      });
-  }
+  
   
   // 새 행용 Attribute 시스템 이벤트 바인딩
   function bindNewRowAttributeEvents(tr) {
@@ -2470,74 +2179,137 @@ function processDropdownOptions(options, value, cell) {
   }
 
   // 새로 만들기 버튼 이벤트 바인딩
-  document.addEventListener('DOMContentLoaded', function() {
-      const addRowBtn = document.getElementById('addRowBtn');
-      let isAdding = false;
+  window.addNewRow = function() {
+      console.log('=== addNewRow 함수 호출 시작 ===');
       
-      if (addRowBtn) {
-          addRowBtn.onclick = function() {
-              if(isAdding) return;
-              isAdding = true;
+      // 중복 클릭 방지를 위한 전역 변수
+      if (window.isAddingNewRow) {
+          console.log('이미 새 행을 추가 중입니다. 중복 클릭 방지.');
+          return;
+      }
+      window.isAddingNewRow = true;
 
               // 현재 선택된 상태 탭 확인
               let statusField = null;
               let statusValue = null;
               
+              // 방법 1: 전역 변수에서 가져오기
               if (window.currentStatusTab !== null && window.statusAttributeName) {
                   statusField = window.statusAttributeName;
                   statusValue = window.currentStatusTab;
-              }
-
-              // 서버에 새 행 생성 요청
-              let requestBody = 'field=' + encodeURIComponent('회사명') + '&value=' + encodeURIComponent('새 항목');
-              
-              // 상태 필드가 있으면 추가
-              if (statusField && statusValue) {
-                  requestBody += '&status_field=' + encodeURIComponent(statusField) + '&status_value=' + encodeURIComponent(statusValue);
-              }
-
-              // --- SCROLL FLAG SET HERE ---
-              window.scrollTableToBottomAfterRefresh = true;
-
-              fetch('/sales/create_new_row/', {
-                  method: 'POST',
-                  headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                  body: requestBody
-              })
-              .then(function(response) { 
-                  if (!response.ok) {
-                      throw new Error('Network response was not ok');
-                  }
-                  return response.json(); 
-              })
-              .then(function(data) {
-                  if (data.success) {
-                      // 기존 refreshTable 함수 사용
-                      if (typeof refreshTable === 'function') {
-                          refreshTable();
-                      } else {
-                          console.error('refreshTable 함수가 정의되지 않음');
-                          location.reload();
+                  console.log(`전역 변수에서 상태 필드 설정: ${statusField} = ${statusValue}`);
+              } else {
+                  // 방법 2: 활성화된 탭에서 직접 가져오기
+                  const activeTab = document.querySelector('.status-tab.active');
+                  if (activeTab) {
+                      const statusId = activeTab.getAttribute('data-status-id');
+                      if (statusId && statusId !== 'all') {
+                          // 상태 속성명을 찾기 위해 서버에 요청
+                          fetch('/sales/get_status_tabs/')
+                              .then(response => response.json())
+                              .then(data => {
+                                  if (data.success && data.attribute_name) {
+                                      statusField = data.attribute_name;
+                                      statusValue = statusId;
+                                      console.log(`탭에서 상태 필드 설정: ${statusField} = ${statusValue}`);
+                                      
+                                      // 상태 정보를 찾은 후 새 행 생성 요청
+                                      createNewRowWithStatus(statusField, statusValue);
+                                  } else {
+                                      console.log('상태 정보를 찾을 수 없음, 기본값으로 새 행 생성');
+                                      createNewRowWithStatus(null, null);
+                                  }
+                              })
+                              .catch(error => {
+                                  console.error('상태 정보 조회 오류:', error);
+                                  createNewRowWithStatus(null, null);
+                              });
+                          return; // 비동기 처리이므로 여기서 종료
                       }
-                  } else {
-                      console.error('새 행 생성 실패:', data.error);
-                      alert('새 행 생성 실패: ' + (data.error || ''));
                   }
-              })
-              .catch(function(error) {
-                  console.error('새 행 생성 중 오류:', error);
-                  alert('새 행 생성 중 오류: ' + error.message);
-              })
-              .finally(function() {
-                  isAdding = false;
-              });
-          };
+                  console.log('상태 탭이 없거나 전체 탭이 활성화됨');
+                  createNewRowWithStatus(null, null);
+                  return;
+              }
+
+              // 동기적으로 처리할 수 있는 경우
+              createNewRowWithStatus(statusField, statusValue);
+              
+              function createNewRowWithStatus(statusField, statusValue) {
+                  // 서버에 새 행 생성 요청
+                  let requestBody = 'field=' + encodeURIComponent('회사명') + '&value=' + encodeURIComponent('새 항목');
+                  
+                  // 상태 필드가 있으면 추가
+                  if (statusField && statusValue) {
+                      requestBody += '&status_field=' + encodeURIComponent(statusField) + '&status_value=' + encodeURIComponent(statusValue);
+                  }
+
+                  console.log('서버 요청 데이터:', requestBody);
+
+                  // --- SCROLL FLAG SET HERE ---
+                  window.scrollTableToBottomAfterRefresh = true;
+
+                  fetch('/sales/create_new_row/', {
+                      method: 'POST',
+                      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                      body: requestBody
+                  })
+                  .then(function(response) { 
+                      console.log('서버 응답 상태:', response.status);
+                      if (!response.ok) {
+                          throw new Error('Network response was not ok: ' + response.status);
+                      }
+                      return response.json(); 
+                  })
+                  .then(function(data) {
+                      console.log('서버 응답 데이터:', data);
+                      if (data.success) {
+                          console.log('새 행 생성 성공! 새 행 ID:', data.id);
+                          
+                          // diary_list.html의 refreshTable 함수 호출
+                          console.log('refreshTable 함수 호출 시도...');
+                          console.log('typeof refreshTable:', typeof refreshTable);
+                          console.log('typeof window.refreshTable:', typeof window.refreshTable);
+                          
+                          let refreshFunction = null;
+                          if (typeof refreshTable === 'function') {
+                              refreshFunction = refreshTable;
+                              console.log('refreshTable 함수를 직접 사용');
+                          } else if (typeof window.refreshTable === 'function') {
+                              refreshFunction = window.refreshTable;
+                              console.log('window.refreshTable 함수를 사용');
+                          }
+                          
+                          if (refreshFunction) {
+                              console.log('refreshTable 함수 호출 시작...');
+                              try {
+                                  refreshFunction();
+                                  console.log('refreshTable 함수 호출 완료');
+                              } catch (error) {
+                                  console.error('refreshTable 함수 실행 중 오류:', error);
+                                  console.log('오류로 인해 location.reload() 호출');
+                                  location.reload();
+                              }
+                          } else {
+                              console.error('refreshTable 함수가 정의되지 않음');
+                              console.log('location.reload() 호출');
+                              location.reload();
+                          }
+                      } else {
+                          console.error('새 행 생성 실패:', data.error);
+                          alert('새 행 생성 실패: ' + (data.error || ''));
+                      }
+                  })
+                  .catch(function(error) {
+                      console.error('새 행 생성 중 오류:', error);
+                      alert('새 행 생성 중 오류: ' + error.message);
+                  })
+                  .finally(function() {
+                      window.isAddingNewRow = false;
+                      console.log('=== addNewRow 함수 완료 ===');
+                  });
+              }
       }
-      
-      // Sticky 헤더 초기화
-      initializeStickyHeader();
-      renderDropdownPills();
-  });
 
   // === dropdown 속성명 동적 추출 함수 ===
   function getDropdownFields() {
@@ -2919,61 +2691,6 @@ function resetCheckboxes() {
     updateBulkDeleteButton();
 }
 
-// 기존 refreshTable 함수를 수정하여 체크박스 상태 초기화 추가
-function refreshTable() {
-    // 현재 속성 설정 백업
-    const currentAttributeSettings = {};
-    if (window.allAttributes) {
-        window.allAttributes.forEach(attr => {
-            if (attr.view_select) {
-                currentAttributeSettings[attr.id] = { ...attr.view_select };
-            }
-        });
-    }
-    
-    // 현재 상태 ID를 URL 파라미터로 전달
-    const url = new URL('/sales/entry_table_partial/', window.location.origin);
-    if (window.currentStatusTab !== null) {
-        url.searchParams.set('status_id', window.currentStatusTab);
-    }
-    
-    fetch(url)
-        .then(response => response.text())
-        .then(html => {
-            document.getElementById('tableView').innerHTML = html;
-            
-            // 속성 설정 복원
-            if (window.allAttributes && Object.keys(currentAttributeSettings).length > 0) {
-                window.allAttributes.forEach(attr => {
-                    if (currentAttributeSettings[attr.id]) {
-                        attr.view_select = { ...currentAttributeSettings[attr.id] };
-                    }
-                });
-            }
-            
-            // 필요시 테이블 관련 이벤트 재바인딩
-            if (typeof bindTableCellEvents === 'function') bindTableCellEvents();
-            
-            // 드래그앤드롭 재초기화 추가
-            if (typeof reinitializeDragDrop === 'function') {
-                reinitializeDragDrop();
-            }
-            
-            // 탭 상태 재적용 - 상태 필터가 활성화되어 있으면 즉시 적용
-            if (window.currentStatusTab !== null) {
-                // 약간의 지연 후 상태 필터 적용 (DOM 렌더링 완료 보장)
-                setTimeout(() => {
-                    applyStatusFilter();
-                }, 100);
-            }
-            
-            // 필터 상태 업데이트
-            updateFilterStatus();
-        })
-        .catch(error => {
-            console.error('테이블 새로고침 오류:', error);
-        });
-}
 
 // 컬럼 리사이즈 이벤트 감지 및 제목 자동 조정
 function initializeColumnResizeListener() {
@@ -3309,144 +3026,6 @@ function processDropdownPillsWithOptions(options, parsed, cell, currentValue) {
 
 // ... existing code ...
 
-// 테이블 비동기 갱신 함수
-function refreshTable() {
-    // 현재 상태 ID를 URL 파라미터로 전달
-    const url = new URL('/sales/entry_table_partial/', window.location.origin);
-    if (window.currentStatusTab !== null) {
-        url.searchParams.set('status_id', window.currentStatusTab);
-    }
-    
-    fetch(url)
-        .then(response => response.text())
-        .then(html => {
-            document.getElementById('tableView').innerHTML = html;
-            
-            // 테이블 업데이트 완료 후 모든 이벤트 재초기화
-            setTimeout(() => {
-                // 테이블 셀 이벤트 재바인딩 (우선순위 높음)
-                if (typeof bindTableCellEvents === 'function') {
-                    console.log('테이블 셀 이벤트 재바인딩 시작');
-                    bindTableCellEvents();
-                    console.log('테이블 셀 이벤트 재바인딩 완료');
-                }
-                
-                // 드롭다운 필드 이벤트 재바인딩 (추가)
-                if (typeof bindDropdownEvents === 'function') {
-                    bindDropdownEvents();
-                }
-                
-                // 드롭다운 옵션 실시간 업데이트를 위한 전역 이벤트 리스너 재설정
-                setupDropdownUpdateListeners();
-                
-                // 드롭다운 모달 이벤트 리스너 재설정 (dropdown_manager.js의 함수들)
-                if (typeof bindDropdownModalEvents === 'function') {
-                    // 기존 모달 드롭다운만 제거 (일반 드롭다운은 유지)
-                    const modalDropdowns = document.querySelectorAll('.dropdown-edit[data-modal="true"]');
-                    modalDropdowns.forEach(dropdown => {
-                        if (dropdown.parentNode) {
-                            dropdown.parentNode.removeChild(dropdown);
-                        }
-                    });
-                    
-                    // window.dropdown이 모달 드롭다운인 경우에만 제거
-                    if (window.dropdown && window.dropdown.parentNode && window.dropdown.hasAttribute('data-modal')) {
-                        window.dropdown.parentNode.removeChild(window.dropdown);
-                        window.dropdown = null;
-                    }
-                }
-                
-                // 드래그앤드롭 재초기화
-                if (typeof reinitializeDragDrop === 'function') {
-                    reinitializeDragDrop();
-                }
-                
-                // 컬럼 리사이저 재초기화
-                if (typeof reinitializeColumnResizer === 'function') {
-                    reinitializeColumnResizer();
-                }
-                
-                // 칸반보드 정렬 재초기화
-                if (typeof bindKanbanSortable === 'function') {
-                    bindKanbanSortable();
-                }
-                
-                // 체크박스 이벤트 재바인딩
-                if (typeof bindCheckboxEvents === 'function') {
-                    bindCheckboxEvents();
-                }
-                
-                // 상세보기 버튼 이벤트 재바인딩
-                if (typeof bindDetailButtonEvents === 'function') {
-                    bindDetailButtonEvents();
-                }
-                
-                // 컬럼 드래그앤드롭 재초기화
-                if (typeof initializeColumnDragDrop === 'function') {
-                    initializeColumnDragDrop();
-                }
-                
-                // 테이블 행 드래그앤드롭(SortableJS) 재초기화
-                if (typeof Sortable !== 'undefined') {
-                    const tbody = document.getElementById('entryTbody');
-                    if (tbody) {
-                        // 기존 Sortable 인스턴스가 있다면 제거
-                        if (window.rowSortable) {
-                            window.rowSortable.destroy();
-                        }
-                        
-                        // 새로운 Sortable 인스턴스 생성
-                        window.rowSortable = new Sortable(tbody, {
-                            handle: '.drag-handle',
-                            animation: 150,
-                            onEnd: function (evt) {
-                                // 순서 변경 시 서버에 반영
-                                const ids = Array.from(document.querySelectorAll('#entryTbody tr[data-id]')).map(tr => tr.getAttribute('data-id'));
-                                fetch('/sales/reorder/', {
-                                    method: 'POST',
-                                    headers: {'Content-Type': 'application/json'},
-                                    body: JSON.stringify({order: ids})
-                                }).then(res => res.json()).then(data => {
-                                    if(!data.success) alert('순서 저장 실패: '+data.error);
-                                }).catch(() => alert('순서 저장 중 오류 발생'));
-                            }
-                        });
-                        console.log('테이블 행 드래그앤드롭 재초기화 완료');
-                    }
-                }
-                
-                // 탭 상태 재적용 - 상태 필터가 활성화되어 있으면 즉시 적용
-                if (window.currentStatusTab !== null) {
-                    // 약간의 지연 후 상태 필터 적용 (DOM 렌더링 완료 보장)
-                    setTimeout(() => {
-                        if (typeof applyStatusFilter === 'function') {
-                            applyStatusFilter();
-                        }
-                    }, 100);
-                }
-                
-                // 테이블 필터링/정렬 상태 복원 (다른 초기화 후에 실행)
-                setTimeout(() => {
-                    if (typeof restoreTableStateAfterRefresh === 'function') {
-                        console.log('[refreshTable] 테이블 상태 복원 호출');
-                        restoreTableStateAfterRefresh();
-                    }
-                }, 500);
-                
-                // 필터 상태 업데이트 (상태 복원 후)
-                setTimeout(() => {
-                    if (typeof updateFilterStatus === 'function') {
-                        updateFilterStatus();
-                    }
-                }, 600);
-                
-                console.log('테이블 새로고침 후 모든 이벤트 재초기화 완료');
-            }, 100);
-        })
-        .catch(error => {
-            console.error('테이블 새로고침 오류:', error);
-        });
-}
 
 // 드롭다운 옵션 변경 이벤트 리스너 설정
 function setupDropdownUpdateListeners() {

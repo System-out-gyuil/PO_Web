@@ -46,10 +46,8 @@ class ColumnResizer {
                 let width = null;
                 if (savedWidth) {
                     width = parseInt(savedWidth);
-                    console.log(`localStorage에서 너비 복원: ${attrName} = ${width}px`);
                 } else if (dataWidth) {
                     width = parseInt(dataWidth);
-                    console.log(`data-width에서 너비 적용: ${attrName} = ${width}px`);
                 }
                 
                 if (width) {
@@ -69,7 +67,6 @@ class ColumnResizer {
                         cell.style.whiteSpace = 'nowrap';
                     });
                     
-                    console.log(`컬럼 너비 복원: ${attrName} = ${width}px`);
                 }
                 
                 // 최대 너비도 복원

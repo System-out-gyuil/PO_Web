@@ -1137,7 +1137,7 @@
     </div>
     <div style="margin:10px 0 20px 0;">
         <div style="display: flex; gap: 10px; align-items: center;">
-            <button id="addRowBtn" class="add-btn" style="width:180px;">+ 새로 만들기</button>
+            <button id="addRowBtn" class="add-btn" style="width:180px;" onclick="addNewRow()">+ 새로 만들기</button>
             <button id="addExcelBtn" class="add-btn" style="width:180px; background: #28a745;">📊 엑셀 추가</button>
         </div>
     </div>
@@ -2869,97 +2869,332 @@ function toggleAttributeVisibility(attributeName, btn) {
 
 // 테이블 비동기 갱신 함수
 function refreshTable() {
+    console.log('=== refreshTable 함수 호출 시작 (diary_list.html) ===');
+    console.log('현재 window.currentStatusTab:', window.currentStatusTab);
+    
     // 현재 상태 ID를 URL 파라미터로 전달
     const url = new URL('/sales/entry_table_partial/', window.location.origin);
     if (window.currentStatusTab !== null) {
         url.searchParams.set('status_id', window.currentStatusTab);
     }
     
-    fetch(url)
-        .then(response => response.text())
+    console.log('요청 URL:', url.toString());
+    
+    fetch(url, {
+        method: 'GET',
+        headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+        },
+        cache: 'no-cache'
+    })
+        .then(response => {
+            console.log('서버 응답 상태:', response.status);
+            return response.text();
+        })
         .then(html => {
+            console.log('서버에서 받은 HTML 길이:', html.length);
             document.getElementById('tableView').innerHTML = html;
+            console.log('tableView 업데이트 완료');
             
             // 테이블 업데이트 완료 후 모든 이벤트 재초기화
             setTimeout(() => {
+                // 컬럼 리사이저 재초기화
+                if (typeof reinitializeColumnResizer === 'function') {
+                    setTimeout(() => {
+                        reinitializeColumnResizer();
+                        
+                        // 저장된 컬럼 너비 값들 복원
+                        const headers = document.querySelectorAll('#entryTable thead th[data-column]');
+                        headers.forEach((header) => {
+                            const attrName = header.getAttribute('data-column');
+                            if (attrName) {
+                                const savedWidth = localStorage.getItem(`column_width_${attrName}`);
+                                const savedMaxWidth = localStorage.getItem(`column_max_width_${attrName}`);
+                                const dataWidth = header.getAttribute('data-width');
+                                
+                                // 우선순위: localStorage > data-width > 기본값
+                                let width = null;
+                                if (savedWidth) {
+                                    width = parseInt(savedWidth);
+                                    console.log(`localStorage에서 너비 복원: ${attrName} = ${width}px`);
+                                } else if (dataWidth) {
+                                    width = parseInt(dataWidth);
+                                    console.log(`data-width에서 너비 적용: ${attrName} = ${width}px`);
+                                }
+                                
+                                if (width) {
+                                    // 헤더에 너비 적용
+                                    header.style.width = width + 'px';
+                                    header.style.minWidth = width + 'px';
+                                    header.style.maxWidth = width + 'px';
+                                    
+                                    // 셀에도 너비 적용
+                                    const cells = document.querySelectorAll(`#entryTable td[data-field="${attrName}"]`);
+                                    cells.forEach(cell => {
+                                        cell.style.width = width + 'px';
+                                        cell.style.minWidth = width + 'px';
+                                        cell.style.maxWidth = width + 'px';
+                                        cell.style.overflow = 'hidden';
+                                        cell.style.textOverflow = 'ellipsis';
+                                        cell.style.whiteSpace = 'nowrap';
+                                    });
+                                    
+                                    console.log(`리렌더링 후 컬럼 너비 적용: ${attrName} = ${width}px`);
+                                }
+                                
+                                // 최대 너비도 복원
+                                if (savedMaxWidth) {
+                                    const cells = document.querySelectorAll(`#entryTable td[data-field="${attrName}"]`);
+                                    cells.forEach(cell => {
+                                        cell.style.maxWidth = savedMaxWidth + 'px';
+                                        cell.style.overflow = 'hidden';
+                                        cell.style.textOverflow = 'ellipsis';
+                                        cell.style.whiteSpace = 'nowrap';
+                                    });
+                                    console.log(`리렌더링 후 max-width 복원: ${attrName} = ${savedMaxWidth}px`);
+                                }
+                            }
+                        });
+                    }, 200);
+                }
+                
                 // 테이블 셀 이벤트 재바인딩
                 if (typeof bindTableCellEvents === 'function') {
-                    bindTableCellEvents();
+                    setTimeout(() => {
+                        bindTableCellEvents();
+                    }, 100);
+                }
+                
+                // 드롭다운 옵션 실시간 업데이트를 위한 전역 이벤트 리스너 재설정
+                if (typeof setupDropdownUpdateListeners === 'function') {
+                    setTimeout(() => {
+                        setupDropdownUpdateListeners();
+                    }, 50);
                 }
                 
                 // 드래그앤드롭 재초기화
                 if (typeof reinitializeDragDrop === 'function') {
-                    reinitializeDragDrop();
-                }
-                
-                // 컬럼 리사이저 재초기화
-                if (typeof reinitializeColumnResizer === 'function') {
-                    reinitializeColumnResizer();
+                    setTimeout(() => {
+                        reinitializeDragDrop();
+                    }, 300);
                 }
                 
                 // 칸반보드 정렬 재초기화
                 if (typeof bindKanbanSortable === 'function') {
-                    bindKanbanSortable();
+                    setTimeout(() => {
+                        bindKanbanSortable();
+                    }, 200);
                 }
                 
                 // 체크박스 이벤트 재바인딩
                 if (typeof bindCheckboxEvents === 'function') {
-                    bindCheckboxEvents();
+                    setTimeout(() => {
+                        bindCheckboxEvents();
+                    }, 150);
                 }
                 
                 // 상세보기 버튼 이벤트 재바인딩
                 if (typeof bindDetailButtonEvents === 'function') {
-                    bindDetailButtonEvents();
+                    setTimeout(() => {
+                        bindDetailButtonEvents();
+                    }, 200);
                 }
                 
                 // 컬럼 드래그앤드롭 재초기화
                 if (typeof initializeColumnDragDrop === 'function') {
-                    initializeColumnDragDrop();
-                }
-                
-                // 테이블 행 드래그앤드롭(SortableJS) 재초기화
-                if (typeof Sortable !== 'undefined') {
-                    const tbody = document.getElementById('entryTbody');
-                    if (tbody) {
-                        // 기존 Sortable 인스턴스가 있다면 제거
-                        if (window.rowSortable) {
-                            window.rowSortable.destroy();
-                        }
-                        
-                        // 새로운 Sortable 인스턴스 생성
-                        window.rowSortable = new Sortable(tbody, {
-                            handle: '.drag-handle',
-                            animation: 150,
-                            onEnd: function (evt) {
-                                // 순서 변경 시 서버에 반영
-                                const ids = Array.from(document.querySelectorAll('#entryTbody tr[data-id]')).map(tr => tr.getAttribute('data-id'));
-                                fetch('/sales/reorder/', {
-                                    method: 'POST',
-                                    headers: {'Content-Type': 'application/json'},
-                                    body: JSON.stringify({order: ids})
-                                }).then(res => res.json()).then(data => {
-                                    if(!data.success) alert('순서 저장 실패: '+data.error);
-                                }).catch(() => alert('순서 저장 중 오류 발생'));
-                            }
-                        });
-                        console.log('테이블 행 드래그앤드롭 재초기화 완료');
-                    }
-                }
-                
-                // 탭 상태 재적용 - 상태 필터가 활성화되어 있으면 즉시 적용
-                if (window.currentStatusTab !== null) {
-                    // 약간의 지연 후 상태 필터 적용 (DOM 렌더링 완료 보장)
                     setTimeout(() => {
-                        if (typeof applyStatusFilter === 'function') {
-                            applyStatusFilter();
-                        }
-                    }, 100);
+                        initializeColumnDragDrop();
+                    }, 500);
+                }
+                
+                // 상태 필터 재적용 (상태 탭이 활성화된 경우)
+                if (window.currentStatusTab !== null && typeof applyStatusFilter === 'function') {
+                    setTimeout(() => {
+                        applyStatusFilter();
+                    }, 300);
                 }
                 
                 // 필터 상태 업데이트
                 if (typeof updateFilterStatus === 'function') {
-                    updateFilterStatus();
+                    setTimeout(() => {
+                        updateFilterStatus();
+                    }, 100);
                 }
+                
+                // 테이블 행 드래그앤드롭(SortableJS) 재초기화
+                if (typeof Sortable !== 'undefined') {
+                    setTimeout(() => {
+                        const tbody = document.getElementById('entryTbody');
+                        if (tbody) {
+                            // 기존 Sortable 인스턴스가 있다면 제거
+                            if (window.rowSortable) {
+                                window.rowSortable.destroy();
+                            }
+                            
+                            // 새로운 Sortable 인스턴스 생성
+                            window.rowSortable = new Sortable(tbody, {
+                                handle: '.drag-handle',
+                                animation: 150,
+                                onEnd: function (evt) {
+                                    // 순서 변경 시 서버에 반영
+                                    const ids = Array.from(document.querySelectorAll('#entryTbody tr[data-id]')).map(tr => tr.getAttribute('data-id'));
+                                    fetch('/sales/reorder/', {
+                                        method: 'POST',
+                                        headers: {'Content-Type': 'application/json'},
+                                        body: JSON.stringify({order: ids})
+                                    }).then(res => res.json()).then(data => {
+                                        if(!data.success) alert('순서 저장 실패: '+data.error);
+                                    }).catch(() => alert('순서 저장 중 오류 발생'));
+                                }
+                            });
+                            console.log('테이블 행 드래그앤드롭 재초기화 완료');
+                        }
+                    }, 400);
+                }
+                
+                // 일괄 삭제 버튼 이벤트 재바인딩
+                if (typeof updateBulkDeleteButton === 'function') {
+                    setTimeout(() => {
+                        updateBulkDeleteButton();
+                    }, 150);
+                }
+                
+                // 이벤트 위임을 통한 동적 요소 이벤트 처리
+                document.addEventListener('click', function(e) {
+                    // 드롭다운 셀 클릭 처리 - openDropdown 함수 사용
+                    if (e.target.closest('td[data-type="dropdown"]')) {
+                        const cell = e.target.closest('td[data-type="dropdown"]');
+                        const rowId = cell.closest('tr').getAttribute('data-id');
+                        const fieldName = cell.getAttribute('data-field');
+                        const currentValue = cell.getAttribute('data-value') || '';
+                        
+                        // 이미 드롭다운이 열려있으면 무시
+                        if (document.querySelector('.dropdown-edit')) {
+                            return;
+                        }
+                        
+                        if (typeof openDropdown === 'function') {
+                            openDropdown(cell, fieldName, rowId, currentValue);
+                        }
+                    }
+                    
+                    // 회사명 셀 클릭 처리 (상세보기)
+                    if (e.target.closest('.more-btn')) {
+                        const row = e.target.closest('tr');
+                        const rowId = row.getAttribute('data-id');
+                        
+                        if (typeof showDetailModal === 'function') {
+                            fetch('/sales/get_row_details/' + rowId + '/')
+                                .then(r => r.json())
+                                .then(function(data) {
+                                    if (data.success) {
+                                        showDetailModal(data.row_data, data.row_id);
+                                    }
+                                });
+                        }
+                    }
+                    
+                    // 기대출 상세보기 클릭 처리
+                    if (e.target.closest('.debt-summary')) {
+                        const row = e.target.closest('tr');
+                        const rowId = row.getAttribute('data-id');
+                        
+                        if (typeof openDebtDetailsModal === 'function') {
+                            openDebtDetailsModal(rowId);
+                        }
+                    }
+                    
+                    // 삭제 버튼 클릭 처리
+                    if (e.target.closest('.delete-row-btn')) {
+                        const row = e.target.closest('tr');
+                        const rowId = row.getAttribute('data-id');
+                        
+                        if (typeof deleteRow === 'function') {
+                            deleteRow(rowId);
+                        }
+                    }
+                    
+                    // 복제 버튼 클릭 처리
+                    if (e.target.closest('.duplicate-row-btn')) {
+                        const row = e.target.closest('tr');
+                        const rowId = row.getAttribute('data-id');
+                        
+                        if (typeof duplicateRow === 'function') {
+                            duplicateRow(rowId);
+                        }
+                    }
+                    
+                    // 체크박스 클릭 처리
+                    if (e.target.closest('.row-checkbox')) {
+                        if (typeof updateBulkDeleteButton === 'function') {
+                            updateBulkDeleteButton();
+                        }
+                    }
+                    
+                    // 전체 선택 체크박스 클릭 처리
+                    if (e.target.closest('#selectAllCheckbox')) {
+                        if (typeof toggleSelectAll === 'function') {
+                            toggleSelectAll(e.target);
+                        }
+                    }
+                });
+                
+                // 키보드 이벤트 위임
+                document.addEventListener('keydown', function(e) {
+                    // Enter 키로 셀 편집 완료
+                    if (e.key === 'Enter' && e.target.closest('td[contenteditable="true"]')) {
+                        e.preventDefault();
+                        const cell = e.target.closest('td[contenteditable="true"]');
+                        const rowId = cell.closest('tr').getAttribute('data-id');
+                        const fieldName = cell.getAttribute('data-field');
+                        const value = cell.textContent.trim();
+                        
+                        if (typeof updateCellValue === 'function') {
+                            updateCellValue(rowId, fieldName, value);
+                        }
+                    }
+                    
+                    // Escape 키로 편집 취소
+                    if (e.key === 'Escape' && e.target.closest('td[contenteditable="true"]')) {
+                        e.preventDefault();
+                        const cell = e.target.closest('td[contenteditable="true"]');
+                        cell.textContent = cell.getAttribute('data-original-value') || '';
+                        cell.removeAttribute('contenteditable');
+                        cell.classList.remove('editing');
+                    }
+                });
+                
+                // 더블클릭 이벤트 위임 (셀 편집)
+                document.addEventListener('dblclick', function(e) {
+                    // 편집 가능한 셀 더블클릭 처리
+                    if (e.target.closest('td[data-field]') && !e.target.closest('td[data-type="dropdown"]') && 
+                        !e.target.closest('.name-container') && !e.target.closest('.debt-summary') &&
+                        !e.target.closest('.cell-button-container')) {
+                        
+                        const cell = e.target.closest('td[data-field]');
+                        const fieldName = cell.getAttribute('data-field');
+                        
+                        // 편집 불가능한 필드들 제외
+                        const nonEditableFields = ['회사명', '기대출'];
+                        if (nonEditableFields.includes(fieldName)) {
+                            return;
+                        }
+                        
+                        // 편집 모드 활성화
+                        cell.setAttribute('contenteditable', 'true');
+                        cell.classList.add('editing');
+                        cell.setAttribute('data-original-value', cell.textContent.trim());
+                        cell.focus();
+                        
+                        // 텍스트 선택
+                        const range = document.createRange();
+                        range.selectNodeContents(cell);
+                        const selection = window.getSelection();
+                        selection.removeAllRanges();
+                        selection.addRange(range);
+                    }
+                });
                 
                 console.log('테이블 새로고침 후 모든 이벤트 재초기화 완료');
             }, 100);
@@ -2977,19 +3212,6 @@ function refreshTable() {
         });
 }
 
-{% comment %} function addTextArea() {
-    const audioFilesList = document.getElementById('audioFilesList');
-    const textAreaContainer = document.createElement('div');
-    textAreaContainer.className = 'draggable-text-area';
-    textAreaContainer.style.cssText = 'margin-top: 10px; padding: 10px; border: 1px solid #ccc; border-radius: 4px; cursor: move;';
-    
-    const textArea = document.createElement('textarea');
-    textArea.placeholder = '텍스트 입력...';
-    textArea.style.cssText = 'width: 100%; height: 50px;';
-    
-    textAreaContainer.appendChild(textArea);
-    audioFilesList.appendChild(textAreaContainer);
-} {% endcomment %}
 
 // 속성 삭제 (모달용)
 function deleteAttributeFromModal(attrName) {
@@ -4101,6 +4323,9 @@ function handleDropdownOptionChange(event) {
         console.error('드롭다운 옵션 업데이트 중 오류:', error);
     });
 }
+
+// refreshTable 함수를 window 객체에 바인딩
+window.refreshTable = refreshTable;
 
 </script>
 

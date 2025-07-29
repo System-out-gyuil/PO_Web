@@ -67,6 +67,8 @@
       }, 100);
   }
   
+
+  
   // 드롭다운 옵션 실시간 업데이트를 위한 전역 이벤트 리스너 재설정
   if (typeof setupDropdownUpdateListeners === 'function') {
       setTimeout(() => {
@@ -154,6 +156,21 @@
       }, 400);
   }
   
+  // 새로 만들기 버튼 이벤트 재바인딩
+  if (typeof window.addNewRow === 'function') {
+      console.log('addNewRow 함수가 이미 window에 바인딩되어 있습니다.');
+  } else {
+      console.log('addNewRow 함수를 window에 바인딩합니다.');
+      // addNewRow 함수가 이미 window에 바인딩되어 있으므로 추가 작업 불필요
+  }
+  
+  // 일괄 삭제 버튼 이벤트 재바인딩
+  if (typeof updateBulkDeleteButton === 'function') {
+      setTimeout(() => {
+          updateBulkDeleteButton();
+      }, 150);
+  }
+  
   // 이벤트 위임을 통한 동적 요소 이벤트 처리
   document.addEventListener('click', function(e) {
       // 드롭다운 셀 클릭 처리 - openDropdown 함수 사용
@@ -198,6 +215,40 @@
               openDebtDetailsModal(rowId);
           }
       }
+      
+      // 삭제 버튼 클릭 처리
+      if (e.target.closest('.delete-row-btn')) {
+          const row = e.target.closest('tr');
+          const rowId = row.getAttribute('data-id');
+          
+          if (typeof deleteRow === 'function') {
+              deleteRow(rowId);
+          }
+      }
+      
+      // 복제 버튼 클릭 처리
+      if (e.target.closest('.duplicate-row-btn')) {
+          const row = e.target.closest('tr');
+          const rowId = row.getAttribute('data-id');
+          
+          if (typeof duplicateRow === 'function') {
+              duplicateRow(rowId);
+          }
+      }
+      
+      // 체크박스 클릭 처리
+      if (e.target.closest('.row-checkbox')) {
+          if (typeof updateBulkDeleteButton === 'function') {
+              updateBulkDeleteButton();
+          }
+      }
+      
+      // 전체 선택 체크박스 클릭 처리
+      if (e.target.closest('#selectAllCheckbox')) {
+          if (typeof toggleSelectAll === 'function') {
+              toggleSelectAll(e.target);
+          }
+      }
   });
   
   // 키보드 이벤트 위임
@@ -222,6 +273,37 @@
           cell.textContent = cell.getAttribute('data-original-value') || '';
           cell.removeAttribute('contenteditable');
           cell.classList.remove('editing');
+      }
+  });
+  
+  // 더블클릭 이벤트 위임 (셀 편집)
+  document.addEventListener('dblclick', function(e) {
+      // 편집 가능한 셀 더블클릭 처리
+      if (e.target.closest('td[data-field]') && !e.target.closest('td[data-type="dropdown"]') && 
+          !e.target.closest('.name-container') && !e.target.closest('.debt-summary') &&
+          !e.target.closest('.cell-button-container')) {
+          
+          const cell = e.target.closest('td[data-field]');
+          const fieldName = cell.getAttribute('data-field');
+          
+          // 편집 불가능한 필드들 제외
+          const nonEditableFields = ['회사명', '기대출'];
+          if (nonEditableFields.includes(fieldName)) {
+              return;
+          }
+          
+          // 편집 모드 활성화
+          cell.setAttribute('contenteditable', 'true');
+          cell.classList.add('editing');
+          cell.setAttribute('data-original-value', cell.textContent.trim());
+          cell.focus();
+          
+          // 텍스트 선택
+          const range = document.createRange();
+          range.selectNodeContents(cell);
+          const selection = window.getSelection();
+          selection.removeAllRanges();
+          selection.addRange(range);
       }
   });
   
