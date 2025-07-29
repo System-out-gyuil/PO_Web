@@ -840,22 +840,31 @@ function convertHwpToPdf(rowId, fieldName, fileId, fileUrl, fileName) {
             } else {
                 // 변환 실패
                 let errorMessage = 'HWP 파일을 PDF로 변환하는 중 오류가 발생했습니다.';
+                let originalFileUrl = null;
+                let suggestDownload = false;
+                
                 if (data.error) {
                     errorMessage = data.error;
+                }
+                if (data.original_file_url) {
+                    originalFileUrl = data.original_file_url;
+                }
+                if (data.suggest_download) {
+                    suggestDownload = true;
                 }
                 
                 contentDiv.innerHTML = `
                     <div style="text-align: center; background: #f8f9fa; padding: 40px; border-radius: 8px;">
-                        <div style="font-size: 48px; margin-bottom: 20px;">⚠️</div>
-                        <div style="font-size: 18px; margin-bottom: 20px; color: #333;">PDF 변환 실패</div>
+                        <div style="font-size: 48px; margin-bottom: 20px;">📄</div>
+                        <div style="font-size: 18px; margin-bottom: 20px; color: #333;">HWP 파일</div>
                         <div style="font-size: 14px; color: #666; margin-bottom: 20px; max-width: 400px; word-wrap: break-word;">
                             ${errorMessage}
                         </div>
                         <div style="font-size: 12px; color: #999; margin-bottom: 20px;">
-                            서버에서 PDF 변환을 처리할 수 없습니다. 원본 파일을 다운로드하여 사용해주세요.
+                            HWP 파일은 한글 문서 형식입니다. 원본 파일을 다운로드하여 한글 프로그램으로 열어주세요.
                         </div>
                         <div style="display: flex; flex-direction: column; gap: 10px; align-items: center;">
-                            <button onclick="window.open('${fileUrl}', '_blank')" 
+                            <button onclick="window.open('${originalFileUrl || fileUrl}', '_blank')" 
                                     style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; font-weight: 500; cursor: pointer; width: 200px;">
                                 새 창에서 열기
                             </button>
