@@ -3700,34 +3700,55 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function handleExcelFileSelect(file) {
-    if (!file.name.endsWith('.xlsx')) {
-        alert('엑셀 파일(.xlsx)만 업로드 가능합니다.');
+    if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
+        alert('엑셀 파일(.xlsx, .xls)만 업로드 가능합니다.');
         return;
     }
     
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('excel_file', file);
+    
+    console.log('파일 정보:', file.name, file.size, file.type);
+    console.log('FormData 내용:', formData);
     
     // 파일 미리보기 요청
     fetch('/sales/preview_excel/', {
         method: 'POST',
         body: formData
     })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showExcelPreview(data.preview_data, data.mapping);
-        } else {
-            alert('파일 처리 실패: ' + (data.error || '알 수 없는 오류'));
+    .then(response => {
+        console.log('응답 상태:', response.status, response.statusText);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.text(); // 먼저 텍스트로 받기
+    })
+    .then(text => {
+        console.log('서버 응답 텍스트:', text);
+        try {
+            // NaN 값을 null로 변환
+            const cleanedText = text.replace(/:\s*NaN\s*([,}])/g, ': null$1');
+            const data = JSON.parse(cleanedText);
+            console.log('서버 응답 JSON:', data);
+            if (data.success) {
+                showExcelPreview(data.preview, data.columns, data.mapping, data.dropdown_info);
+            } else {
+                alert('파일 처리 실패: ' + (data.error || '알 수 없는 오류'));
+            }
+        } catch (jsonError) {
+            console.error('JSON 파싱 오류:', jsonError);
+            console.error('원본 응답:', text);
+            alert('서버 응답 형식 오류: ' + text.substring(0, 100));
         }
     })
     .catch(error => {
-        console.error('파일 처리 오류:', error);
-        alert('파일 처리 중 오류가 발생했습니다.');
+        console.error('파일 처리 오류 상세:', error);
+        console.error('오류 스택:', error.stack);
+        alert('파일 처리 중 오류가 발생했습니다: ' + error.message);
     });
 }
 
-function showExcelPreview(previewData, mapping) {
+function showExcelPreview(previewData, columns, mapping, dropdown_info) {
     const previewDiv = document.getElementById('excelPreview');
     const previewContent = document.getElementById('excelPreviewContent');
     const mappingDiv = document.getElementById('excelMapping');
@@ -3739,38 +3760,50 @@ function showExcelPreview(previewData, mapping) {
     previewHtml += '<thead><tr>';
     
     // 헤더 행
-    Object.keys(previewData[0] || {}).forEach(header => {
-        const isMapped = mapping[header] ? 'background:#e8f5e8;' : 'background:#ffe8e8;';
-        previewHtml += `<th style="border:1px solid #ddd;padding:4px;text-align:left;${isMapped}">${header}</th>`;
+    columns.forEach(header => {
+        previewHtml += `<th style="border:1px solid #ddd;padding:4px;text-align:left;">${header}</th>`;
     });
     previewHtml += '</tr></thead><tbody>';
     
     // 데이터 행 (최대 5행만 표시)
     previewData.slice(0, 5).forEach(row => {
         previewHtml += '<tr>';
-        Object.values(row).forEach(cell => {
-            previewHtml += `<td style="border:1px solid #ddd;padding:4px;">${cell || ''}</td>`;
+        columns.forEach(column => {
+            const cellValue = row[column] || '';
+            previewHtml += `<td style="border:1px solid #ddd;padding:4px;">${cellValue}</td>`;
         });
         previewHtml += '</tr>';
     });
     
     if (previewData.length > 5) {
-        previewHtml += '<tr><td colspan="' + Object.keys(previewData[0] || {}).length + '" style="text-align:center;color:#666;padding:4px;">... (총 ' + previewData.length + '행)</td></tr>';
+        previewHtml += '<tr><td colspan="' + columns.length + '" style="text-align:center;color:#666;padding:4px;">... (총 ' + previewData.length + '행)</td></tr>';
     }
     
     previewHtml += '</tbody></table>';
     previewContent.innerHTML = previewHtml;
     previewDiv.style.display = 'block';
     
-    // 매핑 표시
+    // 매핑 표시 (서버에서 받은 매핑 정보 사용)
     let mappingHtml = '<div style="margin-bottom:10px;color:#666;font-size:12px;">';
-    mappingHtml += '🟢 매핑됨 | 🔴 매핑 안됨';
+    mappingHtml += '🟢 매핑됨 | 🔴 매핑 안됨 | 🔵 Dropdown 매핑됨';
     mappingHtml += '</div>';
     
-    Object.keys(previewData[0] || {}).forEach(header => {
+    columns.forEach(header => {
         const mappedField = mapping[header];
-        const status = mappedField ? '🟢' : '🔴';
-        const fieldName = mappedField || '매핑 안됨';
+        let status = '🔴';
+        let fieldName = '매핑 안됨';
+        
+        if (mappedField) {
+            // dropdown 정보 확인
+            if (dropdown_info && dropdown_info[mappedField]) {
+                status = '🔵';
+                fieldName = `${mappedField} (Dropdown)`;
+            } else {
+                status = '🟢';
+                fieldName = mappedField;
+            }
+        }
+        
         mappingHtml += `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px;border-bottom:1px solid #eee;">`;
         mappingHtml += `<span>${status} ${header}</span>`;
         mappingHtml += `<span style="color:#666;">→ ${fieldName}</span>`;
@@ -3800,7 +3833,7 @@ function uploadExcelFile() {
     uploadBtn.disabled = true;
     
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('excel_file', file);
     
     // 파일 업로드 요청
     fetch('/sales/upload_excel/', {
@@ -3810,7 +3843,7 @@ function uploadExcelFile() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showNotification(`엑셀 파일 업로드 완료! ${data.added_count}개 행이 추가되었습니다.`, 'success');
+            showNotification(`엑셀 파일 업로드 완료! ${data.created_rows}개 행이 추가되었습니다.`, 'success');
             closeExcelUploadModal();
             
             // 테이블 새로고침

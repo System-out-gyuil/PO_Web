@@ -1,7 +1,7 @@
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET
-from .models import Attribute, AttributeValue, User, Row
+from .models import Attribute, AttributeValue, User, Row, DropdownAttribute
 import json
 import pandas as pd
 from openpyxl import load_workbook
@@ -56,11 +56,60 @@ def preview_excel(request):
             preview_data = df.head(10).to_dict('records')
             columns = df.columns.tolist()
             
+            # NaN 값을 null로 변환
+            for row in preview_data:
+                for key, value in row.items():
+                    if pd.isna(value):
+                        row[key] = None
+            
+            # 기본 매핑 정보 생성 (엑셀 컬럼명과 DB 속성명 비교)
+            mapping = {}
+            if preview_data:
+                # 사용자의 모든 속성 가져오기
+                user_id = request.session.get('diary_member_id')
+                user = User.objects.get(id=user_id)
+                user_attributes = Attribute.objects.filter(user=user).values_list('name', flat=True)
+                user_attributes = list(user_attributes)
+                
+                print(f"사용자 속성들: {user_attributes}")
+                print(f"엑셀 컬럼들: {columns}")
+                
+                # 엑셀 컬럼과 DB 속성명 매핑
+                for column in columns:
+                    if column != "Unnamed: 0":  # 첫 번째 빈 컬럼 제외
+                        # 정확히 일치하는 속성 찾기
+                        if column in user_attributes:
+                            mapping[column] = column
+                        else:
+                            # 부분 일치하는 속성 찾기
+                            for attr_name in user_attributes:
+                                if column.lower() in attr_name.lower() or attr_name.lower() in column.lower():
+                                    mapping[column] = attr_name
+                                    break
+                            else:
+                                # 매핑되지 않은 컬럼은 빈 값으로
+                                mapping[column] = ""
+                
+                # dropdown 타입 속성들의 옵션 정보도 추가
+                dropdown_info = {}
+                for attr_name in user_attributes:
+                    try:
+                        attr = Attribute.objects.get(user=user, name=attr_name)
+                        if attr.attributeType and attr.attributeType.name == 'dropdown':
+                            dropdown_options = DropdownAttribute.objects.filter(attribute=attr).values('id', 'option')
+                            dropdown_info[attr_name] = list(dropdown_options)
+                    except Attribute.DoesNotExist:
+                        continue
+                
+                print(f"Dropdown 옵션 정보: {dropdown_info}")
+            
             return JsonResponse({
                 'success': True,
                 'preview': preview_data,
                 'columns': columns,
-                'total_rows': len(df)
+                'total_rows': len(df),
+                'mapping': mapping,
+                'dropdown_info': dropdown_info
             })
             
         except Exception as e:
@@ -78,6 +127,8 @@ def upload_excel(request):
         try:
             excel_file = request.FILES.get('excel_file')
             mapping_data = json.loads(request.POST.get('mapping', '{}'))
+            
+            print(f"받은 매핑 데이터: {mapping_data}")
             
             if not excel_file:
                 return JsonResponse({
@@ -136,6 +187,30 @@ def upload_excel(request):
             
             # 데이터 처리 및 행 생성
             created_rows = 0
+            
+            # 사용자의 모든 속성 가져오기
+            user_attributes = Attribute.objects.filter(user=user).values_list('name', flat=True)
+            user_attributes = list(user_attributes)
+            
+            # 엑셀 컬럼과 DB 속성명 자동 매핑
+            auto_mapping = {}
+            for column in df.columns:
+                if column != "Unnamed: 0":  # 첫 번째 빈 컬럼 제외
+                    # 정확히 일치하는 속성 찾기
+                    if column in user_attributes:
+                        auto_mapping[column] = column
+                    else:
+                        # 부분 일치하는 속성 찾기
+                        for attr_name in user_attributes:
+                            if column.lower() in attr_name.lower() or attr_name.lower() in column.lower():
+                                auto_mapping[column] = attr_name
+                                break
+                        else:
+                            # 매핑되지 않은 컬럼은 건너뛰기
+                            continue
+            
+            print(f"자동 매핑 결과: {auto_mapping}")
+            
             for index, row_data in df.iterrows():
                 try:
                     # 새 행 생성
@@ -144,27 +219,49 @@ def upload_excel(request):
                         order=Row.objects.filter(user=user).count() + 1
                     )
                     
-                    # 매핑된 속성들에 대해 값 설정
-                    for excel_column, attribute_name in mapping_data.items():
+                    print(f"행 {index} 처리 중...")
+                    
+                    # 자동 매핑된 속성들에 대해 값 설정
+                    for excel_column, attribute_name in auto_mapping.items():
                         if excel_column in row_data and pd.notna(row_data[excel_column]):
                             try:
                                 # 속성 찾기
                                 attribute = Attribute.objects.get(user=user, name=attribute_name)
                                 
                                 # 값 설정
-                                value = str(row_data[excel_column])
+                                excel_value = str(row_data[excel_column])
+                                print(f"  {excel_column} -> {attribute_name}: {excel_value}")
+                                
+                                # dropdown 타입인 경우 DropdownAttribute에서 ID 찾기
+                                if attribute.attributeType and attribute.attributeType.name == 'dropdown':
+                                    try:
+                                        # DropdownAttribute에서 해당 옵션 찾기
+                                        dropdown_attr = DropdownAttribute.objects.get(
+                                            attribute=attribute, 
+                                            option=excel_value
+                                        )
+                                        value_to_save = str(dropdown_attr.id)
+                                        print(f"    Dropdown 매핑: {excel_value} -> ID {dropdown_attr.id}")
+                                    except DropdownAttribute.DoesNotExist:
+                                        # 해당 옵션이 없으면 원본 값 그대로 저장
+                                        value_to_save = excel_value
+                                        print(f"    Dropdown 옵션 없음: {excel_value} (원본 값 저장)")
+                                else:
+                                    # 일반 텍스트 필드
+                                    value_to_save = excel_value
+                                
                                 attr_value, created = AttributeValue.objects.get_or_create(
                                     row=new_row,
                                     attribute=attribute,
-                                    defaults={'value': value}
+                                    defaults={'value': value_to_save}
                                 )
                                 
                                 if not created:
-                                    attr_value.value = value
+                                    attr_value.value = value_to_save
                                     attr_value.save()
                                 
                             except Attribute.DoesNotExist:
-                                # 속성이 없으면 건너뛰기
+                                print(f"  속성 '{attribute_name}'을 찾을 수 없습니다.")
                                 continue
                     
                     created_rows += 1
