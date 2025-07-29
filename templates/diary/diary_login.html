@@ -92,10 +92,10 @@
     
     .modal-content {
       background-color: white;
-      margin: 15% auto;
+      margin: 10% auto;
       padding: 20px;
       border-radius: 8px;
-      width: 300px;
+      width: 25%;
       position: relative;
     }
     
@@ -168,6 +168,21 @@
         <div class="form-group">
           <input type="tel" id="signup_phone" name="signup_phone" placeholder="전화번호 (010-1234-1234)" required>
         </div>
+        
+        <!-- 개인정보처리방침 체크박스 -->
+        <div class="form-group" style="display: flex; align-items: center; gap: 10px;">
+          <input type="checkbox" id="privacy_check" name="privacy_check" required>
+          <label for="privacy_check" style="margin: 0; flex: 1;">개인정보처리방침에 동의합니다</label>
+          <button type="button" onclick="openPrivacyModal()" style="width: auto; padding: 5px 10px; font-size: 12px;">전문 보기</button>
+        </div>
+        
+        <!-- 이용약관 체크박스 -->
+        <div class="form-group" style="display: flex; align-items: center; gap: 10px;">
+          <input type="checkbox" id="terms_check" name="terms_check" required>
+          <label for="terms_check" style="margin: 0; flex: 1;">이용약관에 동의합니다</label>
+          <button type="button" onclick="openTermsModal()" style="width: auto; padding: 5px 10px; font-size: 12px;">전문 보기</button>
+        </div>
+        
         <button type="submit">회원가입</button>
       </form>
     </div>
@@ -185,10 +200,31 @@
       document.getElementById('signupForm').reset();
     }
     
+    // 개인정보처리방침 모달 열기
+    function openPrivacyModal() {
+      window.open('/sales/personal_info/', '_blank', 'width=1000,height=800,scrollbars=yes,resizable=yes');
+    }
+    
+    // 개인정보처리방침 모달 닫기
+    function closePrivacyModal() {
+      document.getElementById('privacyModal').style.display = 'none';
+    }
+    
+    // 이용약관 모달 열기
+    function openTermsModal() {
+      window.open('/sales/terms_of_service/', '_blank', 'width=1000,height=800,scrollbars=yes,resizable=yes');
+    }
+    
+    // 이용약관 모달 닫기
+    function closeTermsModal() {
+      document.getElementById('termsModal').style.display = 'none';
+    }
+    
     // 모달 외부 클릭 시 닫기
     window.onclick = function(event) {
-      var modal = document.getElementById('signupModal');
-      if (event.target == modal) {
+      var signupModal = document.getElementById('signupModal');
+      
+      if (event.target == signupModal) {
         closeSignupModal();
       }
     }
@@ -286,6 +322,22 @@
       var phoneRegex = /^010-\d{4}-\d{4}$/;
       if (!phoneRegex.test(phone)) {
         document.getElementById('signupError').textContent = '전화번호 형식이 올바르지 않습니다. (010-1234-1234)';
+        document.getElementById('signupError').style.display = 'block';
+        return;
+      }
+
+      // 체크박스 검증
+      var privacyCheck = document.getElementById('privacy_check').checked;
+      var termsCheck = document.getElementById('terms_check').checked;
+
+      if (!privacyCheck) {
+        document.getElementById('signupError').textContent = '개인정보처리방침에 동의해야 합니다.';
+        document.getElementById('signupError').style.display = 'block';
+        return;
+      }
+
+      if (!termsCheck) {
+        document.getElementById('signupError').textContent = '이용약관에 동의해야 합니다.';
         document.getElementById('signupError').style.display = 'block';
         return;
       }

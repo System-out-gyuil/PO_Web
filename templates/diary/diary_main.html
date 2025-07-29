@@ -232,6 +232,13 @@
                             로그아웃
                         </button>
                     </form>
+                    {% if is_admin %}
+                    <a href="/sales/diary_admin/board/">
+                        <button class="bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-2 rounded-lg transition font-medium">
+                            관리자 페이지
+                        </button>
+                    </a>
+                    {% endif %}
                     {% else %}
                         <a href="{% url 'login' %}"><button class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition font-medium">
                             로그인

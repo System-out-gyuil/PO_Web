@@ -3789,7 +3789,7 @@ function showExcelPreview(previewData, columns, mapping, dropdown_info) {
     previewHtml += '</tr></thead><tbody>';
     
     // 데이터 행 (최대 5행만 표시)
-    previewData.slice(0, 5).forEach(row => {
+    previewData.forEach(row => {
         previewHtml += '<tr>';
         columns.forEach(column => {
             const cellValue = row[column] || '';
@@ -3799,7 +3799,7 @@ function showExcelPreview(previewData, columns, mapping, dropdown_info) {
     });
     
     if (previewData.length > 5) {
-        previewHtml += '<tr><td colspan="' + columns.length + '" style="text-align:center;color:#666;padding:4px;">... (총 ' + previewData.length + '행)</td></tr>';
+        previewHtml += '<tr><td colspan="' + columns.length + '" style="text-align:center;color:#666;padding:4px;">총 ' + previewData.length + '행</td></tr>';
     }
     
     previewHtml += '</tbody></table>';

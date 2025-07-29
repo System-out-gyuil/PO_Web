@@ -39,7 +39,6 @@ class MainView(View):
 
         if 'xn--jj0bw47b70a.com' in host:
             return redirect('diary_main')
-        
         else:
 
 

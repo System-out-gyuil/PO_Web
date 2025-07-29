@@ -43,7 +43,7 @@ class LoginView(View):
                     return JsonResponse({
                         'success': True,
                         'message': '로그인되었습니다.',
-                        'redirect_url': '/sales/diary/'
+                        'redirect_url': '/sales/'
                     })
                 else:
                     return JsonResponse({
@@ -319,7 +319,13 @@ class SignupView(View):
 
 class LogoutView(View):
     def get(self, request):
-        return render(request, 'diary/diary_main.html')
+        # 세션에서 diary_member_id, diary_authenticated 제거
+        request.session.pop('diary_member_id', None)
+        request.session.pop('diary_authenticated', None)
+        request.session.save()
+        
+        # 로그인 페이지로 리다이렉트
+        return redirect('/sales/login/')
     
     def post(self, request):
         try:
@@ -331,13 +337,15 @@ class LogoutView(View):
             # 로그아웃 후 JSON 반환
             return JsonResponse({
                 'success': True, 
-                'message': '로그아웃되었습니다.'
+                'message': '로그아웃되었습니다.',
+                'redirect_url': '/sales/login/'
             })
         except Exception as e:
             # 오류가 발생해도 로그아웃은 성공으로 처리
             return JsonResponse({
                 'success': True,
-                'message': '로그아웃되었습니다.'
+                'message': '로그아웃되었습니다.',
+                'redirect_url': '/sales/login/'
             })
 
 @method_decorator(csrf_exempt, name='dispatch')
