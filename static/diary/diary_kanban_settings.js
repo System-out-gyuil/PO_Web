@@ -504,11 +504,26 @@ function saveKanbanSettings() {
     .then(data => {
         if (data.success) {
             closeKanbanSettingsModal();
-            alert('칸반보드 설정이 저장되었습니다.');
             
-            // 칸반보드 새로고침
-            if (typeof refreshKanban === 'function') {
+            // 전역 설정 업데이트
+            window.kanbanSettings = settings;
+            
+            // 칸반보드 속성 select 요소 업데이트 (있는 경우)
+            const kanbanSelect = document.getElementById('kanbanAttributeSelect');
+            if (kanbanSelect) {
+                kanbanSelect.value = settings.main_attr;
+            }
+            
+            // 메인 속성이 변경된 경우 칸반보드 새로고침
+            if (typeof updateKanbanBoard === 'function') {
+                updateKanbanBoard(settings.main_attr);
+            } else if (typeof refreshKanban === 'function') {
                 refreshKanban();
+            }
+            
+            // 테이블도 새로고침 (필요한 경우)
+            if (typeof refreshTable === 'function') {
+                refreshTable();
             }
         } else {
             alert('설정 저장에 실패했습니다: ' + (data.error || ''));

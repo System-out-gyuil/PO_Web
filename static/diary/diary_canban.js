@@ -235,6 +235,7 @@ function updateKanbanBoard(attrName) {
                           boardHTML += `
                               <div class="board-card" data-entry-id="${entry.id}">
                                 <div class="board-card-title">${entryName || '(회사명 없음)'}</div>
+                                ${progressText ? `<div class="board-card-progress" style="font-size:11px;color:#666;margin-top:2px;">${progressText}</div>` : ''}
                               </div>
                           `;
                       });
@@ -581,8 +582,23 @@ function updateKanbanBoard(attrName) {
                     boardHTML += '<div class="board-cards">';
                     
                     col.entries.forEach(function(entry) {
+                        const entryName = entry.name || '(회사명 없음)';
+                        const entryProgress = entry.progress || entry.now || '';
+                        
+                        // 진행사항 옵션에서 텍스트 찾기
+                        let progressText = '';
+                        if (entryProgress && data.progress_options) {
+                            const progressOption = data.progress_options.find(option => option.id == entryProgress);
+                            if (progressOption) {
+                                progressText = progressOption.option;
+                            }
+                        }
+                        
                         boardHTML += '<div class="board-card" data-entry-id="' + entry.id + '">';
-                        boardHTML += '<div class="board-card-title">' + (entry.name || '(회사명 없음)') + '</div>';
+                        boardHTML += '<div class="board-card-title">' + entryName + '</div>';
+                        if (progressText) {
+                            boardHTML += '<div class="board-card-progress" style="font-size:11px;color:#666;margin-top:2px;">' + progressText + '</div>';
+                        }
                         boardHTML += '</div>';
                     });
                     
