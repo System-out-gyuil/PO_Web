@@ -4208,7 +4208,7 @@ def convert_hwp_to_pdf(request):
                     cmd,
                     capture_output=True,
                     text=True,
-                    timeout=60  # 1분 타임아웃
+                    timeout=600  # 10분 타임아웃
                 )
                 
                 logger.info(f"LibreOffice 변환 결과: returncode={result.returncode}")
