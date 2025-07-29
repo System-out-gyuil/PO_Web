@@ -750,13 +750,13 @@ function convertHwpToPdf(rowId, fieldName, fileId, fileUrl, fileName) {
                 // LibreOffice가 사용 불가능한 경우
                 contentDiv.innerHTML = `
                     <div style="text-align: center; background: #f8f9fa; padding: 40px; border-radius: 8px;">
-                        <div style="font-size: 48px; margin-bottom: 20px;">⚠️</div>
-                        <div style="font-size: 18px; margin-bottom: 20px; color: #333;">PDF 변환 불가</div>
+                        <div style="font-size: 48px; margin-bottom: 20px;">📄</div>
+                        <div style="font-size: 18px; margin-bottom: 20px; color: #333;">HWP 파일</div>
                         <div style="font-size: 14px; color: #666; margin-bottom: 20px; max-width: 400px; word-wrap: break-word;">
-                            ${libreofficeStatus.message || 'LibreOffice가 설치되어 있지 않습니다.'}
+                            ${libreofficeStatus.message || 'HWP 파일 변환은 현재 지원되지 않습니다.'}
                         </div>
                         <div style="font-size: 12px; color: #999; margin-bottom: 20px;">
-                            HWP 파일은 LibreOffice가 필요합니다. 원본 파일을 다운로드하여 사용해주세요.
+                            HWP 파일은 한글 문서 형식입니다. 원본 파일을 다운로드하여 한글 프로그램으로 열어주세요.
                         </div>
                         <div style="display: flex; flex-direction: column; gap: 10px; align-items: center;">
                             <button onclick="window.open('${fileUrl}', '_blank')" 
@@ -770,7 +770,7 @@ function convertHwpToPdf(rowId, fieldName, fileId, fileUrl, fileName) {
                         </div>
                     </div>
                 `;
-                return;
+                return null; // 명시적으로 null 반환
             }
             
             // LibreOffice가 사용 가능한 경우 변환 시도
@@ -812,6 +812,8 @@ function convertHwpToPdf(rowId, fieldName, fileId, fileUrl, fileName) {
             return response.json();
         })
         .then(data => {
+            if (!data) return; // LibreOffice가 사용 불가능한 경우
+            
             console.log('PDF 변환 응답:', data);
             
             if (data.success && data.pdf_url) {
@@ -884,7 +886,7 @@ function convertHwpToPdf(rowId, fieldName, fileId, fileUrl, fileName) {
             let errorMessage = '서버 연결 오류가 발생했습니다.';
             if (error.message) {
                 if (error.message.includes('HTTP 500')) {
-                    errorMessage = '서버 내부 오류가 발생했습니다. LibreOffice가 설치되어 있는지 확인해주세요.';
+                    errorMessage = '서버 내부 오류가 발생했습니다.';
                 } else if (error.message.includes('HTTP 404')) {
                     errorMessage = '요청한 리소스를 찾을 수 없습니다.';
                 } else if (error.message.includes('HTTP 403')) {
@@ -896,10 +898,13 @@ function convertHwpToPdf(rowId, fieldName, fileId, fileUrl, fileName) {
             
             contentDiv.innerHTML = `
                 <div style="text-align: center; background: #f8f9fa; padding: 40px; border-radius: 8px;">
-                    <div style="font-size: 48px; margin-bottom: 20px;">❌</div>
-                    <div style="font-size: 18px; margin-bottom: 20px; color: #333;">변환 실패</div>
+                    <div style="font-size: 48px; margin-bottom: 20px;">📄</div>
+                    <div style="font-size: 18px; margin-bottom: 20px; color: #333;">HWP 파일</div>
                     <div style="font-size: 14px; color: #666; margin-bottom: 20px; max-width: 400px; word-wrap: break-word;">
                         ${errorMessage}
+                    </div>
+                    <div style="font-size: 12px; color: #999; margin-bottom: 20px;">
+                        HWP 파일은 한글 문서 형식입니다. 원본 파일을 다운로드하여 한글 프로그램으로 열어주세요.
                     </div>
                     <div style="display: flex; flex-direction: column; gap: 10px; align-items: center;">
                         <button onclick="window.open('${fileUrl}', '_blank')" 

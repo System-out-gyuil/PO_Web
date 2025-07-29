@@ -41,8 +41,8 @@ class Command(BaseCommand):
         params = {
             "crtfcKey": BIZINFO_API_KEY,
             "dataType": "json",
-            "searchCnt": 20, # 조회할 전체 개수
-            "pageUnit": 20, # 페이지당 개수
+            "searchCnt": 200, # 조회할 전체 개수
+            "pageUnit": 200, # 페이지당 개수
             "pageIndex": 1 # 페이지 번호
         }
 

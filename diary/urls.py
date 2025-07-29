@@ -1,6 +1,6 @@
 from django.urls import path
 from . import views
-from .views import upload_note_file, delete_note_file, update_note_order_and_notes, get_file_preview_url, get_file_preview_url_note, get_file_content_note, convert_hwp_to_pdf, test_libreoffice
+from .views import upload_note_file, delete_note_file, update_note_order_and_notes, get_file_preview_url, get_file_preview_url_note, get_file_content_note, convert_hwp_to_pdf, test_libreoffice, test_hwp_conversion
 from .login_views import LoginView, LogoutView, SignupView, ChangePasswordView
 from .main_views import DiaryMainView
 from .file_handler import upload_file, delete_file, download_file, download_file_note
@@ -79,6 +79,7 @@ urlpatterns = [
     path('get_file_content_note/<str:file_id>/', get_file_content_note, name='get_file_content_note'),
     path('convert_hwp_to_pdf/', convert_hwp_to_pdf, name='convert_hwp_to_pdf'),
     path('test_libreoffice/', test_libreoffice, name='test_libreoffice'),
+    path('test_hwp_conversion/', test_hwp_conversion, name='test_hwp_conversion'),
     
     # 캘린더 설정 관련 API
     path('get_datetime_attributes/', get_datetime_attributes, name='get_datetime_attributes'),

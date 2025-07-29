@@ -4197,9 +4197,122 @@ def convert_hwp_to_pdf(request):
 @csrf_exempt
 def test_libreoffice(request):
     """LibreOffice 설치 상태를 확인하는 테스트 엔드포인트"""
-    return JsonResponse({
-        'success': False,
-        'libreoffice_available': False,
-        'error': 'HWP 파일 변환은 현재 지원되지 않습니다.',
-        'message': 'HWP 파일은 원본 파일로 다운로드하여 사용해주세요.'
-    })
+    try:
+        # LibreOffice 버전 확인
+        result = subprocess.run(['libreoffice', '--version'], 
+                              capture_output=True, text=True, timeout=10)
+        
+        if result.returncode == 0:
+            version = result.stdout.strip()
+            logger.info(f"LibreOffice 버전: {version}")
+            
+            # LibreOffice가 지원하는 파일 형식 확인
+            result2 = subprocess.run(['libreoffice', '--help'], 
+                                   capture_output=True, text=True, timeout=10)
+            
+            support_info = {
+                'version': version,
+                'hwp_support': 'LibreOffice는 HWP 파일을 제한적으로 지원합니다.',
+                'conversion_issues': [
+                    'HWP는 한글과컴퓨터의 독점 형식입니다',
+                    'LibreOffice는 HWP 파일을 완전히 지원하지 않습니다',
+                    '변환 시 레이아웃이나 서식이 깨질 수 있습니다',
+                    '복잡한 HWP 파일은 변환에 실패할 수 있습니다'
+                ],
+                'recommendations': [
+                    'HWP 파일은 원본 파일로 다운로드하여 한글 프로그램으로 열어주세요',
+                    '필요시 한글 프로그램에서 PDF로 변환 후 사용하세요'
+                ]
+            }
+            
+            return JsonResponse({
+                'success': True,
+                'libreoffice_available': True,
+                'version': version,
+                'support_info': support_info,
+                'message': 'LibreOffice는 설치되어 있지만 HWP 파일 변환은 제한적입니다.'
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'libreoffice_available': False,
+                'error': result.stderr,
+                'message': 'LibreOffice가 설치되어 있지만 실행할 수 없습니다.'
+            })
+    except FileNotFoundError:
+        return JsonResponse({
+            'success': False,
+            'libreoffice_available': False,
+            'error': 'LibreOffice가 설치되어 있지 않습니다.',
+            'message': '서버에 LibreOffice를 설치해주세요.'
+        })
+    except subprocess.TimeoutExpired:
+        return JsonResponse({
+            'success': False,
+            'libreoffice_available': False,
+            'error': 'LibreOffice 응답 시간이 초과되었습니다.',
+            'message': 'LibreOffice가 응답하지 않습니다.'
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'libreoffice_available': False,
+            'error': str(e),
+            'message': f'LibreOffice 확인 중 오류가 발생했습니다: {str(e)}'
+        })
+
+@csrf_exempt
+def test_hwp_conversion(request):
+    """HWP 파일 변환을 실제로 테스트하는 엔드포인트"""
+    try:
+        logger.info("=== HWP 변환 테스트 시작 ===")
+        
+        # 간단한 테스트 파일 생성 (실제 HWP 파일이 아닌 텍스트 파일)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            test_file = os.path.join(temp_dir, "test.txt")
+            with open(test_file, 'w', encoding='utf-8') as f:
+                f.write("테스트 파일입니다.\n한글 텍스트입니다.")
+            
+            # LibreOffice로 텍스트 파일을 PDF로 변환 테스트
+            cmd = [
+                'libreoffice', '--headless', '--convert-to', 'pdf',
+                '--outdir', temp_dir, test_file
+            ]
+            
+            logger.info(f"LibreOffice 테스트 명령어: {' '.join(cmd)}")
+            
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            
+            logger.info(f"LibreOffice 테스트 결과: returncode={result.returncode}")
+            logger.info(f"LibreOffice stdout: {result.stdout}")
+            logger.info(f"LibreOffice stderr: {result.stderr}")
+            
+            # 결과 확인
+            pdf_files = [f for f in os.listdir(temp_dir) if f.endswith('.pdf')]
+            
+            test_results = {
+                'libreoffice_works': result.returncode == 0,
+                'pdf_created': len(pdf_files) > 0,
+                'stdout': result.stdout,
+                'stderr': result.stderr,
+                'pdf_files': pdf_files
+            }
+            
+            return JsonResponse({
+                'success': True,
+                'test_results': test_results,
+                'message': 'LibreOffice 기본 변환 테스트 완료'
+            })
+            
+    except Exception as e:
+        logger.error(f"HWP 변환 테스트 오류: {e}")
+        return JsonResponse({
+            'success': False,
+            'error': str(e),
+            'message': f'테스트 중 오류가 발생했습니다: {str(e)}'
+        })
