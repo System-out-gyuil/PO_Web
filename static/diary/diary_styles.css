@@ -240,7 +240,7 @@ input, select {
 }
 
 tr:hover .drag-handle { 
-    display: inline-block; 
+    display: flex; 
 }
 
 tr.dragging { 

@@ -523,11 +523,22 @@ def status_list(request):
     return JsonResponse({'error': 'Invalid method'}, status=405)
 
 def board_view(request):
-     
-    user_id = request.session.get('diary_member_id')
-
-    user = User.objects.get(id=user_id)  # 현재 사용자
+    # 로그인 상태 확인
+    if not request.session.get('diary_authenticated'):
+        return redirect('login')
     
+    # 사용자 ID 확인
+    user_id = request.session.get('diary_member_id')
+    if not user_id:
+        return redirect('login')
+    
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        # 사용자가 존재하지 않는 경우 세션 정리 후 로그인 페이지로 리다이렉트
+        request.session.flush()
+        return redirect('login')
+     
     # "영업진행" 속성 가져오기 (쿼리 최적화)
     sales_progress_attr = Attribute.objects.filter(user=user, name='영업진행').select_related('attributeType').first()
     
@@ -2498,8 +2509,21 @@ def update_audio_file_order_and_notes(request):
         return JsonResponse({'success': False, 'error': str(e)})
 
 def entry_table_partial(request):
+    # 로그인 상태 확인
+    if not request.session.get('diary_authenticated'):
+        return redirect('login')
+    
+    # 사용자 ID 확인
     user_id = request.session.get('diary_member_id')
-    user = User.objects.get(id=user_id)
+    if not user_id:
+        return redirect('login')
+    
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        # 사용자가 존재하지 않는 경우 세션 정리 후 로그인 페이지로 리다이렉트
+        request.session.flush()
+        return redirect('login')
     
     # URL 파라미터에서 상태 ID 가져오기
     status_id = request.GET.get('status_id', 'all')

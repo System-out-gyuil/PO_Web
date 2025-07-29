@@ -939,11 +939,11 @@
                 <div>
                     <h4 class="text-lg font-bold mb-4">서비스</h4>
                     <ul class="space-y-2 text-gray-400">
-                        <li><a href="#features" class="hover:text-white transition">기능 소개</a></li>
+                        {% comment %} <li><a href="{% url 'company_info' %}" class="hover:text-white transition" >회사 소개</a></li> {% endcomment %}
                         <li><a href="#success" class="hover:text-white transition">성공 사례</a></li>
                         <li><a href="#pricing" class="hover:text-white transition">가격 정보</a></li>
-                        <li><a href="#" class="hover:text-white transition">이용약관</a></li>
-                        <li><a href="#" class="hover:text-white transition">개인정보처리방침</a></li>
+                        <li><a href="{% url 'terms_of_service' %}" class="hover:text-white transition">이용약관</a></li>
+                        <li><a href="{% url 'personal_info' %}" class="hover:text-white transition">개인정보처리방침</a></li>
                     </ul>
                 </div>
             </div>

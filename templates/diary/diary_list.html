@@ -829,6 +829,7 @@
             .then(data => {
                 if (!data.is_authenticated) {
                     // 로그인되지 않은 경우 로그인 페이지로 리다이렉트
+                    console.log('로그인 상태 확인: 로그인되지 않음, 로그인 페이지로 리다이렉트');
                     window.location.href = '/sales/login/';
                 }
             })
@@ -847,7 +848,37 @@
             checkLoginStatus();
             // 알림 배지 업데이트
             updateNotificationBadgeOnLoad();
+            
+            // 테이블 페이지에서 뒤로가기 방지
+            window.history.pushState(null, '', window.location.href);
+            window.addEventListener('popstate', function() {
+                // 뒤로가기 시 로그인 상태 확인 후 처리
+                checkLoginStatus();
+                window.history.pushState(null, '', window.location.href);
+            });
         });
+        
+        // 뒤로가기/앞으로가기 시에도 로그인 상태 확인
+        window.addEventListener('pageshow', function(event) {
+            // 뒤로가기로 페이지가 로드된 경우
+            if (event.persisted) {
+                console.log('뒤로가기 감지: 로그인 상태 확인');
+                checkLoginStatus();
+            }
+        });
+        
+        // 페이지 포커스 시 로그인 상태 확인 (브라우저 탭 전환 시)
+        window.addEventListener('focus', function() {
+            console.log('페이지 포커스 감지: 로그인 상태 확인');
+            checkLoginStatus();
+        });
+        
+        // 주기적으로 로그인 상태 확인 (5분마다)
+        setInterval(function() {
+            if (!window.isLoggingOut) {
+                checkLoginStatus();
+            }
+        }, 300000); // 5분 = 300초 = 300000ms
         
         // 알림 배지 초기 업데이트
         function updateNotificationBadgeOnLoad() {
@@ -882,14 +913,6 @@
                 }
             });
         }
-        
-        // 뒤로가기/앞으로가기 시에도 로그인 상태 확인
-        window.addEventListener('pageshow', function(event) {
-            // 뒤로가기로 페이지가 로드된 경우
-            if (event.persisted) {
-                checkLoginStatus();
-            }
-        });
     </script>
     
 </head>
@@ -4025,6 +4048,13 @@ function logout() {
         // 세션 스토리지 정리
         sessionStorage.clear();
         
+        // 로컬 스토리지 정리
+        localStorage.clear();
+        
+        // 브라우저 히스토리 조작 - 뒤로가기 방지
+        window.history.pushState(null, '', '/sales/login/');
+        window.history.replaceState(null, '', '/sales/login/');
+        
         // 서버에 로그아웃 요청
         fetch('/sales/logout/', {
             method: 'POST',
@@ -4046,16 +4076,16 @@ function logout() {
         .then(data => {
             if (data.success) {
                 // 로그인 페이지로 즉시 리다이렉트
-                window.location.href = '/sales/login/';
+                window.location.replace('/sales/login/');
             } else {
                 // 오류가 있어도 로그인 페이지로 리다이렉트
-                window.location.href = '/sales/login/';
+                window.location.replace('/sales/login/');
             }
         })
         .catch(error => {
             console.error('로그아웃 오류:', error);
             // 오류가 발생해도 로그인 페이지로 리다이렉트
-            window.location.href = '/sales/login/';
+            window.location.replace('/sales/login/');
         });
     }
 }

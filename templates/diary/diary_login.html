@@ -353,16 +353,29 @@
 
   <script>
     // 페이지 로드 시 로그인 상태 확인
-    {% comment %} document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function() {
       checkLoginStatus();
-    }); {% endcomment %}
+      
+      // 로그인 페이지에서 뒤로가기 방지
+      window.history.pushState(null, '', window.location.href);
+      window.addEventListener('popstate', function() {
+        window.history.pushState(null, '', window.location.href);
+      });
+    });
     
     // 뒤로가기/앞으로가기 시에도 로그인 상태 확인
     window.addEventListener('pageshow', function(event) {
       // 뒤로가기로 페이지가 로드된 경우
       if (event.persisted) {
+        console.log('로그인 페이지: 뒤로가기 감지, 로그인 상태 확인');
         checkLoginStatus();
       }
+    });
+    
+    // 페이지 포커스 시 로그인 상태 확인 (브라우저 탭 전환 시)
+    window.addEventListener('focus', function() {
+      console.log('로그인 페이지: 포커스 감지, 로그인 상태 확인');
+      checkLoginStatus();
     });
     
     // 로그인 상태 확인 함수
@@ -377,7 +390,8 @@
       .then(data => {
         if (data.is_authenticated) {
           // 이미 로그인된 경우 다이어리 페이지로 리다이렉트
-          window.location.href = '/sales/diary/';
+          console.log('로그인 페이지: 이미 로그인됨, 다이어리 페이지로 리다이렉트');
+          window.location.replace('/sales/diary/');
         }
       })
       .catch(error => {
