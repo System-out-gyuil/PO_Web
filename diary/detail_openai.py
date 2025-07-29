@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 # 파일 처리 성능 최적화를 위한 캐시
 file_text_cache = {}
 file_hash_cache = {}
-MAX_CACHE_SIZE = 100  # 최대 캐시 크기
+MAX_CACHE_SIZE = 200  # 최대 캐시 크기
 
 # 스레드 풀 생성 (파일 처리용)
 file_processing_pool = concurrent.futures.ThreadPoolExecutor(max_workers=4)
@@ -440,9 +440,8 @@ def download_file_from_s3_optimized(s3_key):
         cached_path = file_hash_cache.get(cache_key)
         
         if cached_path and os.path.exists(cached_path):
-            # 캐시된 파일이 유효한지 확인 (5분 이내)
             file_age = time.time() - os.path.getmtime(cached_path)
-            if file_age < 300:  # 5분
+            if file_age < 18000:  # 캐시 유지 5시간
                 logger.info(f"S3 파일 캐시 사용: {s3_key}")
                 return cached_path
         

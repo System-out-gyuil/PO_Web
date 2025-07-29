@@ -142,7 +142,7 @@ function showCalendarSettingsModal(forceSettings) {
                 <div style="display:flex;align-items:center;padding:8px 12px;background:#f8f9fa;">
                     <input type="checkbox" class="date-field-checkbox" value="${attr.id}" ${isChecked ? 'checked' : ''} style="margin-right:8px;">
                     <span style="margin-right:8px;min-width:80px;font-weight:500;">${attr.name}</span>
-                    <input type="color" class="date-field-color" value="${color || '#e5e7eb'}" data-date-attr="${attr.id}" style="width:28px;height:28px;border:none;background:none;cursor:pointer;margin-right:8px;">
+                    <input type="color" class="date-field-color" value="${color || '#e5e7eb'}" data-date-attr="${attr.id}" style="width:35px;height:35px;border:none;background:none;cursor:pointer;margin-right:8px;">
                     <button type="button" class="content-select-btn" data-date-attr="${attr.id}" style="padding:4px 10px;font-size:13px;border:1px solid #bbb;background:#fff;border-radius:4px;cursor:pointer;">카드에 표시할 내용 선택</button>
                 </div>
                 <div class="content-checkboxes-popup" data-date-attr="${attr.id}" style="display:none;position:absolute;z-index:2000;min-width:180px;max-width:320px;background:#fff;border:1px solid #bbb;box-shadow:0 2px 8px #bbb;border-radius:8px;padding:10px 8px;">
