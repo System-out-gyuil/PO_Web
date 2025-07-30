@@ -499,9 +499,9 @@ class SendVerificationEmailView(View):
             # 이메일 발송
             subject = '[PO 시스템] 이메일 인증번호'
             message = f'''
-안녕하세요!
+안녕하세요. 자금왕입니다.
 
-PO 시스템 이메일 인증번호입니다.
+이메일 인증번호입니다.
 
 인증번호: {verification_code}
 
@@ -509,14 +509,13 @@ PO 시스템 이메일 인증번호입니다.
 인증번호를 입력하여 이메일 인증을 완료해주세요.
 
 감사합니다.
-PO 시스템
             '''
             
             try:
                 send_mail(
                     subject,
                     message,
-                    'a46884334@gmail.com',  # 발신자 이메일
+                    'nicepo.corp@gmail.com',  # 발신자 이메일
                     [email],  # 수신자 이메일
                     fail_silently=False,
                 )
@@ -641,24 +640,23 @@ class ForgotPasswordView(View):
             # 이메일 발송
             subject = '[PO 시스템] 비밀번호 찾기 인증번호'
             message = f'''
-안녕하세요!
+안녕하세요. 자금왕입니다.
 
-PO 시스템 비밀번호 찾기 인증번호입니다.
+이메일 인증번호입니다.
 
 인증번호: {verification_code}
 
 이 인증번호는 10분 후에 만료됩니다.
-인증번호를 입력하여 비밀번호 재설정을 진행해주세요.
+인증번호를 입력하여 이메일 인증을 완료해주세요.
 
 감사합니다.
-PO 시스템
             '''
             
             try:
                 send_mail(
                     subject,
                     message,
-                    'a46884334@gmail.com',
+                    'nicepo.corp@gmail.com',
                     [email],
                     fail_silently=False,
                 )

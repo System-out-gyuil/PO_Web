@@ -36,12 +36,37 @@ file_text_cache = {}
 file_hash_cache = {}
 MAX_CACHE_SIZE = 200  # 최대 캐시 크기
 
-# 스레드 풀 생성 (파일 처리용)
-file_processing_pool = concurrent.futures.ThreadPoolExecutor(max_workers=4)
+# 스레드 풀 생성 (파일 처리용) - 워커 수 증가
+file_processing_pool = concurrent.futures.ThreadPoolExecutor(max_workers=8)
+
+# OpenAI API 호출을 위한 별도 스레드 풀
+openai_pool = concurrent.futures.ThreadPoolExecutor(max_workers=2)
 
 # 캐시 파일 경로
 CACHE_DIR = Path(tempfile.gettempdir()) / "file_cache"
 CACHE_DIR.mkdir(exist_ok=True)
+
+# 성능 모니터링을 위한 메트릭
+performance_metrics = {
+    'file_processing_times': [],
+    'openai_api_times': [],
+    'cache_hit_rates': []
+}
+
+# 파일 크기별 처리 전략
+FILE_SIZE_THRESHOLDS = {
+    'small': 1024 * 1024,      # 1MB
+    'medium': 10 * 1024 * 1024, # 10MB
+    'large': 50 * 1024 * 1024   # 50MB
+}
+
+# OpenAI API 최적화 설정
+OPENAI_API_CONFIG = {
+    'timeout': 60,
+    'max_retries': 3,
+    'retry_delay': 1,
+    'batch_size': 5  # 동시 처리할 파일 수
+}
 
 def get_cached_file_text(file_hash, file_path):
     """파일 해시 기반 텍스트 캐시 조회 (디스크 + 메모리)"""
@@ -780,15 +805,14 @@ def ai_chat(request):
                                 if attr_value.value:
                                     row_data[attr_name] = attr_value.value
                     
-                    # 파일 데이터 처리
+                    # 파일 데이터 처리 - 최적화된 방식으로 교체
                     file_texts = []
                     
                     # 파일 속성값들 처리
                     file_attribute_values = AttributeValue.objects.filter(row=row, attribute__attributeType__name='file')
                     
-                    # 파일들을 크기별로 분류하여 처리
-                    small_files = []  # 1MB 미만
-                    large_files = []  # 1MB 이상
+                    # 모든 파일 정보 수집
+                    all_files = []
                     
                     for attr_value in file_attribute_values:
                         attr_name = attr_value.attribute.name
@@ -801,8 +825,6 @@ def ai_chat(request):
                                 # 음성파일 속성인 경우 (data 구조)
                                 if isinstance(file_data, dict) and 'data' in file_data:
                                     for file_id, file_info in file_data['data'].items():
-                                        print(f'file_info: {file_info.get("type")}')
-
                                         if file_info.get('type') == 'file':
                                             # 파일 크기 체크 (10MB 제한)
                                             file_size = file_info.get('file_size', 0)
@@ -810,11 +832,9 @@ def ai_chat(request):
                                                 file_texts.append(f"[{attr_name} - {file_info.get('original_filename', '파일')}]: 파일이 너무 커서 텍스트 추출을 건너뜁니다.")
                                                 continue
                                             
-                                            # 파일 크기에 따라 분류
-                                            if file_size < 1024 * 1024:  # 1MB 미만
-                                                small_files.append((attr_name, file_info))
-                                            else:
-                                                large_files.append((attr_name, file_info))
+                                            # 파일 정보에 필드명 추가
+                                            file_info['field_name'] = attr_name
+                                            all_files.append(file_info)
                                             
                                         elif file_info.get('type') == 'text':
                                             # text 타입은 항상 새로 처리 (캐시 무시)
@@ -833,11 +853,9 @@ def ai_chat(request):
                                             file_texts.append(f"[{attr_name} - {file_info.get('original_filename', '파일')}]: 파일이 너무 커서 텍스트 추출을 건너뜁니다.")
                                             continue
                                         
-                                        # 파일 크기에 따라 분류
-                                        if file_size < 1024 * 1024:  # 1MB 미만
-                                            small_files.append((attr_name, file_info))
-                                        else:
-                                            large_files.append((attr_name, file_info))
+                                        # 파일 정보에 필드명 추가
+                                        file_info['field_name'] = attr_name
+                                        all_files.append(file_info)
                                 
                                 # 단일 파일 경로인 경우
                                 else:
@@ -861,54 +879,18 @@ def ai_chat(request):
                             except Exception as e:
                                 logger.error(f"파일 텍스트 추출 실패: {e}")
                     
-                    # 작은 파일들을 병렬로 처리
-                    if small_files:
-                        print(f"작은 파일 병렬 처리 시작: {len(small_files)}개")
-                        small_file_results = process_files_parallel([file_info for _, file_info in small_files], "small_files")
-                        for i, (attr_name, _) in enumerate(small_files):
-                            if i < len(small_file_results):
-                                file_texts.append(small_file_results[i])
-                    
-                    # 큰 파일들을 순차적으로 처리 (메모리 효율성)
-                    if large_files:
-                        print(f"큰 파일 순차 처리 시작: {len(large_files)}개")
-                        for attr_name, file_info in large_files:
-                            try:
-                                file_path = None
-                                # S3 키가 있으면 직접 사용
-                                s3_key = file_info.get('s3_key')
-                                if s3_key:
-                                    file_path = download_file_from_s3_optimized(s3_key)
-                                # S3 키가 없고 download_url이 있으면 사용
-                                elif file_info.get('download_url'):
-                                    file_path = download_file_from_url_optimized(file_info['download_url'])
-                                
-                                if file_path and os.path.exists(file_path):
-                                    file_text = extract_text_from_file_optimized(file_path)
-                                    file_hash = calculate_file_hash_fast(file_path)
-                                    if file_text:
-                                        file_texts.append(f"[{attr_name} - {file_info.get('original_filename', '파일')}]:\n{file_text}")
-                                    # 임시 파일 정리
-                                    try:
-                                        os.remove(file_path)
-                                    except:
-                                        pass
-                            except Exception as e:
-                                logger.error(f"큰 파일 텍스트 추출 실패: {e}")
-                    
-                    # 캐시 업데이트
-                    cache_data = {
-                        'row_data': row_data,
-                        'file_texts': file_texts,
-                        'timestamp': current_time
-                    }
-                    request.session[cache_key] = cache_data
-                    request.session.modified = True
-                    
-                    print(f"[AI 캐시 업데이트] row_id={row_id}")
-                    print(f"  업데이트된 row_data: {json.dumps(row_data, ensure_ascii=False, indent=2)}")
-                    for file_text in file_texts:
-                        print(f"  업데이트된 file_text: {file_text}")
+                    # 최적화된 파일 처리 전략 적용
+                    if all_files:
+                        print(f"최적화된 파일 처리 시작: {len(all_files)}개 파일")
+                        
+                        # 파일 크기별 분류
+                        file_groups = optimize_file_processing_strategy(all_files)
+                        
+                        # 우선순위 기반 처리
+                        processed_file_texts = process_files_with_priority(file_groups, "optimized_files")
+                        file_texts.extend(processed_file_texts)
+                        
+                        print(f"파일 처리 완료: {len(processed_file_texts)}개 파일 텍스트 추출")
                     
                 except Row.DoesNotExist:
                     return JsonResponse({'success': False, 'error': '해당 행을 찾을 수 없습니다'})
@@ -1158,28 +1140,18 @@ def ai_chat(request):
                     for file_text in file_texts:
                         print(f"  최종 file_text: {file_text}")
         
-        # OpenAI API 호출
-        headers = {
-            'Authorization': f'Bearer {OPEN_AI_API_KEY}',
-            'Content-Type': 'application/json'
-        }
+        # OpenAI API 호출 - 최적화된 방식으로 교체
+        # 컨텍스트 최적화
+        optimized_context = optimize_context_for_openai(row_data, file_texts)
         
         # 오늘 날짜 정보 추가
         from datetime import datetime, timezone
         today_str = datetime.now(timezone.utc).astimezone().strftime('%Y-%m-%d %H:%M:%S %Z')
         
-        # 컨텍스트 정보 구성
+        # 최적화된 컨텍스트 정보 구성
         context_info = f"\n\n[오늘 날짜(현실 기준)]: {today_str}\n\n"
-        if row_data:
-            context_info += f"\n[현재 행 데이터]:\n"
-            for key, value in row_data.items():
-                if value:
-                    context_info += f"- {key}: {value}\n"
-        
-        if file_texts:
-            context_info += f"\n[첨부 파일 내용]:\n"
-            for file_text in file_texts:
-                context_info += f"{file_text}\n"
+        if optimized_context:
+            context_info += f"\n{optimized_context}\n"
         
         # 영업 관련 컨텍스트를 포함한 프롬프트 생성
         system_prompt = """당신은 영업 전문가 AI 어시스턴트입니다. 
@@ -1197,42 +1169,21 @@ def ai_chat(request):
         
         user_message = f"{message}{context_info}"
         
-        # print(f'context_info: {context_info}')
+        # 최적화된 OpenAI API 호출
+        api_result = call_openai_api_optimized([
+            {'role': 'system', 'content': system_prompt},
+            {'role': 'user', 'content': user_message}
+        ])
         
-        payload = {
-            'model': 'gpt-4.1-mini',
-            'messages': [
-                {'role': 'system', 'content': system_prompt},
-                {'role': 'user', 'content': user_message}
-            ],
-            'max_tokens': 1500,
-            'temperature': 0.7
-        }
-        
-        response = requests.post(
-            'https://api.openai.com/v1/chat/completions',
-            headers=headers,
-            json=payload,
-            timeout=120  # 타임아웃을 2분으로 증가
-        )
-        
-        if response.status_code == 200:
-            result = response.json()
-            ai_response = result['choices'][0]['message']['content'].strip()
+        if api_result['success']:
             return JsonResponse({
                 'success': True,
-                'response': ai_response,
-                'cache_updated': cache_updated
+                'response': api_result['response'],
+                'cache_updated': cache_updated,
+                'processing_time': api_result.get('time', 0)
             })
         else:
-            error_msg = f"OpenAI API 오류: {response.status_code}"
-            try:
-                error_data = response.json()
-                if 'error' in error_data:
-                    error_msg = f"OpenAI API 오류: {error_data['error'].get('message', '알 수 없는 오류')}"
-            except:
-                pass
-            return JsonResponse({'success': False, 'error': error_msg})
+            return JsonResponse({'success': False, 'error': api_result['error']})
             
     except requests.exceptions.Timeout:
         return JsonResponse({'success': False, 'error': '요청 시간이 초과되었습니다. 다시 시도해주세요.'})
@@ -1362,23 +1313,79 @@ def performance_monitoring(request):
             # 현재 캐시 상태
             cache_stats = get_cache_stats()
             
+            # 성능 통계
+            performance_stats = get_performance_stats()
+            
             # 시스템 정보
             import psutil
             system_info = {
                 'cpu_percent': psutil.cpu_percent(interval=1),
                 'memory_percent': psutil.virtual_memory().percent,
-                'disk_usage': psutil.disk_usage('/').percent
+                'disk_usage': psutil.disk_usage('/').percent,
+                'memory_available_mb': psutil.virtual_memory().available / (1024 * 1024)
             }
+            
+            # 최적화 권장사항
+            optimization_suggestions = []
+            
+            # 메모리 사용량 체크
+            if system_info['memory_percent'] > 80:
+                optimization_suggestions.append("메모리 사용량이 높습니다. 캐시를 정리하는 것을 권장합니다.")
+            
+            # API 응답 시간 체크
+            if performance_stats.get('avg_api_time', 0) > 10:
+                optimization_suggestions.append("OpenAI API 응답 시간이 느립니다. 네트워크 상태를 확인하세요.")
+            
+            # 캐시 히트율 체크
+            cache_hit_rate = len(file_text_cache) / max(len(file_text_cache) + 1, 1)
+            if cache_hit_rate < 0.3:
+                optimization_suggestions.append("캐시 히트율이 낮습니다. 캐시 전략을 재검토하세요.")
             
             return JsonResponse({
                 'success': True,
                 'cache_stats': cache_stats,
-                'system_info': system_info
+                'performance_stats': performance_stats,
+                'system_info': system_info,
+                'optimization_suggestions': optimization_suggestions,
+                'file_processing_pool_size': file_processing_pool._max_workers,
+                'openai_pool_size': openai_pool._max_workers
             })
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)})
+    elif request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            action = data.get('action')
+            
+            if action == 'optimize_memory':
+                success = optimize_memory_usage()
+                return JsonResponse({
+                    'success': success,
+                    'message': '메모리 최적화가 완료되었습니다.' if success else '메모리 최적화 중 오류가 발생했습니다.'
+                })
+            elif action == 'preload_files':
+                success = preload_common_files()
+                return JsonResponse({
+                    'success': success,
+                    'message': '파일 미리 로드가 완료되었습니다.' if success else '파일 미리 로드 중 오류가 발생했습니다.'
+                })
+            elif action == 'clear_metrics':
+                performance_metrics.clear()
+                performance_metrics.update({
+                    'file_processing_times': [],
+                    'openai_api_times': [],
+                    'cache_hit_rates': []
+                })
+                return JsonResponse({
+                    'success': True,
+                    'message': '성능 메트릭이 초기화되었습니다.'
+                })
+            else:
+                return JsonResponse({'success': False, 'error': '지원하지 않는 액션입니다.'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
     else:
-        return JsonResponse({'success': False, 'error': 'GET 요청만 지원합니다'})
+        return JsonResponse({'success': False, 'error': 'GET 또는 POST 요청만 지원합니다'})
 
 def extract_text_from_file(file_path):
     """파일에서 텍스트 추출 (update_bizinfo.py 참고) - PDF 표 우선 추출, 텍스트 부족시 OCR 자동 fallback"""
@@ -1984,3 +1991,234 @@ def schedule_cache_cleanup():
 
 # 캐시 정리 스케줄러 시작
 schedule_cache_cleanup()
+
+def get_file_size_category(file_size):
+    """파일 크기에 따른 처리 카테고리 결정"""
+    if file_size <= FILE_SIZE_THRESHOLDS['small']:
+        return 'small'
+    elif file_size <= FILE_SIZE_THRESHOLDS['medium']:
+        return 'medium'
+    else:
+        return 'large'
+
+def optimize_file_processing_strategy(files):
+    """파일 크기별 최적화된 처리 전략"""
+    small_files = []
+    medium_files = []
+    large_files = []
+    
+    for file_info in files:
+        file_size = file_info.get('file_size', 0)
+        category = get_file_size_category(file_size)
+        
+        if category == 'small':
+            small_files.append(file_info)
+        elif category == 'medium':
+            medium_files.append(file_info)
+        else:
+            large_files.append(file_info)
+    
+    return {
+        'small': small_files,
+        'medium': medium_files,
+        'large': large_files
+    }
+
+def process_files_with_priority(file_groups, field_name):
+    """우선순위 기반 파일 처리"""
+    results = []
+    
+    # 1. 작은 파일들을 먼저 병렬 처리 (빠른 응답)
+    if file_groups['small']:
+        print(f"작은 파일 병렬 처리: {len(file_groups['small'])}개")
+        small_results = process_files_parallel(file_groups['small'], field_name)
+        results.extend(small_results)
+    
+    # 2. 중간 크기 파일들을 병렬 처리
+    if file_groups['medium']:
+        print(f"중간 파일 병렬 처리: {len(file_groups['medium'])}개")
+        medium_results = process_files_parallel(file_groups['medium'], field_name)
+        results.extend(medium_results)
+    
+    # 3. 큰 파일들을 순차 처리 (메모리 효율성)
+    if file_groups['large']:
+        print(f"큰 파일 순차 처리: {len(file_groups['large'])}개")
+        for file_info in file_groups['large']:
+            try:
+                file_text, file_hash = extract_file_text(field_name, file_info)
+                if file_text:
+                    results.append(file_text)
+            except Exception as e:
+                logger.error(f"큰 파일 처리 실패: {e}")
+    
+    return results
+
+def call_openai_api_optimized(messages, retry_count=0):
+    """최적화된 OpenAI API 호출 (재시도 로직 포함)"""
+    start_time = time.time()
+    
+    try:
+        headers = {
+            'Authorization': f'Bearer {OPEN_AI_API_KEY}',
+            'Content-Type': 'application/json'
+        }
+        
+        payload = {
+            'model': 'gpt-4o-mini',  # 더 빠른 모델 사용
+            'messages': messages,
+            'max_tokens': 1500,
+            'temperature': 0.7,
+            'stream': False  # 스트리밍 비활성화로 응답 속도 향상
+        }
+        
+        response = requests.post(
+            'https://api.openai.com/v1/chat/completions',
+            headers=headers,
+            json=payload,
+            timeout=OPENAI_API_CONFIG['timeout']
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            ai_response = result['choices'][0]['message']['content'].strip()
+            
+            # 성능 메트릭 기록
+            execution_time = time.time() - start_time
+            performance_metrics['openai_api_times'].append(execution_time)
+            
+            return {'success': True, 'response': ai_response, 'time': execution_time}
+        else:
+            error_msg = f"OpenAI API 오류: {response.status_code}"
+            try:
+                error_data = response.json()
+                if 'error' in error_data:
+                    error_msg = f"OpenAI API 오류: {error_data['error'].get('message', '알 수 없는 오류')}"
+            except:
+                pass
+            
+            # 재시도 로직
+            if retry_count < OPENAI_API_CONFIG['max_retries']:
+                time.sleep(OPENAI_API_CONFIG['retry_delay'] * (retry_count + 1))
+                return call_openai_api_optimized(messages, retry_count + 1)
+            
+            return {'success': False, 'error': error_msg}
+            
+    except requests.exceptions.Timeout:
+        if retry_count < OPENAI_API_CONFIG['max_retries']:
+            time.sleep(OPENAI_API_CONFIG['retry_delay'] * (retry_count + 1))
+            return call_openai_api_optimized(messages, retry_count + 1)
+        return {'success': False, 'error': '요청 시간이 초과되었습니다.'}
+    except Exception as e:
+        return {'success': False, 'error': f'API 호출 실패: {str(e)}'}
+
+def optimize_context_for_openai(row_data, file_texts, max_context_length=8000):
+    """OpenAI API용 컨텍스트 최적화"""
+    context_parts = []
+    
+    # 행 데이터 최적화
+    if row_data:
+        row_summary = []
+        for key, value in row_data.items():
+            if value and len(str(value)) < 200:  # 너무 긴 값은 제외
+                row_summary.append(f"{key}: {value}")
+        
+        if row_summary:
+            context_parts.append("행 데이터:\n" + "\n".join(row_summary[:20]))  # 최대 20개 항목
+    
+    # 파일 텍스트 최적화
+    if file_texts:
+        file_summaries = []
+        total_length = 0
+        
+        for file_text in file_texts:
+            # 파일 텍스트 길이 제한
+            if len(file_text) > 2000:
+                file_text = file_text[:2000] + "...[파일이 너무 커서 일부만 표시]"
+            
+            if total_length + len(file_text) < max_context_length:
+                file_summaries.append(file_text)
+                total_length += len(file_text)
+            else:
+                break
+        
+        if file_summaries:
+            context_parts.append("첨부 파일:\n" + "\n".join(file_summaries))
+    
+    return "\n\n".join(context_parts)
+
+def batch_process_files(files, batch_size=OPENAI_API_CONFIG['batch_size']):
+    """파일들을 배치로 나누어 처리"""
+    batches = []
+    for i in range(0, len(files), batch_size):
+        batches.append(files[i:i + batch_size])
+    return batches
+
+def get_performance_stats():
+    """성능 통계 정보 반환"""
+    try:
+        if not performance_metrics['openai_api_times']:
+            return {}
+        
+        api_times = performance_metrics['openai_api_times']
+        return {
+            'avg_api_time': sum(api_times) / len(api_times),
+            'min_api_time': min(api_times),
+            'max_api_time': max(api_times),
+            'total_api_calls': len(api_times),
+            'recent_api_calls': len(api_times[-10:]) if len(api_times) >= 10 else len(api_times)
+        }
+    except Exception as e:
+        logger.error(f"성능 통계 조회 실패: {e}")
+        return {}
+
+def optimize_memory_usage():
+    """메모리 사용량 최적화"""
+    try:
+        # 메모리 캐시 크기 제한
+        if len(file_text_cache) > MAX_CACHE_SIZE:
+            # 가장 오래된 항목들 제거
+            oldest_keys = sorted(file_text_cache.keys())[:MAX_CACHE_SIZE // 4]
+            for key in oldest_keys:
+                del file_text_cache[key]
+            logger.info(f"메모리 캐시 정리: {len(oldest_keys)}개 항목 제거")
+        
+        # 성능 메트릭 크기 제한
+        for metric_name, metric_data in performance_metrics.items():
+            if len(metric_data) > 1000:  # 최대 1000개 항목만 유지
+                performance_metrics[metric_name] = metric_data[-1000:]
+        
+        return True
+    except Exception as e:
+        logger.error(f"메모리 최적화 실패: {e}")
+        return False
+
+def preload_common_files():
+    """자주 사용되는 파일들을 미리 캐시에 로드"""
+    try:
+        # 자주 사용되는 파일 패턴들
+        common_patterns = [
+            '*.pdf',
+            '*.docx',
+            '*.txt'
+        ]
+        
+        # 임시 디렉토리에서 자주 사용되는 파일들 찾기
+        temp_dir = tempfile.gettempdir()
+        for pattern in common_patterns:
+            import glob
+            files = glob.glob(os.path.join(temp_dir, pattern))
+            for file_path in files[:5]:  # 최대 5개씩만
+                try:
+                    if os.path.exists(file_path):
+                        file_hash = calculate_file_hash_fast(file_path)
+                        if file_hash and file_hash not in file_text_cache:
+                            # 백그라운드에서 미리 로드
+                            file_processing_pool.submit(extract_text_from_file_optimized, file_path)
+                except Exception as e:
+                    logger.error(f"파일 미리 로드 실패: {e}")
+        
+        logger.info("자주 사용되는 파일 미리 로드 완료")
+        return True
+    except Exception as e:
+        logger.error(f"파일 미리 로드 실패: {e}")
+        return False

@@ -3151,27 +3151,14 @@ function uploadFile(rowId, fieldName, fileInput) {
     // AI 캐시 추적은 업로드 완료 후에만 수행하도록 수정
     // 업로드 시작 시 임시 추적 제거
 
-    const uploadNotification = document.createElement('div');
-    uploadNotification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: #007bff;
-        color: white;
-        padding: 15px 20px;
-        border-radius: 6px;
-        z-index: 1000;
-        font-size: 14px;
-    `;
-    uploadNotification.textContent = `${files.length}개 파일 업로드 중...`;
-    document.body.appendChild(uploadNotification);
+    showNotification(`${files.length}개 파일 업로드 중...`, 'info');
 
     let uploadedCount = 0;
     let failedCount = 0;
 
     function uploadNextFile(index) {
         if (index >= files.length) {
-            uploadNotification.remove();
+            showNotification(`${uploadedCount}개 파일이 성공적으로 업로드되었습니다.`, 'success');
 
             if (failedCount === 0) {
                 showNotification(`${uploadedCount}개 파일이 성공적으로 업로드되었습니다.`, 'success');
@@ -3207,7 +3194,7 @@ function uploadFile(rowId, fieldName, fileInput) {
         formData.append('row_id', rowId);
         formData.append('field_name', fieldName);
 
-        uploadNotification.textContent = `${index + 1}/${files.length}개 파일 업로드 중... (${file.name})`;
+        showNotification(`${index + 1}/${files.length}개 파일 업로드 중... (${file.name})`, 'info');
 
         fetch('/sales/upload_file/', {
             method: 'POST',
@@ -3262,7 +3249,6 @@ function uploadFile(rowId, fieldName, fileInput) {
                     }
                 }
 
-                alert('파일 업로드 완료!\n파일명: ' + file.name);
 
                 fetch('/sales/get_row_details/' + rowId + '/')
                     .then(r => r.json())
@@ -3279,9 +3265,8 @@ function uploadFile(rowId, fieldName, fileInput) {
                 refreshCalendar();
             } else {
                 failedCount++;
+                uploadNextFile(index + 1);  // ✅ 다음 파일 업로드 호출
             }
-
-            uploadNextFile(index + 1);  // ✅ 다음 파일 업로드 호출
         })
         .catch(error => {
             console.error('파일 업로드 오류:', error);

@@ -314,6 +314,11 @@ function processDropdownOptions(options, value, cell) {
           } else if (dataType === 'dropdown' || dataType === 'region' || dataType === 'region_detail') {
               // 드롭다운 필드 클릭 이벤트
               const clickHandler = function() {
+                  console.log('드롭다운 필드 클릭됨:', type, dataType);
+                  console.log('td 요소:', td);
+                  console.log('td의 data-field:', td.getAttribute('data-field'));
+                  console.log('td의 data-type:', td.getAttribute('data-type'));
+                  
                   if (td.querySelector('.dropdown-edit')) return;
                   
                   // 테이블 편집 상태 설정
@@ -323,16 +328,24 @@ function processDropdownOptions(options, value, cell) {
                   const currentSubregion = td.getAttribute('data-subregion');
                   const tr = td.parentElement;
                   
+                  console.log('클릭 핸들러 내부 - currentValue:', currentValue, 'currentSubregion:', currentSubregion);
+                  
                   if (dataType === 'region') {
                       console.log('지역 드롭다운 처리 (기존 행)');
                       const regionValue = td.parentElement.querySelector('td[data-field="지역"]');
                       const regionText = regionValue ? regionValue.innerText.trim() : '';
-                      openDropdown(td, 'region', tr.getAttribute('data-id'), currentValue, regionText);
+                      console.log('지역 텍스트:', regionText);
+                      console.log('openDropdown 함수 호출 전');
+                      openDropdown(td, 'region', tr.getAttribute('data-id'), regionText, '');
+                      console.log('openDropdown 함수 호출 후');
                   } else if (dataType === 'region_detail') {
                       console.log('상세지역 드롭다운 처리 (기존 행)');
                       const regionTd = td.parentElement.querySelector('td[data-field="지역"]');
                       const regionValue = regionTd ? regionTd.innerText.trim() : '';
+                      console.log('상세지역 - 지역 값:', regionValue);
+                      console.log('openDropdown 함수 호출 전');
                       openDropdown(td, 'region_detail', tr.getAttribute('data-id'), regionValue, currentValue);
+                      console.log('openDropdown 함수 호출 후');
                   } else {
                       console.log('일반 드롭다운 처리 (기존 행)');
                       openNewRowAttributeDropdown(td, type, currentValue, currentSubregion, tr);
@@ -1737,13 +1750,22 @@ function processDropdownOptions(options, value, cell) {
   document.addEventListener('click', function(event) {
       // 드롭다운이 열려있고, 클릭한 위치가 드롭다운 외부인 경우에만 닫기
       if (window.dropdown && !window.dropdown.contains(event.target)) {
+          // 지역/상세지역 드롭다운인 경우 보호
+          const isRegionDropdown = window.dropdown && window.dropdown.getAttribute('data-region-type');
+          
           // 드롭다운을 여는 버튼을 클릭한 경우는 제외
           const clickedElement = event.target;
           const isDropdownButton = clickedElement.classList.contains('add-btn') || 
                                    clickedElement.onclick && clickedElement.onclick.toString().includes('openDropdown');
           
           if (!isDropdownButton) {
-              closeDropdown();
+              // 지역/상세지역 드롭다운인 경우 완전히 보호
+              if (isRegionDropdown) {
+                  console.log('diary_table.js: 지역 드롭다운 감지, 전역 클릭 이벤트 무시');
+                  return; // 지역 드롭다운인 경우 아무것도 하지 않음
+              } else {
+                  closeDropdown();
+              }
           }
       }
   });

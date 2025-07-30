@@ -653,3 +653,27 @@ document.addEventListener('DOMContentLoaded', function() {
 window.restoreTableStateAfterRefresh = restoreTableStateAfterRefresh;
 window.debugTableState = debugTableState;
 window.testSortingFunctionality = testSortingFunctionality;
+
+// 리랜더링 후 정렬/필터 상태 복원 함수
+function reinitializeTableFilters() {
+  console.log('리랜더링 후 정렬/필터 상태 복원 시작');
+  
+  // 테이블 데이터 초기화
+  initializeTableData();
+  
+  // 저장된 상태 복원
+  restoreTableState();
+  
+  // 정렬 버튼 상태 업데이트
+  if (window.currentSort && window.currentSort.column && window.currentSort.direction) {
+    updateSortButtonStates(window.currentSort.column, window.currentSort.direction);
+  }
+  
+  // 필터 상태 업데이트
+  updateFilterStatus();
+  
+  console.log('리랜더링 후 정렬/필터 상태 복원 완료');
+}
+
+// 전역 함수로 노출
+window.reinitializeTableFilters = reinitializeTableFilters;

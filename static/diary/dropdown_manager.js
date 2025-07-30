@@ -6,9 +6,52 @@ let currentTriggerElement = null;
 
 function closeAllDropdowns() {
     console.log('모든 드롭다운 닫기 실행');
+    console.trace('closeAllDropdowns 호출 스택');
+    
+    // 지역/상세지역 드롭다운 보호 로직
+    const regionDropdowns = document.querySelectorAll('.dropdown-edit[data-region-type]');
+    if (regionDropdowns.length > 0) {
+        console.log('지역/상세지역 드롭다운이 열려있음, 보호 모드로 닫기');
+        console.log('현재 열린 지역 드롭다운들:', regionDropdowns);
+        // 지역 드롭다운은 즉시 닫지 않고 약간의 지연 후 닫기
+        setTimeout(() => {
+            console.log('지연 후 지역 드롭다운 닫기 실행');
+            // 전역 dropdown 변수 정리
+            if (window.dropdown && window.dropdown.parentNode) {
+                console.log('window.dropdown 제거');
+                window.dropdown.parentNode.removeChild(window.dropdown);
+                window.dropdown = null;
+            }
+            
+            // 모든 드롭다운 요소들 제거
+            document.querySelectorAll('.dropdown-edit').forEach(el => {
+                if (el.parentNode) {
+                    console.log('드롭다운 요소 제거:', el);
+                    el.parentNode.removeChild(el);
+                }
+            });
+            
+            // 모든 모달 드롭다운 제거
+            document.querySelectorAll('[id^="modal-"]').forEach(el => {
+                if (el.parentNode) {
+                    console.log('모달 드롭다운 제거:', el);
+                    el.parentNode.removeChild(el);
+                }
+            });
+            
+            // 전역 변수 초기화
+            currentOpenDropdown = null;
+            currentTriggerElement = null;
+            
+            // 전역 클릭 핸들러 제거
+            removeGlobalClickHandler();
+        }, 100);
+        return;
+    }
     
     // 전역 dropdown 변수 정리
     if (window.dropdown && window.dropdown.parentNode) {
+        console.log('window.dropdown 제거 (일반 모드)');
         window.dropdown.parentNode.removeChild(window.dropdown);
         window.dropdown = null;
     }
@@ -16,6 +59,7 @@ function closeAllDropdowns() {
     // 모든 드롭다운 요소들 제거
     document.querySelectorAll('.dropdown-edit').forEach(el => {
         if (el.parentNode) {
+            console.log('드롭다운 요소 제거 (일반 모드):', el);
             el.parentNode.removeChild(el);
         }
     });
@@ -23,6 +67,7 @@ function closeAllDropdowns() {
     // 모든 모달 드롭다운 제거
     document.querySelectorAll('[id^="modal-"]').forEach(el => {
         if (el.parentNode) {
+            console.log('모달 드롭다운 제거 (일반 모드):', el);
             el.parentNode.removeChild(el);
         }
     });
@@ -61,18 +106,51 @@ function addGlobalClickHandler(dropdown, triggerElement) {
     removeGlobalClickHandler();
     
     globalClickHandler = function(e) {
+        // 지역/상세지역 드롭다운인 경우 특별한 보호 로직 적용
+        const isRegionDropdown = dropdown && dropdown.getAttribute('data-region-type');
+        
+        console.log('전역 클릭 핸들러 실행:', {
+            target: e.target,
+            isRegionDropdown: isRegionDropdown,
+            dropdown: dropdown,
+            triggerElement: triggerElement,
+            dropdownContainsTarget: dropdown && dropdown.contains(e.target),
+            triggerContainsTarget: triggerElement && triggerElement.contains(e.target)
+        });
+        
         // 드롭다운이나 트리거 요소 내부 클릭이 아닌 경우에만 닫기
         if (dropdown && !dropdown.contains(e.target) && 
             (!triggerElement || !triggerElement.contains(e.target))) {
-            console.log('외부 클릭으로 드롭다운 닫기');
-            closeAllDropdowns();
+            
+            // 지역/상세지역 드롭다운인 경우 약간의 지연 후 닫기
+            if (isRegionDropdown) {
+                console.log('지역 드롭다운 외부 클릭 감지, 지연 후 닫기');
+                console.log('클릭된 요소:', e.target);
+                console.log('드롭다운 요소:', dropdown);
+                console.log('트리거 요소:', triggerElement);
+                
+                // 지역 드롭다운의 경우 더 긴 지연 시간 적용
+                setTimeout(() => {
+                    console.log('지연 후 지역 드롭다운 닫기 실행');
+                    closeAllDropdowns();
+                }, 500);
+            } else {
+                console.log('외부 클릭으로 드롭다운 닫기');
+                closeAllDropdowns();
+            }
+        } else {
+            console.log('드롭다운 내부 클릭이므로 닫지 않음');
         }
     };
     
-    // 약간의 지연 후 이벤트 리스너 추가 (즉시 닫히는 것을 방지)
+    // 지역/상세지역 드롭다운인 경우 더 긴 지연 시간 적용
+    const delay = dropdown && dropdown.getAttribute('data-region-type') ? 500 : 100; // 300ms에서 500ms로 증가
+    
+    console.log('전역 클릭 핸들러 등록:', {delay, isRegionDropdown: dropdown && dropdown.getAttribute('data-region-type')});
+    
     setTimeout(() => {
         document.addEventListener('mousedown', globalClickHandler);
-    }, 100);
+    }, delay);
 }
 
 function openDropdown(td, type, id, currentId, currentSubregion) {
@@ -85,9 +163,52 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
         return;
     }
     
-    // 기존 모든 드롭다운 닫기
+    // 기존 드롭다운이 열려있고 다른 셀에서 클릭한 경우, 기존 드롭다운을 먼저 닫고 새 드롭다운 생성
+    if (currentOpenDropdown && currentTriggerElement !== td) {
+        console.log('다른 셀에서 드롭다운 클릭, 기존 드롭다운 닫고 새 드롭다운 생성');
+        // 기존 드롭다운을 즉시 닫기
+        if (window.dropdown && window.dropdown.parentNode) {
+            window.dropdown.parentNode.removeChild(window.dropdown);
+            window.dropdown = null;
+        }
+        
+        // 모든 드롭다운 요소들 제거
+        document.querySelectorAll('.dropdown-edit').forEach(el => {
+            if (el.parentNode) {
+                el.parentNode.removeChild(el);
+            }
+        });
+        
+        // 모든 모달 드롭다운 제거
+        document.querySelectorAll('[id^="modal-"]').forEach(el => {
+            if (el.parentNode) {
+                el.parentNode.removeChild(el);
+            }
+        });
+        
+        // 전역 변수 초기화
+        currentOpenDropdown = null;
+        currentTriggerElement = null;
+        
+        // 전역 클릭 핸들러 제거
+        removeGlobalClickHandler();
+        
+        // 약간의 지연 후 새 드롭다운 생성 (기존 드롭다운이 완전히 제거된 후)
+        setTimeout(() => {
+            createNewDropdown(td, type, id, currentId, currentSubregion);
+        }, 50);
+        return;
+    }
+    
+    // 기존 모든 드롭다운 닫기 (첫 번째 드롭다운 생성 시)
     closeAllDropdowns();
     
+    // 새 드롭다운 생성
+    createNewDropdown(td, type, id, currentId, currentSubregion);
+}
+
+// 새 드롭다운 생성 함수
+function createNewDropdown(td, type, id, currentId, currentSubregion) {
     // 클릭된 셀의 위치 정보 가져오기
     const rect = td.getBoundingClientRect();
     const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
@@ -250,6 +371,57 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
         currentDropdown.innerHTML = html;
         document.body.appendChild(currentDropdown);
         
+        // 드롭다운이 성공적으로 추가되었는지 확인
+        console.log('지역 드롭다운 DOM에 추가됨:', currentDropdown);
+        
+        // MutationObserver를 사용하여 드롭다운 제거 감지
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'childList') {
+                    mutation.removedNodes.forEach((node) => {
+                        if (node === currentDropdown) {
+                            console.error('지역 드롭다운이 MutationObserver에 의해 제거됨:', {
+                                mutation: mutation,
+                                target: mutation.target,
+                                addedNodes: mutation.addedNodes,
+                                removedNodes: mutation.removedNodes
+                            });
+                        }
+                    });
+                }
+            });
+        });
+        
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+        
+        // 지역 드롭다운 보호를 위한 추가 이벤트 리스너
+        const protectDropdown = (e) => {
+            if (e.target === currentDropdown || currentDropdown.contains(e.target)) {
+                console.log('지역 드롭다운 내부 클릭, 보호됨');
+                e.stopPropagation();
+                return false;
+            }
+        };
+        
+        // 이벤트 캡처링 단계에서 보호
+        document.addEventListener('mousedown', protectDropdown, true);
+        
+        // 드롭다운이 즉시 닫히는 것을 방지하기 위한 추가 보호 로직
+        setTimeout(() => {
+            if (currentDropdown && currentDropdown.parentNode) {
+                console.log('지역 드롭다운이 성공적으로 유지됨');
+                observer.disconnect(); // 성공적으로 유지되면 observer 해제
+                document.removeEventListener('mousedown', protectDropdown, true); // 보호 리스너 제거
+            } else {
+                console.error('지역 드롭다운이 예상치 못하게 제거됨');
+                observer.disconnect(); // 제거되면 observer 해제
+                document.removeEventListener('mousedown', protectDropdown, true); // 보호 리스너 제거
+            }
+        }, 500);
+        
         // 지역 선택 이벤트 리스너
         currentDropdown.querySelectorAll('.dropdown-item').forEach(function(item) {
             item.addEventListener('click', function(e) {
@@ -258,18 +430,18 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                 
                 // UI 업데이트
                 if (td) { 
-                    td.innerHTML = `<div class="dropdown-pill" style="background:#e3f2fd; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">${selectedRegion}</div>`; 
+                    td.innerHTML = selectedRegion; 
                     td.setAttribute('data-value', selectedRegion); 
                 }
                 
                 // 서버 업데이트
                 if (id && id.startsWith('temp_')) {
-                    saveNewRowField(td.parentElement, 'region', selectedRegion);
+                    saveNewRowField(td.parentElement, '지역', selectedRegion);
                 } else {
                     fetch('/sales/update_row_field/', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                        body: 'id='+id+'&field=region&value='+encodeURIComponent(selectedRegion)
+                        body: 'id='+id+'&field=지역&value='+encodeURIComponent(selectedRegion)
                     })
                     .then(response => response.json())
                     .then(data => {
@@ -277,11 +449,11 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                             console.log('지역 업데이트 성공');
                             // 종속된 행들 찾아서 업데이트
                             if (typeof updateDependentRows === 'function') {
-                                updateDependentRows(id, 'region', selectedRegion);
+                                updateDependentRows(id, '지역', selectedRegion);
                             }
                             // 실시간 동기화
                             if (typeof syncTableAndKanban === 'function') {
-                                syncTableAndKanban('region');
+                                syncTableAndKanban('지역');
                             }
                         } else {
                             throw new Error(data.error || '업데이트 실패');
@@ -313,7 +485,36 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
         console.log('상세지역 드롭다운 처리');
         // 상세지역 드롭다운
         const currentRegion = currentId || '서울';
+        
+        // getSubregions 함수가 정의되지 않은 경우를 대비한 임시 함수
+        if (typeof getSubregions === 'undefined') {
+            window.getSubregions = function(region) {
+                console.log('getSubregions 함수가 정의되지 않음, 기본값 반환');
+                const defaultSubregions = {
+                    '서울': ['강남구', '강동구', '강북구', '강서구', '관악구', '광진구', '구로구', '금천구', '노원구', '도봉구', '동대문구', '동작구', '마포구', '서대문구', '서초구', '성동구', '성북구', '송파구', '양천구', '영등포구', '용산구', '은평구', '종로구', '중구', '중랑구'],
+                    '경기': ['수원시', '성남시', '의정부시', '안양시', '부천시', '광명시', '평택시', '동두천시', '안산시', '고양시', '과천시', '구리시', '남양주시', '오산시', '시흥시', '군포시', '의왕시', '하남시', '용인시', '파주시', '이천시', '안성시', '김포시', '화성시', '광주시', '여주시', '양평군', '고양군', '연천군', '가평군', '포천군'],
+                    '인천': ['중구', '동구', '미추홀구', '연수구', '남동구', '부평구', '계양구', '서구', '강화군', '옹진군'],
+                    '대구': ['중구', '동구', '서구', '남구', '북구', '수성구', '달서구', '달성군'],
+                    '경북': ['포항시', '경주시', '김천시', '안동시', '구미시', '영주시', '영천시', '상주시', '문경시', '경산시', '군위군', '의성군', '청송군', '영양군', '영덕군', '청도군', '고령군', '성주군', '칠곡군', '예천군', '봉화군', '울진군', '울릉군'],
+                    '경남': ['창원시', '진주시', '통영시', '사천시', '김해시', '밀양시', '거제시', '양산시', '의령군', '함안군', '창녕군', '고성군', '남해군', '하동군', '산청군', '함양군', '거창군', '합천군'],
+                    '부산': ['중구', '서구', '동구', '영도구', '부산진구', '동래구', '남구', '북구', '해운대구', '사하구', '금정구', '강서구', '연제구', '수영구', '사상구', '기장군'],
+                    '광주': ['동구', '서구', '남구', '북구', '광산구'],
+                    '대전': ['동구', '중구', '서구', '유성구', '대덕구'],
+                    '울산': ['중구', '남구', '동구', '북구', '울주군'],
+                    '세종': ['세종특별자치시'],
+                    '강원': ['춘천시', '원주시', '강릉시', '동해시', '태백시', '속초시', '삼척시', '홍천군', '횡성군', '영월군', '평창군', '정선군', '철원군', '화천군', '양구군', '인제군', '고성군', '양양군'],
+                    '충북': ['청주시', '충주시', '제천시', '보은군', '옥천군', '영동군', '증평군', '진천군', '괴산군', '음성군', '단양군'],
+                    '충남': ['천안시', '공주시', '보령시', '아산시', '서산시', '논산시', '계룡시', '당진시', '금산군', '부여군', '서천군', '청양군', '홍성군', '예산군', '태안군'],
+                    '전북': ['전주시', '군산시', '익산시', '정읍시', '남원시', '김제시', '완주군', '진안군', '무주군', '장수군', '임실군', '순창군', '고창군', '부안군'],
+                    '전남': ['목포시', '여수시', '순천시', '나주시', '광양시', '담양군', '곡성군', '구례군', '고흥군', '보성군', '화순군', '장흥군', '강진군', '해남군', '영암군', '무안군', '함평군', '영광군', '장성군', '완도군', '진도군', '신안군']
+                };
+                return defaultSubregions[region] || ['기타'];
+            };
+        }
+        
         const subregions = getSubregions(currentRegion);
+        console.log('상세지역 옵션 로드됨:', {currentRegion, subregions});
+        
         let selectedSubregion = currentSubregion || '';
         
         let html = '';
@@ -344,6 +545,57 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
         currentDropdown.innerHTML = html;
         document.body.appendChild(currentDropdown);
         
+        // 드롭다운이 성공적으로 추가되었는지 확인
+        console.log('상세지역 드롭다운 DOM에 추가됨:', currentDropdown);
+        
+        // MutationObserver를 사용하여 드롭다운 제거 감지
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'childList') {
+                    mutation.removedNodes.forEach((node) => {
+                        if (node === currentDropdown) {
+                            console.error('상세지역 드롭다운이 MutationObserver에 의해 제거됨:', {
+                                mutation: mutation,
+                                target: mutation.target,
+                                addedNodes: mutation.addedNodes,
+                                removedNodes: mutation.removedNodes
+                            });
+                        }
+                    });
+                }
+            });
+        });
+        
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+        
+        // 지역 드롭다운 보호를 위한 추가 이벤트 리스너
+        const protectDropdown = (e) => {
+            if (e.target === currentDropdown || currentDropdown.contains(e.target)) {
+                console.log('상세지역 드롭다운 내부 클릭, 보호됨');
+                e.stopPropagation();
+                return false;
+            }
+        };
+        
+        // 이벤트 캡처링 단계에서 보호
+        document.addEventListener('mousedown', protectDropdown, true);
+        
+        // 드롭다운이 즉시 닫히는 것을 방지하기 위한 추가 보호 로직
+        setTimeout(() => {
+            if (currentDropdown && currentDropdown.parentNode) {
+                console.log('상세지역 드롭다운이 성공적으로 유지됨');
+                observer.disconnect(); // 성공적으로 유지되면 observer 해제
+                document.removeEventListener('mousedown', protectDropdown, true); // 보호 리스너 제거
+            } else {
+                console.error('상세지역 드롭다운이 예상치 못하게 제거됨');
+                observer.disconnect(); // 제거되면 observer 해제
+                document.removeEventListener('mousedown', protectDropdown, true); // 보호 리스너 제거
+            }
+        }, 500);
+        
         // 상세지역 선택 이벤트 리스너
         currentDropdown.querySelectorAll('.dropdown-item').forEach(function(item) {
             item.addEventListener('click', function(e) {
@@ -352,18 +604,18 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                 
                 // UI 업데이트
                 if (td) { 
-                    td.innerHTML = `<div class="dropdown-pill" style="background:#e8f5e8; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">${selectedSubregion}</div>`; 
+                    td.innerHTML = selectedSubregion; 
                     td.setAttribute('data-value', selectedSubregion); 
                 }
                 
                 // 서버 업데이트
                 if (id && id.startsWith('temp_')) {
-                    saveNewRowField(td.parentElement, 'region_detail', selectedSubregion);
+                    saveNewRowField(td.parentElement, '상세지역', selectedSubregion);
                 } else {
                     fetch('/sales/update_row_field/', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                        body: 'id='+id+'&field=region_detail&value='+encodeURIComponent(selectedSubregion)
+                        body: 'id='+id+'&field=상세지역&value='+encodeURIComponent(selectedSubregion)
                     })
                     .then(response => response.json())
                     .then(data => {
@@ -371,11 +623,11 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
                             console.log('상세지역 업데이트 성공');
                             // 종속된 행들 찾아서 업데이트
                             if (typeof updateDependentRows === 'function') {
-                                updateDependentRows(id, 'region_detail', selectedSubregion);
+                                updateDependentRows(id, '상세지역', selectedSubregion);
                             }
                             // 실시간 동기화
                             if (typeof syncTableAndKanban === 'function') {
-                                syncTableAndKanban('region_detail');
+                                syncTableAndKanban('상세지역');
                             }
                         } else {
                             throw new Error(data.error || '업데이트 실패');
@@ -436,415 +688,10 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
         // 지역/상세지역 옵션 렌더링
         renderDropdownOptions(options, type, td, currentDropdown);
     }
-  }
-  
-  
-  // === 드롭다운 모달 이벤트 바인딩 함수 추가 ===
-  function bindDropdownModalEvents(dropdown, fieldType, options) {
-    console.log('드롭다운 모달 이벤트 바인딩 시작:', fieldType);
-    
-    // 새 옵션 추가 기능
-    const addBtn = dropdown.querySelector('.add-btn');
-    const addInput = dropdown.querySelector('input[placeholder="새 옵션 추가"]');
-    
-    if (addBtn && addInput) {
-        addBtn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            const newOptionName = addInput.value.trim();
-            if (!newOptionName) {
-                alert('옵션명을 입력해주세요.');
-                return;
-            }
-            
-            // 새 옵션 추가 API 호출
-            fetch('/sales/dropdown_options/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'X-CSRFToken': getCsrfToken()
-                },
-                body: `field=${encodeURIComponent(fieldType)}&name=${encodeURIComponent(newOptionName)}`
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    console.log('새 옵션 추가 성공:', data);
-                    addInput.value = '';
-                    
-                    // 드롭다운 새로고침
-                    const td = document.querySelector(`td[data-field="${fieldType}"]`);
-                    if (td) {
-                        openDropdown(td, fieldType, td.parentElement.getAttribute('data-id'), td.getAttribute('data-value'));
-                    }
-                    
-                    // 실시간 동기화
-                    syncTableAndKanban(fieldType);
-                    
-                    // 칸반보드 리렌더링
-                    if (window.currentKanbanAttribute && window.currentKanbanAttribute === fieldType) {
-                        updateKanbanBoard(fieldType);
-                    }
-                    
-                    // 상태 속성인 경우 상태 탭 새로고침
-                    if (window.statusAttributeName && fieldType === window.statusAttributeName) {
-                        console.log('상태 속성 옵션 추가됨, 상태 탭 새로고침 시작');
-                        // 상태 탭 새로고침 함수 호출
-                        if (typeof refreshStatusTabs === 'function') {
-                            setTimeout(() => {
-                                refreshStatusTabs();
-                            }, 100);
-                        }
-                    }
-                } else {
-                    alert('옵션 추가 실패: ' + (data.error || ''));
-                }
-            })
-            .catch(error => {
-                console.error('옵션 추가 실패:', error);
-                alert('옵션 추가 중 오류가 발생했습니다: ' + error.message);
-            });
-        });
-        
-        // Enter 키로 추가
-        addInput.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') {
-                addBtn.click();
-            }
-        });
-    }
-    
-    // 색상 변경 기능
-    dropdown.querySelectorAll('input[data-color-edit]').forEach(function(colorInput) {
-        // 색상 변경 이벤트 (색상 선택 완료 시)
-        colorInput.addEventListener('change', function(e) {
-            e.stopPropagation();
-            e.preventDefault();
-            const optionId = this.getAttribute('data-color-edit');
-            const newColor = this.value;
-            
-            fetch(`/sales/dropdown_options/?field=${encodeURIComponent(fieldType)}&id=${optionId}&color=${encodeURIComponent(newColor)}`, {
-                method: 'PUT',
-                headers: {
-                    'X-CSRFToken': getCsrfToken()
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    console.log('색상 변경 성공:', data);
-                    
-                    // 드롭다운 내부 색상 즉시 업데이트
-                    const optionContainer = this.closest('.dropdown-option-container');
-                    const dropdownItem = optionContainer.querySelector('.dropdown-item');
-                    if (dropdownItem) {
-                        dropdownItem.style.background = hexToRgba(newColor, 0.18);
-                    }
-                    
-                    // 테이블과 칸반보드 동기화
-                    syncTableAndKanban(fieldType);
-                    
-                    // 색상 변경 후 추가 동기화 처리
-                    setTimeout(() => {
-                        // 테이블 셀들의 색상 정보를 즉시 업데이트
-                        const cells = document.querySelectorAll(`td[data-field="${fieldType}"]`);
-                        cells.forEach(cell => {
-                            const currentValue = cell.getAttribute('data-value');
-                            if (currentValue) {
-                                try {
-                                    // JSON 형태로 저장된 다중선택 값인지 확인
-                                    const parsed = JSON.parse(currentValue);
-                                    if (Array.isArray(parsed) && parsed.length > 0) {
-                                        // 다중선택 값 처리 - 해당 옵션 ID가 포함된 경우 색상 업데이트
-                                        if (parsed.includes(Number(optionId))) {
-                                            const pill = cell.querySelector('.dropdown-pill');
-                                            if (pill) {
-                                                pill.style.background = hexToRgba(newColor, 0.18);
-                                            }
-                                        }
-                                    } else {
-                                        // 단일 선택 값 처리
-                                        if (Number(currentValue) === Number(optionId)) {
-                                            const pill = cell.querySelector('.dropdown-pill');
-                                            if (pill) {
-                                                pill.style.background = hexToRgba(newColor, 0.18);
-                                            }
-                                        }
-                                    }
-                                } catch (e) {
-                                    // JSON 파싱 실패 시 단일 값으로 처리
-                                    if (Number(currentValue) === Number(optionId)) {
-                                        const pill = cell.querySelector('.dropdown-pill');
-                                        if (pill) {
-                                            pill.style.background = hexToRgba(newColor, 0.18);
-                                        }
-                                    }
-                                }
-                            }
-                        });
-                    }, 50);
-                    
-                    // 상태 속성인 경우에만 상태 탭 새로고침 (view_select 문제 방지)
-                    if (window.statusAttributeName && fieldType === window.statusAttributeName) {
-                        console.log('상태 속성 색상 변경됨, 상태 탭 새로고침 시작');
-                        // 상태 탭 새로고침 함수 호출 - 지연 시간을 늘려서 동기화 완료 후 실행
-                        if (typeof refreshStatusTabs === 'function') {
-                            // 색상 변경 후 상태 탭 새로고침을 더 안전하게 처리
-                            setTimeout(() => {
-                                try {
-                                    // 상태 탭 새로고침 전에 현재 설정 백업
-                                    const currentSettings = {};
-                                    if (window.allAttributes) {
-                                        window.allAttributes.forEach(attr => {
-                                            if (attr.view_select) {
-                                                currentSettings[attr.id] = { ...attr.view_select };
-                                            }
-                                        });
-                                    }
-                                    
-                                    refreshStatusTabs();
-                                    console.log('상태 탭 새로고침 완료');
-                                    
-                                    // 새로고침 후 설정 복원 확인
-                                    setTimeout(() => {
-                                        if (window.allAttributes && Object.keys(currentSettings).length > 0) {
-                                            window.allAttributes.forEach(attr => {
-                                                if (currentSettings[attr.id]) {
-                                                    attr.view_select = { ...currentSettings[attr.id] };
-                                                }
-                                            });
-                                            console.log('상태 탭 새로고침 후 설정 복원 완료');
-                                        }
-                                    }, 100);
-                                } catch (error) {
-                                    console.error('상태 탭 새로고침 중 오류:', error);
-                                }
-                            }, 1000); // 더 긴 지연 시간으로 안정성 확보
-                        }
-                    }
-                } else {
-                    alert('색상 변경 실패: ' + (data.error || ''));
-                }
-            })
-            .catch(error => {
-                console.error('색상 변경 실패:', error);
-                alert('색상 변경 중 오류가 발생했습니다: ' + error.message);
-            });
-        });
-        
-        // 실시간 색상 변경 이벤트 (색상 선택 중)
-        colorInput.addEventListener('input', function(e) {
-            e.stopPropagation();
-            const optionId = this.getAttribute('data-color-edit');
-            const newColor = this.value;
-            
-            // 드롭다운 내부 색상 실시간 업데이트
-            const optionContainer = this.closest('.dropdown-option-container');
-            const dropdownItem = optionContainer.querySelector('.dropdown-item');
-            if (dropdownItem) {
-                dropdownItem.style.background = hexToRgba(newColor, 0.18);
-            }
-            
-            // 테이블 셀들의 색상 정보를 실시간으로 업데이트
-            const cells = document.querySelectorAll(`td[data-field="${fieldType}"]`);
-            cells.forEach(cell => {
-                const currentValue = cell.getAttribute('data-value');
-                if (currentValue) {
-                    try {
-                        // JSON 형태로 저장된 다중선택 값인지 확인
-                        const parsed = JSON.parse(currentValue);
-                        if (Array.isArray(parsed) && parsed.length > 0) {
-                            // 다중선택 값 처리 - 해당 옵션 ID가 포함된 경우 색상 업데이트
-                            if (parsed.includes(Number(optionId))) {
-                                const pill = cell.querySelector('.dropdown-pill');
-                                if (pill) {
-                                    pill.style.background = hexToRgba(newColor, 0.18);
-                                }
-                            }
-                        } else {
-                            // 단일 선택 값 처리
-                            if (Number(currentValue) === Number(optionId)) {
-                                const pill = cell.querySelector('.dropdown-pill');
-                                if (pill) {
-                                    pill.style.background = hexToRgba(newColor, 0.18);
-                                }
-                            }
-                        }
-                    } catch (e) {
-                        // JSON 파싱 실패 시 단일 값으로 처리
-                        if (Number(currentValue) === Number(optionId)) {
-                            const pill = cell.querySelector('.dropdown-pill');
-                            if (pill) {
-                                pill.style.background = hexToRgba(newColor, 0.18);
-                            }
-                        }
-                    }
-                }
-            });
-        });
-        
-        // 컬러피커 클릭 시 드롭다운이 닫히지 않도록 추가 이벤트 처리
-        colorInput.addEventListener('click', function(e) {
-            e.stopPropagation();
-        });
-        
-        colorInput.addEventListener('mousedown', function(e) {
-            e.stopPropagation();
-        });
-    });
-    
-    // 수정 기능
-    dropdown.querySelectorAll('button[data-edit]').forEach(function(editBtn) {
-        editBtn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            const optionId = this.getAttribute('data-edit');
-            const optionContainer = this.closest('.dropdown-option-container');
-            const optionText = optionContainer.querySelector('span');
-            const oldText = optionText.textContent;
-            
-            // 입력 필드 생성
-            const input = document.createElement('input');
-            input.type = 'text';
-            input.value = oldText;
-            input.className = 'table-edit-input';
-            input.style.cssText = `
-                flex: 1;
-                padding: 4px 8px;
-                border: 1px solid #007bff;
-                border-radius: 3px;
-                font-size: 12px;
-                margin-right: 4px;
-                background: white;
-                outline: none;
-            `;
-            
-            // 기존 텍스트를 입력 필드로 교체
-            optionText.style.display = 'none';
-            optionText.parentNode.insertBefore(input, optionText);
-            
-            // 포커스와 선택을 지연시켜 DOM 업데이트 완료 후 실행
-            setTimeout(() => {
-                input.focus();
-                input.select();
-            }, 10);
-            
-            // 수정 완료 처리 함수
-            function saveEdit() {
-                const newText = input.value.trim();
-                if (!newText) {
-                    alert('옵션명을 입력해주세요.');
-                    return;
-                }
-                
-                fetch(`/sales/dropdown_options/?field=${encodeURIComponent(fieldType)}&id=${optionId}&name=${encodeURIComponent(newText)}`, {
-                    method: 'PUT',
-                    headers: {
-                        'X-CSRFToken': getCsrfToken()
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        console.log('옵션 수정 성공:', data);
-                        optionText.textContent = newText;
-                        optionText.style.display = '';
-                        input.remove();
-                        
-                        // 실시간 동기화
-                        syncTableAndKanban(fieldType);
-                        // 상태 속성인 경우 상태 탭 새로고침
-                        if (window.statusAttributeName && fieldType === window.statusAttributeName && typeof refreshStatusTabs === 'function') {
-                            setTimeout(() => { refreshStatusTabs(); }, 100);
-                        }
-                    } else {
-                        alert('옵션 수정 실패: ' + (data.error || ''));
-                        optionText.style.display = '';
-                        input.remove();
-                    }
-                })
-                .catch(error => {
-                    console.error('옵션 수정 실패:', error);
-                    alert('옵션 수정 중 오류가 발생했습니다: ' + error.message);
-                    optionText.style.display = '';
-                    input.remove();
-                });
-            }
-            
-            // 취소 처리 함수
-            function cancelEdit() {
-                optionText.style.display = '';
-                input.remove();
-            }
-            
-            input.onblur = function() {
-                setTimeout(() => {
-                    if (input.parentNode) {
-                        saveEdit();
-                    }
-                }, 100);
-            };
-            
-            input.onkeydown = function(e) {
-                if (e.key === 'Enter') {
-                    saveEdit();
-                } else if (e.key === 'Escape') {
-                    cancelEdit();
-                }
-            };
-        });
-    });
-    
-    // 삭제 기능
-    dropdown.querySelectorAll('button[data-del]').forEach(function(delBtn) {
-        delBtn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            const optionId = this.getAttribute('data-del');
-            const optionContainer = this.closest('.dropdown-option-container');
-            const optionText = optionContainer.querySelector('span').textContent;
-            if (confirm(`"${optionText}" 옵션을 삭제하시겠습니까?\n\n이 옵션을 사용하는 모든 데이터가 초기화됩니다.`)) {
-                fetch(`/sales/dropdown_options/?field=${encodeURIComponent(fieldType)}&id=${optionId}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'X-CSRFToken': getCsrfToken()
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        console.log('옵션 삭제 성공:', data);
-                        optionContainer.remove();
-                        syncTableAndKanban(fieldType);
-                        
-                        // 칸반보드 리렌더링
-                        if (window.currentKanbanAttribute && window.currentKanbanAttribute === fieldType) {
-                            updateKanbanBoard(fieldType);
-                        }
-                        
-                        // 상태 속성인 경우 상태 탭 새로고침
-                        if (window.statusAttributeName && fieldType === window.statusAttributeName) {
-                            console.log('상태 속성 옵션 삭제됨, 상태 탭 새로고침 시작');
-                            // 상태 탭 새로고침 함수 호출
-                            if (typeof refreshStatusTabs === 'function') {
-                                setTimeout(() => {
-                                    refreshStatusTabs();
-                                }, 100);
-                            }
-                        }
-                    } else {
-                        alert('옵션 삭제 실패: ' + (data.error || ''));
-                    }
-                })
-                .catch(error => {
-                    console.error('옵션 삭제 실패:', error);
-                    alert('옵션 삭제 중 오류가 발생했습니다: ' + error.message);
-                });
-            }
-        });
-    });
-  }
-  
-  
-  // 모달용 일반 드롭다운 옵션 표시 함수
-  function showModalDropdownOptions(rowId, fieldName, btn) {
+}
+
+// 모달용 일반 드롭다운 옵션 표시 함수
+function showModalDropdownOptions(rowId, fieldName, btn) {
     console.log('showModalDropdownOptions 호출됨:', rowId, fieldName, btn);
     
     // 드롭다운 옵션 가져오기
@@ -1604,9 +1451,10 @@ function openDropdown(td, type, id, currentId, currentSubregion) {
     document.body.appendChild(currentDropdown);
     
     // === 드롭다운 모달 이벤트 바인딩 추가 ===
-    if (type !== 'region' && type !== 'region_detail') {
-        bindDropdownModalEvents(currentDropdown, type, options);
-    }
+    // bindDropdownModalEvents 함수가 정의되지 않으므로 호출 제거
+    // if (type !== 'region' && type !== 'region_detail') {
+    //     bindDropdownModalEvents(currentDropdown, type, options);
+    // }
     
     // 단일선택: 옵션 클릭 시 바로 선택
     currentDropdown.querySelectorAll('.dropdown-item[data-option-id]').forEach(function(item) {

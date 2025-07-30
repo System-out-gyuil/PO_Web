@@ -67,7 +67,83 @@
       }, 100);
   }
   
-
+  // 정렬/필터 기능 재초기화
+  setTimeout(() => {
+      console.log('정렬/필터 기능 재초기화 시작');
+      
+      // 리랜더링 후 정렬/필터 상태 복원
+      if (typeof reinitializeTableFilters === 'function') {
+          reinitializeTableFilters();
+      } else {
+          // 테이블 데이터 초기화
+          if (typeof initializeTableData === 'function') {
+              initializeTableData();
+          }
+          
+          // 저장된 상태 복원
+          if (typeof restoreTableState === 'function') {
+              restoreTableState();
+          }
+      }
+      
+      // 정렬 버튼 이벤트 재바인딩
+      const sortButtons = document.querySelectorAll('.sort-btn');
+      sortButtons.forEach(btn => {
+          // 기존 이벤트 리스너 제거
+          btn.replaceWith(btn.cloneNode(true));
+      });
+      
+      // 새로운 정렬 버튼들에 이벤트 리스너 추가
+      document.querySelectorAll('.sort-btn').forEach(btn => {
+          btn.addEventListener('click', function(e) {
+              e.preventDefault();
+              const column = this.getAttribute('data-column');
+              const direction = this.getAttribute('data-direction');
+              
+              if (typeof sortTable === 'function') {
+                  sortTable(column, direction);
+              }
+          });
+      });
+      
+      // 필터 입력 필드 이벤트 재바인딩
+      const filterInputs = document.querySelectorAll('.filter-input');
+      filterInputs.forEach(input => {
+          // 기존 이벤트 리스너 제거
+          input.replaceWith(input.cloneNode(true));
+      });
+      
+      // 새로운 필터 입력 필드들에 이벤트 리스너 추가
+      document.querySelectorAll('.filter-input').forEach(input => {
+          input.addEventListener('input', function() {
+              const column = this.getAttribute('data-column');
+              const value = this.value;
+              
+              if (typeof filterTable === 'function') {
+                  filterTable(column, value);
+              }
+          });
+      });
+      
+      // 필터 초기화 버튼 이벤트 재바인딩
+      const clearFilterBtn = document.querySelector('#clearFiltersBtn');
+      if (clearFilterBtn) {
+          clearFilterBtn.replaceWith(clearFilterBtn.cloneNode(true));
+          document.querySelector('#clearFiltersBtn').addEventListener('click', function(e) {
+              e.preventDefault();
+              if (typeof clearAllFilters === 'function') {
+                  clearAllFilters();
+              }
+          });
+      }
+      
+      // 필터 상태 업데이트
+      if (typeof updateFilterStatus === 'function') {
+          updateFilterStatus();
+      }
+      
+      console.log('정렬/필터 기능 재초기화 완료');
+  }, 300);
   
   // 드롭다운 옵션 실시간 업데이트를 위한 전역 이벤트 리스너 재설정
   if (typeof setupDropdownUpdateListeners === 'function') {

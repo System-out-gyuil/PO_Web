@@ -268,6 +268,7 @@ function showNotification(message, type = 'info') {
       word-wrap: break-word;
       box-shadow: 0 4px 12px rgba(0,0,0,0.2);
       animation: slideIn 0.3s ease;
+      text-align: center;
   `;
   
   // 타입별 스타일 설정
