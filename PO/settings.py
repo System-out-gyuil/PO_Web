@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from config import Django_SECRET_KEY, MYSQL_PASSWORD, MYSQL_HOST_IP, AWS_S3_ACCESS_KEY, AWS_S3_SECRET_KEY, AWS_S3_BUCKET_NAME, AWS_S3_REGION, AWS_S3_SIGNATURE_VERSION, AWS_LOCATION
+from config import Django_SECRET_KEY, MYSQL_PASSWORD, MYSQL_HOST_IP, AWS_S3_ACCESS_KEY, AWS_S3_SECRET_KEY, AWS_S3_BUCKET_NAME, AWS_S3_REGION, AWS_S3_SIGNATURE_VERSION, AWS_LOCATION, GMAIL_APP_PASSWORD
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -14,13 +14,42 @@ CORS_ALLOW_ALL_ORIGINS = DEV_MODE
 
 # HTTPS 보안 설정
 SECURE_SSL_REDIRECT = not DEV_MODE  # 개발 모드가 아닐 때만 HTTPS 리다이렉트
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SECURE_HSTS_SECONDS = 31536000  # 1년
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_BROWSER_XSS_FILTER = True
 X_FRAME_OPTIONS = 'DENY'
+
+# 이메일 설정
+# 개발 환경에서도 실제 이메일 발송을 테스트하려면 아래 주석을 해제하세요
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'a46884334@gmail.com'
+EMAIL_HOST_PASSWORD = GMAIL_APP_PASSWORD
+
+# if DEV_MODE:
+#     # 개발 환경에서는 콘솔에 이메일 출력
+#     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# else:
+#     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+#     # 프로덕션 환경에서는 SMTP 사용
+#     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+#     EMAIL_HOST = 'smtp.gmail.com'  # 실제 사용할 호스트
+#     EMAIL_PORT = 587               # 실제 사용할 포트
+#     EMAIL_USE_TLS = True           # TLS 사용
+#     EMAIL_HOST_USER = 'a46884334@gmail.com'
+#     EMAIL_HOST_PASSWORD = GMAIL_APP_PASSWORD
+
+# 추가 이메일 서비스 설정 (참고용)
+GMAIL_EMAIL_HOST = 'smtp.gmail.com'
+NAVER_EMAIL_HOST = 'smtp.naver.com'
+DAUM_EMAIL_HOST = 'smtp.daum.net'
+GMAIL_EMAIL_PORT = 587
+NAVER_EMAIL_PORT = 587
+DAUM_EMAIL_PORT = 465
 
 ALLOWED_HOSTS = ['localhost', '172.30.1.19', '127.0.0.1', '13.124.116.146', '43.203.40.252', 'namatji.com', 'www.namatji.com', 'xn--jj0bw47b70a.com', 'www.xn--jj0bw47b70a.com']
 

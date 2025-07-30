@@ -4,7 +4,12 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django.contrib.auth.hashers import make_password, check_password
-from .models import User, BaseAttribute, BaseAttributeDetail, Attribute, AttributeValue, DropdownAttribute, Row, CalendarSettings, KanbanSettings
+from django.core.mail import send_mail
+from django.utils import timezone
+from datetime import timedelta
+import random
+import re
+from .models import User, BaseAttribute, BaseAttributeDetail, Attribute, AttributeValue, DropdownAttribute, Row, CalendarSettings, KanbanSettings, EmailVerification
 import json
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -79,8 +84,9 @@ class SignupView(View):
             manager_name = data.get('manager_name')
             company_name = data.get('company_name')
             phone_number = data.get('phone_number')
+            verification_code = data.get('verification_code')
             
-            if not email or not password or not manager_name or not company_name or not phone_number:
+            if not email or not password or not manager_name or not company_name or not phone_number or not verification_code:
                 return JsonResponse({
                     'success': False,
                     'error': '모든 필드를 입력해주세요.'
@@ -91,6 +97,30 @@ class SignupView(View):
                 return JsonResponse({
                     'success': False,
                     'error': '이미 존재하는 이메일입니다.'
+                })
+            
+            # 이메일 인증 확인
+            try:
+                verification = EmailVerification.objects.get(
+                    email=email,
+                    verification_code=verification_code
+                )
+                
+                # 만료 확인
+                if verification.is_expired():
+                    return JsonResponse({
+                        'success': False,
+                        'error': '인증번호가 만료되었습니다. 새로운 인증번호를 발송해주세요.'
+                    })
+                
+                # 인증 완료 처리
+                verification.is_verified = True
+                verification.save()
+                
+            except EmailVerification.DoesNotExist:
+                return JsonResponse({
+                    'success': False,
+                    'error': '이메일 인증이 필요합니다. 인증번호를 확인해주세요.'
                 })
             
             # 비밀번호 암호화
@@ -117,6 +147,9 @@ class SignupView(View):
             
             # 샘플 데이터 생성
             sample_data_created = self._create_sample_data(user)
+            
+            # 인증번호 삭제
+            verification.delete()
             
             success_message = '회원가입이 완료되었습니다.'
             if sample_data_created:
@@ -425,4 +458,310 @@ class ChangePasswordView(View):
             return JsonResponse({
                 'success': False,
                 'error': f'비밀번호 변경 중 오류가 발생했습니다: {str(e)}'
+            })
+
+@method_decorator(csrf_exempt, name='dispatch')
+class SendVerificationEmailView(View):
+    """이메일 인증번호 발송 뷰"""
+    def post(self, request):
+        try:
+            data = json.loads(request.body)
+            email = data.get('email')
+            
+            if not email:
+                return JsonResponse({
+                    'success': False,
+                    'error': '이메일을 입력해주세요.'
+                })
+            
+            # 이메일 형식 검증
+            email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+            if not re.match(email_pattern, email):
+                return JsonResponse({
+                    'success': False,
+                    'error': '올바른 이메일 형식을 입력해주세요.'
+                })
+            
+            # 6자리 인증번호 생성
+            verification_code = ''.join([str(random.randint(0, 9)) for _ in range(6)])
+            
+            # 기존 인증번호가 있다면 삭제
+            EmailVerification.objects.filter(email=email).delete()
+            
+            # 새 인증번호 생성 (10분 후 만료)
+            expires_at = timezone.now() + timedelta(minutes=10)
+            EmailVerification.objects.create(
+                email=email,
+                verification_code=verification_code,
+                expires_at=expires_at
+            )
+            
+            # 이메일 발송
+            subject = '[PO 시스템] 이메일 인증번호'
+            message = f'''
+안녕하세요!
+
+PO 시스템 이메일 인증번호입니다.
+
+인증번호: {verification_code}
+
+이 인증번호는 10분 후에 만료됩니다.
+인증번호를 입력하여 이메일 인증을 완료해주세요.
+
+감사합니다.
+PO 시스템
+            '''
+            
+            try:
+                send_mail(
+                    subject,
+                    message,
+                    'a46884334@gmail.com',  # 발신자 이메일
+                    [email],  # 수신자 이메일
+                    fail_silently=False,
+                )
+                
+                return JsonResponse({
+                    'success': True,
+                    'message': '인증번호가 이메일로 발송되었습니다.'
+                })
+                
+            except Exception as e:
+                return JsonResponse({
+                    'success': False,
+                    'error': f'이메일 발송 중 오류가 발생했습니다: {str(e)}'
+                })
+                
+        except json.JSONDecodeError:
+            return JsonResponse({
+                'success': False,
+                'error': '잘못된 요청 형식입니다.'
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': f'인증번호 발송 중 오류가 발생했습니다: {str(e)}'
+            })
+
+@method_decorator(csrf_exempt, name='dispatch')
+class VerifyEmailView(View):
+    """이메일 인증번호 확인 뷰"""
+    def post(self, request):
+        try:
+            data = json.loads(request.body)
+            email = data.get('email')
+            verification_code = data.get('verification_code')
+            
+            if not email or not verification_code:
+                return JsonResponse({
+                    'success': False,
+                    'error': '이메일과 인증번호를 입력해주세요.'
+                })
+            
+            try:
+                # 인증번호 확인
+                verification = EmailVerification.objects.get(
+                    email=email,
+                    verification_code=verification_code
+                )
+                
+                # 만료 확인
+                if verification.is_expired():
+                    return JsonResponse({
+                        'success': False,
+                        'error': '인증번호가 만료되었습니다. 새로운 인증번호를 발송해주세요.'
+                    })
+                
+                # 인증 완료 처리
+                verification.is_verified = True
+                verification.save()
+                
+                return JsonResponse({
+                    'success': True,
+                    'message': '이메일 인증이 완료되었습니다.'
+                })
+                
+            except EmailVerification.DoesNotExist:
+                return JsonResponse({
+                    'success': False,
+                    'error': '인증번호가 올바르지 않습니다.'
+                })
+                
+        except json.JSONDecodeError:
+            return JsonResponse({
+                'success': False,
+                'error': '잘못된 요청 형식입니다.'
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': f'인증 확인 중 오류가 발생했습니다: {str(e)}'
+            })
+
+@method_decorator(csrf_exempt, name='dispatch')
+class ForgotPasswordView(View):
+    """비밀번호 찾기 뷰"""
+    def get(self, request):
+        return render(request, 'diary/forgot_password.html')
+    
+    def post(self, request):
+        try:
+            data = json.loads(request.body)
+            email = data.get('email')
+            
+            if not email:
+                return JsonResponse({
+                    'success': False,
+                    'error': '이메일을 입력해주세요.'
+                })
+            
+            # 사용자 존재 확인
+            try:
+                user = User.objects.get(email=email)
+            except User.DoesNotExist:
+                return JsonResponse({
+                    'success': False,
+                    'error': '해당 이메일로 가입된 계정이 없습니다.'
+                })
+            
+            # 6자리 인증번호 생성
+            verification_code = ''.join([str(random.randint(0, 9)) for _ in range(6)])
+            
+            # 기존 인증번호가 있다면 삭제
+            EmailVerification.objects.filter(email=email).delete()
+            
+            # 새 인증번호 생성 (10분 후 만료)
+            expires_at = timezone.now() + timedelta(minutes=10)
+            EmailVerification.objects.create(
+                email=email,
+                verification_code=verification_code,
+                expires_at=expires_at
+            )
+            
+            # 이메일 발송
+            subject = '[PO 시스템] 비밀번호 찾기 인증번호'
+            message = f'''
+안녕하세요!
+
+PO 시스템 비밀번호 찾기 인증번호입니다.
+
+인증번호: {verification_code}
+
+이 인증번호는 10분 후에 만료됩니다.
+인증번호를 입력하여 비밀번호 재설정을 진행해주세요.
+
+감사합니다.
+PO 시스템
+            '''
+            
+            try:
+                send_mail(
+                    subject,
+                    message,
+                    'a46884334@gmail.com',
+                    [email],
+                    fail_silently=False,
+                )
+                
+                return JsonResponse({
+                    'success': True,
+                    'message': '인증번호가 이메일로 발송되었습니다.'
+                })
+                
+            except Exception as e:
+                return JsonResponse({
+                    'success': False,
+                    'error': f'이메일 발송 중 오류가 발생했습니다: {str(e)}'
+                })
+                
+        except json.JSONDecodeError:
+            return JsonResponse({
+                'success': False,
+                'error': '잘못된 요청 형식입니다.'
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': f'비밀번호 찾기 중 오류가 발생했습니다: {str(e)}'
+            })
+
+@method_decorator(csrf_exempt, name='dispatch')
+class ResetPasswordView(View):
+    """비밀번호 재설정 뷰"""
+    def post(self, request):
+        try:
+            data = json.loads(request.body)
+            email = data.get('email')
+            verification_code = data.get('verification_code')
+            new_password = data.get('new_password')
+            confirm_password = data.get('confirm_password')
+            
+            if not email or not verification_code or not new_password or not confirm_password:
+                return JsonResponse({
+                    'success': False,
+                    'error': '모든 필드를 입력해주세요.'
+                })
+            
+            if new_password != confirm_password:
+                return JsonResponse({
+                    'success': False,
+                    'error': '새 비밀번호가 일치하지 않습니다.'
+                })
+            
+            if len(new_password) < 6:
+                return JsonResponse({
+                    'success': False,
+                    'error': '새 비밀번호는 6자 이상이어야 합니다.'
+                })
+            
+            try:
+                # 인증번호 확인
+                verification = EmailVerification.objects.get(
+                    email=email,
+                    verification_code=verification_code
+                )
+                
+                # 만료 확인
+                if verification.is_expired():
+                    return JsonResponse({
+                        'success': False,
+                        'error': '인증번호가 만료되었습니다. 새로운 인증번호를 발송해주세요.'
+                    })
+                
+                # 사용자 조회
+                user = User.objects.get(email=email)
+                
+                # 비밀번호 변경
+                hashed_new_password = make_password(new_password)
+                user.password = hashed_new_password
+                user.save()
+                
+                # 인증번호 삭제
+                verification.delete()
+                
+                return JsonResponse({
+                    'success': True,
+                    'message': '비밀번호가 성공적으로 변경되었습니다.'
+                })
+                
+            except EmailVerification.DoesNotExist:
+                return JsonResponse({
+                    'success': False,
+                    'error': '인증번호가 올바르지 않습니다.'
+                })
+            except User.DoesNotExist:
+                return JsonResponse({
+                    'success': False,
+                    'error': '사용자를 찾을 수 없습니다.'
+                })
+                
+        except json.JSONDecodeError:
+            return JsonResponse({
+                'success': False,
+                'error': '잘못된 요청 형식입니다.'
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': f'비밀번호 재설정 중 오류가 발생했습니다: {str(e)}'
             })

@@ -68,6 +68,30 @@ class User(models.Model):
     def __str__(self):
         return self.name
 
+class EmailVerification(models.Model):
+    """이메일 인증을 위한 모델"""
+    email = models.EmailField()
+    verification_code = models.CharField(max_length=6)  # 6자리 인증번호
+    is_verified = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()  # 인증번호 만료 시간
+    
+    class Meta:
+        verbose_name = '이메일 인증'
+        verbose_name_plural = '이메일 인증'
+        indexes = [
+            models.Index(fields=['email', 'verification_code']),
+            models.Index(fields=['email', 'is_verified']),
+        ]
+    
+    def __str__(self):
+        return f"{self.email} - {self.verification_code}"
+    
+    def is_expired(self):
+        """인증번호가 만료되었는지 확인"""
+        from django.utils import timezone
+        return timezone.now() > self.expires_at
+
 class AttributeType(models.Model):
     name = models.CharField(max_length=50, unique=True)
     

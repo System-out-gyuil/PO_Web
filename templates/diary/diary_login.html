@@ -27,7 +27,7 @@
       margin-bottom: 15px;
     }
     
-    input[type="text"], input[type="password"], input[type="tel"] {
+    input[type="text"], input[type="password"], input[type="tel"], input[type="email"] {
       width: 100%;
       padding: 10px;
       border: 1px solid #ddd;
@@ -43,7 +43,6 @@
       border: none;
       border-radius: 4px;
       cursor: pointer;
-      margin-bottom: 10px;
     }
     
     button:hover {
@@ -128,15 +127,19 @@
     <form id="loginForm">
       {% csrf_token %}
       <div class="form-group">
-        <input type="text" name="member_id" placeholder="아이디 입력" required>
+        <input type="email" name="member_id" placeholder="이메일 입력" required>
       </div>
       <div class="form-group">
         <input type="password" name="member_pw" placeholder="비밀번호 입력" required autocomplete="off">
       </div>
-      <button type="submit">로그인</button>
+      <button type="submit" style="margin-bottom: 10px;">로그인</button>
     </form>
     
+    
     <button class="signup-btn" onclick="openSignupModal()">회원가입</button>
+    <div style="text-align: center; margin: 15px 0;">
+      <a href="/sales/forgot_password/" style="color: #007bff; text-decoration: none; font-size: 14px;">비밀번호 찾기</a>
+    </div>
   </div>
 
   <!-- 회원가입 모달 -->
@@ -151,7 +154,7 @@
       <form id="signupForm">
         {% csrf_token %}
         <div class="form-group">
-          <input type="text" id="signup_id" name="signup_id" placeholder="아이디 입력" required>
+          <input type="email" id="signup_id" name="signup_id" placeholder="이메일 입력" required>
         </div>
         <div class="form-group">
           <input type="password" id="signup_pw" name="signup_pw" placeholder="비밀번호 입력" required autocomplete="off">
@@ -160,13 +163,23 @@
           <input type="password" id="signup_pw_confirm" name="signup_pw_confirm" placeholder="비밀번호 확인" required autocomplete="off">
         </div>
         <div class="form-group">
-          <input type="text" id="signup_manager_name" name="signup_manager_name" placeholder="담당자명" required>
+          <input type="text" id="signup_manager_name" name="signup_manager_name" placeholder="이름" required>
         </div>
         <div class="form-group">
           <input type="text" id="signup_company_name" name="signup_company_name" placeholder="회사명" required>
         </div>
         <div class="form-group">
           <input type="tel" id="signup_phone" name="signup_phone" placeholder="전화번호 (010-1234-1234)" required>
+        </div>
+        
+        <!-- 이메일 인증 섹션 -->
+        <div class="form-group">
+          <div style="display: flex; gap: 10px; align-items: center;">
+            <input type="text" id="verification_code" name="verification_code" placeholder="6자리 인증번호" maxlength="6" style="flex: 1;">
+            <button type="button" onclick="sendVerificationCode()" style="width: auto; padding: 10px 15px;">인증번호 발송</button>
+            <button type="button" onclick="verifyCode()" style="width: auto; padding: 10px 15px;">인증번호 확인</button>
+          </div>
+          <div id="verification_status" style="margin-top: 5px; font-size: 12px;"></div>
         </div>
         
         <!-- 개인정보처리방침 체크박스 -->
@@ -198,6 +211,207 @@
       document.getElementById('signupError').style.display = 'none';
       document.getElementById('signupSuccess').style.display = 'none';
       document.getElementById('signupForm').reset();
+    }
+    
+    // 이메일 인증번호 발송
+    function sendVerificationCode() {
+      var email = document.getElementById('signup_id').value;
+      
+      if (!email) {
+        alert('이메일을 먼저 입력해주세요.');
+        return;
+      }
+      
+      // 이메일 형식 검증
+      var emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      if (!emailPattern.test(email)) {
+        alert('올바른 이메일 형식을 입력해주세요.');
+        return;
+      }
+      
+      var sendBtn = document.querySelector('button[onclick="sendVerificationCode()"]');
+      var originalText = sendBtn.textContent;
+      sendBtn.textContent = '발송 중...';
+      sendBtn.disabled = true;
+      
+      fetch('/sales/send_verification_email/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify({ email: email })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          alert(data.message);
+        } else {
+          alert(data.error);
+        }
+      })
+      .catch(error => {
+        alert('서버 오류가 발생했습니다.');
+      })
+      .finally(() => {
+        sendBtn.textContent = originalText;
+        sendBtn.disabled = false;
+      });
+    }
+    
+    // 인증번호 확인
+    function verifyCode() {
+      var email = document.getElementById('signup_id').value;
+      var verificationCode = document.getElementById('verification_code').value;
+      var verificationStatus = document.getElementById('verification_status');
+
+      if (!email || !verificationCode) {
+        verificationStatus.textContent = '이메일과 인증번호를 모두 입력해주세요.';
+        verificationStatus.style.color = '#dc3545';
+        return;
+      }
+
+      var sendBtn = document.querySelector('button[onclick="sendVerificationCode()"]');
+      var originalText = sendBtn.textContent;
+      sendBtn.textContent = '확인 중...';
+      sendBtn.disabled = true;
+
+      fetch('/sales/verify_verification_code/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify({ email: email, verification_code: verificationCode })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          verificationStatus.textContent = '인증번호가 확인되었습니다.';
+          verificationStatus.style.color = '#155724';
+          // 인증 성공 시 회원가입 폼 제출 가능
+          document.getElementById('signupForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            submitSignupForm();
+          });
+        } else {
+          verificationStatus.textContent = data.error;
+          verificationStatus.style.color = '#dc3545';
+        }
+      })
+      .catch(error => {
+        verificationStatus.textContent = '서버 오류가 발생했습니다.';
+        verificationStatus.style.color = '#dc3545';
+      })
+      .finally(() => {
+        sendBtn.textContent = originalText;
+        sendBtn.disabled = false;
+      });
+    }
+
+    // 회원가입 폼 제출
+    function submitSignupForm() {
+      var id = document.getElementById('signup_id').value;
+      var pw = document.getElementById('signup_pw').value;
+      var pwConfirm = document.getElementById('signup_pw_confirm').value;
+      var managerName = document.getElementById('signup_manager_name').value;
+      var companyName = document.getElementById('signup_company_name').value;
+      var phone = document.getElementById('signup_phone').value;
+      var verificationCode = document.getElementById('verification_code').value;
+      
+      // 에러 메시지 초기화
+      document.getElementById('signupError').style.display = 'none';
+      document.getElementById('signupSuccess').style.display = 'none';
+      
+      // 클라이언트 측 유효성 검사
+      if (!id || !pw || !pwConfirm || !managerName || !companyName || !phone || !verificationCode) {
+        document.getElementById('signupError').textContent = '모든 필드를 입력해주세요.';
+        document.getElementById('signupError').style.display = 'block';
+        return;
+      }
+      
+      if (pw !== pwConfirm) {
+        document.getElementById('signupError').textContent = '비밀번호가 일치하지 않습니다.';
+        document.getElementById('signupError').style.display = 'block';
+        return;
+      }
+      
+      if (pw.length < 6) {
+        document.getElementById('signupError').textContent = '비밀번호는 6자 이상이어야 합니다.';
+        document.getElementById('signupError').style.display = 'block';
+        return;
+      }
+      
+      // 전화번호 형식 검증
+      var phoneRegex = /^010-\d{4}-\d{4}$/;
+      if (!phoneRegex.test(phone)) {
+        document.getElementById('signupError').textContent = '전화번호 형식이 올바르지 않습니다. (010-1234-1234)';
+        document.getElementById('signupError').style.display = 'block';
+        return;
+      }
+
+      // 체크박스 검증
+      var privacyCheck = document.getElementById('privacy_check').checked;
+      var termsCheck = document.getElementById('terms_check').checked;
+
+      if (!privacyCheck) {
+        document.getElementById('signupError').textContent = '개인정보처리방침에 동의해야 합니다.';
+        document.getElementById('signupError').style.display = 'block';
+        return;
+      }
+
+      if (!termsCheck) {
+        document.getElementById('signupError').textContent = '이용약관에 동의해야 합니다.';
+        document.getElementById('signupError').style.display = 'block';
+        return;
+      }
+      
+      // 로딩 상태 표시
+      var submitBtn = document.getElementById('signupForm').querySelector('button[type="submit"]');
+      var originalText = submitBtn.textContent;
+      submitBtn.textContent = '가입 중...';
+      submitBtn.disabled = true;
+      
+      // AJAX로 회원가입 요청
+      fetch('/sales/signup/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify({
+          email: id,
+          password: pw,
+          manager_name: managerName,
+          company_name: companyName,
+          phone_number: phone,
+          verification_code: verificationCode
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          document.getElementById('signupSuccess').textContent = data.message;
+          document.getElementById('signupSuccess').style.display = 'block';
+          
+          // 성공 시 모달 닫기
+          setTimeout(() => {
+            closeSignupModal();
+          }, 2000);
+        } else {
+          document.getElementById('signupError').textContent = data.error;
+          document.getElementById('signupError').style.display = 'block';
+        }
+      })
+      .catch(error => {
+        document.getElementById('signupError').textContent = '서버 오류가 발생했습니다.';
+        document.getElementById('signupError').style.display = 'block';
+      })
+      .finally(() => {
+        // 버튼 상태 복원
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
+      });
     }
     
     // 개인정보처리방침 모달 열기
@@ -284,111 +498,6 @@
       });
     });
     
-    // 회원가입 폼 제출
-    document.getElementById('signupForm').addEventListener('submit', function(e) {
-      e.preventDefault();
-      
-      var id = document.getElementById('signup_id').value;
-      var pw = document.getElementById('signup_pw').value;
-      var pwConfirm = document.getElementById('signup_pw_confirm').value;
-      var managerName = document.getElementById('signup_manager_name').value;
-      var companyName = document.getElementById('signup_company_name').value;
-      var phone = document.getElementById('signup_phone').value;
-      
-      // 에러 메시지 초기화
-      document.getElementById('signupError').style.display = 'none';
-      document.getElementById('signupSuccess').style.display = 'none';
-      
-      // 클라이언트 측 유효성 검사
-      if (!id || !pw || !pwConfirm || !managerName || !companyName || !phone) {
-        document.getElementById('signupError').textContent = '모든 필드를 입력해주세요.';
-        document.getElementById('signupError').style.display = 'block';
-        return;
-      }
-      
-      if (pw !== pwConfirm) {
-        document.getElementById('signupError').textContent = '비밀번호가 일치하지 않습니다.';
-        document.getElementById('signupError').style.display = 'block';
-        return;
-      }
-      
-      if (pw.length < 6) {
-        document.getElementById('signupError').textContent = '비밀번호는 6자 이상이어야 합니다.';
-        document.getElementById('signupError').style.display = 'block';
-        return;
-      }
-      
-      // 전화번호 형식 검증
-      var phoneRegex = /^010-\d{4}-\d{4}$/;
-      if (!phoneRegex.test(phone)) {
-        document.getElementById('signupError').textContent = '전화번호 형식이 올바르지 않습니다. (010-1234-1234)';
-        document.getElementById('signupError').style.display = 'block';
-        return;
-      }
-
-      // 체크박스 검증
-      var privacyCheck = document.getElementById('privacy_check').checked;
-      var termsCheck = document.getElementById('terms_check').checked;
-
-      if (!privacyCheck) {
-        document.getElementById('signupError').textContent = '개인정보처리방침에 동의해야 합니다.';
-        document.getElementById('signupError').style.display = 'block';
-        return;
-      }
-
-      if (!termsCheck) {
-        document.getElementById('signupError').textContent = '이용약관에 동의해야 합니다.';
-        document.getElementById('signupError').style.display = 'block';
-        return;
-      }
-      
-      // 로딩 상태 표시
-      var submitBtn = this.querySelector('button[type="submit"]');
-      var originalText = submitBtn.textContent;
-      submitBtn.textContent = '가입 중...';
-      submitBtn.disabled = true;
-      
-      // AJAX로 회원가입 요청
-      fetch('/sales/signup/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-        },
-        body: JSON.stringify({
-          email: id,
-          password: pw,
-          manager_name: managerName,
-          company_name: companyName,
-          phone_number: phone
-        })
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          document.getElementById('signupSuccess').textContent = data.message;
-          document.getElementById('signupSuccess').style.display = 'block';
-          
-          // 성공 시 모달 닫기
-          setTimeout(() => {
-            closeSignupModal();
-          }, 2000);
-        } else {
-          document.getElementById('signupError').textContent = data.error;
-          document.getElementById('signupError').style.display = 'block';
-        }
-      })
-      .catch(error => {
-        document.getElementById('signupError').textContent = '서버 오류가 발생했습니다.';
-        document.getElementById('signupError').style.display = 'block';
-      })
-      .finally(() => {
-        // 버튼 상태 복원
-        submitBtn.textContent = originalText;
-        submitBtn.disabled = false;
-      });
-    });
-    
     // 전화번호 자동 포맷팅
     document.getElementById('signup_phone').addEventListener('input', function(e) {
       var value = e.target.value.replace(/[^0-9]/g, ''); // 숫자만 추출
@@ -399,6 +508,14 @@
         e.target.value = value.slice(0, 3) + '-' + value.slice(3);
       } else {
         e.target.value = value.slice(0, 3) + '-' + value.slice(3, 7) + '-' + value.slice(7, 11);
+      }
+    });
+    
+    // 인증번호 입력 시 자동으로 다음 필드로 포커스
+    document.getElementById('verification_code').addEventListener('input', function(e) {
+      if (e.target.value.length === 6) {
+        // 6자리 입력 완료 시 다음 필드로 포커스
+        document.getElementById('signup_manager_name').focus();
       }
     });
   </script>
