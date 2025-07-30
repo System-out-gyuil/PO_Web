@@ -633,14 +633,31 @@ def update_entry(request):
                 return JsonResponse({'success': False, 'error': 'Invalid dropdown value'})
         else:
             value_to_save = value
-        attr_value, created = AttributeValue.objects.get_or_create(
-            row=row,
-            attribute=attribute,
-            defaults={'value': value_to_save}
-        )
-        if not created:
-            attr_value.value = value_to_save
-            attr_value.save()
+        # AttributeValue 조회 또는 생성 - 중복 저장 방지
+        try:
+            # 기존 레코드가 있는지 먼저 확인
+            attr_value = AttributeValue.objects.filter(row=row, attribute=attr).first()
+            
+            if attr_value:
+                # 기존 레코드가 있으면 값만 업데이트
+                if attr_value.value != value_to_save:
+                    attr_value.value = value_to_save
+                    attr_value.save()
+                    print(f"기존 AttributeValue 업데이트: {field_name} = {value_to_save}")
+                else:
+                    print(f"동일한 값이므로 업데이트 건너뜀: {field_name} = {value_to_save}")
+            else:
+                # 기존 레코드가 없으면 새로 생성
+                attr_value = AttributeValue.objects.create(
+                    row=row,
+                    attribute=attr,
+                    value=value_to_save
+                )
+                print(f"새 AttributeValue 생성: {field_name} = {value_to_save}")
+                
+        except Exception as e:
+            print(f"AttributeValue 처리 중 오류: {e}")
+            return JsonResponse({'success': False, 'error': f'속성 값 저장 중 오류: {str(e)}'})
         
         # Cascade 기능: cascade가 true인 속성이 수정되면 원본 행과 복제된 행들을 동기화
         if attr.cascade:
@@ -832,16 +849,31 @@ def update_row_field(request):
             else:
                 value_to_save = str(value)
             
-            # AttributeValue 조회 또는 생성
-            attr_value, created = AttributeValue.objects.get_or_create(
-                row=row, 
-                attribute=attr,
-                defaults={'value': value_to_save}
-            )
-            
-            if not created:
-                attr_value.value = value_to_save
-                attr_value.save()
+            # AttributeValue 조회 또는 생성 - 중복 저장 방지
+            try:
+                # 기존 레코드가 있는지 먼저 확인
+                attr_value = AttributeValue.objects.filter(row=row, attribute=attr).first()
+                
+                if attr_value:
+                    # 기존 레코드가 있으면 값만 업데이트
+                    if attr_value.value != value_to_save:
+                        attr_value.value = value_to_save
+                        attr_value.save()
+                        print(f"기존 AttributeValue 업데이트: {field_name} = {value_to_save}")
+                    else:
+                        print(f"동일한 값이므로 업데이트 건너뜀: {field_name} = {value_to_save}")
+                else:
+                    # 기존 레코드가 없으면 새로 생성
+                    attr_value = AttributeValue.objects.create(
+                        row=row,
+                        attribute=attr,
+                        value=value_to_save
+                    )
+                    print(f"새 AttributeValue 생성: {field_name} = {value_to_save}")
+                    
+            except Exception as e:
+                print(f"AttributeValue 처리 중 오류: {e}")
+                return JsonResponse({'success': False, 'error': f'속성 값 저장 중 오류: {str(e)}'})
             
             # Cascade 기능: cascade가 true인 속성이 수정되면 원본 행과 복제된 행들을 동기화
             if attr.cascade:

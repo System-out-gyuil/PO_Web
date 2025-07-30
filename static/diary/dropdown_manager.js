@@ -4,6 +4,10 @@
 let currentOpenDropdown = null;
 let currentTriggerElement = null;
 
+// 중복 요청 방지를 위한 전역 변수
+let pendingRequests = new Map();
+let requestTimeout = 3000; // 3초 타임아웃
+
 function closeAllDropdowns() {
     console.log('모든 드롭다운 닫기 실행');
     console.trace('closeAllDropdowns 호출 스택');
@@ -397,36 +401,26 @@ function createNewDropdown(td, type, id, currentId, currentSubregion) {
             subtree: true
         });
         
-        // 지역 드롭다운 보호를 위한 추가 이벤트 리스너
-        const protectDropdown = (e) => {
-            if (e.target === currentDropdown || currentDropdown.contains(e.target)) {
-                console.log('지역 드롭다운 내부 클릭, 보호됨');
-                e.stopPropagation();
-                return false;
-            }
-        };
-        
-        // 이벤트 캡처링 단계에서 보호
-        document.addEventListener('mousedown', protectDropdown, true);
-        
-        // 드롭다운이 즉시 닫히는 것을 방지하기 위한 추가 보호 로직
-        setTimeout(() => {
-            if (currentDropdown && currentDropdown.parentNode) {
-                console.log('지역 드롭다운이 성공적으로 유지됨');
-                observer.disconnect(); // 성공적으로 유지되면 observer 해제
-                document.removeEventListener('mousedown', protectDropdown, true); // 보호 리스너 제거
-            } else {
-                console.error('지역 드롭다운이 예상치 못하게 제거됨');
-                observer.disconnect(); // 제거되면 observer 해제
-                document.removeEventListener('mousedown', protectDropdown, true); // 보호 리스너 제거
-            }
-        }, 500);
-        
         // 지역 선택 이벤트 리스너
         currentDropdown.querySelectorAll('.dropdown-item').forEach(function(item) {
             item.addEventListener('click', function(e) {
                 e.stopPropagation();
                 const selectedRegion = this.getAttribute('data-option-id');
+                
+                // 중복 요청 방지
+                const requestKey = `${id}_지역_${selectedRegion}`;
+                if (pendingRequests.has(requestKey)) {
+                    console.log('지역 중복 요청 방지:', requestKey);
+                    return;
+                }
+                
+                // 요청 상태 설정
+                pendingRequests.set(requestKey, Date.now());
+                
+                // 타임아웃 설정
+                setTimeout(() => {
+                    pendingRequests.delete(requestKey);
+                }, requestTimeout);
                 
                 // UI 업데이트
                 if (td) { 
@@ -445,6 +439,7 @@ function createNewDropdown(td, type, id, currentId, currentSubregion) {
                     })
                     .then(response => response.json())
                     .then(data => {
+                        pendingRequests.delete(requestKey);
                         if (data.success) {
                             console.log('지역 업데이트 성공');
                             // 종속된 행들 찾아서 업데이트
@@ -460,6 +455,7 @@ function createNewDropdown(td, type, id, currentId, currentSubregion) {
                         }
                     })
                     .catch(error => {
+                        pendingRequests.delete(requestKey);
                         console.error('지역 업데이트 실패:', error);
                         alert('업데이트 중 오류가 발생했습니다: ' + error.message);
                     });
@@ -602,6 +598,21 @@ function createNewDropdown(td, type, id, currentId, currentSubregion) {
                 e.stopPropagation();
                 const selectedSubregion = this.getAttribute('data-option-id');
                 
+                // 중복 요청 방지
+                const requestKey = `${id}_상세지역_${selectedSubregion}`;
+                if (pendingRequests.has(requestKey)) {
+                    console.log('상세지역 중복 요청 방지:', requestKey);
+                    return;
+                }
+                
+                // 요청 상태 설정
+                pendingRequests.set(requestKey, Date.now());
+                
+                // 타임아웃 설정
+                setTimeout(() => {
+                    pendingRequests.delete(requestKey);
+                }, requestTimeout);
+                
                 // UI 업데이트
                 if (td) { 
                     td.innerHTML = selectedSubregion; 
@@ -619,6 +630,7 @@ function createNewDropdown(td, type, id, currentId, currentSubregion) {
                     })
                     .then(response => response.json())
                     .then(data => {
+                        pendingRequests.delete(requestKey);
                         if (data.success) {
                             console.log('상세지역 업데이트 성공');
                             // 종속된 행들 찾아서 업데이트
@@ -634,6 +646,7 @@ function createNewDropdown(td, type, id, currentId, currentSubregion) {
                         }
                     })
                     .catch(error => {
+                        pendingRequests.delete(requestKey);
                         console.error('상세지역 업데이트 실패:', error);
                         alert('업데이트 중 오류가 발생했습니다: ' + error.message);
                     });
@@ -884,16 +897,18 @@ function showModalDropdownOptions(rowId, fieldName, btn) {
     
     // 중복 요청 방지를 위한 디바운싱
     const requestKey = `${rowId}_${fieldName}_${optionId}`;
-    if (window.pendingRequests && window.pendingRequests[requestKey]) {
+    if (pendingRequests.has(requestKey)) {
       console.log('중복 요청 방지:', requestKey);
       return;
     }
     
     // 요청 상태 추적
-    if (!window.pendingRequests) {
-      window.pendingRequests = {};
-    }
-    window.pendingRequests[requestKey] = true;
+    pendingRequests.set(requestKey, Date.now());
+    
+    // 타임아웃 설정
+    setTimeout(() => {
+      pendingRequests.delete(requestKey);
+    }, requestTimeout);
     
     // 버튼 텍스트 즉시 업데이트
     btn.textContent = optionText;
@@ -921,7 +936,7 @@ function showModalDropdownOptions(rowId, fieldName, btn) {
     .then(response => response.json())
     .then(data => {
         // 요청 완료 후 상태 제거
-        delete window.pendingRequests[requestKey];
+        pendingRequests.delete(requestKey);
         
         if (data.success) {
             console.log('모달 드롭다운 업데이트 성공:', fieldName, optionId);
@@ -961,7 +976,7 @@ function showModalDropdownOptions(rowId, fieldName, btn) {
     })
     .catch(error => {
         // 요청 실패 시에도 상태 제거
-        delete window.pendingRequests[requestKey];
+        pendingRequests.delete(requestKey);
         
         console.error('모달 드롭다운 업데이트 요청 오류:', error);
         showNotification('업데이트 중 오류가 발생했습니다.', 'error');
@@ -1462,6 +1477,21 @@ function showModalDropdownOptions(rowId, fieldName, btn) {
             e.stopPropagation();
             const optionId = this.getAttribute('data-option-id');
             
+            // 중복 요청 방지
+            const requestKey = `${id}_${type}_${optionId}`;
+            if (pendingRequests.has(requestKey)) {
+                console.log('중복 요청 방지:', requestKey);
+                return;
+            }
+            
+            // 요청 상태 설정
+            pendingRequests.set(requestKey, Date.now());
+            
+            // 타임아웃 설정
+            setTimeout(() => {
+                pendingRequests.delete(requestKey);
+            }, requestTimeout);
+            
             // "선택 없음" 옵션 처리
             if (optionId === 'none') {
                 // UI 업데이트
@@ -1473,13 +1503,14 @@ function showModalDropdownOptions(rowId, fieldName, btn) {
                     console.log('새 행에서 선택 없음 처리');
                 } else {
                     // 기존 행인 경우 서버에서 삭제
-                    fetch('/sales/delete_attribute_value/', {
+                    fetch('/sales/update_row_field/', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                         body: 'id='+id+'&field='+encodeURIComponent(type)
                     })
                     .then(response => response.json())
                     .then(data => {
+                        pendingRequests.delete(requestKey);
                         if (data.success) {
                             console.log('속성 값 삭제 성공');
                             
@@ -1504,6 +1535,7 @@ function showModalDropdownOptions(rowId, fieldName, btn) {
                         }
                     })
                     .catch(error => {
+                        pendingRequests.delete(requestKey);
                         console.error('속성 값 삭제 실패:', error);
                         alert('삭제 중 오류가 발생했습니다: ' + error.message);
                     });
@@ -1585,6 +1617,7 @@ function showModalDropdownOptions(rowId, fieldName, btn) {
                 })
                 .then(response => response.json())
                 .then(data => {
+                    pendingRequests.delete(requestKey);
                     if (data.success) {
                         // 종속된 행들 찾아서 업데이트 (ID 전달)
                         if (typeof updateDependentRows === 'function') {
@@ -1608,6 +1641,7 @@ function showModalDropdownOptions(rowId, fieldName, btn) {
                     }
                 })
                 .catch(error => {
+                    pendingRequests.delete(requestKey);
                     console.error('드롭다운 옵션 업데이트 실패:', error);
                     alert('업데이트 중 오류가 발생했습니다: ' + error.message);
                 });
