@@ -4287,7 +4287,7 @@ function setupDropdownUpdateListeners() {
 }
 
 // 드롭다운 옵션 변경 처리 함수
-function handleDropdownOptionChange(event) {
+{% comment %} function handleDropdownOptionChange(event) {
     const { fieldName, newValue, rowId } = event.detail;
     
     console.log('드롭다운 옵션 변경 감지:', { fieldName, newValue, rowId });
@@ -4385,7 +4385,7 @@ function handleDropdownOptionChange(event) {
     .catch(function(error) {
         console.error('드롭다운 옵션 업데이트 중 오류:', error);
     });
-}
+} {% endcomment %}
 
 // refreshTable 함수를 window 객체에 바인딩
 window.refreshTable = refreshTable;

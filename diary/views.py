@@ -635,19 +635,16 @@ def update_entry(request):
             value_to_save = value
         # AttributeValue 조회 또는 생성 - 중복 저장 방지
         try:
-            # 기존 레코드가 있는지 먼저 확인
-            attr_value = AttributeValue.objects.filter(row=row, attribute=attr).first()
-            
-            if attr_value:
-                # 기존 레코드가 있으면 값만 업데이트
-                if attr_value.value != value_to_save:
-                    attr_value.value = value_to_save
-                    attr_value.save()
-                    print(f"기존 AttributeValue 업데이트: {field_name} = {value_to_save}")
-                else:
-                    print(f"동일한 값이므로 업데이트 건너뜀: {field_name} = {value_to_save}")
-            else:
-                # 기존 레코드가 없으면 새로 생성
+            with transaction.atomic():
+                # 동시 요청으로 인한 중복 방지를 위해 기존 레코드 모두 삭제 후 새로 생성
+                existing_records = AttributeValue.objects.filter(row=row, attribute=attr)
+                
+                if existing_records.exists():
+                    # 기존 레코드가 있으면 모두 삭제
+                    existing_records.delete()
+                    print(f"기존 AttributeValue 레코드 삭제: {field_name}")
+                
+                # 새 레코드 생성
                 attr_value = AttributeValue.objects.create(
                     row=row,
                     attribute=attr,
@@ -851,19 +848,16 @@ def update_row_field(request):
             
             # AttributeValue 조회 또는 생성 - 중복 저장 방지
             try:
-                # 기존 레코드가 있는지 먼저 확인
-                attr_value = AttributeValue.objects.filter(row=row, attribute=attr).first()
-                
-                if attr_value:
-                    # 기존 레코드가 있으면 값만 업데이트
-                    if attr_value.value != value_to_save:
-                        attr_value.value = value_to_save
-                        attr_value.save()
-                        print(f"기존 AttributeValue 업데이트: {field_name} = {value_to_save}")
-                    else:
-                        print(f"동일한 값이므로 업데이트 건너뜀: {field_name} = {value_to_save}")
-                else:
-                    # 기존 레코드가 없으면 새로 생성
+                with transaction.atomic():
+                    # 동시 요청으로 인한 중복 방지를 위해 기존 레코드 모두 삭제 후 새로 생성
+                    existing_records = AttributeValue.objects.filter(row=row, attribute=attr)
+                    
+                    if existing_records.exists():
+                        # 기존 레코드가 있으면 모두 삭제
+                        existing_records.delete()
+                        print(f"기존 AttributeValue 레코드 삭제: {field_name}")
+                    
+                    # 새 레코드 생성
                     attr_value = AttributeValue.objects.create(
                         row=row,
                         attribute=attr,
@@ -4495,3 +4489,69 @@ def test_hwp_conversion(request):
             'error': str(e),
             'message': f'테스트 중 오류가 발생했습니다: {str(e)}'
         })
+
+def cleanup_duplicate_attribute_values():
+    """
+    중복된 AttributeValue 레코드를 정리하는 함수
+    """
+    try:
+        with transaction.atomic():
+            # 중복된 레코드 찾기 (row_id, attribute_id, value가 동일한 레코드들)
+            from django.db import connection
+            
+            with connection.cursor() as cursor:
+                # 중복 레코드 찾기
+                cursor.execute("""
+                    SELECT row_id, attribute_id, value, COUNT(*) as count
+                    FROM diary_attributevalue
+                    GROUP BY row_id, attribute_id, value
+                    HAVING COUNT(*) > 1
+                """)
+                
+                duplicates = cursor.fetchall()
+                deleted_count = 0
+                
+                for row_id, attribute_id, value, count in duplicates:
+                    # 각 그룹에서 첫 번째 레코드를 제외하고 나머지 삭제
+                    cursor.execute("""
+                        DELETE FROM diary_attributevalue 
+                        WHERE row_id = %s AND attribute_id = %s AND value = %s
+                        AND id NOT IN (
+                            SELECT id FROM (
+                                SELECT id FROM diary_attributevalue 
+                                WHERE row_id = %s AND attribute_id = %s AND value = %s
+                                ORDER BY id ASC
+                                LIMIT 1
+                            ) AS keep_ids
+                        )
+                    """, [row_id, attribute_id, value, row_id, attribute_id, value])
+                    
+                    deleted_count += cursor.rowcount
+                
+                print(f"중복 AttributeValue 레코드 {deleted_count}개 정리 완료")
+                return deleted_count
+                
+    except Exception as e:
+        print(f"중복 레코드 정리 중 오류: {e}")
+        return 0
+
+@csrf_exempt
+def cleanup_duplicates_api(request):
+    """
+    중복 레코드 정리를 위한 API 엔드포인트
+    """
+    if request.method == 'POST':
+        try:
+            deleted_count = cleanup_duplicate_attribute_values()
+            return JsonResponse({
+                'success': True,
+                'deleted_count': deleted_count,
+                'message': f'중복 레코드 {deleted_count}개가 정리되었습니다.'
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            })
+    
+    return JsonResponse({'success': False, 'error': 'POST 요청만 지원합니다'})

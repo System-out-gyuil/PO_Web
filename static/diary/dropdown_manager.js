@@ -6,7 +6,8 @@ let currentTriggerElement = null;
 
 // 중복 요청 방지를 위한 전역 변수
 let pendingRequests = new Map();
-let requestTimeout = 3000; // 3초 타임아웃
+let requestTimeout = 5000; // 5초로 증가
+let isProcessingRequest = false; // 전역 처리 상태 플래그
 
 function closeAllDropdowns() {
     console.log('모든 드롭다운 닫기 실행');
@@ -432,6 +433,7 @@ function createNewDropdown(td, type, id, currentId, currentSubregion) {
                 if (id && id.startsWith('temp_')) {
                     saveNewRowField(td.parentElement, '지역', selectedRegion);
                 } else {
+                    console.log('update_row_field_modal3');
                     fetch('/sales/update_row_field/', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -440,6 +442,7 @@ function createNewDropdown(td, type, id, currentId, currentSubregion) {
                     .then(response => response.json())
                     .then(data => {
                         pendingRequests.delete(requestKey);
+                        isProcessingRequest = false;
                         if (data.success) {
                             console.log('지역 업데이트 성공');
                             // 종속된 행들 찾아서 업데이트
@@ -456,6 +459,7 @@ function createNewDropdown(td, type, id, currentId, currentSubregion) {
                     })
                     .catch(error => {
                         pendingRequests.delete(requestKey);
+                        isProcessingRequest = false;
                         console.error('지역 업데이트 실패:', error);
                         alert('업데이트 중 오류가 발생했습니다: ' + error.message);
                     });
@@ -631,6 +635,7 @@ function createNewDropdown(td, type, id, currentId, currentSubregion) {
                     .then(response => response.json())
                     .then(data => {
                         pendingRequests.delete(requestKey);
+                        isProcessingRequest = false;
                         if (data.success) {
                             console.log('상세지역 업데이트 성공');
                             // 종속된 행들 찾아서 업데이트
@@ -647,6 +652,7 @@ function createNewDropdown(td, type, id, currentId, currentSubregion) {
                     })
                     .catch(error => {
                         pendingRequests.delete(requestKey);
+                        isProcessingRequest = false;
                         console.error('상세지역 업데이트 실패:', error);
                         alert('업데이트 중 오류가 발생했습니다: ' + error.message);
                     });
@@ -848,11 +854,20 @@ function showModalDropdownOptions(rowId, fieldName, btn) {
                     e.preventDefault();
                     e.stopPropagation();
                     
+                    // 전역 처리 상태 확인
+                    if (isProcessingRequest) {
+                        console.log('전역 처리 중이므로 클릭 무시');
+                        return;
+                    }
+                    
                     // 이미 처리 중인지 확인
                     if (this.dataset.processing === 'true') {
                         console.log('이미 처리 중인 옵션 클릭 무시');
                         return;
                     }
+                    
+                    // 전역 처리 상태 설정
+                    isProcessingRequest = true;
                     
                     // 처리 중 상태로 설정
                     this.dataset.processing = 'true';
@@ -878,6 +893,7 @@ function showModalDropdownOptions(rowId, fieldName, btn) {
                     // 처리 완료 후 상태 제거 (약간의 지연 후)
                     setTimeout(() => {
                         this.dataset.processing = 'false';
+                        isProcessingRequest = false;
                     }, 1000);
                 });
             });
@@ -920,7 +936,8 @@ function showModalDropdownOptions(rowId, fieldName, btn) {
       highlightRequiredField(btn, false);
     }
     
-    // 서버에 업데이트 요청
+      // 서버에 업데이트 요청
+    console.log('update_row_filed_modal');
     fetch('/sales/update_row_field/', {
         method: 'POST',
         headers: {
@@ -937,6 +954,7 @@ function showModalDropdownOptions(rowId, fieldName, btn) {
     .then(data => {
         // 요청 완료 후 상태 제거
         pendingRequests.delete(requestKey);
+        isProcessingRequest = false;
         
         if (data.success) {
             console.log('모달 드롭다운 업데이트 성공:', fieldName, optionId);
@@ -977,6 +995,7 @@ function showModalDropdownOptions(rowId, fieldName, btn) {
     .catch(error => {
         // 요청 실패 시에도 상태 제거
         pendingRequests.delete(requestKey);
+        isProcessingRequest = false;
         
         console.error('모달 드롭다운 업데이트 요청 오류:', error);
         showNotification('업데이트 중 오류가 발생했습니다.', 'error');
@@ -1473,14 +1492,40 @@ function showModalDropdownOptions(rowId, fieldName, btn) {
     
     // 단일선택: 옵션 클릭 시 바로 선택
     currentDropdown.querySelectorAll('.dropdown-item[data-option-id]').forEach(function(item) {
-        item.addEventListener('click', function(e) {
+        // 기존 이벤트 리스너 제거 (중복 방지)
+        const newItem = item.cloneNode(true);
+        item.parentNode.replaceChild(newItem, item);
+        
+        newItem.addEventListener('click', function(e) {
             e.stopPropagation();
+            e.preventDefault();
+            
+            // 전역 처리 상태 확인
+            if (isProcessingRequest) {
+                console.log('전역 처리 중이므로 클릭 무시');
+                return;
+            }
+            
+            // 이미 처리 중인지 확인
+            if (this.dataset.processing === 'true') {
+                console.log('이미 처리 중인 옵션 클릭 무시');
+                return;
+            }
+            
+            // 전역 처리 상태 설정
+            isProcessingRequest = true;
+            
+            // 처리 중 상태로 설정
+            this.dataset.processing = 'true';
+            
             const optionId = this.getAttribute('data-option-id');
             
             // 중복 요청 방지
             const requestKey = `${id}_${type}_${optionId}`;
             if (pendingRequests.has(requestKey)) {
                 console.log('중복 요청 방지:', requestKey);
+                this.dataset.processing = 'false';
+                isProcessingRequest = false;
                 return;
             }
             
@@ -1490,61 +1535,8 @@ function showModalDropdownOptions(rowId, fieldName, btn) {
             // 타임아웃 설정
             setTimeout(() => {
                 pendingRequests.delete(requestKey);
+                isProcessingRequest = false;
             }, requestTimeout);
-            
-            // "선택 없음" 옵션 처리
-            if (optionId === 'none') {
-                // UI 업데이트
-                if (td) { td.innerHTML = `<div class="dropdown-pill" style="background:#eee; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">선택 없음</div>`; td.setAttribute('data-value', ''); }
-                
-                // 서버에서 해당 속성 값 삭제
-                if (id && id.startsWith('temp_')) {
-                    // 새 행인 경우 로컬에서만 처리
-                    console.log('새 행에서 선택 없음 처리');
-                } else {
-                    // 기존 행인 경우 서버에서 삭제
-                    fetch('/sales/update_row_field/', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                        body: 'id='+id+'&field='+encodeURIComponent(type)
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        pendingRequests.delete(requestKey);
-                        if (data.success) {
-                            console.log('속성 값 삭제 성공');
-                            
-                            // 커스텀 이벤트 발생으로 실시간 업데이트 보장
-                            const rowId = td.parentElement.getAttribute('data-id');
-                            document.dispatchEvent(new CustomEvent('dropdownOptionChanged', {
-                                detail: {
-                                    fieldName: type,
-                                    newValue: '',
-                                    rowId: rowId
-                                }
-                            }));
-                            
-                            // 종속된 행들 찾아서 업데이트
-                            if (typeof updateDependentRows === 'function') {
-                                updateDependentRows(id, type, '');
-                            }
-                            
-                            syncTableAndKanban(type);
-                        } else {
-                            throw new Error(data.error || '삭제 실패');
-                        }
-                    })
-                    .catch(error => {
-                        pendingRequests.delete(requestKey);
-                        console.error('속성 값 삭제 실패:', error);
-                        alert('삭제 중 오류가 발생했습니다: ' + error.message);
-                    });
-                }
-                
-                // 드롭다운 닫기
-                closeAllDropdowns();
-                return;
-            }
             
             const option = options.find(o => String(o.id) === String(optionId));
             // UI 업데이트 - 즉시 실행
@@ -1609,7 +1601,9 @@ function showModalDropdownOptions(rowId, fieldName, btn) {
             // 서버 업데이트 - 단일 값으로 저장
             if (id && id.startsWith('temp_')) {
                 saveNewRowField(td.parentElement, type, optionId);
+                this.dataset.processing = 'false';
             } else {
+                console.log('update_row_field_modal2');
                 fetch('/sales/update_row_field/', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -1618,6 +1612,8 @@ function showModalDropdownOptions(rowId, fieldName, btn) {
                 .then(response => response.json())
                 .then(data => {
                     pendingRequests.delete(requestKey);
+                    this.dataset.processing = 'false';
+                    isProcessingRequest = false;
                     if (data.success) {
                         // 종속된 행들 찾아서 업데이트 (ID 전달)
                         if (typeof updateDependentRows === 'function') {
@@ -1642,6 +1638,8 @@ function showModalDropdownOptions(rowId, fieldName, btn) {
                 })
                 .catch(error => {
                     pendingRequests.delete(requestKey);
+                    this.dataset.processing = 'false';
+                    isProcessingRequest = false;
                     console.error('드롭다운 옵션 업데이트 실패:', error);
                     alert('업데이트 중 오류가 발생했습니다: ' + error.message);
                 });
@@ -1671,4 +1669,48 @@ function showModalDropdownOptions(rowId, fieldName, btn) {
     
     document.addEventListener('scroll', scrollHandler);
     window.addEventListener('resize', scrollHandler);
+}
+
+// 중복 레코드 정리 유틸리티 함수
+function cleanupDuplicateRecords() {
+    console.log('중복 레코드 정리 시작...');
+    
+    fetch('/sales/cleanup_duplicates/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            console.log('중복 레코드 정리 완료:', data.message);
+            alert(`중복 레코드 정리 완료: ${data.deleted_count}개 레코드가 정리되었습니다.`);
+        } else {
+            console.error('중복 레코드 정리 실패:', data.error);
+            alert('중복 레코드 정리 실패: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('중복 레코드 정리 요청 오류:', error);
+        alert('중복 레코드 정리 중 오류가 발생했습니다.');
+    });
+}
+
+// CSRF 토큰 가져오기 함수 (이미 정의되어 있지 않은 경우)
+function getCsrfToken() {
+    const name = 'csrftoken';
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
 }
