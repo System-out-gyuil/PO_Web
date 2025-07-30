@@ -109,6 +109,7 @@ function showCalendarSettingsModal(forceSettings) {
 
         const datetimeAttrs = datetimeData.attributes;
         const allAttrs = attributesData.attributes;
+        console.log('allAttrs', allAttrs);
 
         // 기준 날짜 필드 체크박스 - view_check 필드로 표시 여부 제어
         const dateFieldIds = settings.date_fields.map(df => df.attribute);
@@ -131,7 +132,15 @@ function showCalendarSettingsModal(forceSettings) {
             const existingField = settings.date_fields.find(df => df.attribute === attr.id);
             const isChecked = existingField ? (existingField.view_check !== false) : false;
             const allowedTypes = ['text', 'datetime', 'region', 'region detail', 'number'];
-            const filteredAttrs = allAttrs.filter(a => allowedTypes.includes(a.type) && a.name !== '회사명' && a.name !== '개업년월');
+            const filteredAttrs = allAttrs.filter(a => 
+                allowedTypes.includes(a.type) && 
+                a.name !== '회사명' && 
+                a.name !== '개업년월' && 
+                a.name !== '변환된 텍스트' && 
+                a.detail !== 1 && 
+                a.detail !== '1' && 
+                a.detail !== true
+            );
             const checkboxOptions = filteredAttrs.map(a => 
                 `<div class="content-checkbox-row" style="display:flex;align-items:center;padding:4px 8px;margin:2px 0;">
                     <input type="checkbox" class="content-checkbox" data-date-attr="${attr.id}" value="${a.name}" ${existingField && existingField.content_fields.includes(a.name) ? 'checked' : ''} style="margin-right:8px; width: 10%;">
@@ -191,7 +200,15 @@ function showCalendarSettingsModal(forceSettings) {
                 const df = settings.date_fields.find(df => df.attribute === attr.id) || { content_fields: ['회사명'], color: dateFieldColors[attr.id] || randomColor() };
                 // 회사명은 항상 기본 포함, 드롭다운에는 안 보임
                 const allowedTypes = ['text', 'datetime', 'region', 'region detail', 'number'];
-                const filteredAttrs = allAttrs.filter(a => allowedTypes.includes(a.type) && a.name !== '회사명' && a.name !== '개업년월');
+                const filteredAttrs = allAttrs.filter(a => 
+                    allowedTypes.includes(a.type) && 
+                    a.name !== '회사명' && 
+                    a.name !== '개업년월' && 
+                    a.name !== '변환된 텍스트' && 
+                    a.detail !== 1 && 
+                    a.detail !== '1' && 
+                    a.detail !== true
+                );
                 
                 // 드롭다운 옵션 생성
                 const dropdownOptions = filteredAttrs.map(a => 

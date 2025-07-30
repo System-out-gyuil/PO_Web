@@ -1209,7 +1209,8 @@ def get_user_attributes(request):
                 'id': attr.id,
                 'name': attr.name,
                 'type': attr.attributeType.name if attr.attributeType else 'text',
-                'essential': attr.assential  # essential 정보 추가
+                'essential': attr.assential,  # essential 정보 추가
+                'detail': attr.detail  # detail 필드 추가
             }
             attributes_data.append(attr_data)
         

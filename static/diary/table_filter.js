@@ -241,6 +241,16 @@ function sortTable(column, direction) {
             const aValue = getCellValue(a, column);
             const bValue = getCellValue(b, column);
             
+            // 빈 값 체크 (공백, null, undefined 등)
+            const aIsEmpty = !aValue || aValue.trim() === '';
+            const bIsEmpty = !bValue || bValue.trim() === '';
+            
+            // 빈 값은 항상 아래쪽에 배치
+            if (aIsEmpty && !bIsEmpty) return 1;  // a가 빈 값이면 b보다 뒤로
+            if (!aIsEmpty && bIsEmpty) return -1; // b가 빈 값이면 a보다 뒤로
+            if (aIsEmpty && bIsEmpty) return 0;   // 둘 다 빈 값이면 순서 유지
+            
+            // 둘 다 값이 있는 경우에만 정렬 수행
             let comparison = 0;
             
             // 숫자 필드인지 확인 (매출 관련 필드)
@@ -436,7 +446,6 @@ function getCellValue(row, column) {
         const cellText = cell.textContent.trim();
         const hasInput = cell.querySelector('input') !== null;
         const hasSelect = cell.querySelector('select') !== null;
-        console.log(`getCellValue: 셀 분석 - 텍스트: "${cellText}", 입력필드: ${hasInput}, 선택필드: ${hasSelect}`);
         
         // 매출 컬럼이면 data-raw 사용
         if (column === '매출' && cell.hasAttribute('data-raw')) {
@@ -620,13 +629,21 @@ function updateSortButtonStates(activeColumn = null, activeDirection = null) {
         btn.classList.remove('active');
     });
     
-    // 활성 정렬 버튼 강조
+    // 활성 정렬 버튼 강조 - 더 정확한 선택자 사용
     if (activeColumn && activeDirection) {
-        const activeButtons = document.querySelectorAll(`.sort-btn[onclick*="${activeColumn}"][onclick*="${activeDirection}"]`);
-        activeButtons.forEach(btn => {
-            btn.classList.add('active');
+        // onclick 속성에서 정확한 컬럼명과 방향을 찾는 정규식 사용
+        const activeButtons = document.querySelectorAll('.sort-btn').forEach(btn => {
+            const onclickAttr = btn.getAttribute('onclick') || '';
+            // 정확한 컬럼명과 방향이 모두 포함된 버튼만 선택
+            const columnMatch = onclickAttr.includes(`'${activeColumn}'`) || onclickAttr.includes(`"${activeColumn}"`);
+            const directionMatch = onclickAttr.includes(`'${activeDirection}'`) || onclickAttr.includes(`"${activeDirection}"`);
+            
+            if (columnMatch && directionMatch) {
+                btn.classList.add('active');
+                console.log('정렬 버튼 활성화:', activeColumn, activeDirection, btn);
+            }
         });
-        console.log('정렬 버튼 활성화:', activeColumn, activeDirection);
+        console.log('정렬 버튼 활성화 완료:', activeColumn, activeDirection);
     }
     
     // 정렬 상태가 변경되었을 때 실제 정렬 적용
@@ -644,6 +661,16 @@ function updateSortButtonStates(activeColumn = null, activeDirection = null) {
                         const aValue = getCellValue(a, activeColumn);
                         const bValue = getCellValue(b, activeColumn);
                         
+                        // 빈 값 체크 (공백, null, undefined 등)
+                        const aIsEmpty = !aValue || aValue.trim() === '';
+                        const bIsEmpty = !bValue || bValue.trim() === '';
+                        
+                        // 빈 값은 항상 아래쪽에 배치
+                        if (aIsEmpty && !bIsEmpty) return 1;  // a가 빈 값이면 b보다 뒤로
+                        if (!aIsEmpty && bIsEmpty) return -1; // b가 빈 값이면 a보다 뒤로
+                        if (aIsEmpty && bIsEmpty) return 0;   // 둘 다 빈 값이면 순서 유지
+                        
+                        // 둘 다 값이 있는 경우에만 정렬 수행
                         let comparison = 0;
                         
                         // 숫자 필드인지 확인 (매출 관련 필드)

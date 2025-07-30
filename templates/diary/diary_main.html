@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -16,6 +17,7 @@
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'diary/diary_main.css' %}">
     <style>
         * {
             font-family: 'Noto Sans KR', sans-serif;
@@ -356,6 +358,11 @@
         </div>
     </section>
 
+    {% comment %} <div class="img-container">
+        <div class="img-box">
+        </div>
+    </div> {% endcomment %}
+    
     <!-- Problem Section 3: 본질적인 의문 -->
     <section class="py-16 bg-red-50">
         <div class="container mx-auto px-6 text-center">

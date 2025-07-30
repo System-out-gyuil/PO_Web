@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{% static 'diary/diary_board.css' %}">
     
@@ -330,18 +330,28 @@
     <!-- Header -->
     <header class="header">
         <div class="header-content">
-            <div class="logo">
+            <div class="logo" onclick="window.location.href='/sales/'">
                 <span>💎</span>
                 <span>자금왕</span>
                 <span style="font-size: 0.9rem; color: #6c757d; margin-left: 0.5rem;">정책자금 전용 CRM</span>
             </div>
             <div class="nav-buttons">
-                <a href="{% url 'diary_board' %}" class="btn btn-outline-primary">
-                    <i class="fas fa-arrow-left"></i> 목록으로
+                <a href="/sales/diary/">
+                    <button class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 transition font-medium" style="border-radius: 6px;">
+                        다이어리
+                    </button>
                 </a>
-                <a href="{% url 'diary_main' %}" class="btn btn-outline-secondary">
-                    <i class="fas fa-home"></i> 메인으로
+                {% if is_authenticated %}
+                <button class="header-btn logout-btn" onclick="logout()">
+                    로그아웃
+                </button>
+                {% else %}
+                <a href="/sales/login/">
+                    <button class="header-btn login-btn">
+                        로그인
+                    </button>
                 </a>
+                {% endif %}
             </div>
         </div>
     </header>
@@ -930,7 +940,7 @@
                 // 프레젠테이션
                 'ppt': '📋', 'pptx': '📋',
                 // 압축 파일
-                'zip': '📦', 'rar': '��', '7z': '📦', 'tar': '📦', 'gz': '📦',
+                'zip': '📦', 'rar': '📦', '7z': '📦', 'tar': '📦', 'gz': '📦',
                 // 오디오 파일
                 'mp3': '🎵', 'wav': '🎵', 'flac': '🎵', 'aac': '🎵', 'ogg': '🎵',
                 // 비디오 파일
