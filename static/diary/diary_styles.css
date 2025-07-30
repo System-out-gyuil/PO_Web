@@ -800,8 +800,8 @@ tr:hover .delete-row-btn {
     width: 80%;
 }
 
-.input-field {
-    border: 1px solid #ced4da;
+.input-field, .sales-field-container {
+    border: 1px solid #000000;
     border-radius: 4px;
 }
 

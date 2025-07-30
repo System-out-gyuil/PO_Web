@@ -1,24 +1,32 @@
 // 테이블 새로고침 후 모든 이벤트와 기능 재초기화
 (function() {
+  // 사용자 세션 초기화
+  if (typeof initializeUserSession === 'function') {
+    initializeUserSession().then(() => {
+      console.log('사용자 세션 초기화 완료');
+    });
+  }
+  
   // 컬럼 리사이저 재초기화
   if (typeof reinitializeColumnResizer === 'function') {
       setTimeout(() => {
           reinitializeColumnResizer();
           
-          // 저장된 컬럼 너비 값들 복원
+          // 저장된 컬럼 너비 값들 복원 (사용자별)
+          const userId = getCurrentUserId();
           const headers = document.querySelectorAll('#entryTable thead th[data-column]');
           headers.forEach((header) => {
               const attrName = header.getAttribute('data-column');
               if (attrName) {
-                  const savedWidth = localStorage.getItem(`column_width_${attrName}`);
-                  const savedMaxWidth = localStorage.getItem(`column_max_width_${attrName}`);
+                  const savedWidth = localStorage.getItem(`column_width_${attrName}_${userId}`);
+                  const savedMaxWidth = localStorage.getItem(`column_max_width_${attrName}_${userId}`);
                   const dataWidth = header.getAttribute('data-width');
                   
                   // 우선순위: localStorage > data-width > 기본값
                   let width = null;
                   if (savedWidth) {
                       width = parseInt(savedWidth);
-                      console.log(`localStorage에서 너비 복원: ${attrName} = ${width}px`);
+                      console.log(`localStorage에서 너비 복원: ${attrName} = ${width}px (사용자: ${userId})`);
                   } else if (dataWidth) {
                       width = parseInt(dataWidth);
                       console.log(`data-width에서 너비 적용: ${attrName} = ${width}px`);
@@ -53,7 +61,7 @@
                           cell.style.textOverflow = 'ellipsis';
                           cell.style.whiteSpace = 'nowrap';
                       });
-                      console.log(`리렌더링 후 max-width 복원: ${attrName} = ${savedMaxWidth}px`);
+                      console.log(`리렌더링 후 max-width 복원: ${savedMaxWidth}px`);
                   }
               }
           });
@@ -67,9 +75,30 @@
       }, 100);
   }
   
-  // 정렬/필터 기능 재초기화
-  setTimeout(() => {
+  // 정렬/필터 기능 재초기화 (개선된 타이밍 - 데이터 양에 관계없이 안정적)
+  function initializeTableFilters() {
       console.log('정렬/필터 기능 재초기화 시작');
+      
+      // DOM이 완전히 로드되었는지 확인 (더 엄격한 조건)
+      const tbody = document.getElementById('entryTbody');
+      const filterInputs = document.querySelectorAll('.filter-input');
+      const sortButtons = document.querySelectorAll('.sort-btn');
+      
+      console.log('DOM 상태 확인:', {
+          tbody: !!tbody,
+          tbodyRows: tbody ? tbody.rows.length : 0,
+          filterInputs: filterInputs.length,
+          sortButtons: sortButtons.length
+      });
+      
+      // 모든 필수 요소가 로드되었는지 확인
+      if (!tbody || tbody.rows.length === 0 || filterInputs.length === 0) {
+          console.log('DOM이 아직 준비되지 않음, 재시도...');
+          setTimeout(initializeTableFilters, 200);
+          return;
+      }
+      
+      console.log('DOM 준비 완료, 이벤트 바인딩 시작');
       
       // 리랜더링 후 정렬/필터 상태 복원
       if (typeof reinitializeTableFilters === 'function') {
@@ -86,19 +115,19 @@
           }
       }
       
-      // 정렬 버튼 이벤트 재바인딩
-      const sortButtons = document.querySelectorAll('.sort-btn');
+      // 정렬 버튼 이벤트 재바인딩 (개선된 방식)
       sortButtons.forEach(btn => {
-          // 기존 이벤트 리스너 제거
-          btn.replaceWith(btn.cloneNode(true));
-      });
-      
-      // 새로운 정렬 버튼들에 이벤트 리스너 추가
-      document.querySelectorAll('.sort-btn').forEach(btn => {
-          btn.addEventListener('click', function(e) {
+          // 기존 이벤트 리스너 제거 (더 안전한 방식)
+          const newBtn = btn.cloneNode(true);
+          btn.parentNode.replaceChild(newBtn, btn);
+          
+          // 새로운 버튼에 이벤트 리스너 추가
+          newBtn.addEventListener('click', function(e) {
               e.preventDefault();
               const column = this.getAttribute('data-column');
               const direction = this.getAttribute('data-direction');
+              
+              console.log('정렬 버튼 클릭:', column, direction);
               
               if (typeof sortTable === 'function') {
                   sortTable(column, direction);
@@ -106,18 +135,30 @@
           });
       });
       
-      // 필터 입력 필드 이벤트 재바인딩
-      const filterInputs = document.querySelectorAll('.filter-input');
+      // 필터 입력 필드 이벤트 재바인딩 (개선된 방식)
       filterInputs.forEach(input => {
-          // 기존 이벤트 리스너 제거
-          input.replaceWith(input.cloneNode(true));
-      });
-      
-      // 새로운 필터 입력 필드들에 이벤트 리스너 추가
-      document.querySelectorAll('.filter-input').forEach(input => {
-          input.addEventListener('input', function() {
+          // 기존 이벤트 리스너 제거 (더 안전한 방식)
+          const newInput = input.cloneNode(true);
+          input.parentNode.replaceChild(newInput, input);
+          
+          // 새로운 입력 필드에 이벤트 리스너 추가
+          newInput.addEventListener('input', function() {
               const column = this.getAttribute('data-column');
               const value = this.value;
+              
+              console.log('필터 입력:', column, value);
+              
+              if (typeof filterTable === 'function') {
+                  filterTable(column, value);
+              }
+          });
+          
+          // 추가: keyup 이벤트도 바인딩 (더 안정적인 필터링)
+          newInput.addEventListener('keyup', function() {
+              const column = this.getAttribute('data-column');
+              const value = this.value;
+              
+              console.log('필터 키업:', column, value);
               
               if (typeof filterTable === 'function') {
                   filterTable(column, value);
@@ -128,9 +169,11 @@
       // 필터 초기화 버튼 이벤트 재바인딩
       const clearFilterBtn = document.querySelector('#clearFiltersBtn');
       if (clearFilterBtn) {
-          clearFilterBtn.replaceWith(clearFilterBtn.cloneNode(true));
-          document.querySelector('#clearFiltersBtn').addEventListener('click', function(e) {
+          const newBtn = clearFilterBtn.cloneNode(true);
+          clearFilterBtn.parentNode.replaceChild(newBtn, clearFilterBtn);
+          newBtn.addEventListener('click', function(e) {
               e.preventDefault();
+              console.log('필터 초기화 버튼 클릭');
               if (typeof clearAllFilters === 'function') {
                   clearAllFilters();
               }
@@ -143,7 +186,34 @@
       }
       
       console.log('정렬/필터 기능 재초기화 완료');
-  }, 300);
+  }
+  
+  // 초기 실행 (더 긴 지연 시간으로 데이터 로딩 대기)
+  setTimeout(initializeTableFilters, 500);
+  
+  // 추가 안전장치: 1초 후 한 번 더 시도
+  setTimeout(() => {
+      const tbody = document.getElementById('entryTbody');
+      if (tbody && tbody.rows.length > 0) {
+          console.log('추가 안전장치: 필터 이벤트 재바인딩');
+          const filterInputs = document.querySelectorAll('.filter-input');
+          filterInputs.forEach(input => {
+              // 이벤트 리스너가 이미 있는지 확인
+              const hasInputListener = input._hasInputListener;
+              if (!hasInputListener) {
+                  input.addEventListener('input', function() {
+                      const column = this.getAttribute('data-column');
+                      const value = this.value;
+                      console.log('안전장치 필터 입력:', column, value);
+                      if (typeof filterTable === 'function') {
+                          filterTable(column, value);
+                      }
+                  });
+                  input._hasInputListener = true;
+              }
+          });
+      }
+  }, 1000);
   
   // 드롭다운 옵션 실시간 업데이트를 위한 전역 이벤트 리스너 재설정
   if (typeof setupDropdownUpdateListeners === 'function') {

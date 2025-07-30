@@ -4048,8 +4048,20 @@ function logout() {
         // 세션 스토리지 정리
         sessionStorage.clear();
         
-        // 로컬 스토리지 정리
-        localStorage.clear();
+        // 현재 사용자의 localStorage 데이터만 정리 (다른 사용자 데이터 보존)
+        const currentUserId = getCurrentUserId();
+        if (currentUserId && currentUserId !== 'anonymous') {
+            // 사용자별 키로 저장된 데이터들 정리
+            const keysToRemove = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.includes(`_${currentUserId}`)) {
+                    keysToRemove.push(key);
+                }
+            }
+            keysToRemove.forEach(key => localStorage.removeItem(key));
+            console.log(`사용자 ${currentUserId}의 localStorage 데이터 정리 완료`);
+        }
         
         // 브라우저 히스토리 조작 - 뒤로가기 방지
         window.history.pushState(null, '', '/sales/login/');
@@ -4075,15 +4087,17 @@ function logout() {
         })
         .then(data => {
             if (data.success) {
-                // 로그인 페이지로 즉시 리다이렉트
+                // 로그인 페이지로 리다이렉트
                 window.location.replace('/sales/login/');
             } else {
-                // 오류가 있어도 로그인 페이지로 리다이렉트
+                alert('로그아웃 중 오류가 발생했습니다: ' + (data.error || ''));
+                // 오류가 발생해도 로그인 페이지로 리다이렉트
                 window.location.replace('/sales/login/');
             }
         })
         .catch(error => {
             console.error('로그아웃 오류:', error);
+            alert('로그아웃 중 오류가 발생했습니다.');
             // 오류가 발생해도 로그인 페이지로 리다이렉트
             window.location.replace('/sales/login/');
         });

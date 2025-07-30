@@ -358,7 +358,7 @@ class LogoutView(View):
         request.session.save()
         
         # 로그인 페이지로 리다이렉트
-        return redirect('/sales/login/')
+        return redirect('/sales/')
     
     def post(self, request):
         try:
@@ -367,19 +367,11 @@ class LogoutView(View):
             request.session.pop('diary_authenticated', None)
             request.session.save()
             
-            # 로그아웃 후 JSON 반환
-            return JsonResponse({
-                'success': True, 
-                'message': '로그아웃되었습니다.',
-                'redirect_url': '/sales/login/'
-            })
+            # 로그아웃 후 바로 리다이렉트
+            return redirect('/sales/')
         except Exception as e:
-            # 오류가 발생해도 로그아웃은 성공으로 처리
-            return JsonResponse({
-                'success': True,
-                'message': '로그아웃되었습니다.',
-                'redirect_url': '/sales/login/'
-            })
+            # 오류가 발생해도 로그아웃은 성공으로 처리하고 리다이렉트
+            return redirect('/sales/')
 
 @method_decorator(csrf_exempt, name='dispatch')
 class ChangePasswordView(View):

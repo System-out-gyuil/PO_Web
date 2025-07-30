@@ -93,6 +93,31 @@ def check_login_status(request):
             'error': str(e)
         })
 
+# 현재 사용자 ID 반환 뷰
+@require_GET
+def get_current_user_id(request):
+    """현재 로그인된 사용자의 ID를 반환하는 API"""
+    try:
+        # 세션에서 사용자 ID 확인
+        user_id = request.session.get('diary_member_id')
+        
+        if user_id:
+            return JsonResponse({
+                'success': True,
+                'user_id': str(user_id)
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'error': '로그인되지 않음'
+            })
+    except Exception as e:
+        logger.error(f'사용자 ID 조회 오류: {e}')
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })
+
 # 다이어리 목록 및 작성 폼
 def diary_list(request):
     host = request.get_host()

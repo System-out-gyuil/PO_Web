@@ -344,10 +344,11 @@ class ColumnResizer {
         })
         .catch(err => console.error('컬럼 너비 저장 오류:', err));
         
-        // 로컬 스토리지에 너비 저장
-        localStorage.setItem(`column_width_${attrName}`, width.toString());
-        localStorage.setItem(`column_max_width_${attrName}`, maxWidth.toString());
-        console.log(`컬럼 너비 저장: ${attrName} = ${width}px, 최대 너비 = ${maxWidth}px`);
+        // 로컬 스토리지에 너비 저장 (사용자별)
+        const userId = getCurrentUserId();
+        localStorage.setItem(`column_width_${attrName}_${userId}`, width.toString());
+        localStorage.setItem(`column_max_width_${attrName}_${userId}`, maxWidth.toString());
+        console.log(`컬럼 너비 저장: ${attrName} = ${width}px, 최대 너비 = ${maxWidth}px (사용자: ${userId})`);
     }
     
     cancelResize() {
@@ -420,21 +421,22 @@ class ColumnResizer {
     
     // 저장된 컬럼 너비 로드 함수
     loadColumnWidths() {
+        const userId = getCurrentUserId();
         const headers = this.table.querySelectorAll('thead th');
         headers.forEach((header, index) => {
             if (header.classList.contains('add-attribute-th')) return;
             
             const attrName = header.getAttribute('data-column');
             if (attrName) {
-                const savedWidth = localStorage.getItem(`column_width_${attrName}`);
-                const savedMaxWidth = localStorage.getItem(`column_max_width_${attrName}`);
+                const savedWidth = localStorage.getItem(`column_width_${attrName}_${userId}`);
+                const savedMaxWidth = localStorage.getItem(`column_max_width_${attrName}_${userId}`);
                 const dataWidth = header.getAttribute('data-width');
                 
                 // 우선순위: localStorage > data-width > 기본값
                 let width = null;
                 if (savedWidth) {
                     width = parseInt(savedWidth);
-                    console.log(`localStorage에서 너비 로드: ${attrName} = ${width}px`);
+                    console.log(`localStorage에서 너비 로드: ${attrName} = ${width}px (사용자: ${userId})`);
                 } else if (dataWidth) {
                     width = parseInt(dataWidth);
                     console.log(`data-width에서 너비 적용: ${attrName} = ${width}px`);
@@ -457,12 +459,19 @@ class ColumnResizer {
                         cell.style.whiteSpace = 'nowrap';
                     });
                     
-                    console.log(`컬럼 너비 로드: ${attrName} = ${width}px`);
+                    console.log(`컬럼 너비 적용: ${attrName} = ${width}px`);
                 }
                 
                 // 최대 너비도 복원
                 if (savedMaxWidth) {
-                    this.applyColumnMaxWidth(attrName, parseInt(savedMaxWidth));
+                    const cells = this.table.querySelectorAll(`td[data-field="${attrName}"]`);
+                    cells.forEach(cell => {
+                        cell.style.maxWidth = savedMaxWidth + 'px';
+                        cell.style.overflow = 'hidden';
+                        cell.style.textOverflow = 'ellipsis';
+                        cell.style.whiteSpace = 'nowrap';
+                    });
+                    console.log(`max-width 복원: ${attrName} = ${savedMaxWidth}px`);
                 }
             }
         });

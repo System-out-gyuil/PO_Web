@@ -33,6 +33,7 @@ urlpatterns = [
     path('reset_password/', ResetPasswordView.as_view(), name='reset_password'),
     
     path('check_login_status/', views.check_login_status, name='check_login_status'),
+    path('get_current_user_id/', views.get_current_user_id, name='get_current_user_id'),
     path('diary/', views.diary_list, name='diary_list'),
     path('fu_events/', views.fu_events, name='fu_events'),
     path('fu_memo/<int:entry_id>/', views.fu_memo, name='fu_memo'),

@@ -163,7 +163,7 @@ function showDetailModal(rowData, rowId) {
                     `;
                     
                     inputHtml = `
-                        <div style="border: 1px solid #e9ecef; border-radius: 6px; padding: 12px; background: #fff;">
+                        <div class="input-field" style="padding: 12px; background: #fff;">
                             ${firstRowHtml}
                             ${secondRowHtml}
                             ${totalHtml}
@@ -193,7 +193,7 @@ function showDetailModal(rowData, rowId) {
                                    value="${displayValue}" 
                                    data-field="${attr.name}" 
                                    onchange="detailUpdateRowField('${rowId}', '${attr.name}', this.value)"
-                                   style="flex: 1; padding: 8px; border: 1px solid #ced4da; border-radius: 4px;">
+                                   style="flex: 1; padding: 8px; border: 1px solid #000; border-radius: 4px;">
                             ${detailData ? `
                             <button type="button" 
                                     onclick="showFundingDetailModal('${rowId}', '${attr.name}')" 
@@ -253,7 +253,7 @@ function showDetailModal(rowData, rowId) {
                     const eok = Math.floor(numericValue / 100000000);
                     const cheonman = Math.floor((numericValue % 100000000) / 10000000);
                     inputHtml = `
-                        <div class="sales-field-container" data-field="${attr.name}" data-raw="${numericValue}" style="display: flex; align-items: center; gap: 10px; width: 100%; background: white; border: 1px solid #ced4da; border-radius: 4px; padding: 8px; min-height: 20px;">
+                        <div class="sales-field-container" data-field="${attr.name}" data-raw="${numericValue}" style="display: flex; align-items: center; gap: 10px; width: 100%; background: white; padding: 8px; min-height: 20px;">
                             <div style="display: flex; align-items: center; gap: 5px; flex: 1;">
                                 <input class="input-field" type="number" id="sales_eok_${rowId}" value="${eok}" placeholder="0" min="0"
                                     style="width: 80px; padding: 8px; border: 1px solid #ced4da; border-radius: 4px; font-size: inherit; font-family: inherit; box-sizing: border-box;"
@@ -294,7 +294,7 @@ function showDetailModal(rowData, rowId) {
                     }
                     
                     inputHtml = `
-                        <div style="border: 1px solid #e9ecef; border-radius: 6px; padding: 12px; background: #fff;" data-field="${attr.name}" data-current-value='${JSON.stringify(businessData)}'>
+                        <div style="border: 1px solid #000000; border-radius: 4px; padding: 12px; background: #fff;" data-field="${attr.name}" data-current-value='${JSON.stringify(businessData)}'>
                             <div style="display: flex; flex-direction: column; gap: 12px;">
                                 <!-- 개업일 입력 -->
                                 <div style="display: flex; align-items: center; gap: 10px;">
@@ -352,7 +352,7 @@ function showDetailModal(rowData, rowId) {
                     
                     inputHtml = `
                         <select onchange="detailUpdateRowField('${rowId}', '${attr.name}', this.value)" 
-                                style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;background:white;">
+                                style="width:100%;padding:8px;background:white;" class="input-field">
                             <option value="">업종 선택</option>
                             ${selectOptions}
                         </select>
@@ -418,7 +418,7 @@ function showDetailModal(rowData, rowId) {
                             // 파일 타입별 처리
                             if (fileInfo.type === 'img' || fileInfo.content_type?.startsWith('image/')) {
                                 filesHtml += `
-                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding: 8px; border: 1px solid #e9ecef; border-radius: 4px; background: #f8f9fa;">
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding: 8px; border: 1px solid #000; border-radius: 4px; background: #f8f9fa;">
                                         <span style="flex: 1; font-size: 14px;">📄 ${displayFileName}</span>
                                         <button onclick="showFilePreviewModal(${JSON.stringify({...fileInfo, id: fileId, field_name: attr.name, row_id: rowId}).replace(/\"/g, '&quot;')})"
                                                 style="padding: 4px 8px; background: #ffc107; color: #333; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
@@ -575,7 +575,7 @@ function showDetailModal(rowData, rowId) {
                     }
                     
                     inputHtml = `
-                        <div style="border: 1px solid #e9ecef; border-radius: 6px; padding: 12px; background: #fff;" data-field="${attr.name}" data-current-value='${JSON.stringify(ageData)}'>
+                        <div style="border: 1px solid rgb(0, 0, 0); border-radius: 4px; padding: 12px; background: #fff;" data-field="${attr.name}" data-current-value='${JSON.stringify(ageData)}'>
                             <div style="display: flex; flex-direction: column; gap: 12px;">
                                 <!-- 생년월일 입력 -->
                                 <div style="display: flex; align-items: center; gap: 10px;">
@@ -626,7 +626,7 @@ function showDetailModal(rowData, rowId) {
                     // 기본 텍스트 필드
                     if (attr.name === '신용점수') {
                         // 신용점수 필드는 실시간 검증 추가
-                        inputHtml = `<input type="text" value="${value}" data-field="${attr.name}" 
+                        inputHtml = `<input type="text" value="${value}" class="input-field" data-field="${attr.name}" 
                                    onchange="detailUpdateRowField('${rowId}', '${attr.name}', this.value); highlightRequiredField(this, this.value && this.value !== '0' ? false : true);" 
                                    oninput="highlightRequiredField(this, this.value && this.value !== '0' ? false : true);">`;
                     } else {
