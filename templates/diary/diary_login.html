@@ -154,8 +154,23 @@
       <form id="signupForm">
         {% csrf_token %}
         <div class="form-group">
-          <input type="email" id="signup_id" name="signup_id" placeholder="이메일 입력" required>
+          <div style="display: flex; gap: 10px; align-items: center;">
+            <input type="email" id="signup_id" name="signup_id" placeholder="이메일 입력" required style="flex: 1;">
+            <button type="button" id="check_duplicate_btn" onclick="checkEmailDuplicate()" style="width: auto; padding: 10px 15px;">중복 검사</button>
+          </div>
+          <div id="email_status" style="margin-top: 5px; font-size: 12px;"></div>
         </div>
+
+        <!-- 이메일 인증 섹션 -->
+        <div class="form-group">
+          <div style="display: flex; gap: 10px; align-items: center;">
+            <input type="text" id="verification_code" name="verification_code" placeholder="입력한 이메일로 발송된 6자리 인증번호" maxlength="6" style="flex: 1;">
+            <button type="button" id="send_verification_btn" onclick="sendVerificationCode()" style="width: auto; padding: 10px 15px;">인증번호 발송</button>
+          </div>
+          <div id="verification_status" style="margin-top: 5px; font-size: 12px;"></div>
+          <div id="countdown_timer" style="margin-top: 5px; font-size: 12px; color: #dc3545; display: none;"></div>
+        </div>
+
         <div class="form-group">
           <input type="password" id="signup_pw" name="signup_pw" placeholder="비밀번호 입력" required autocomplete="off">
         </div>
@@ -172,15 +187,7 @@
           <input type="tel" id="signup_phone" name="signup_phone" placeholder="전화번호 (010-1234-1234)" required>
         </div>
         
-        <!-- 이메일 인증 섹션 -->
-        <div class="form-group">
-          <div style="display: flex; gap: 10px; align-items: center;">
-            <input type="text" id="verification_code" name="verification_code" placeholder="6자리 인증번호" maxlength="6" style="flex: 1;">
-            <button type="button" onclick="sendVerificationCode()" style="width: auto; padding: 10px 15px;">인증번호 발송</button>
-            <button type="button" onclick="verifyCode()" style="width: auto; padding: 10px 15px;">인증번호 확인</button>
-          </div>
-          <div id="verification_status" style="margin-top: 5px; font-size: 12px;"></div>
-        </div>
+        
         
         <!-- 개인정보처리방침 체크박스 -->
         <div class="form-group" style="display: flex; align-items: center; gap: 10px;">
@@ -213,6 +220,65 @@
       document.getElementById('signupForm').reset();
     }
     
+    // 이메일 중복 검사
+    function checkEmailDuplicate() {
+      var email = document.getElementById('signup_id').value;
+      var emailStatus = document.getElementById('email_status');
+      var checkBtn = document.getElementById('check_duplicate_btn');
+      var originalText = checkBtn.textContent;
+      checkBtn.textContent = '검사 중...';
+      checkBtn.disabled = true;
+      
+      if (!email) {
+        emailStatus.textContent = '이메일을 먼저 입력해주세요.';
+        emailStatus.style.color = '#dc3545';
+        checkBtn.textContent = originalText;
+        checkBtn.disabled = false;
+        return;
+      }
+
+      // 이메일 형식 검증
+      var emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      if (!emailPattern.test(email)) {
+        emailStatus.textContent = '올바른 이메일 형식을 입력해주세요.';
+        emailStatus.style.color = '#dc3545';
+        checkBtn.textContent = originalText;
+        checkBtn.disabled = false;
+        return;
+      }
+
+      fetch('/sales/check_email_duplicate/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify({ email: email })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          emailStatus.textContent = '사용 가능한 이메일입니다.';
+          emailStatus.style.color = '#155724';
+          // 중복 검사 성공 시 인증번호 발송 버튼 활성화
+          document.getElementById('send_verification_btn').disabled = false;
+        } else {
+          emailStatus.textContent = data.error;
+          emailStatus.style.color = '#dc3545';
+          // 중복 검사 실패 시 인증번호 발송 버튼 비활성화
+          document.getElementById('send_verification_btn').disabled = true;
+        }
+      })
+      .catch(error => {
+        emailStatus.textContent = '서버 오류가 발생했습니다.';
+        emailStatus.style.color = '#dc3545';
+      })
+      .finally(() => {
+        checkBtn.textContent = originalText;
+        checkBtn.disabled = false;
+      });
+    }
+
     // 이메일 인증번호 발송
     function sendVerificationCode() {
       var email = document.getElementById('signup_id').value;
@@ -229,7 +295,7 @@
         return;
       }
       
-      var sendBtn = document.querySelector('button[onclick="sendVerificationCode()"]');
+      var sendBtn = document.getElementById('send_verification_btn');
       var originalText = sendBtn.textContent;
       sendBtn.textContent = '발송 중...';
       sendBtn.disabled = true;
@@ -245,7 +311,10 @@
       .then(response => response.json())
       .then(data => {
         if (data.success) {
-          alert(data.message);
+          // 발송 성공 시 버튼 텍스트 변경
+          sendBtn.textContent = '인증번호 재발급';
+          // 카운트다운 시작
+          startCountdown(600); // 10분 = 600초
         } else {
           alert(data.error);
         }
@@ -254,27 +323,47 @@
         alert('서버 오류가 발생했습니다.');
       })
       .finally(() => {
-        sendBtn.textContent = originalText;
         sendBtn.disabled = false;
       });
     }
     
-    // 인증번호 확인
+    // 카운트다운 타이머
+    var countdownInterval;
+    function startCountdown(seconds) {
+      var countdownTimer = document.getElementById('countdown_timer');
+      countdownTimer.style.display = 'block';
+      
+      clearInterval(countdownInterval);
+      
+      countdownInterval = setInterval(function() {
+        var minutes = Math.floor(seconds / 60);
+        var remainingSeconds = seconds % 60;
+        
+        countdownTimer.textContent = '인증번호 유효시간: ' + minutes + '분 ' + remainingSeconds + '초';
+        
+        if (seconds <= 0) {
+          clearInterval(countdownInterval);
+          countdownTimer.textContent = '인증번호가 만료되었습니다.';
+          countdownTimer.style.color = '#dc3545';
+        }
+        
+        seconds--;
+      }, 1000);
+    }
+    
+    // 인증번호 자동 확인
     function verifyCode() {
       var email = document.getElementById('signup_id').value;
       var verificationCode = document.getElementById('verification_code').value;
       var verificationStatus = document.getElementById('verification_status');
+      var verificationInput = document.getElementById('verification_code');
 
       if (!email || !verificationCode) {
         verificationStatus.textContent = '이메일과 인증번호를 모두 입력해주세요.';
         verificationStatus.style.color = '#dc3545';
+        verificationInput.style.borderColor = '#dc3545';
         return;
       }
-
-      var sendBtn = document.querySelector('button[onclick="sendVerificationCode()"]');
-      var originalText = sendBtn.textContent;
-      sendBtn.textContent = '확인 중...';
-      sendBtn.disabled = true;
 
       fetch('/sales/verify_verification_code/', {
         method: 'POST',
@@ -287,25 +376,25 @@
       .then(response => response.json())
       .then(data => {
         if (data.success) {
-          verificationStatus.textContent = '인증번호가 확인되었습니다.';
+          verificationStatus.textContent = '인증이 완료되었습니다.';
           verificationStatus.style.color = '#155724';
-          // 인증 성공 시 회원가입 폼 제출 가능
-          document.getElementById('signupForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            submitSignupForm();
-          });
+          verificationInput.style.borderColor = '#28a745';
+          verificationInput.style.borderWidth = '2px';
+          // 인증 성공 시 카운트다운 숨기기
+          document.getElementById('countdown_timer').style.display = 'none';
+          clearInterval(countdownInterval);
         } else {
           verificationStatus.textContent = data.error;
           verificationStatus.style.color = '#dc3545';
+          verificationInput.style.borderColor = '#dc3545';
+          verificationInput.style.borderWidth = '2px';
         }
       })
       .catch(error => {
         verificationStatus.textContent = '서버 오류가 발생했습니다.';
         verificationStatus.style.color = '#dc3545';
-      })
-      .finally(() => {
-        sendBtn.textContent = originalText;
-        sendBtn.disabled = false;
+        verificationInput.style.borderColor = '#dc3545';
+        verificationInput.style.borderWidth = '2px';
       });
     }
 
@@ -347,6 +436,13 @@
       if (!phoneRegex.test(phone)) {
         document.getElementById('signupError').textContent = '전화번호 형식이 올바르지 않습니다. (010-1234-1234)';
         document.getElementById('signupError').style.display = 'block';
+        return;
+      }
+
+      // 이메일 인증 확인
+      var verificationStatus = document.getElementById('verification_status');
+      if (verificationStatus.textContent !== '인증이 완료되었습니다.') {
+        alert('이메일 인증을 완료해주세요.');
         return;
       }
 
@@ -514,9 +610,29 @@
     // 인증번호 입력 시 자동으로 다음 필드로 포커스
     document.getElementById('verification_code').addEventListener('input', function(e) {
       if (e.target.value.length === 6) {
-        // 6자리 입력 완료 시 다음 필드로 포커스
-        document.getElementById('signup_manager_name').focus();
+        // 6자리 입력 완료 시 자동으로 인증 확인
+        verifyCode();
       }
+    });
+    
+    // 회원가입 폼 제출 이벤트 리스너
+    document.getElementById('signupForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      submitSignupForm();
+    });
+
+    // 이메일 입력 시 중복 검사 상태 초기화
+    document.getElementById('signup_id').addEventListener('input', function(e) {
+      var emailStatus = document.getElementById('email_status');
+      emailStatus.textContent = '';
+      emailStatus.style.color = '';
+      // 이메일 변경 시 인증번호 발송 버튼 비활성화
+      document.getElementById('send_verification_btn').disabled = true;
+    });
+    
+    // 페이지 로드 시 인증번호 발송 버튼 비활성화
+    document.addEventListener('DOMContentLoaded', function() {
+      document.getElementById('send_verification_btn').disabled = true;
     });
   </script>
 

@@ -142,14 +142,14 @@ class PolicyFundRecommendationEngineV2:
         
         # 기본값 설정
         defaults = {
-            'annual_revenue': 500_000_000,      # 5억원 (중간값)
+            'annual_revenue': 0,                # 매출 0원
             'employees': 3,                     # 3명 (소상공인 기준)
             'business_months': 24,              # 2년 (24개월)
             'ceo_age': 35,                      # 35세 (청년창업 기준)
             'experience_years': 5,              # 5년 경력
             'is_startup': True,                 # 스타트업으로 가정
             'existing_debt': 0,                 # 기존 부채 없음
-            'existing_funds': {
+            'existing_funds': {                 # 기대출 0원
                 'kibo_general': 0,
                 'kibo_ip': 0,
                 'sinbo': 0,

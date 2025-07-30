@@ -11,6 +11,7 @@ import random
 import re
 from .models import User, BaseAttribute, BaseAttributeDetail, Attribute, AttributeValue, DropdownAttribute, Row, CalendarSettings, KanbanSettings, EmailVerification
 import json
+from config import EMAIL_AUTH_VALID_TIME, SENDER_EMAIL
 
 @method_decorator(csrf_exempt, name='dispatch')
 class LoginView(View):
@@ -507,14 +508,15 @@ class SendVerificationEmailView(View):
                 send_mail(
                     subject,
                     message,
-                    'nicepo.corp@gmail.com',  # 발신자 이메일
+                    SENDER_EMAIL,  # 발신자 이메일
                     [email],  # 수신자 이메일
                     fail_silently=False,
                 )
                 
                 return JsonResponse({
                     'success': True,
-                    'message': '인증번호가 이메일로 발송되었습니다.'
+                    'message': '인증번호가 이메일로 발송되었습니다.',
+                    'countdown_seconds': EMAIL_AUTH_VALID_TIME  # 10분
                 })
                 
             except Exception as e:
@@ -648,7 +650,7 @@ class ForgotPasswordView(View):
                 send_mail(
                     subject,
                     message,
-                    'nicepo.corp@gmail.com',
+                    SENDER_EMAIL,
                     [email],
                     fail_silently=False,
                 )
@@ -754,4 +756,51 @@ class ResetPasswordView(View):
             return JsonResponse({
                 'success': False,
                 'error': f'비밀번호 재설정 중 오류가 발생했습니다: {str(e)}'
+            })
+
+@method_decorator(csrf_exempt, name='dispatch')
+class CheckEmailDuplicateView(View):
+    """이메일 중복 검사 뷰"""
+    def post(self, request):
+        try:
+            data = json.loads(request.body)
+            email = data.get('email')
+            
+            if not email:
+                return JsonResponse({
+                    'success': False,
+                    'error': '이메일을 입력해주세요.'
+                })
+            
+            # 이메일 형식 검증
+            email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+            if not re.match(email_pattern, email):
+                return JsonResponse({
+                    'success': False,
+                    'error': '올바른 이메일 형식을 입력해주세요.'
+                })
+            
+            # 이메일 중복 확인
+            if User.objects.filter(email=email).exists():
+                return JsonResponse({
+                    'success': False,
+                    'error': '이미 존재하는 이메일입니다.',
+                    'is_duplicate': True
+                })
+            else:
+                return JsonResponse({
+                    'success': True,
+                    'message': '사용 가능한 이메일입니다.',
+                    'is_duplicate': False
+                })
+                
+        except json.JSONDecodeError:
+            return JsonResponse({
+                'success': False,
+                'error': '잘못된 요청 형식입니다.'
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': f'중복 검사 중 오류가 발생했습니다: {str(e)}'
             })
