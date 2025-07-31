@@ -3374,8 +3374,6 @@ def get_file_preview_url(request, row_id, field_name):
         return JsonResponse({'success': False, 'error': str(e)})
 
 
-
-
 @csrf_exempt
 def update_sales_field(request):
     """매출 필드 업데이트 - 억/천만 단위 지원"""

@@ -341,17 +341,9 @@
                         다이어리
                     </button>
                 </a>
-                {% if is_authenticated %}
-                <button class="header-btn logout-btn" onclick="logout()">
-                    로그아웃
-                </button>
-                {% else %}
-                <a href="/sales/login/">
-                    <button class="header-btn login-btn">
-                        로그인
-                    </button>
-                </a>
-                {% endif %}
+                <div id="auth-buttons">
+                    <!-- 로그인 상태에 따라 동적으로 버튼이 표시됩니다 -->
+                </div>
             </div>
         </div>
     </header>
@@ -394,8 +386,73 @@
     <!-- Custom JS -->
     <script src="{% static 'diary/diary_board.js' %}"></script>
     <script>
+        // 로그인 상태 확인 및 버튼 업데이트
+        async function checkLoginStatusAndUpdateButtons() {
+            try {
+                const response = await fetch('/sales/check_login_status/');
+                const data = await response.json();
+                
+                const authButtonsDiv = document.getElementById('auth-buttons');
+                
+                if (data.is_authenticated) {
+                    // 로그인된 상태 - 로그아웃 버튼 표시
+                    authButtonsDiv.innerHTML = `
+                        <button class="header-btn logout-btn" onclick="logout()" style="background: #dc3545; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-weight: 500; transition: background 0.3s ease;">
+                            로그아웃
+                        </button>
+                    `;
+                } else {
+                    // 로그인되지 않은 상태 - 로그인 버튼 표시
+                    authButtonsDiv.innerHTML = `
+                        <a href="/sales/login/">
+                            <button class="header-btn login-btn" style="background: #007bff; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-weight: 500; transition: background 0.3s ease;">
+                                로그인
+                            </button>
+                        </a>
+                    `;
+                }
+            } catch (error) {
+                console.error('로그인 상태 확인 중 오류:', error);
+                // 오류 발생 시 기본적으로 로그인 버튼 표시
+                const authButtonsDiv = document.getElementById('auth-buttons');
+                authButtonsDiv.innerHTML = `
+                    <a href="/sales/login/">
+                        <button class="header-btn login-btn" style="background: #007bff; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-weight: 500; transition: background 0.3s ease;">
+                            로그인
+                        </button>
+                    </a>
+                `;
+            }
+        }
+        
+        // 로그아웃 함수
+        async function logout() {
+            try {
+                const response = await fetch('/sales/logout/', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCsrfToken(),
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    // 로그아웃 성공 시 로그인 페이지로 리다이렉트
+                    window.location.href = '/sales/login/';
+                } else {
+                    alert('로그아웃 중 오류가 발생했습니다.');
+                }
+            } catch (error) {
+                console.error('로그아웃 오류:', error);
+                alert('로그아웃 중 오류가 발생했습니다.');
+            }
+        }
+        
         // 페이지 로드 시 공고 데이터 로드
         document.addEventListener('DOMContentLoaded', function() {
+            // 로그인 상태 확인 및 버튼 업데이트
+            checkLoginStatusAndUpdateButtons();
+            
             // URL에서 announcement_id 추출
             const pathParts = window.location.pathname.split('/').filter(part => part !== '');
             console.log('Path parts:', pathParts);
@@ -867,25 +924,14 @@
         
         // 파일 다운로드
         function downloadFile(savedName, originalName, downloadUrl) {
-            // S3 서명된 URL이 있으면 사용, 없으면 기존 방식 사용
-            if (downloadUrl && downloadUrl.trim() !== '') {
-                const link = document.createElement('a');
-                link.href = downloadUrl;
-                link.download = originalName;
-                link.style.display = 'none';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            } else {
-                // 기존 방식: 서버를 통해 다운로드
-                const link = document.createElement('a');
-                link.href = `/sales/diary_board/download/${savedName}`;
-                link.download = originalName;
-                link.style.display = 'none';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            }
+            // 항상 서버를 통해 다운로드 (S3 서명된 URL 만료 문제 방지)
+            const link = document.createElement('a');
+            link.href = `/sales/diary_board/download/${savedName}`;
+            link.download = originalName;
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
         
         // 읽음 처리

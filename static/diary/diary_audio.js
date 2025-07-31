@@ -1110,8 +1110,10 @@ function handleMultiFileUpload(fileInput) {
       // 성공 알림
       showNotification('파일이 업로드되었습니다.', 'success');
       
-      // 영업노트 섹션 비동기 리렌더링
-      refreshSalesNoteSection();
+      // 영업노트 섹션 비동기 리렌더링 - 여러 파일 업로드가 아닌 경우에만 호출
+      if (!window.isMultiFileUpload) {
+          refreshSalesNoteSection();
+      }
     } else {
       alert('파일 업로드 실패: ' + (data.error || ''));
     }
@@ -1600,8 +1602,8 @@ function handleGeneralFileUpload(file, insertIndex) {
             // 성공 알림
             showNotification('파일이 업로드되었습니다.', 'success');
             
-            // 영업노트 섹션 비동기 리렌더링
-            refreshSalesNoteSection();
+            // 영업노트 섹션 비동기 리렌더링 - 개별 파일 업로드 시에는 호출하지 않음
+            // refreshSalesNoteSection();
             
         } else {
             console.error('일반 파일 업로드 실패:', data.error);
@@ -2409,13 +2411,24 @@ function setupDragAndDrop(container) {
         const files = e.dataTransfer.files;
         if (files.length > 0) {
             console.log('드래그 앤 드롭으로 파일 받음:', files);
+            // 드롭 이벤트 발생 시 클립보드 이벤트 무시 플래그 설정
+            window.ignoreNextPasteEvent = true;
+            setTimeout(() => {
+                window.ignoreNextPasteEvent = false;
+            }, 100);
             handleDroppedFiles(files);
         }
     });
     
     // 클립보드 붙여넣기 이벤트 추가
     container.addEventListener('paste', function(e) {
-        // 현재 활성화된 요소가 입력 필드인 경우는 무시
+        // 드롭 이벤트로 인한 붙여넣기 이벤트 무시
+        if (window.ignoreNextPasteEvent) {
+            console.log('전역 클립보드: 드롭 이벤트로 인한 붙여넣기 이벤트 무시');
+            return;
+        }
+        
+        // 현재 활성화된 요소가 입력 필드인 경우는 완전히 무시
         const activeElement = document.activeElement;
         if (activeElement && (
             activeElement.tagName === 'INPUT' || 
@@ -2429,7 +2442,7 @@ function setupDragAndDrop(container) {
             activeElement.type === 'url' ||
             activeElement.type === 'tel'
         )) {
-            // 입력 필드에서는 기본 동작 허용 (텍스트 붙여넣기 등)
+            // 입력 필드에서는 파일 붙여넣기를 완전히 무시하고 기본 동작 허용
             return;
         }
         
@@ -2479,11 +2492,20 @@ function setupDragAndDrop(container) {
 function handleDroppedFiles(files) {
     console.log('드롭된 파일들 처리 시작:', files);
     
+    // 이미 업로드 중인지 확인
+    if (window.isMultiFileUpload) {
+        console.log('이미 여러 파일 업로드 중입니다. 중복 요청을 무시합니다.');
+        return;
+    }
+    
     // 파일 개수 제한 (최대 10개)
     if (files.length > 10) {
         showNotification('최대 10개까지 파일을 업로드할 수 있습니다.', 'warning');
         return;
     }
+    
+    // 여러 파일 업로드 플래그 설정
+    window.isMultiFileUpload = true;
     
     let uploadedCount = 0;
     let errorCount = 0;
@@ -2501,6 +2523,8 @@ function handleDroppedFiles(files) {
             if (errorCount > 0) {
                 showNotification(`${errorCount}개 파일 업로드에 실패했습니다.`, 'error');
             }
+            // 여러 파일 업로드 플래그 해제
+            window.isMultiFileUpload = false;
             return;
         }
         
