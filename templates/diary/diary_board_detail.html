@@ -980,6 +980,11 @@
             }
             return cookieValue;
         }
+        
+        // CSRF 토큰 가져오기 (별칭 함수)
+        function getCsrfToken() {
+            return getCookie('csrftoken');
+        }
     </script>
 </body>
 </html> 
