@@ -765,7 +765,7 @@
             }
             
             // 서버에 PDF 변환 요청
-            fetch('/sales/convert_hwp_to_pdf/', {
+            fetch('/sales/convert_hwp_to_pdf_board/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -781,14 +781,14 @@
             .then(data => {
                 console.log('PDF 변환 응답:', data);
                 
-                if (data.success && data.pdf_url) {
+                if (data.success && data.url) {
                     // 변환 성공 - PDF 미리보기 표시
                     contentDiv.innerHTML = `
                         <div style="width: 100%; height: 100%; display: flex; flex-direction: column;">
                             <div style="background: #f8f9fa; padding: 10px; border-bottom: 1px solid #dee2e6; font-size: 14px; color: #666;">
                                 <strong>PDF 미리보기</strong> - ${fileName} (변환됨)
                             </div>
-                            <iframe src="${data.pdf_url}" 
+                            <iframe src="${data.url}" 
                                     style="flex: 1; border: none; border-radius: 8px;"
                                     title="${fileName}">
                             </iframe>
