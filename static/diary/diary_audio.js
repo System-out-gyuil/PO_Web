@@ -1028,11 +1028,15 @@ function handleMultiFileUpload(fileInput) {
   
   // 오디오는 기존 로직 사용 - 중복 요청 방지를 위해 handleGeneralFileUpload만 호출
   if (file.type.startsWith('audio/')) {
+    showNotification('오디오 파일 업로드 중...', 'info');
     handleGeneralFileUpload(file, 0); // insertIndex를 0으로 설정
     return;
   }
   
   window.isUploading = true;
+  
+  // 파일 업로드 시작 알림
+  showNotification('파일 업로드 중...', 'info');
   
   // 이미지/문서/기타 파일 처리
   if (!window.audioFileData) window.audioFileData = { data: {} };
@@ -1484,6 +1488,9 @@ function handleAudioFileUpload(file, insertIndex) {
         initializeAICacheManager();
     }
 
+    // 오디오 파일 업로드 시작 알림
+    showNotification('오디오 파일 업로드 중...', 'info');
+
     const formData = new FormData();
     formData.append('audio_file', file);
     formData.append('row_id', window.currentDetailRowId);
@@ -1520,12 +1527,12 @@ function handleAudioFileUpload(file, insertIndex) {
             
         } else {
             console.error('오디오 파일 업로드 실패:', data.error);
-            alert('오디오 파일 업로드 실패: ' + (data.error || ''));
+            showNotification('오디오 파일 업로드 실패: ' + (data.error || ''), 'error');
         }
     })
     .catch(error => {
         console.error('오디오 파일 업로드 중 오류:', error);
-        alert('오디오 파일 업로드 중 오류가 발생했습니다.');
+        showNotification('오디오 파일 업로드 중 오류가 발생했습니다.', 'error');
     });
 }
 
@@ -1544,6 +1551,9 @@ function handleGeneralFileUpload(file, insertIndex) {
     }
     
     window.isUploading = true;
+    
+    // 파일 업로드 시작 알림
+    showNotification('파일 업로드 중...', 'info');
     
     const formData = new FormData();
     formData.append('file', file);
@@ -2181,7 +2191,7 @@ function showNoteFilePreview(fileId, fileInfo) {
                     <img src="${fileUrl}" 
                          alt="${fileName}"
                          style="max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px;"
-                         onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjhmOWZhIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzZjNzU3ZCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIGxvYWQgZmFpbGVkPC90ZXh0Pjwvc3ZnPg==';">
+                         onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjhmOWZhIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzZjNzU3ZCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlPC90ZXh0Pjwvc3ZnPg==';">
                 `;
             } else if (contentType === 'application/pdf' || fileExt === 'pdf' || fileInfo.type === 'pdf') {
                 // PDF 파일
@@ -2504,6 +2514,9 @@ function handleDroppedFiles(files) {
         return;
     }
     
+    // 여러 파일 업로드 시작 알림
+    showNotification(`${files.length}개 파일을 업로드 중...`, 'info');
+    
     // 여러 파일 업로드 플래그 설정
     window.isMultiFileUpload = true;
     
@@ -2573,6 +2586,9 @@ function handleGeneralFileUploadSequential(file, insertIndex, onSuccess, onError
         initializeAICacheManager();
     }
 
+    // 파일 업로드 시작 알림
+    showNotification('파일 업로드 중...', 'info');
+
     const formData = new FormData();
     formData.append('file', file);
     formData.append('row_id', window.currentDetailRowId);
@@ -2630,11 +2646,13 @@ function handleGeneralFileUploadSequential(file, insertIndex, onSuccess, onError
             
         } else {
             console.error('일반 파일 업로드 실패:', data.error);
+            showNotification('파일 업로드 실패: ' + (data.error || ''), 'error');
             if (onError) onError();
         }
     })
     .catch(error => {
         console.error('일반 파일 업로드 중 오류:', error);
+        showNotification('파일 업로드 중 오류가 발생했습니다.', 'error');
         if (onError) onError();
     });
 }
