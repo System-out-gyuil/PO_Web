@@ -1527,7 +1527,7 @@ def extract_text_from_file(file_path):
             return result
         elif file_path.endswith((".jpg", ".jpeg", ".png")):
             return clova_ocr(file_path, "jpg")
-        elif file_path.endswith(".hwp"):
+        elif file_path.endswith((".hwp", ".hwpx")):
             pdf_path = convert_hwp_to_pdf(file_path)
             if os.path.exists(pdf_path):
                 extracted_text = extract_text_from_file(pdf_path)

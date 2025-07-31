@@ -1735,7 +1735,7 @@ function createAddPlaceholder(insertIndex) {
     btnContainer.style.cssText = `
         display: none;
         height: 60px;
-        border: 1px dashed #bbb;
+        border: none;
         border-radius: 10px;
         padding: 8px;
         font-size: 13px;
