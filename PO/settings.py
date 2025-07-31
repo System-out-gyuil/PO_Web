@@ -120,7 +120,7 @@ MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/{AWS_LOCATION}/'
 CRONJOBS = [
     ('0 18 * * *', 'PO.management.commands.update_bizinfo.Command.handle'), #매일 18시
     
-    # ('0 8 * * 1', 'PO.management.commands.update_biztop.Command.handle'), #매주 월요일 08시
+    ('0 8 * * 1', 'PO.management.commands.update_biztop.Command.handle'), #매주 월요일 08시
 ]
 
 SITE_ID = 18 #sitemap 
