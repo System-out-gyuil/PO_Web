@@ -2147,8 +2147,33 @@ function showNoteFilePreview(fileId, fileInfo) {
             const fileUrl = data.preview_url;
             let previewContent = '';
             
-            // 파일 타입에 따른 미리보기 생성
-            if (contentType.startsWith('image/') || fileInfo.type === 'img') {
+            // HWP/HWPX 파일인 경우 PDF로 변환해서 미리보기
+            if ((contentType === 'application/x-hwp' || contentType === 'application/haansofthwp' || contentType === 'application/vnd.hancom.hwp' || 
+                fileExt === 'hwp' || fileExt === 'hwpx') && 
+               data.converted_to_pdf) {
+                // 서버에서 이미 PDF로 변환된 경우
+                previewContent = `
+                    <div style="width: 100%; height: 100%; display: flex; flex-direction: column;">
+                        <div style="background: #f8f9fa; padding: 10px; border-bottom: 1px solid #dee2e6; font-size: 14px; color: #666;">
+                            <strong>PDF 미리보기</strong> - ${fileName} (HWP에서 변환됨)
+                        </div>
+                        <iframe src="${fileUrl}" 
+                                style="flex: 1; border: none; border-radius: 8px;"
+                                title="${fileName}">
+                        </iframe>
+                        <div style="text-align: center; margin-top: 15px; padding: 10px; background: #f8f9fa; border-top: 1px solid #dee2e6;">
+                            <button onclick="window.open('${fileInfo.download_url || fileUrl}', '_blank')" 
+                                    style="padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">
+                                원본 파일 다운로드
+                            </button>
+                            <button onclick="download_file_note('${fileId}', '${fileName}')" 
+                                    style="padding: 8px 16px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                다운로드
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } else if (contentType.startsWith('image/') || fileInfo.type === 'img') {
                 // 이미지 파일
                 previewContent = `
                     <img src="${fileUrl}" 

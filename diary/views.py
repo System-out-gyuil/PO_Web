@@ -3189,7 +3189,7 @@ def get_file_preview_url_note(request, file_id):
                         os.remove(pdf_path)
                     
                     if preview_url:
-                        return JsonResponse({'success': True, 'preview_url': preview_url})
+                        return JsonResponse({'success': True, 'preview_url': preview_url, 'converted_to_pdf': True})
                     else:
                         return JsonResponse({'success': False, 'error': 'PDF 미리보기 URL 생성에 실패했습니다.'})
                         
@@ -3330,7 +3330,7 @@ def get_file_preview_url(request, row_id, field_name):
                     os.remove(pdf_path)
                 
                 if preview_url:
-                    return JsonResponse({'success': True, 'preview_url': preview_url})
+                    return JsonResponse({'success': True, 'preview_url': preview_url, 'converted_to_pdf': True})
                 else:
                     return JsonResponse({'success': False, 'error': 'PDF 미리보기 URL 생성에 실패했습니다.'})
                     
