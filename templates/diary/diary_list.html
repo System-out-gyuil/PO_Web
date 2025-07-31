@@ -1164,13 +1164,13 @@
             <button id="addExcelBtn" class="add-btn" style="width:180px; background: #28a745;">📊 엑셀 추가</button>
         </div>
     </div>
+
+    <hr>
     
     <!-- 칸반보드 필터 UI -->
-    <div id="kanbanFilterSection" style="margin: 20px 0 0; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
+    <div id="kanbanFilterSection" style="margin: 20px 0 0; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef; display: none;">
         <div style="display: flex; align-items: center; gap: 15px; flex-direction: column;">
-            <div style="display: flex; flex-direction: row; width: 100%; align-items: center; justify-content: flex-end;">
-                <button id="kanbanSettingsBtn" onclick="showKanbanSettingsModal()" style="padding:8px 16px;background:#007bff;color:white;border:none;border-radius:4px;cursor:pointer;font-size:14px;">⚙️ 칸반보드 설정</button>
-            </div>
+            
             <div id="kanbanLoadingIndicator" style="display: none; color: #6c757d; font-size: 14px;">
                 <span>로딩 중...</span>
             </div>
@@ -1195,14 +1195,19 @@
             {% endfor %}
         </div>
     </div>
+    <div style="display: flex; flex-direction: row; width: 100%; align-items: center; justify-content: flex-end; margin-bottom: 10px;">
+        <button id="kanbanSettingsBtn" onclick="showKanbanSettingsModal()" style="padding:8px 16px;background:#007bff;color:white;border:none;border-radius:4px;cursor:pointer;font-size:14px;">⚙️ 칸반보드 설정</button>
+    </div>
+    <hr>
+    
     <div style="margin-top:40px;">
-        <div style="display:flex;justify-content:flex-end;align-items:center;margin-bottom:10px;">
+        <div id="calendar"></div>
+        <div style="display:flex;justify-content:flex-end;align-items:center;margin-bottom:10px;margin-top:10px;">
             <button onclick="showCalendarSettingsModal()" 
                     style="padding:8px 16px;background:#007bff;color:white;border:none;border-radius:4px;cursor:pointer;font-size:14px;">
                 ⚙️ 캘린더 설정
             </button>
         </div>
-        <div id="calendar"></div>
     </div>
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
