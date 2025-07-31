@@ -87,23 +87,16 @@ function renderAnnouncements(announcements) {
                 <div class="announcement-header">
                     <h5 class="announcement-title">${escapeHtml(announcement.title)}</h5>
                     <div class="announcement-meta">
+                    ${fileBadge}
                         <span class="announcement-date">
                             <i class="fas fa-calendar-alt"></i> ${announcement.created_at}
                         </span>
-                        ${fileBadge}
                     </div>
                 </div>
                 <div class="announcement-content">
                     ${escapeHtml(announcement.content)}
                 </div>
-                <div class="announcement-footer">
-                    <span class="text-muted">
-                        <i class="fas fa-eye"></i> 상세보기
-                    </span>
-                    <button class="view-btn" onclick="event.stopPropagation(); viewAnnouncementDetail(${announcement.id})">
-                        <i class="fas fa-external-link-alt"></i> 보기
-                    </button>
-                </div>
+                
             </div>
         `;
     });
