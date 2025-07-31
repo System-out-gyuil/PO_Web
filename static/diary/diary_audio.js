@@ -2462,38 +2462,133 @@ function handleDroppedFiles(files) {
     
     let uploadedCount = 0;
     let errorCount = 0;
+    let currentIndex = 0;
     
-    Array.from(files).forEach((file, index) => {
+    // 파일들을 순차적으로 처리하는 함수
+    function processNextFile() {
+        if (currentIndex >= files.length) {
+            // 모든 파일 처리 완료 후 화면 갱신
+            if (uploadedCount > 0) {
+                showNotification(`${uploadedCount}개 파일이 업로드되었습니다.`, 'success');
+                // 모든 파일 업로드 완료 후 한 번만 화면 갱신
+                refreshSalesNoteSection();
+            }
+            if (errorCount > 0) {
+                showNotification(`${errorCount}개 파일 업로드에 실패했습니다.`, 'error');
+            }
+            return;
+        }
+        
+        const file = files[currentIndex];
+        currentIndex++;
+        
         // 파일 크기 제한 (100MB)
         if (file.size > 100 * 1024 * 1024) {
             showNotification(`${file.name}은(는) 100MB를 초과하여 업로드할 수 없습니다.`, 'error');
             errorCount++;
+            processNextFile(); // 다음 파일 처리
             return;
         }
         
-        // 파일 타입 확인
+        // 파일 타입 확인 및 업로드
         if (file.type.startsWith('audio/')) {
             // 오디오 파일 처리
-            // handleAudioFileUpload(file, 0);
-            handleGeneralFileUpload(file, 0);
-            uploadedCount++;
+            handleGeneralFileUploadSequential(file, 0, () => {
+                uploadedCount++;
+                processNextFile(); // 다음 파일 처리
+            }, () => {
+                errorCount++;
+                processNextFile(); // 다음 파일 처리
+            });
         } else {
             // 일반 파일 처리
-            handleGeneralFileUpload(file, 0);
-            uploadedCount++;
+            handleGeneralFileUploadSequential(file, 0, () => {
+                uploadedCount++;
+                processNextFile(); // 다음 파일 처리
+            }, () => {
+                errorCount++;
+                processNextFile(); // 다음 파일 처리
+            });
         }
-    });
-    
-    if (uploadedCount > 0) {
-        showNotification(`${uploadedCount}개 파일이 업로드되었습니다.`, 'success');
     }
     
-    if (errorCount > 0) {
-        showNotification(`${errorCount}개 파일 업로드에 실패했습니다.`, 'error');
-    }
+    // 첫 번째 파일부터 처리 시작
+    processNextFile();
 }
 
+// 순차적 파일 업로드를 위한 새로운 함수
+function handleGeneralFileUploadSequential(file, insertIndex, onSuccess, onError) {
+    // AI 캐시 매니저가 초기화되지 않은 경우 초기화
+    if (!window.aiCacheManager || window.aiCacheManager.currentRowCache?.rowId !== window.currentDetailRowId) {
+        console.log('일반 파일 업로드 시 AI 캐시 매니저 초기화:', window.currentDetailRowId);
+        initializeAICacheManager();
+    }
 
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('row_id', window.currentDetailRowId);
+    
+    fetch('/sales/upload_note_file/', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.file_info) {
+            console.log('일반 파일 업로드 성공:', file.name);
+            
+            // AI 캐시 추적 - 일반 파일 추가
+            if (window.trackFileChange && data.file_info) {
+                const fileInfo = {
+                    ...data.file_info,
+                    file_hash: data.file_info.file_hash || `${file.name}_${file.size}_${file.lastModified}`,
+                    last_modified: data.file_info.last_modified || file.lastModified,
+                    file_size: data.file_info.file_size || file.size,
+                    // 서버에서 받은 실제 파일 정보 추가
+                    id: data.file_info.id,
+                    s3_key: data.file_info.s3_key,
+                    download_url: data.file_info.download_url,
+                    preview_url: data.file_info.preview_url
+                };
+                
+                // 기존 파일과 비교하여 정확한 변경 타입 결정
+                const existingFiles = window.aiCacheManager?.fileChanges?.added || [];
+                const existingFile = existingFiles.find(f => 
+                    f.fileInfo?.original_filename === file.name && 
+                    f.fileInfo?.file_hash === fileInfo.file_hash &&
+                    f.fieldName === '음성파일'
+                );
+                
+                if (existingFile) {
+                    // 기존 파일이 있으면 수정으로 처리
+                    window.trackFileChange(window.currentDetailRowId, '음성파일', 'modified', fileInfo);
+                    console.log('AI 캐시에 일반 파일 수정 추적 (기존 파일 존재):', fileInfo);
+                } else {
+                    // 새 파일로 처리
+                    window.trackFileChange(window.currentDetailRowId, '음성파일', 'added', fileInfo);
+                    console.log('AI 캐시에 일반 파일 추가 추적:', fileInfo);
+                }
+                
+                // 캐시 무효화 플래그 설정
+                if (window.aiCacheManager) {
+                    window.aiCacheManager.cacheInvalidated = true;
+                    console.log('AI 캐시 무효화 플래그 설정됨');
+                }
+            }
+            
+            // 성공 콜백 호출 (화면 갱신은 하지 않음)
+            if (onSuccess) onSuccess();
+            
+        } else {
+            console.error('일반 파일 업로드 실패:', data.error);
+            if (onError) onError();
+        }
+    })
+    .catch(error => {
+        console.error('일반 파일 업로드 중 오류:', error);
+        if (onError) onError();
+    });
+}
 
 // 전역 클립보드 이벤트 리스너 설정
 function setupGlobalClipboardListener() {

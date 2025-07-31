@@ -562,3 +562,84 @@ def admin_api(request):
                 return JsonResponse({'success': False, 'message': '존재하지 않는 문의사항입니다.'})
     
     return JsonResponse({'success': False, 'message': '잘못된 요청입니다.'})
+
+def user_list(request):
+    """사용자 목록 API"""
+    user_id = request.session.get('diary_member_id')
+    
+    if not user_id:
+        return JsonResponse({'success': False, 'message': '로그인이 필요합니다.'})
+    
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'message': '사용자를 찾을 수 없습니다.'})
+
+    if not user.is_admin:
+        return JsonResponse({'success': False, 'message': '권한이 없습니다.'})
+    
+    # 검색 및 정렬 파라미터
+    search_query = request.GET.get('search', '')
+    sort_by = request.GET.get('sort', '-created_at')
+    page = request.GET.get('page', 1)
+    
+    # 사용자 쿼리셋
+    users = User.objects.all()
+    
+    # 검색 필터링
+    if search_query:
+        users = users.filter(
+            Q(name__icontains=search_query) |
+            Q(email__icontains=search_query) |
+            Q(company_name__icontains=search_query) |
+            Q(phone_number__icontains=search_query)
+        )
+    
+    # 정렬
+    if sort_by == 'name':
+        users = users.order_by('name')
+    elif sort_by == 'email':
+        users = users.order_by('email')
+    elif sort_by == 'company_name':
+        users = users.order_by('company_name')
+    elif sort_by == 'created_at':
+        users = users.order_by('created_at')
+    else:  # 기본값: 최신순
+        users = users.order_by('-created_at')
+    
+    # 페이지네이션
+    paginator = Paginator(users, 20)  # 페이지당 20개
+    try:
+        users_page = paginator.page(page)
+    except:
+        users_page = paginator.page(1)
+    
+    # 사용자 데이터 직렬화
+    users_data = []
+    for user in users_page:
+        user_dict = {
+            'id': user.id,
+            'name': user.name,
+            'email': user.email,
+            'company_name': user.company_name,
+            'phone_number': user.phone_number,
+            'created_at': user.created_at.isoformat(),
+            'is_admin': user.is_admin
+        }
+        users_data.append(user_dict)
+    
+    # 페이지네이션 정보
+    pagination = {
+        'number': users_page.number,
+        'num_pages': users_page.paginator.num_pages,
+        'has_previous': users_page.has_previous(),
+        'has_next': users_page.has_next(),
+        'previous_page_number': users_page.previous_page_number() if users_page.has_previous() else None,
+        'next_page_number': users_page.next_page_number() if users_page.has_next() else None,
+    }
+    
+    return JsonResponse({
+        'success': True,
+        'users': users_data,
+        'pagination': pagination
+    })

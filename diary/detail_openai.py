@@ -34,6 +34,7 @@ logger = logging.getLogger(__name__)
 # 파일 처리 성능 최적화를 위한 캐시
 file_text_cache = {}
 file_hash_cache = {}
+dropdown_cache = {}  # 드롭다운 캐시 추가
 MAX_CACHE_SIZE = 200  # 최대 캐시 크기
 
 # 스레드 풀 생성 (파일 처리용) - 워커 수 증가
@@ -307,16 +308,32 @@ def extract_image_text_optimized(file_path, file_hash):
 def extract_hwp_text_optimized(file_path, file_hash):
     """최적화된 HWP 텍스트 추출"""
     try:
+        # LibreOffice 상태 확인
+        if not check_libreoffice_status():
+            logger.error("LibreOffice가 설치되지 않았거나 실행할 수 없습니다.")
+            return "LibreOffice가 설치되지 않았거나 실행할 수 없습니다."
+        
         pdf_path = convert_hwp_to_pdf(file_path)
         if os.path.exists(pdf_path):
-            result = extract_text_from_file_optimized(pdf_path)
-            os.remove(pdf_path)
-            return result
+            try:
+                result = extract_text_from_file_optimized(pdf_path)
+                # 변환된 PDF 파일 정리
+                if os.path.exists(pdf_path):
+                    os.remove(pdf_path)
+                    logger.info(f"✅ 임시 PDF 파일 정리 완료: {pdf_path}")
+                return result
+            except Exception as e:
+                logger.error(f"PDF 텍스트 추출 실패: {e}")
+                # 변환된 PDF 파일 정리
+                if os.path.exists(pdf_path):
+                    os.remove(pdf_path)
+                return "PDF 텍스트 추출 실패"
         else:
+            logger.error("HWP 파일 변환 실패")
             return "HWP 파일 변환 실패"
     except Exception as e:
         logger.error(f"HWP 텍스트 추출 실패: {e}")
-        return ""
+        return f"HWP 텍스트 추출 실패: {str(e)}"
 
 def extract_docx_text_optimized(file_path, file_hash):
     """최적화된 DOCX 텍스트 추출"""
@@ -755,20 +772,14 @@ def ai_chat(request):
                                 # 드롭다운 데이터 처리
                                 if attr_value.value:
                                     try:
-                                        # DropdownAttribute 테이블에서 실제 이름 조회
                                         dropdown_value = str(attr_value.value).strip()
                                         if dropdown_value:
-                                            try:
-                                                dropdown_attr = DropdownAttribute.objects.get(
-                                                    attribute=attr_value.attribute,
-                                                    value=dropdown_value
-                                                )
-                                                row_data[attr_name] = dropdown_attr.name
-                                            except DropdownAttribute.DoesNotExist:
-                                                row_data[attr_name] = dropdown_value
+                                            dropdown_name = get_dropdown_name(attr_value.attribute, dropdown_value)
+                                            row_data[attr_name] = dropdown_name
+                                            print(f"캐시 기반 드롭다운 업데이트: {attr_name} = {dropdown_name}")
                                     except Exception as e:
                                         logger.error(f"드롭다운 데이터 처리 실패: {e}")
-                                        row_data[attr_name] = attr_value.value
+                                        row_data[attr_name] = f"{attr_value.value} (코드의 의미는 데이터에 없음)"
                             
                             elif attr_type == 'text':
                                 # 텍스트 데이터 처리
@@ -911,6 +922,27 @@ def ai_chat(request):
                     for i, text in enumerate(file_texts):
                         print(f"    기존 file_text {i + 1}: {text[:100]}...")
                     
+                    # 드롭다운 데이터 최신 상태로 업데이트
+                    try:
+                        row = Row.objects.get(id=row_id)
+                        dropdown_attribute_values = AttributeValue.objects.filter(row=row, attribute__attributeType__name='dropdown')
+                        
+                        for attr_value in dropdown_attribute_values:
+                            attr_name = attr_value.attribute.name
+                            
+                            if attr_value.value:
+                                try:
+                                    dropdown_value = str(attr_value.value).strip()
+                                    if dropdown_value:
+                                        dropdown_name = get_dropdown_name(attr_value.attribute, dropdown_value)
+                                        row_data[attr_name] = dropdown_name
+                                        print(f"캐시 기반 드롭다운 업데이트: {attr_name} = {dropdown_name}")
+                                except Exception as e:
+                                    logger.error(f"캐시 기반 드롭다운 데이터 처리 실패: {e}")
+                                    row_data[attr_name] = f"{attr_value.value} (코드의 의미는 데이터에 없음)"
+                    except Exception as e:
+                        logger.error(f"캐시 기반 드롭다운 업데이트 중 오류: {e}")
+                    
                     # text 타입 파일들은 항상 새로 처리 (캐시 무시)
                     try:
                         row = Row.objects.get(id=row_id)
@@ -1024,6 +1056,16 @@ def ai_chat(request):
                                     print(f"    해시 매칭으로 삭제 대상 확인: {target_file_hash}")
                                     print(f"    매칭된 텍스트: {text[:200]}...")
                                 
+                                # 6. 파일 경로에서 파일명 추출하여 매칭
+                                elif target_filename:
+                                    # 파일 경로에서 파일명만 추출하여 비교
+                                    import os
+                                    extracted_filename = os.path.basename(target_filename) if '/' in target_filename else target_filename
+                                    if f" - {extracted_filename}]:" in text:
+                                        is_target_file = True
+                                        print(f"    추출된 파일명 매칭으로 삭제 대상 확인: {extracted_filename}")
+                                        print(f"    매칭된 텍스트: {text[:200]}...")
+                                
                                 # 삭제 대상이면 False 반환 (제거), 아니면 True 반환 (유지)
                                 if is_target_file:
                                     print(f"    삭제 대상 파일 확인됨 - 제거 예정")
@@ -1100,9 +1142,35 @@ def ai_chat(request):
                                 print(f"  파일명: {file_info.get('original_filename', 'N/A')}")
                                 print(f"  새 해시: {file_info.get('file_hash', 'N/A')}")
                                 
-                                # 기존 파일 텍스트 제거 (파일명 기반)
+                                # 기존 파일 텍스트 제거 (다양한 매칭 방식 사용)
                                 original_file_texts_count = len(file_texts)
-                                file_texts = [text for text in file_texts if not text.startswith(f"[{field_name} - {file_info.get('original_filename', '')}")]
+                                target_filename = file_info.get('original_filename', '')
+                                
+                                # 정확한 파일 매칭을 위한 제거 함수
+                                def should_remove_file_text(text):
+                                    # text 타입 파일은 수정 대상 아님
+                                    if text.startswith(f"[{field_name} - 텍스트]:"):
+                                        return False
+                                    
+                                    # 1. 필드명 + 파일명으로 매칭
+                                    if target_filename and f"[{field_name} - {target_filename}]:" in text:
+                                        return True
+                                    
+                                    # 2. 파일명만으로 매칭
+                                    if target_filename and f" - {target_filename}]:" in text:
+                                        return True
+                                    
+                                    # 3. 파일 경로에서 파일명 추출하여 매칭
+                                    if target_filename:
+                                        import os
+                                        extracted_filename = os.path.basename(target_filename) if '/' in target_filename else target_filename
+                                        if f" - {extracted_filename}]:" in text:
+                                            return True
+                                    
+                                    return False
+                                
+                                # 파일 텍스트 필터링
+                                file_texts = [text for text in file_texts if not should_remove_file_text(text)]
                                 removed_count = original_file_texts_count - len(file_texts)
                                 print(f"  제거된 파일 텍스트 수: {removed_count}")
                                 
@@ -1154,18 +1222,33 @@ def ai_chat(request):
             context_info += f"\n{optimized_context}\n"
         
         # 영업 관련 컨텍스트를 포함한 프롬프트 생성
-        system_prompt = """당신은 영업 전문가 AI 어시스턴트입니다. 
-        사용자의 영업 관련 질문에 대해 도움이 되는 답변을 제공해주세요.
-        답변은 친근하고 실용적이며, 한국어로 작성해주세요.
-        영업 전략, 고객 관리, 매출 증대, 리드 관리 등에 대한 조언을 제공할 수 있습니다.
+        system_prompt = """당신은 정확하고 신뢰할 수 있는 AI 어시스턴트입니다. 
         
-        사용자가 제공한 행 데이터와 첨부 파일 내용을 참고하여 더 구체적이고 맞춤형 답변을 제공해주세요.
+        **중요한 지침:**
+        1. 제공된 데이터와 파일 내용만을 기반으로 답변하세요.
+        2. 데이터에 없는 정보는 추측하거나 지어내지 마세요.
+        3. 확실하지 않은 정보는 "확인되지 않음" 또는 "데이터에 없음"이라고 명시하세요.
+        4. 답변은 친근하고 실용적이며, 한국어로 작성해주세요.
         
-        특히 다음 정보들을 활용하여 답변해주세요:
-        - 회사 기본 정보 (회사명, 업종, 지역 등)
-        - 재무 정보 (매출, 기대출, 추천 자금 등)
-        - 첨부된 문서의 내용 (재무제표, 대출내역, 확인서 등)
-        - 날짜 정보 (설립일, F/U 일정 등)"""
+        **영업 관련 전문 분야:**
+        - 영업 전략 및 전략 수립
+        - 고객 관리 및 리드 관리
+        - 매출 증대 및 성과 개선
+        - 재무 분석 및 자금 조달
+        - 시장 분석 및 경쟁 분석
+        
+        **데이터 활용 방법:**
+        - 회사 기본 정보 (회사명, 업종, 지역, 설립일 등)
+        - 재무 정보 (매출, 기대출, 추천 자금, 자금 조달 현황)
+        - 첨부된 문서 내용 (재무제표, 대출내역, 확인서, 계약서 등)
+        - 날짜 정보 (설립일, F/U 일정, 계약일 등)
+        - 기타 관련 정보 (담당자, 연락처, 특이사항 등)
+        
+        **답변 형식:**
+        - 구체적이고 실용적인 조언 제공
+        - 데이터 기반의 객관적 분석
+        - 필요한 경우 추가 정보 요청
+        - 확실하지 않은 부분은 명확히 구분하여 표시"""
         
         user_message = f"{message}{context_info}"
         
@@ -1608,27 +1691,80 @@ def clova_ocr(file_path, fmt):
         logger.error(f"Clova OCR 실패: {e}")
         return ""
 
+def check_libreoffice_status():
+    """LibreOffice 설치 상태와 버전을 확인합니다."""
+    try:
+        result = subprocess.run([
+            "libreoffice", "--version"
+        ], stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30)
+        
+        if result.returncode == 0:
+            version = result.stdout.decode().strip()
+            logger.info(f"✅ LibreOffice 설치 확인: {version}")
+            return True
+        else:
+            logger.error(f"❌ LibreOffice 실행 실패: {result.stderr.decode()}")
+            return False
+    except Exception as e:
+        logger.error(f"❌ LibreOffice 확인 실패: {e}")
+        return False
+
 def convert_hwp_to_pdf(hwp_path):
-    """HWP를 PDF로 변환"""
+    """HWP를 PDF로 변환 (개선된 버전)"""
     output_dir = os.path.dirname(hwp_path)
     try:
+        # 파일 크기 확인
+        file_size = os.path.getsize(hwp_path)
+        logger.info(f"📄 HWP 파일 크기: {file_size / (1024*1024):.2f} MB")
+        
+        # 파일 크기에 따른 timeout 조정
+        if file_size > 50 * 1024 * 1024:  # 50MB 이상
+            timeout = 1800  # 30분
+            logger.info("⏰ 대용량 파일 감지, timeout을 30분으로 설정")
+        elif file_size > 10 * 1024 * 1024:  # 10MB 이상
+            timeout = 900   # 15분
+            logger.info("⏰ 중간 크기 파일 감지, timeout을 15분으로 설정")
+        else:
+            timeout = 600   # 10분 (기본값)
+            logger.info("⏰ 기본 timeout 10분 설정")
+        
+        # LibreOffice 프로세스 시작 전 메모리 상태 확인
+        logger.info("🖥️ LibreOffice 변환 시작...")
+        
         result = subprocess.run([
             "libreoffice",
             "--headless",
             "--convert-to", "pdf:writer_pdf_Export",
             hwp_path,
             "--outdir", output_dir
-        ], stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60)
-        
+        ], stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=timeout)
+
+        logger.info("🖥️ libreoffice stdout: " + result.stdout.decode())
+        if result.stderr:
+            logger.info("🖥️ libreoffice stderr: " + result.stderr.decode())
+
         basename = os.path.splitext(os.path.basename(hwp_path))[0] + ".pdf"
         converted_pdf = os.path.join(output_dir, basename)
-        
+
         if os.path.exists(converted_pdf):
+            pdf_size = os.path.getsize(converted_pdf)
+            logger.info(f"✅ 변환 성공: {pdf_size / (1024*1024):.2f} MB")
             return converted_pdf
         else:
+            logger.error(f"[❌ 변환 실패] {converted_pdf} 파일이 존재하지 않습니다.")
             return ""
+            
+    except subprocess.TimeoutExpired:
+        logger.error(f"[⏰ Timeout 발생] {timeout}초 초과로 변환 실패")
+        # LibreOffice 프로세스 강제 종료
+        try:
+            subprocess.run(["pkill", "-f", "libreoffice"], timeout=10)
+            logger.info("🔄 LibreOffice 프로세스 강제 종료 완료")
+        except:
+            logger.warning("⚠️ LibreOffice 프로세스 종료 실패")
+        return ""
     except Exception as e:
-        logger.error(f"HWP 변환 실패: {e}")
+        logger.error(f"[예외 발생] HWP → PDF 변환 실패: {e}")
         return ""
 
 def download_file_from_url(url):
@@ -1847,6 +1983,7 @@ def get_cache_stats():
     try:
         memory_cache_size = len(file_text_cache)
         disk_cache_files = len(list(CACHE_DIR.glob("*.pkl"))) if CACHE_DIR.exists() else 0
+        dropdown_cache_size = len(dropdown_cache)  # 드롭다운 캐시 크기 추가
         
         # 디스크 캐시 크기 계산
         disk_cache_size = 0
@@ -1858,6 +1995,7 @@ def get_cache_stats():
             'memory_cache_size': memory_cache_size,
             'disk_cache_files': disk_cache_files,
             'disk_cache_size_mb': disk_cache_size / (1024 * 1024),
+            'dropdown_cache_size': dropdown_cache_size,  # 드롭다운 캐시 크기 추가
             'max_cache_size': MAX_CACHE_SIZE
         }
     except Exception as e:
@@ -1870,6 +2008,7 @@ def clear_all_caches():
         # 메모리 캐시 정리
         file_text_cache.clear()
         file_hash_cache.clear()
+        dropdown_cache.clear()  # 드롭다운 캐시도 정리
         
         # 디스크 캐시 정리
         if CACHE_DIR.exists():
@@ -2066,8 +2205,8 @@ def call_openai_api_optimized(messages, retry_count=0):
         payload = {
             'model': 'gpt-4o-mini',  # 더 빠른 모델 사용
             'messages': messages,
-            'max_tokens': 1500,
-            'temperature': 0.7,
+            'max_tokens': 2000,  # 1500 -> 2000으로 증가
+            'temperature': 0.3,  # 0.7 -> 0.3으로 감소 (더 정확한 응답)
             'stream': False  # 스트리밍 비활성화로 응답 속도 향상
         }
         
@@ -2111,34 +2250,36 @@ def call_openai_api_optimized(messages, retry_count=0):
     except Exception as e:
         return {'success': False, 'error': f'API 호출 실패: {str(e)}'}
 
-def optimize_context_for_openai(row_data, file_texts, max_context_length=8000):
-    """OpenAI API용 컨텍스트 최적화"""
+def optimize_context_for_openai(row_data, file_texts, max_context_length=12000):
+    """OpenAI API용 컨텍스트 최적화 (정확성 향상)"""
     context_parts = []
     
-    # 행 데이터 최적화
+    # 행 데이터 최적화 (더 많은 정보 포함)
     if row_data:
         row_summary = []
         for key, value in row_data.items():
-            if value and len(str(value)) < 200:  # 너무 긴 값은 제외
+            # 길이 제한을 늘려서 더 많은 정보 포함
+            if value and len(str(value)) < 500:  # 200 -> 500으로 증가
                 row_summary.append(f"{key}: {value}")
         
         if row_summary:
-            context_parts.append("행 데이터:\n" + "\n".join(row_summary[:20]))  # 최대 20개 항목
+            context_parts.append("행 데이터:\n" + "\n".join(row_summary[:30]))  # 20 -> 30으로 증가
     
-    # 파일 텍스트 최적화
+    # 파일 텍스트 최적화 (더 많은 텍스트 포함)
     if file_texts:
         file_summaries = []
         total_length = 0
         
         for file_text in file_texts:
-            # 파일 텍스트 길이 제한
-            if len(file_text) > 2000:
-                file_text = file_text[:2000] + "...[파일이 너무 커서 일부만 표시]"
+            # 파일 텍스트 길이 제한 증가
+            if len(file_text) > 4000:  # 2000 -> 4000으로 증가
+                file_text = file_text[:4000] + "...[파일이 너무 커서 일부만 표시]"
             
             if total_length + len(file_text) < max_context_length:
                 file_summaries.append(file_text)
                 total_length += len(file_text)
             else:
+                # 컨텍스트가 가득 찰 때는 중요한 파일부터 우선순위 부여
                 break
         
         if file_summaries:
@@ -2222,3 +2363,26 @@ def preload_common_files():
     except Exception as e:
         logger.error(f"파일 미리 로드 실패: {e}")
         return False
+
+def get_dropdown_name(attribute, value):
+    """드롭다운 값에서 실제 이름을 조회하는 헬퍼 함수"""
+    cache_key = f"{attribute.id}_{value}"
+    
+    # 캐시 확인
+    if cache_key in dropdown_cache:
+        return dropdown_cache[cache_key]
+    
+    try:
+        # ID로 직접 조회 (DropdownAttribute에는 value 필드가 없고 option 필드가 있음)
+        dropdown_attr = DropdownAttribute.objects.get(
+            attribute=attribute,
+            id=value
+        )
+        result = dropdown_attr.option  # value 대신 option 필드 사용
+        dropdown_cache[cache_key] = result
+        return result
+    except (DropdownAttribute.DoesNotExist, ValueError):
+        # 조회 실패시 원본 값 사용
+        result = f"{value} (코드의 의미는 데이터에 없음)"
+        dropdown_cache[cache_key] = result
+        return result

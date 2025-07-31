@@ -1704,6 +1704,8 @@ function processDropdownOptions(options, value, cell) {
                           
                           // 실시간 동기화
                           syncTableAndKanban(type);
+                          // 칸반보드 설정 확인 및 리프레시
+                          checkKanbanAndRefresh(type);
                           // 상태 속성인 경우 상태 탭 새로고침
                           if (window.statusAttributeName && type === window.statusAttributeName && typeof window.refreshStatusTabs === 'function') {
                               setTimeout(() => { window.refreshStatusTabs(); }, 100);
@@ -1939,13 +1941,13 @@ function processDropdownOptions(options, value, cell) {
   }
   
   // 테이블과 칸반보드 실시간 동기화 함수 (개선된 버전)
-  function syncTableAndKanban(fieldName) {
+  async function syncTableAndKanban(fieldName) {
       // 테이블 업데이트 (즉시 실행)
       updateTableDropdownOptions(fieldName);
       
       // 테이블 편집 중이 아닐 때만 칸반보드 업데이트
       if (!isTableEditing) {
-          debounceKanbanUpdate(fieldName);
+          await debounceKanbanUpdate(fieldName);
       } else {
           // 편집 중이면 대기열에 추가
           pendingKanbanUpdates.add(fieldName);
@@ -2053,7 +2055,7 @@ function processDropdownOptions(options, value, cell) {
   }
   
   // 칸반보드 업데이트 디바운싱 함수 (개선된 버전)
-  function debounceKanbanUpdate(fieldName) {
+  async function debounceKanbanUpdate(fieldName) {
       // 테이블 편집 중이면 대기열에만 추가하고 실행하지 않음
       if (isTableEditing) {
           pendingKanbanUpdates.add(fieldName);
@@ -2069,7 +2071,7 @@ function processDropdownOptions(options, value, cell) {
       }
       
       // 800ms 후에 칸반보드 업데이트 실행 (더 긴 지연시간으로 변경)
-      kanbanUpdateTimer = setTimeout(() => {
+      kanbanUpdateTimer = setTimeout(async () => {
           // 모든 대기 중인 업데이트를 한 번에 처리
           const updatesToProcess = Array.from(pendingKanbanUpdates);
           pendingKanbanUpdates.clear();
@@ -2077,13 +2079,13 @@ function processDropdownOptions(options, value, cell) {
           // 가장 최근의 업데이트만 처리 (중복 제거)
           const latestUpdate = updatesToProcess[updatesToProcess.length - 1];
           if (latestUpdate) {
-              updateKanbanIfNeeded(latestUpdate);
+              await updateKanbanIfNeeded(latestUpdate);
           }
       }, 800);
   }
   
   // 칸반보드 업데이트 필요 여부 확인 및 실행 (개선된 버전)
-  function updateKanbanIfNeeded(fieldName) {
+  async function updateKanbanIfNeeded(fieldName) {
       // 테이블 편집 중이면 업데이트를 건너뜀
       if (isTableEditing) {
           console.log('테이블 편집 중이므로 칸반보드 업데이트를 건너뜁니다.');
@@ -2096,13 +2098,43 @@ function processDropdownOptions(options, value, cell) {
           return;
       }
       
-      // 칸반보드가 활성화되어 있고 업데이트된 필드가 현재 칸반보드 속성과 일치하는 경우 새로고침
+      // 칸반보드 설정이 로드되지 않았을 경우 로드
+      if (!window.kanbanSettings) {
+          await ensureKanbanSettingsLoaded();
+      }
+      
+      // 메인 칸반보드 속성 확인
       const currentKanbanAttr = document.getElementById('kanbanAttributeSelect') ? 
           document.getElementById('kanbanAttributeSelect').value : 
           window.SELECTED_KANBAN_ATTR;
       
-      if (currentKanbanAttr && fieldName === currentKanbanAttr) {
-          console.log('칸반보드 속성이 변경되어 새로고침합니다:', fieldName);
+      // 조건부 필터에서 사용되는 속성들 확인
+      let filterAttrs = [];
+      if (window.kanbanSettings?.filters) {
+          filterAttrs = window.kanbanSettings.filters.map(filter => filter.attribute).filter(attr => attr && attr !== '');
+      }
+      
+      // 커스텀 규칙에서 사용되는 속성들도 확인
+      let customRuleAttrs = [];
+      if (window.kanbanSettings?.custom_rules) {
+          window.kanbanSettings.custom_rules.forEach(rule => {
+              if (rule.conditions) {
+                  rule.conditions.forEach(condition => {
+                      if (condition.attribute && condition.attribute !== '') {
+                          customRuleAttrs.push(condition.attribute);
+                      }
+                  });
+              }
+          });
+      }
+      
+      // 모든 관련 속성들을 하나의 배열로 합치고 중복 제거
+      let allRelevantAttrs = [currentKanbanAttr, ...filterAttrs, ...customRuleAttrs].filter(attr => attr && attr !== 'undefined');
+      allRelevantAttrs = [...new Set(allRelevantAttrs)]; // 중복 제거
+      
+      // 업데이트된 필드가 관련 속성 중 하나와 일치하는 경우 칸반보드 새로고침
+      if (allRelevantAttrs.includes(fieldName)) {
+          console.log('칸반보드 관련 속성이 변경되어 새로고침합니다:', fieldName);
           if (typeof refreshKanban === 'function') {
               isKanbanUpdating = true;
               refreshKanban();
@@ -3230,3 +3262,58 @@ document.addEventListener('DOMContentLoaded', function() {
     // 드롭다운 옵션 변경 감지 리스너 초기 설정
     setupDropdownUpdateListeners();
 });
+
+// 드롭다운 옵션 수정 시 칸반보드 리프레시 함수
+async function checkKanbanAndRefresh(fieldName) {
+    // 칸반보드 설정이 로드되지 않았을 경우 로드
+    if (!window.kanbanSettings) {
+        try {
+            const resp = await fetch('/sales/get_kanban_settings/');
+            const data = await resp.json();
+            if (data.success && data.settings) {
+                window.kanbanSettings = data.settings;
+            }
+        } catch (e) { 
+            console.error('칸반보드 설정 로드 실패:', e);
+            return;
+        }
+    }
+    
+    // 메인 칸반보드 속성 확인
+    let currentAttr = document.getElementById('kanbanAttributeSelect')?.value;
+    if (!currentAttr) {
+        currentAttr = window.kanbanSettings?.main_attr;
+    }
+    
+    // 조건부 필터에서 사용되는 속성들 확인
+    let filterAttrs = [];
+    if (window.kanbanSettings?.filters) {
+        filterAttrs = window.kanbanSettings.filters.map(filter => filter.attribute).filter(attr => attr && attr !== '');
+    }
+    
+    // 커스텀 규칙에서 사용되는 속성들도 확인
+    let customRuleAttrs = [];
+    if (window.kanbanSettings?.custom_rules) {
+        window.kanbanSettings.custom_rules.forEach(rule => {
+            if (rule.conditions) {
+                rule.conditions.forEach(condition => {
+                    if (condition.attribute && condition.attribute !== '') {
+                        customRuleAttrs.push(condition.attribute);
+                    }
+                });
+            }
+        });
+    }
+    
+    // 모든 관련 속성들을 하나의 배열로 합치고 중복 제거
+    let allRelevantAttrs = [currentAttr, ...filterAttrs, ...customRuleAttrs].filter(attr => attr && attr !== 'undefined');
+    allRelevantAttrs = [...new Set(allRelevantAttrs)]; // 중복 제거
+    
+    // 해당 필드가 관련 속성인 경우 칸반보드 리프레시
+    if (allRelevantAttrs.includes(fieldName)) {
+        console.log('칸반보드 관련 속성이 변경되어 새로고침합니다:', fieldName);
+        if (typeof refreshKanban === 'function') {
+            refreshKanban();
+        }
+    }
+}

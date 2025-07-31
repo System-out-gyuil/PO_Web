@@ -2765,32 +2765,7 @@ def upload_note_file(request):
         if file.size > max_file_size:
             return JsonResponse({'success': False, 'error': '파일 크기가 20MB를 초과합니다.'})
         
-        s3_client = boto3.client(
-            's3',
-            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-            region_name=settings.AWS_S3_REGION_NAME
-        )
-        file_extension = os.path.splitext(file.name)[1]
-        unique_filename = f"{uuid.uuid4()}{file_extension}"
-        s3_key = f"note_files/{unique_filename}"
-        s3_client.upload_fileobj(
-            file,
-            settings.AWS_STORAGE_BUCKET_NAME,
-            s3_key,
-            ExtraArgs={
-                'ContentType': file.content_type,
-                'ContentDisposition': f'attachment; filename=\"{file.name}\"'
-            }
-        )
-        download_url = s3_client.generate_presigned_url(
-            'get_object',
-            Params={'Bucket': settings.AWS_STORAGE_BUCKET_NAME, 'Key': s3_key},
-            ExpiresIn=300
-        )
-        preview_url = download_url
-        
-        # 파일 해시 계산
+        # 파일 해시 계산 (업로드 전에 먼저 계산)
         import hashlib
         file_hash = None
         try:
@@ -2803,79 +2778,131 @@ def upload_note_file(request):
         except Exception as e:
             print(f"파일 해시 계산 실패: {e}")
         
-        file_info = {
-            'original_filename': file.name,
-            'stored_filename': unique_filename,
-            's3_key': s3_key,
-            'download_url': download_url,
-            'preview_url': preview_url,
-            'file_size': file.size,
-            'content_type': file.content_type,
-            'type': None,  # type 필드 추가
-            'file_hash': file_hash,  # 파일 해시 추가
-            'last_modified': file.last_modified if hasattr(file, 'last_modified') else None
-        }
-        # 파일 타입 판별
-        if file.content_type.startswith('image/'):
-            file_info['type'] = 'image'
-        elif file.content_type.startswith('audio/'):
-            file_info['type'] = 'audio'
-        else:
-            file_info['type'] = 'file'
-
         # === DB 저장 로직 추가 ===
         from .models import User, Row, Attribute, AttributeValue
         import json
+        from django.db import transaction
+        from django.db.models import Q
 
-         
         user_id = request.session.get('diary_member_id')
 
-        user = User.objects.get(id=user_id)
-        row = Row.objects.get(id=row_id, user=user)
-        attr = Attribute.objects.get(name='음성파일', user=user)
-        
-        # 중복 데이터 문제 해결: get_or_create 대신 filter().first() 사용
-        attr_value = AttributeValue.objects.filter(row=row, attribute=attr).first()
-        if not attr_value:
-            attr_value = AttributeValue.objects.create(row=row, attribute=attr, value='{"data": {}}')
-        
-        # 기존 값이 있으면 파싱, 없으면 빈 dict
         try:
-            value_dict = json.loads(attr_value.value) if attr_value.value else {"data": {}}
-        except Exception:
-            value_dict = {"data": {}}
-        
-        # 고유 id 생성
-        import time
-        file_id = f'f{int(time.time()*1000)}'
-        
-        # order 필드 추가 (기존 아이템 개수 + 1)
-        existing_count = len(value_dict.get("data", {}))
-        file_info['order'] = existing_count
-        
-        value_dict["data"][file_id] = file_info
-        attr_value.value = json.dumps(value_dict, ensure_ascii=False)
-        attr_value.save()
-        
-        # Cascade 기능: cascade가 true인 속성이 수정되면 원본 행과 복제된 행들을 동기화
-        if attr.cascade:
-            print(f"=== Cascade 동기화 시작 (upload_note_file) ===")
-            print(f"속성 '음성파일'의 cascade 값: {attr.cascade}")
-            print(f"수정된 행 ID: {row_id}")
-            print(f"새 값: {json.dumps(value_dict, ensure_ascii=False)}")
-            
-            synced_count = sync_cascade_attributes(request, row_id, '음성파일', json.dumps(value_dict, ensure_ascii=False))
-            if synced_count > 0:
-                print(f"Cascade 동기화 완료: 음성파일 속성이 {synced_count}개 행에 동기화됨")
-            else:
-                print(f"Cascade 동기화 실패 또는 동기화할 행이 없음")
-            print(f"=== Cascade 동기화 종료 (upload_note_file) ===")
-        else:
-            print(f"속성 '음성파일'의 cascade 값: {attr.cascade} - 동기화하지 않음")
-        
-        # === DB 저장 끝 ===
-
-        return JsonResponse({'success': True, 'file_info': file_info, 'file_id': file_id})
+            with transaction.atomic():
+                user = User.objects.get(id=user_id)
+                row = Row.objects.get(id=row_id, user=user)
+                attr = Attribute.objects.get(name='음성파일', user=user)
+                
+                # 중복 데이터 문제 해결: get_or_create 대신 filter().first() 사용
+                attr_value = AttributeValue.objects.filter(row=row, attribute=attr).first()
+                if not attr_value:
+                    attr_value = AttributeValue.objects.create(row=row, attribute=attr, value='{"data": {}}')
+                
+                # 기존 값이 있으면 파싱, 없으면 빈 dict
+                try:
+                    value_dict = json.loads(attr_value.value) if attr_value.value else {"data": {}}
+                except Exception:
+                    value_dict = {"data": {}}
+                
+                # 파일 해시 기반 중복 체크
+                existing_files = value_dict.get("data", {})
+                duplicate_file_id = None
+                for fid, file_data in existing_files.items():
+                    if (file_data.get('original_filename') == file.name and 
+                        file_data.get('file_size') == file.size and
+                        file_data.get('file_hash') == file_hash):
+                        duplicate_file_id = fid
+                        break
+                
+                if duplicate_file_id:
+                    # 중복 파일이 이미 존재하는 경우 기존 파일 정보 반환
+                    existing_file_info = existing_files[duplicate_file_id]
+                    return JsonResponse({
+                        'success': True, 
+                        'file_info': existing_file_info, 
+                        'file_id': duplicate_file_id,
+                        'message': '이미 업로드된 파일입니다.'
+                    })
+                
+                # S3 업로드
+                s3_client = boto3.client(
+                    's3',
+                    aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+                    aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+                    region_name=settings.AWS_S3_REGION_NAME
+                )
+                file_extension = os.path.splitext(file.name)[1]
+                unique_filename = f"{uuid.uuid4()}{file_extension}"
+                s3_key = f"note_files/{unique_filename}"
+                s3_client.upload_fileobj(
+                    file,
+                    settings.AWS_STORAGE_BUCKET_NAME,
+                    s3_key,
+                    ExtraArgs={
+                        'ContentType': file.content_type,
+                        'ContentDisposition': f'attachment; filename=\"{file.name}\"'
+                    }
+                )
+                download_url = s3_client.generate_presigned_url(
+                    'get_object',
+                    Params={'Bucket': settings.AWS_STORAGE_BUCKET_NAME, 'Key': s3_key},
+                    ExpiresIn=300
+                )
+                preview_url = download_url
+                
+                file_info = {
+                    'original_filename': file.name,
+                    'stored_filename': unique_filename,
+                    's3_key': s3_key,
+                    'download_url': download_url,
+                    'preview_url': preview_url,
+                    'file_size': file.size,
+                    'content_type': file.content_type,
+                    'type': None,  # type 필드 추가
+                    'file_hash': file_hash,  # 파일 해시 추가
+                    'last_modified': file.last_modified if hasattr(file, 'last_modified') else None
+                }
+                # 파일 타입 판별
+                if file.content_type.startswith('image/'):
+                    file_info['type'] = 'image'
+                elif file.content_type.startswith('audio/'):
+                    file_info['type'] = 'audio'
+                else:
+                    file_info['type'] = 'file'
+                
+                # 고유 id 생성 (더 정확한 타임스탬프 사용)
+                import time
+                file_id = f'f{int(time.time()*1000000)}'  # 마이크로초 단위로 더 정확하게
+                
+                # order 필드 추가 (기존 아이템 개수 + 1)
+                existing_count = len(value_dict.get("data", {}))
+                file_info['order'] = existing_count
+                
+                value_dict["data"][file_id] = file_info
+                attr_value.value = json.dumps(value_dict, ensure_ascii=False)
+                attr_value.save()
+                
+                # Cascade 기능: cascade가 true인 속성이 수정되면 원본 행과 복제된 행들을 동기화
+                if attr.cascade:
+                    print(f"=== Cascade 동기화 시작 (upload_note_file) ===")
+                    print(f"속성 '음성파일'의 cascade 값: {attr.cascade}")
+                    print(f"수정된 행 ID: {row_id}")
+                    print(f"새 값: {json.dumps(value_dict, ensure_ascii=False)}")
+                    
+                    synced_count = sync_cascade_attributes(request, row_id, '음성파일', json.dumps(value_dict, ensure_ascii=False))
+                    if synced_count > 0:
+                        print(f"Cascade 동기화 완료: 음성파일 속성이 {synced_count}개 행에 동기화됨")
+                    else:
+                        print(f"Cascade 동기화 실패 또는 동기화할 행이 없음")
+                    print(f"=== Cascade 동기화 종료 (upload_note_file) ===")
+                else:
+                    print(f"속성 '음성파일'의 cascade 값: {attr.cascade} - 동기화하지 않음")
+                
+                return JsonResponse({'success': True, 'file_info': file_info, 'file_id': file_id})
+                
+        except Exception as e:
+            print(f"파일 업로드 중 오류: {e}")
+            return JsonResponse({'success': False, 'error': f'파일 업로드 중 오류가 발생했습니다: {str(e)}'})
+    
     return JsonResponse({'success': False, 'error': 'Invalid method'})
 
 @csrf_exempt

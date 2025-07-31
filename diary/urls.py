@@ -12,7 +12,7 @@ from .audio_handler import upload_audio_file, get_audio_files_by_date, delete_au
 from .cascade_handlers import toggle_cascade_attribute, get_cascade_attributes_list
 from .auto_blog import upload_blog_file, get_blog_files
 from .detail_openai import ai_chat, ai_chat_cache_clear, file_cache_management, performance_monitoring
-from .admin_view import admin_dashboard, inquiry_list, inquiry_detail, alarm_list, alarm_create, alarm_edit, alarm_delete, inquiry_delete, admin_api
+from .admin_view import admin_dashboard, inquiry_list, inquiry_detail, alarm_list, alarm_create, alarm_edit, alarm_delete, inquiry_delete, admin_api, user_list
 from .diary_board import diary_board, get_announcements, get_announcement_detail, mark_as_read, download_announcement_file, announcement_detail_page, create_announcement, upload_announcement_file, get_announcement_file_url
 from .main_views import CompanyInfoView, PersonalInfoView, TermsOfServiceView
 
@@ -166,6 +166,7 @@ urlpatterns = [
     path('diary_admin/alarm/<int:alarm_id>/delete/', alarm_delete, name='admin_alarm_delete'),
     path('diary_admin/inquiry/<int:inquiry_id>/delete/', inquiry_delete, name='admin_inquiry_delete'),
     path('diary_admin/api/', admin_api, name='admin_api'),
+    path('diary_admin/users/', user_list, name='admin_user_list'),
     
     # 회사 소개 관련 URL
     path('company_info/', CompanyInfoView.as_view(), name='company_info'),

@@ -452,6 +452,11 @@ function createNewDropdown(td, type, id, currentId, currentSubregion) {
                             // 실시간 동기화
                             if (typeof syncTableAndKanban === 'function') {
                                 syncTableAndKanban('지역');
+                            } else {
+                                // syncTableAndKanban이 없는 경우 triggerKanbanRefreshIfNeeded 사용
+                                if (typeof triggerKanbanRefreshIfNeeded === 'function') {
+                                    triggerKanbanRefreshIfNeeded();
+                                }
                             }
                         } else {
                             throw new Error(data.error || '업데이트 실패');
@@ -645,6 +650,11 @@ function createNewDropdown(td, type, id, currentId, currentSubregion) {
                             // 실시간 동기화
                             if (typeof syncTableAndKanban === 'function') {
                                 syncTableAndKanban('상세지역');
+                            } else {
+                                // syncTableAndKanban이 없는 경우 triggerKanbanRefreshIfNeeded 사용
+                                if (typeof triggerKanbanRefreshIfNeeded === 'function') {
+                                    triggerKanbanRefreshIfNeeded();
+                                }
                             }
                         } else {
                             throw new Error(data.error || '업데이트 실패');
@@ -967,7 +977,15 @@ function showModalDropdownOptions(rowId, fieldName, btn) {
             // 실시간 동기화
             if (typeof syncTableAndKanban === 'function') {
                 syncTableAndKanban(fieldName);
+            } else {
+                // syncTableAndKanban이 없는 경우 triggerKanbanRefreshIfNeeded 사용
+                if (typeof triggerKanbanRefreshIfNeeded === 'function') {
+                    triggerKanbanRefreshIfNeeded(fieldName);
+                }
             }
+            
+            // 칸반보드 설정 확인 및 리프레시
+            checkKanbanAndRefresh(fieldName);
             
             // 상태 필터가 활성화되어 있고, 변경된 필드가 상태 속성인 경우
             if (window.currentStatusTab !== null && fieldName === window.statusAttributeName) {
@@ -1349,12 +1367,65 @@ function showModalDropdownOptions(rowId, fieldName, btn) {
   }
   
   // 드롭다운 셀 값 변경 후 항상 칸반보드 새로고침 (최적화: debounce)
-  function triggerKanbanRefreshIfNeeded() {
-      let currentAttr = document.getElementById('kanbanAttributeSelect')?.value;
-      if (!currentAttr) {
-          currentAttr = window.kanbanSettings?.main_attr;
+  async function triggerKanbanRefreshIfNeeded(fieldName) {
+      // 칸반보드 설정이 로드되지 않았을 경우 로드
+      if (!window.kanbanSettings) {
+          try {
+              const resp = await fetch('/sales/get_kanban_settings/');
+              const data = await resp.json();
+              if (data.success && data.settings) {
+                  window.kanbanSettings = data.settings;
+              }
+          } catch (e) { 
+              console.error('칸반보드 설정 로드 실패:', e);
+          }
       }
-      if (!currentAttr || currentAttr === 'undefined') return;
+      
+      // 필드명이 전달된 경우 해당 필드가 관련 속성인지 확인
+      if (fieldName) {
+          // 메인 칸반보드 속성 확인
+          let currentAttr = document.getElementById('kanbanAttributeSelect')?.value;
+          if (!currentAttr) {
+              currentAttr = window.kanbanSettings?.main_attr;
+          }
+          
+          // 조건부 필터에서 사용되는 속성들 확인
+          let filterAttrs = [];
+          if (window.kanbanSettings?.filters) {
+              filterAttrs = window.kanbanSettings.filters.map(filter => filter.attribute).filter(attr => attr && attr !== '');
+          }
+          
+          // 커스텀 규칙에서 사용되는 속성들도 확인
+          let customRuleAttrs = [];
+          if (window.kanbanSettings?.custom_rules) {
+              window.kanbanSettings.custom_rules.forEach(rule => {
+                  if (rule.conditions) {
+                      rule.conditions.forEach(condition => {
+                          if (condition.attribute && condition.attribute !== '') {
+                              customRuleAttrs.push(condition.attribute);
+                          }
+                      });
+                  }
+              });
+          }
+          
+          // 모든 관련 속성들을 하나의 배열로 합치고 중복 제거
+          let allRelevantAttrs = [currentAttr, ...filterAttrs, ...customRuleAttrs].filter(attr => attr && attr !== 'undefined');
+          allRelevantAttrs = [...new Set(allRelevantAttrs)]; // 중복 제거
+          
+          // 해당 필드가 관련 속성이 아니면 리턴
+          if (!allRelevantAttrs.includes(fieldName)) {
+              return;
+          }
+      } else {
+          // 필드명이 전달되지 않은 경우 기존 로직 유지
+          let currentAttr = document.getElementById('kanbanAttributeSelect')?.value;
+          if (!currentAttr) {
+              currentAttr = window.kanbanSettings?.main_attr;
+          }
+          if (!currentAttr || currentAttr === 'undefined') return;
+      }
+      
       if (!window._kanbanRefreshTimeout) {
           window._kanbanRefreshTimeout = null;
       }
@@ -1623,7 +1694,16 @@ function showModalDropdownOptions(rowId, fieldName, btn) {
                         // 실시간 동기화
                         if (typeof syncTableAndKanban === 'function') {
                             syncTableAndKanban(type);
+                        } else {
+                            // syncTableAndKanban이 없는 경우 triggerKanbanRefreshIfNeeded 사용
+                            if (typeof triggerKanbanRefreshIfNeeded === 'function') {
+                                triggerKanbanRefreshIfNeeded(type);
+                            }
                         }
+                        
+                        // 칸반보드 설정 확인 및 리프레시
+                        checkKanbanAndRefresh(type);
+                        
                         // 칸반보드 리렌더링
                         if (window.currentKanbanAttribute && window.currentKanbanAttribute === type) {
                             updateKanbanBoard(type);
@@ -1713,4 +1793,59 @@ function getCsrfToken() {
         }
     }
     return cookieValue;
+}
+
+// 드롭다운 옵션 수정 시 칸반보드 리프레시 함수
+async function checkKanbanAndRefresh(fieldName) {
+    // 칸반보드 설정이 로드되지 않았을 경우 로드
+    if (!window.kanbanSettings) {
+        try {
+            const resp = await fetch('/sales/get_kanban_settings/');
+            const data = await resp.json();
+            if (data.success && data.settings) {
+                window.kanbanSettings = data.settings;
+            }
+        } catch (e) { 
+            console.error('칸반보드 설정 로드 실패:', e);
+            return;
+        }
+    }
+    
+    // 메인 칸반보드 속성 확인
+    let currentAttr = document.getElementById('kanbanAttributeSelect')?.value;
+    if (!currentAttr) {
+        currentAttr = window.kanbanSettings?.main_attr;
+    }
+    
+    // 조건부 필터에서 사용되는 속성들 확인
+    let filterAttrs = [];
+    if (window.kanbanSettings?.filters) {
+        filterAttrs = window.kanbanSettings.filters.map(filter => filter.attribute).filter(attr => attr && attr !== '');
+    }
+    
+    // 커스텀 규칙에서 사용되는 속성들도 확인
+    let customRuleAttrs = [];
+    if (window.kanbanSettings?.custom_rules) {
+        window.kanbanSettings.custom_rules.forEach(rule => {
+            if (rule.conditions) {
+                rule.conditions.forEach(condition => {
+                    if (condition.attribute && condition.attribute !== '') {
+                        customRuleAttrs.push(condition.attribute);
+                    }
+                });
+            }
+        });
+    }
+    
+    // 모든 관련 속성들을 하나의 배열로 합치고 중복 제거
+    let allRelevantAttrs = [currentAttr, ...filterAttrs, ...customRuleAttrs].filter(attr => attr && attr !== 'undefined');
+    allRelevantAttrs = [...new Set(allRelevantAttrs)]; // 중복 제거
+    
+    // 해당 필드가 관련 속성인 경우 칸반보드 리프레시
+    if (allRelevantAttrs.includes(fieldName)) {
+        console.log('칸반보드 관련 속성이 변경되어 새로고침합니다:', fieldName);
+        if (typeof refreshKanban === 'function') {
+            refreshKanban();
+        }
+    }
 }

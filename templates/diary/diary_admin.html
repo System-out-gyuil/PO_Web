@@ -100,6 +100,9 @@
                         <a class="nav-link" href="javascript:void(0)" onclick="showCreateAlarm(); return false;">
                             <i class="fas fa-plus me-2"></i> 공지사항 작성
                         </a>
+                        <a class="nav-link" href="javascript:void(0)" onclick="showUsers(); return false;">
+                            <i class="fas fa-users me-2"></i> 사용자
+                        </a>
                     </nav>
                 </div>
             </div>
@@ -328,6 +331,51 @@
                                         </button>
                                     </div>
                                 </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Users Content -->
+                    <div id="users-content" style="display: none;">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h2><i class="fas fa-users"></i> 사용자 관리</h2>
+                            <div class="d-flex gap-2">
+                                <input type="text" class="form-control search-box" id="user-search" placeholder="검색...">
+                                <select class="form-select" id="user-sort" style="width: auto;">
+                                    <option value="-created_at">최신순</option>
+                                    <option value="created_at">오래된순</option>
+                                    <option value="name">이름순</option>
+                                    <option value="email">이메일순</option>
+                                    <option value="company_name">회사명순</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>번호</th>
+                                                <th>이름</th>
+                                                <th>이메일</th>
+                                                <th>회사명</th>
+                                                <th>연락처</th>
+                                                <th>가입일</th>
+                                                <th>관리자</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="users-table-body">
+                                            <!-- JavaScript로 동적 로드 -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <nav aria-label="사용자 페이지네이션">
+                                    <ul class="pagination justify-content-center" id="users-pagination">
+                                        <!-- JavaScript로 동적 생성 -->
+                                    </ul>
+                                </nav>
                             </div>
                         </div>
                     </div>

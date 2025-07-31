@@ -34,6 +34,7 @@ function initializeEventListeners() {
     // 검색 이벤트
     const inquirySearch = document.getElementById('inquiry-search');
     const alarmSearch = document.getElementById('alarm-search');
+    const userSearch = document.getElementById('user-search');
     
     if (inquirySearch) {
         inquirySearch.addEventListener('input', debounce(loadInquiries, 500));
@@ -41,16 +42,23 @@ function initializeEventListeners() {
     if (alarmSearch) {
         alarmSearch.addEventListener('input', debounce(loadAlarms, 500));
     }
+    if (userSearch) {
+        userSearch.addEventListener('input', debounce(loadUsers, 500));
+    }
     
     // 정렬 이벤트
     const inquirySort = document.getElementById('inquiry-sort');
     const alarmSort = document.getElementById('alarm-sort');
+    const userSort = document.getElementById('user-sort');
     
     if (inquirySort) {
         inquirySort.addEventListener('change', loadInquiries);
     }
     if (alarmSort) {
         alarmSort.addEventListener('change', loadAlarms);
+    }
+    if (userSort) {
+        userSort.addEventListener('change', loadUsers);
     }
     
     // 폼 제출 이벤트
@@ -155,6 +163,17 @@ function showCreateAlarm() {
     updateActiveNav('create-alarm');
 }
 
+function showUsers() {
+    console.log('Showing users');
+    hideAllContent();
+    const usersContent = document.getElementById('users-content');
+    if (usersContent) {
+        usersContent.setAttribute('style', 'display: block !important; visibility: visible !important; opacity: 1 !important;');
+    }
+    updateActiveNav('users');
+    loadUsers();
+}
+
 // 모든 콘텐츠 숨기기
 function hideAllContent() {
     console.log('Hiding all content');
@@ -162,7 +181,8 @@ function hideAllContent() {
         'dashboard-content',
         'inquiries-content', 
         'alarms-content',
-        'create-alarm-content'
+        'create-alarm-content',
+        'users-content'
     ];
     
     contents.forEach(id => {
@@ -197,6 +217,9 @@ function updateActiveNav(activeSection) {
             break;
         case 'create-alarm':
             targetLink = document.querySelector('.nav-link[onclick*="showCreateAlarm"]');
+            break;
+        case 'users':
+            targetLink = document.querySelector('.nav-link[onclick*="showUsers"]');
             break;
     }
     
@@ -256,6 +279,33 @@ async function loadAlarms(page = 1) {
     } catch (error) {
         console.error('Error loading alarms:', error);
         showAlert('공지사항을 불러오는데 실패했습니다.', 'danger');
+    }
+}
+
+// 사용자 로드
+async function loadUsers(page = 1) {
+    try {
+        const searchQuery = document.getElementById('user-search')?.value || '';
+        const sortBy = document.getElementById('user-sort')?.value || '-created_at';
+        
+        const params = new URLSearchParams({
+            search: searchQuery,
+            sort: sortBy,
+            page: page
+        });
+        
+        const response = await fetch(`/sales/diary_admin/users/?${params}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            renderUsersTable(data.users);
+            renderPagination(data.pagination, 'users-pagination', loadUsers);
+        } else {
+            showAlert('사용자 목록을 불러오는데 실패했습니다.', 'danger');
+        }
+    } catch (error) {
+        console.error('Error loading users:', error);
+        showAlert('사용자 목록을 불러오는데 실패했습니다.', 'danger');
     }
 }
 
@@ -324,6 +374,35 @@ function renderAlarmsTable(alarms) {
                     <i class="fas fa-trash"></i> 삭제
                 </button>
             </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+// 사용자 테이블 렌더링
+function renderUsersTable(users) {
+    const tbody = document.getElementById('users-table-body');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '';
+    
+    if (users.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">사용자가 없습니다.</td></tr>';
+        return;
+    }
+    
+    users.forEach(user => {
+        const adminBadge = user.is_admin ? '<span class="badge bg-danger">관리자</span>' : '<span class="badge bg-secondary">일반</span>';
+        
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${user.id}</td>
+            <td>${user.name || '-'}</td>
+            <td>${user.email}</td>
+            <td>${user.company_name || '-'}</td>
+            <td>${user.phone_number || '-'}</td>
+            <td>${formatDate(user.created_at)}</td>
+            <td>${adminBadge}</td>
         `;
         tbody.appendChild(row);
     });
