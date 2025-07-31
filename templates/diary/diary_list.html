@@ -3128,16 +3128,6 @@ function refreshTable() {
                         }
                     }
                     
-                    // 삭제 버튼 클릭 처리
-                    if (e.target.closest('.delete-row-btn')) {
-                        const row = e.target.closest('tr');
-                        const rowId = row.getAttribute('data-id');
-                        
-                        if (typeof deleteRow === 'function') {
-                            deleteRow(rowId);
-                        }
-                    }
-                    
                     // 복제 버튼 클릭 처리
                     if (e.target.closest('.duplicate-row-btn')) {
                         const row = e.target.closest('tr');

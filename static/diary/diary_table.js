@@ -2168,11 +2168,21 @@ function processDropdownOptions(options, value, cell) {
       return cookieValue;
   }
   
-  // 행 삭제 함수
+  // 삭제 진행 중 플래그
+  let isDeleting = false;
+  
   function deleteRow(rowId) {
+      // 이미 삭제 진행 중이면 중단
+      if (isDeleting) {
+          return;
+      }
+      
       if (!confirm('이 행을 삭제하시겠습니까?\n\n삭제된 데이터는 복구할 수 없습니다.')) {
           return;
       }
+      
+      // 삭제 진행 중 플래그 설정
+      isDeleting = true;
       
       fetch('/sales/delete_row/', {
           method: 'POST',
@@ -2212,6 +2222,10 @@ function processDropdownOptions(options, value, cell) {
       .catch(error => {
           console.error('Error:', error);
           alert('행 삭제 중 오류가 발생했습니다.');
+      })
+      .finally(() => {
+          // 삭제 완료 후 플래그 해제
+          isDeleting = false;
       });
   }
   

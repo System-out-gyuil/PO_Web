@@ -3151,16 +3151,64 @@ def get_file_preview_url_note(request, file_id):
             s3_key = file_info.get('s3_key')
             if not s3_key:
                 return JsonResponse({'success': False, 'error': 'S3 키가 없습니다.'})
+            
+            content_type = file_info.get('content_type', '')
+            original_filename = file_info.get('original_filename', '')
+            
+            # HWP/HWPX 파일인 경우 PDF로 변환
+            if (content_type in ['application/x-hwp', 'application/haansofthwp', 'application/vnd.hancom.hwp'] or
+                original_filename.lower().endswith(('.hwp', '.hwpx'))):
+                
+                print(f"HWP/HWPX 파일 감지: {original_filename}")
+                
+                # LibreOffice 상태 확인
+                if not check_libreoffice_status():
+                    return JsonResponse({'success': False, 'error': 'LibreOffice가 설치되지 않았거나 실행할 수 없습니다.'})
+                
+                try:
+                    # S3에서 파일 다운로드
+                    temp_file_path = download_file_from_s3_for_preview(s3_key)
+                    if not temp_file_path:
+                        return JsonResponse({'success': False, 'error': '파일 다운로드에 실패했습니다.'})
+                    
+                    # HWP를 PDF로 변환
+                    pdf_path = convert_hwp_to_pdf(temp_file_path)
+                    if not pdf_path or not os.path.exists(pdf_path):
+                        # 임시 파일 정리
+                        if os.path.exists(temp_file_path):
+                            os.remove(temp_file_path)
+                        return JsonResponse({'success': False, 'error': 'HWP 파일을 PDF로 변환하는데 실패했습니다.'})
+                    
+                    # 변환된 PDF를 S3에 업로드하고 미리보기 URL 생성
+                    preview_url = upload_pdf_to_s3_for_preview(pdf_path, s3_key)
+                    
+                    # 임시 파일들 정리
+                    if os.path.exists(temp_file_path):
+                        os.remove(temp_file_path)
+                    if os.path.exists(pdf_path):
+                        os.remove(pdf_path)
+                    
+                    if preview_url:
+                        return JsonResponse({'success': True, 'preview_url': preview_url})
+                    else:
+                        return JsonResponse({'success': False, 'error': 'PDF 미리보기 URL 생성에 실패했습니다.'})
+                        
+                except Exception as e:
+                    # 임시 파일 정리
+                    if 'temp_file_path' in locals() and os.path.exists(temp_file_path):
+                        os.remove(temp_file_path)
+                    if 'pdf_path' in locals() and os.path.exists(pdf_path):
+                        os.remove(pdf_path)
+                    return JsonResponse({'success': False, 'error': f'HWP 변환 중 오류가 발생했습니다: {str(e)}'})
+            
+            # 기존 로직 (HWP/HWPX가 아닌 경우)
             try:
-                import boto3
-                from django.conf import settings
                 s3_client = boto3.client(
                     's3',
                     aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
                     aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
                     region_name=settings.AWS_S3_REGION_NAME
                 )
-                content_type = file_info.get('content_type', '')
                 if (content_type == 'application/pdf' or 
                     content_type.startswith('image/') or
                     content_type == 'text/plain' or
@@ -3244,15 +3292,63 @@ def get_file_preview_url(request, row_id, field_name):
         s3_key = file_info.get('s3_key')
         if not s3_key:
             return JsonResponse({'success': False, 'error': 'S3 키가 없습니다.'})
-        import boto3
-        from django.conf import settings
+        
+        content_type = file_info.get('content_type', '')
+        original_filename = file_info.get('original_filename', '')
+        
+        # HWP/HWPX 파일인 경우 PDF로 변환
+        if (content_type in ['application/x-hwp', 'application/haansofthwp', 'application/vnd.hancom.hwp'] or
+            original_filename.lower().endswith(('.hwp', '.hwpx'))):
+            
+            print(f"HWP/HWPX 파일 감지: {original_filename}")
+            
+            # LibreOffice 상태 확인
+            if not check_libreoffice_status():
+                return JsonResponse({'success': False, 'error': 'LibreOffice가 설치되지 않았거나 실행할 수 없습니다.'})
+            
+            try:
+                # S3에서 파일 다운로드
+                temp_file_path = download_file_from_s3_for_preview(s3_key)
+                if not temp_file_path:
+                    return JsonResponse({'success': False, 'error': '파일 다운로드에 실패했습니다.'})
+                
+                # HWP를 PDF로 변환
+                pdf_path = convert_hwp_to_pdf(temp_file_path)
+                if not pdf_path or not os.path.exists(pdf_path):
+                    # 임시 파일 정리
+                    if os.path.exists(temp_file_path):
+                        os.remove(temp_file_path)
+                    return JsonResponse({'success': False, 'error': 'HWP 파일을 PDF로 변환하는데 실패했습니다.'})
+                
+                # 변환된 PDF를 S3에 업로드하고 미리보기 URL 생성
+                preview_url = upload_pdf_to_s3_for_preview(pdf_path, s3_key)
+                
+                # 임시 파일들 정리
+                if os.path.exists(temp_file_path):
+                    os.remove(temp_file_path)
+                if os.path.exists(pdf_path):
+                    os.remove(pdf_path)
+                
+                if preview_url:
+                    return JsonResponse({'success': True, 'preview_url': preview_url})
+                else:
+                    return JsonResponse({'success': False, 'error': 'PDF 미리보기 URL 생성에 실패했습니다.'})
+                    
+            except Exception as e:
+                # 임시 파일 정리
+                if 'temp_file_path' in locals() and os.path.exists(temp_file_path):
+                    os.remove(temp_file_path)
+                if 'pdf_path' in locals() and os.path.exists(pdf_path):
+                    os.remove(pdf_path)
+                return JsonResponse({'success': False, 'error': f'HWP 변환 중 오류가 발생했습니다: {str(e)}'})
+        
+        # 기존 로직 (HWP/HWPX가 아닌 경우)
         s3_client = boto3.client(
             's3',
             aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
             aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
             region_name=settings.AWS_S3_REGION_NAME
         )
-        content_type = file_info.get('content_type', '')
         if (content_type == 'application/pdf' or 
             content_type.startswith('image/') or
             content_type == 'text/plain' or
@@ -4608,3 +4704,155 @@ def cleanup_duplicates_api(request):
             })
     
     return JsonResponse({'success': False, 'error': 'POST 요청만 지원합니다'})
+
+def check_libreoffice_status():
+    """LibreOffice 설치 및 실행 상태 확인"""
+    try:
+        result = subprocess.run(['libreoffice', '--version'], 
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=10)
+        return result.returncode == 0
+    except Exception as e:
+        print(f"LibreOffice 상태 확인 실패: {e}")
+        return False
+
+def convert_hwp_to_pdf(hwp_path):
+    """HWP를 PDF로 변환"""
+    output_dir = os.path.dirname(hwp_path)
+    try:
+        # 파일 크기 확인
+        file_size = os.path.getsize(hwp_path)
+        print(f"📄 HWP 파일 크기: {file_size / (1024*1024):.2f} MB")
+        
+        # 파일 크기에 따른 timeout 조정
+        if file_size > 50 * 1024 * 1024:  # 50MB 이상
+            timeout = 1800  # 30분
+            print("⏰ 대용량 파일 감지, timeout을 30분으로 설정")
+        elif file_size > 10 * 1024 * 1024:  # 10MB 이상
+            timeout = 900   # 15분
+            print("⏰ 중간 크기 파일 감지, timeout을 15분으로 설정")
+        else:
+            timeout = 600   # 10분 (기본값)
+            print("⏰ 기본 timeout 10분 설정")
+        
+        print("🖥️ LibreOffice 변환 시작...")
+        
+        result = subprocess.run([
+            "libreoffice",
+            "--headless",
+            "--convert-to", "pdf:writer_pdf_Export",
+            hwp_path,
+            "--outdir", output_dir
+        ], stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=timeout)
+
+        print("🖥️ libreoffice stdout: " + result.stdout.decode())
+        if result.stderr:
+            print("🖥️ libreoffice stderr: " + result.stderr.decode())
+
+        basename = os.path.splitext(os.path.basename(hwp_path))[0] + ".pdf"
+        converted_pdf = os.path.join(output_dir, basename)
+
+        if os.path.exists(converted_pdf):
+            pdf_size = os.path.getsize(converted_pdf)
+            print(f"✅ 변환 성공: {pdf_size / (1024*1024):.2f} MB")
+            return converted_pdf
+        else:
+            print(f"[❌ 변환 실패] {converted_pdf} 파일이 존재하지 않습니다.")
+            return ""
+            
+    except subprocess.TimeoutExpired:
+        print(f"[⏰ Timeout 발생] {timeout}초 초과로 변환 실패")
+        # LibreOffice 프로세스 강제 종료
+        try:
+            subprocess.run(["pkill", "-f", "libreoffice"], timeout=10)
+            print("🔄 LibreOffice 프로세스 강제 종료 완료")
+        except:
+            print("⚠️ LibreOffice 프로세스 종료 실패")
+        return ""
+    except Exception as e:
+        print(f"[예외 발생] HWP → PDF 변환 실패: {e}")
+        return ""
+
+def download_file_from_s3_for_preview(s3_key):
+    """S3에서 파일을 임시로 다운로드하여 미리보기용으로 사용"""
+    try:
+        s3_client = boto3.client(
+            's3',
+            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+            region_name=settings.AWS_S3_REGION_NAME
+        )
+        
+        # 임시 디렉토리에 파일 다운로드
+        temp_dir = tempfile.gettempdir()
+        temp_filename = f"preview_{os.path.basename(s3_key)}"
+        temp_path = os.path.join(temp_dir, temp_filename)
+        
+        s3_client.download_file(
+            settings.AWS_STORAGE_BUCKET_NAME,
+            s3_key,
+            temp_path
+        )
+        
+        return temp_path
+    except Exception as e:
+        print(f"S3 파일 다운로드 실패: {e}")
+        return None
+
+def upload_pdf_to_s3_for_preview(pdf_path, original_s3_key):
+    """변환된 PDF를 S3에 업로드하여 미리보기용 URL 생성"""
+    try:
+        s3_client = boto3.client(
+            's3',
+            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+            region_name=settings.AWS_S3_REGION_NAME
+        )
+        
+        # 원본 파일명에서 확장자만 PDF로 변경
+        original_filename = os.path.basename(original_s3_key)
+        pdf_filename = os.path.splitext(original_filename)[0] + "_preview.pdf"
+        preview_s3_key = f"preview/{pdf_filename}"
+        
+        # PDF 파일을 S3에 업로드
+        s3_client.upload_file(
+            pdf_path,
+            settings.AWS_STORAGE_BUCKET_NAME,
+            preview_s3_key,
+            ExtraArgs={'ContentType': 'application/pdf'}
+        )
+        
+        # 미리보기용 presigned URL 생성
+        signed_preview_url = s3_client.generate_presigned_url(
+            'get_object',
+            Params={
+                'Bucket': settings.AWS_STORAGE_BUCKET_NAME,
+                'Key': preview_s3_key,
+                'ResponseContentDisposition': 'inline'
+            },
+            ExpiresIn=3600
+        )
+        
+        return signed_preview_url
+    except Exception as e:
+        print(f"PDF S3 업로드 실패: {e}")
+        return None
+
+@csrf_exempt
+def test_hwp_preview_conversion(request):
+    """HWP 파일 미리보기 변환 기능 테스트"""
+    if request.method == 'GET':
+        try:
+            # LibreOffice 상태 확인
+            libreoffice_ok = check_libreoffice_status()
+            
+            return JsonResponse({
+                'success': True,
+                'libreoffice_available': libreoffice_ok,
+                'message': 'HWP 미리보기 변환 기능이 준비되었습니다.' if libreoffice_ok else 'LibreOffice가 설치되지 않았습니다.'
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            })
+    return JsonResponse({'success': False, 'error': 'GET 요청만 허용됩니다.'})
