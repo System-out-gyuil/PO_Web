@@ -4,6 +4,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>게시판 - 자금왕</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
@@ -1046,6 +1047,15 @@
             return div.innerHTML;
         }
         
+        // 이모지 안전 처리 함수
+        function safeEmojiText(text) {
+            if (!text) return '';
+            // 이모지가 제대로 표시되도록 안전하게 처리
+            return text.replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, function(match) {
+                return match;
+            });
+        }
+        
         // 게시글 작성 모달 관련 함수들
         
         // 게시글 작성 모달 표시
@@ -1512,7 +1522,7 @@
                 const response = await fetch('/sales/diary_board/announcement/create/', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
+                        'Content-Type': 'application/json; charset=utf-8',
                         'X-CSRFToken': getCookie('csrftoken')
                     },
                     body: JSON.stringify({

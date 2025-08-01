@@ -13,6 +13,12 @@ from botocore.exceptions import ClientError
 import uuid
 from datetime import datetime
 
+# 커스텀 JSON 인코더 클래스
+class UnicodeJsonResponse(JsonResponse):
+    def __init__(self, data, **kwargs):
+        kwargs['json_dumps_params'] = {'ensure_ascii': False}
+        super().__init__(data, **kwargs)
+
 def diary_board(request):
     """게시판 메인 페이지"""
     user_id = request.session.get('diary_member_id')
@@ -149,7 +155,7 @@ def get_announcements(request):
         'next_page_number': page_obj.next_page_number() if page_obj.has_next() else None,
     }
     
-    return JsonResponse({
+    return UnicodeJsonResponse({
         'success': True,
         'announcements': announcements_data,
         'pagination': pagination_data,
@@ -218,7 +224,7 @@ def get_announcement_detail(request, announcement_id):
         'updated_at': alarm.updated_at.strftime('%Y-%m-%d %H:%M')
     }
     
-    return JsonResponse({
+    return UnicodeJsonResponse({
         'success': True,
         'announcement': announcement_data
     })
@@ -485,7 +491,7 @@ def create_announcement(request):
     
     try:
         import json
-        data = json.loads(request.body)
+        data = json.loads(request.body.decode('utf-8'))
         title = data.get('title', '').strip()
         content = data.get('content', '').strip()
         files = data.get('files', [])
@@ -517,16 +523,16 @@ def create_announcement(request):
                 is_read=False
             )
         
-        return JsonResponse({
+        return UnicodeJsonResponse({
             'success': True,
             'message': '공고가 작성되었습니다.',
             'announcement_id': alarm.id
         })
         
     except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'message': '잘못된 요청 형식입니다.'})
+        return UnicodeJsonResponse({'success': False, 'message': '잘못된 요청 형식입니다.'})
     except Exception as e:
-        return JsonResponse({'success': False, 'message': f'공고 작성 중 오류가 발생했습니다: {str(e)}'})
+        return UnicodeJsonResponse({'success': False, 'message': f'공고 작성 중 오류가 발생했습니다: {str(e)}'})
 
 @csrf_exempt
 def upload_announcement_file(request):

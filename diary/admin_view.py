@@ -15,6 +15,14 @@ from .models import Inquiry, Alarm, UserAlarm, User
 from django.core.paginator import Paginator
 from django.core.serializers import serialize
 from django.forms.models import model_to_dict
+from diary.models import CalendarSettings, KanbanSettings, Attribute, Row, EmailVerification
+import codecs
+
+# 커스텀 JSON 인코더 클래스
+class UnicodeJsonResponse(JsonResponse):
+    def __init__(self, data, **kwargs):
+        kwargs['json_dumps_params'] = {'ensure_ascii': False}
+        super().__init__(data, **kwargs)
 
 def save_uploaded_files(files):
     """업로드된 파일들을 S3에 저장하고 파일 정보를 반환"""
@@ -290,7 +298,7 @@ def alarm_list(request):
         'next_page_number': page_obj.next_page_number() if page_obj.has_next() else None,
     }
     
-    return JsonResponse({
+    return UnicodeJsonResponse({
         'success': True,
         'alarms': alarms_data,
         'pagination': pagination_data
@@ -315,7 +323,7 @@ def alarm_create(request):
         try:
             # JSON 데이터 처리
             if request.content_type == 'application/json':
-                data = json.loads(request.body)
+                data = json.loads(request.body.decode('utf-8'))
                 title = data.get('title')
                 content_text = data.get('content')
                 files_data = data.get('files', [])
@@ -362,9 +370,9 @@ def alarm_create(request):
                     is_read=False
                 )
             
-            return JsonResponse({'success': True, 'message': '공지사항이 성공적으로 작성되었습니다.'})
+            return UnicodeJsonResponse({'success': True, 'message': '공지사항이 성공적으로 작성되었습니다.'})
         else:
-            return JsonResponse({'success': False, 'message': '제목과 내용을 모두 입력해주세요.'})
+            return UnicodeJsonResponse({'success': False, 'message': '제목과 내용을 모두 입력해주세요.'})
     
     return render(request, 'diary/diary_admin.html')
 
@@ -389,7 +397,7 @@ def alarm_edit(request, alarm_id):
         try:
             # JSON 데이터 처리
             if request.content_type == 'application/json':
-                data = json.loads(request.body)
+                data = json.loads(request.body.decode('utf-8'))
                 title = data.get('title')
                 content_text = data.get('content')
                 files_data = data.get('files', [])
@@ -430,9 +438,9 @@ def alarm_edit(request, alarm_id):
             alarm.content = content
             alarm.save()
             
-            return JsonResponse({'success': True, 'message': '공지사항이 성공적으로 수정되었습니다.'})
+            return UnicodeJsonResponse({'success': True, 'message': '공지사항이 성공적으로 수정되었습니다.'})
         else:
-            return JsonResponse({'success': False, 'message': '제목과 내용을 모두 입력해주세요.'})
+            return UnicodeJsonResponse({'success': False, 'message': '제목과 내용을 모두 입력해주세요.'})
     
     # GET 요청 시 알람 정보 반환
     alarm_data = {
@@ -443,7 +451,7 @@ def alarm_edit(request, alarm_id):
         'created_at': alarm.created_at.isoformat(),
     }
     
-    return JsonResponse({
+    return UnicodeJsonResponse({
         'success': True,
         'alarm': alarm_data
     })
@@ -643,3 +651,58 @@ def user_list(request):
         'users': users_data,
         'pagination': pagination
     })
+
+@csrf_exempt
+def user_delete(request, user_id):
+    """사용자 삭제"""
+    admin_user_id = request.session.get('diary_member_id')
+    
+    if not admin_user_id:
+        return JsonResponse({'success': False, 'message': '로그인이 필요합니다.'})
+    
+    try:
+        admin_user = User.objects.get(id=admin_user_id)
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'message': '관리자를 찾을 수 없습니다.'})
+
+    if not admin_user.is_admin:
+        return JsonResponse({'success': False, 'message': '권한이 없습니다.'})
+    
+    # 자기 자신을 삭제하려는 경우 방지
+    if admin_user_id == user_id:
+        return JsonResponse({'success': False, 'message': '자기 자신을 삭제할 수 없습니다.'})
+    
+    try:
+        user_to_delete = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'message': '삭제할 사용자를 찾을 수 없습니다.'})
+    
+    # 사용자와 관련된 모든 데이터 삭제
+    try:
+        # 1. UserAlarm 삭제
+        UserAlarm.objects.filter(user=user_to_delete).delete()
+        
+        # 2. CalendarSettings 삭제
+        CalendarSettings.objects.filter(user=user_to_delete).delete()
+        
+        # 3. KanbanSettings 삭제
+        KanbanSettings.objects.filter(user=user_to_delete).delete()
+        
+        # 4. Attribute 삭제 (사용자별 속성)
+        Attribute.objects.filter(user=user_to_delete).delete()
+        
+        # 5. Row 삭제 (사용자의 모든 행)
+        Row.objects.filter(user=user_to_delete).delete()
+        
+        # 6. EmailVerification 삭제 (해당 사용자의 이메일 인증 데이터)
+        EmailVerification.objects.filter(email=user_to_delete.email).delete()
+        
+        # 7. 사용자가 작성한 문의사항 삭제 (선택사항 - 필요에 따라 주석 처리)
+        # Inquiry.objects.filter(user=user_to_delete).delete()
+        
+        # 8. 사용자 삭제
+        user_to_delete.delete()
+        
+        return JsonResponse({'success': True, 'message': '사용자가 성공적으로 삭제되었습니다.'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'사용자 삭제 중 오류가 발생했습니다: {str(e)}'})

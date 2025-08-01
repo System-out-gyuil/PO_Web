@@ -362,8 +362,8 @@ function renderAlarmsTable(alarms) {
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${alarm.id}</td>
-            <td>${alarm.title}</td>
-            <td>${alarm.content.length > 50 ? alarm.content.substring(0, 50) + '...' : alarm.content}</td>
+            <td>${safeEmojiText(alarm.title)}</td>
+            <td>${safeEmojiText(alarm.content.length > 50 ? alarm.content.substring(0, 50) + '...' : alarm.content)}</td>
             <td>${fileInfo}</td>
             <td>${formatDate(alarm.created_at)}</td>
             <td>
@@ -387,7 +387,7 @@ function renderUsersTable(users) {
     tbody.innerHTML = '';
     
     if (users.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">사용자가 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">사용자가 없습니다.</td></tr>';
         return;
     }
     
@@ -403,9 +403,63 @@ function renderUsersTable(users) {
             <td>${user.phone_number || '-'}</td>
             <td>${formatDate(user.created_at)}</td>
             <td>${adminBadge}</td>
+            <td>
+                <button class="btn btn-sm btn-outline-danger" onclick="confirmDeleteUser(${user.id}, '${user.name || '사용자'}', '${user.email}')">
+                    <i class="fas fa-trash"></i> 삭제
+                </button>
+            </td>
         `;
         tbody.appendChild(row);
     });
+}
+
+// 사용자 삭제 확인
+function confirmDeleteUser(userId, userName, userEmail) {
+    const userInfoDiv = document.getElementById('user-delete-info');
+    userInfoDiv.innerHTML = `
+        <div class="alert alert-info">
+            <strong>삭제할 사용자 정보:</strong><br>
+            이름: ${userName}<br>
+            이메일: ${userEmail}<br>
+            사용자 ID: ${userId}
+        </div>
+    `;
+    
+    // 삭제 버튼에 사용자 ID 저장
+    const confirmBtn = document.getElementById('confirm-user-delete-btn');
+    confirmBtn.onclick = () => deleteUser(userId);
+    
+    // 모달 표시
+    const modal = new bootstrap.Modal(document.getElementById('userDeleteModal'));
+    modal.show();
+}
+
+// 사용자 삭제
+async function deleteUser(userId) {
+    try {
+        const response = await fetch(`/sales/diary_admin/users/${userId}/delete/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showAlert(data.message, 'success');
+            // 모달 닫기
+            bootstrap.Modal.getInstance(document.getElementById('userDeleteModal')).hide();
+            // 사용자 목록 새로고침
+            loadUsers();
+        } else {
+            showAlert(data.message, 'danger');
+        }
+    } catch (error) {
+        console.error('Error deleting user:', error);
+        showAlert('사용자 삭제에 실패했습니다.', 'danger');
+    }
 }
 
 // 페이지네이션 렌더링
@@ -492,8 +546,8 @@ async function editAlarm(alarmId) {
             currentAlarmId = alarmId;
             
             document.getElementById('edit-alarm-id').value = alarmId;
-            document.getElementById('edit-alarm-title').value = alarm.title;
-            document.getElementById('edit-alarm-content').value = alarm.content;
+            document.getElementById('edit-alarm-title').value = safeEmojiText(alarm.title);
+            document.getElementById('edit-alarm-content').value = safeEmojiText(alarm.content);
             
             // 현재 파일 목록 표시
             const currentFilesSection = document.getElementById('current-files-section');
@@ -503,10 +557,20 @@ async function editAlarm(alarmId) {
                 currentFilesList.innerHTML = '';
                 alarm.files.forEach(file => {
                     const fileDiv = document.createElement('div');
-                    fileDiv.className = 'd-flex justify-content-between align-items-center mb-1';
+                    fileDiv.className = 'd-flex justify-content-between align-items-center mb-2 p-2 border rounded';
                     fileDiv.innerHTML = `
-                        <span><i class="fas fa-file"></i> ${file.original_name}</span>
-                        <small class="text-muted">${formatFileSize(file.file_size)}</small>
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-file me-2"></i>
+                            <div>
+                                <div class="fw-bold">${safeEmojiText(file.original_name || 'Unknown')}</div>
+                                <small class="text-muted">${formatFileSize(file.file_size || 0)}</small>
+                            </div>
+                        </div>
+                        <div>
+                            <button class="btn btn-sm btn-outline-primary me-1" onclick="window.open('${file.download_url || file.public_url}', '_blank')">
+                                <i class="fas fa-download"></i>
+                            </button>
+                        </div>
                     `;
                     currentFilesList.appendChild(fileDiv);
                 });
@@ -585,21 +649,58 @@ async function saveEditAlarm() {
     }
     
     try {
-        const formData = new FormData();
-        formData.append('title', title);
-        formData.append('content', content);
-        
-        // 파일 추가
-        for (let i = 0; i < files.length; i++) {
-            formData.append('files', files[i]);
+        // 기존 파일 정보 가져오기
+        const currentFilesSection = document.getElementById('current-files-section');
+        const currentFiles = [];
+        if (currentFilesSection.style.display !== 'none') {
+            const fileItems = currentFilesSection.querySelectorAll('.file-item');
+            fileItems.forEach(item => {
+                const fileName = item.querySelector('.fw-bold').textContent;
+                const fileSize = item.querySelector('.text-muted').textContent;
+                // 기존 파일 정보를 유지
+                currentFiles.push({
+                    original_name: fileName,
+                    file_size: fileSize
+                });
+            });
         }
         
-        const response = await fetch(`/sales/diary_admin/alarm/${alarmId}/edit/`, {
+        // 새 파일 업로드
+        let uploadedFiles = [];
+        if (files.length > 0) {
+            const formData = new FormData();
+            for (let i = 0; i < files.length; i++) {
+                formData.append('files', files[i]);
+            }
+            
+            const uploadResponse = await fetch('/sales/diary_admin/alarm/create/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: formData
+            });
+            
+            const uploadData = await uploadResponse.json();
+            if (uploadData.success) {
+                uploadedFiles = uploadData.files || [];
+            }
+        }
+        
+        // 모든 파일 정보 결합
+        const allFiles = [...currentFiles, ...uploadedFiles];
+        
+        const response = await fetch(`/sales/diary_admin/alarm/${alarmId}/`, {
             method: 'POST',
             headers: {
+                'Content-Type': 'application/json; charset=utf-8',
                 'X-CSRFToken': getCookie('csrftoken')
             },
-            body: formData
+            body: JSON.stringify({
+                title: title,
+                content: content,
+                files: allFiles
+            })
         });
         
         const data = await response.json();
@@ -702,6 +803,15 @@ function formatFileSize(bytes) {
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// 이모지 안전 처리 함수
+function safeEmojiText(text) {
+    if (!text) return '';
+    // 이모지가 제대로 표시되도록 안전하게 처리
+    return text.replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, function(match) {
+        return match;
+    });
 }
 
 function showAlert(message, type = 'info') {

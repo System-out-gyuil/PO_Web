@@ -298,10 +298,15 @@ class Inquiry(models.Model):
         return f"{self.name} - {self.company_name} ({self.created_at.strftime('%Y-%m-%d')})"
     
 class Alarm(models.Model):
-    title = models.CharField(max_length=100)
+    title = models.CharField(max_length=100, db_collation='utf8mb4_unicode_ci')
     content = models.JSONField(default=dict)  # dict 형태로 저장: {"text": "...", "files": [...]}
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'diary_alarm'
+        verbose_name = '공지사항'
+        verbose_name_plural = '공지사항'
     
     def __str__(self):
         return self.title
