@@ -268,7 +268,7 @@ class SignupView(View):
         from django.db import transaction
         try:
             with transaction.atomic():
-                sample_user = User.objects.get(id=15)
+                sample_user = User.objects.get(id=34)
                 user_attrs = {a.name: a for a in Attribute.objects.filter(user=user)}
                 sample_rows = Row.objects.filter(user=sample_user)
                 row_map = {}

@@ -651,7 +651,7 @@ def user_list(request):
         'users': users_data,
         'pagination': pagination,
         'current_user_id': user_id,  # 현재 로그인한 사용자 ID 추가
-        'is_super_admin': user_id == 1  # 최고 관리자 여부 추가
+        'is_super_admin': user_id == 40  # 최고 관리자 여부 추가
     })
 
 @csrf_exempt
