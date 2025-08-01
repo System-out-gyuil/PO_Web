@@ -348,6 +348,8 @@ def get_announcement_file_url(request, saved_name, action='download'):
             # 미리보기인 경우 inline으로 설정
             if action == 'preview':
                 params['ResponseContentDisposition'] = 'inline'
+            else:  # 다운로드인 경우 attachment로 설정
+                params['ResponseContentDisposition'] = 'attachment'
             
             signed_url = s3_client.generate_presigned_url(
                 'get_object',
@@ -380,6 +382,80 @@ def get_announcement_file_url(request, saved_name, action='download'):
         return JsonResponse({
             'success': False, 
             'message': f'파일 URL 생성 중 오류가 발생했습니다: {str(e)}'
+        })
+
+def get_announcement_download_url(request, saved_name):
+    """공고 파일 다운로드용 서명된 URL 생성 API"""
+    user_id = request.session.get('diary_member_id')
+    
+    if not user_id:
+        return JsonResponse({'success': False, 'message': '로그인이 필요합니다.'})
+    
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'message': '사용자를 찾을 수 없습니다.'})
+    
+    # 원본 파일명을 쿼리 파라미터로 받기
+    original_name = request.GET.get('original_name', '')
+    
+    try:
+        # S3 클라이언트 생성
+        s3_client = boto3.client(
+            's3',
+            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+            region_name=settings.AWS_S3_REGION_NAME
+        )
+        
+        # 다운로드용 서명된 URL 생성 (10분 유효)
+        try:
+            # 한글 파일명을 URL 인코딩하여 Content-Disposition 헤더 생성
+            if original_name:
+                # RFC 5987 형식으로 UTF-8 파일명 인코딩
+                import urllib.parse
+                encoded_filename = urllib.parse.quote(original_name.encode('utf-8'))
+                content_disposition = f'attachment; filename="{encoded_filename}"; filename*=UTF-8\'\'{encoded_filename}'
+            else:
+                content_disposition = 'attachment'
+            
+            signed_url = s3_client.generate_presigned_url(
+                'get_object',
+                Params={
+                    'Bucket': settings.AWS_STORAGE_BUCKET_NAME,
+                    'Key': saved_name,
+                    'ResponseContentDisposition': content_disposition
+                },
+                ExpiresIn=600  # 10분
+            )
+            
+            return JsonResponse({
+                'success': True,
+                'url': signed_url,
+                'saved_name': saved_name,
+                'original_name': original_name
+            })
+            
+        except ClientError as e:
+            error_code = e.response['Error']['Code']
+            error_message = e.response['Error']['Message']
+            print(f"S3 다운로드 URL 생성 실패: {error_code} - {error_message}")
+            return JsonResponse({
+                'success': False, 
+                'message': f'다운로드 URL 생성 중 오류가 발생했습니다: {error_message}'
+            })
+        except Exception as e:
+            print(f"서명된 다운로드 URL 생성 실패: {e}")
+            return JsonResponse({
+                'success': False, 
+                'message': f'다운로드 URL 생성 중 오류가 발생했습니다: {str(e)}'
+            })
+            
+    except Exception as e:
+        print(f"다운로드 URL 생성 중 오류: {e}")
+        return JsonResponse({
+            'success': False, 
+            'message': f'다운로드 URL 생성 중 오류가 발생했습니다: {str(e)}'
         })
 
 def save_uploaded_files(files):

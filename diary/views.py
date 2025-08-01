@@ -3163,7 +3163,7 @@ def get_file_preview_url_note(request, file_id):
                 
                 # LibreOffice 상태 확인
                 if not check_libreoffice_status():
-                    return JsonResponse({'success': False, 'error': 'LibreOffice가 설치되지 않았거나 실행할 수 없습니다.'})
+                    return JsonResponse({'success': False, 'error': '파일 변환에 실패했습니다.'})
                 
                 try:
                     # S3에서 파일 다운로드
@@ -3304,7 +3304,7 @@ def get_file_preview_url(request, row_id, field_name):
             
             # LibreOffice 상태 확인
             if not check_libreoffice_status():
-                return JsonResponse({'success': False, 'error': 'LibreOffice가 설치되지 않았거나 실행할 수 없습니다.'})
+                return JsonResponse({'success': False, 'error': '파일 변환에 실패했습니다.'})
             
             try:
                 # S3에서 파일 다운로드
@@ -4875,7 +4875,7 @@ def convert_hwp_to_pdf_board(request):
         
         # LibreOffice 상태 확인
         if not check_libreoffice_status():
-            return JsonResponse({'success': False, 'error': 'LibreOffice가 설치되지 않았거나 실행할 수 없습니다.'})
+            return JsonResponse({'success': False, 'error': '파일 변환에 실패했습니다.'})
         
         # 파일 URL에서 파일 다운로드
         import requests

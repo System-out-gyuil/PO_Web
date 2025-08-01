@@ -13,7 +13,7 @@ from .cascade_handlers import toggle_cascade_attribute, get_cascade_attributes_l
 from .auto_blog import upload_blog_file, get_blog_files
 from .detail_openai import ai_chat, ai_chat_cache_clear, file_cache_management, performance_monitoring
 from .admin_view import admin_dashboard, inquiry_list, inquiry_detail, alarm_list, alarm_create, alarm_edit, alarm_delete, inquiry_delete, admin_api, user_list, user_delete
-from .diary_board import diary_board, get_announcements, get_announcement_detail, mark_as_read, download_announcement_file, announcement_detail_page, create_announcement, upload_announcement_file, get_announcement_file_url
+from .diary_board import diary_board, get_announcements, get_announcement_detail, mark_as_read, download_announcement_file, announcement_detail_page, create_announcement, upload_announcement_file, get_announcement_file_url, get_announcement_download_url
 from .main_views import CompanyInfoView, PersonalInfoView, TermsOfServiceView
 
 urlpatterns = [
@@ -152,6 +152,7 @@ urlpatterns = [
     path('diary_board/announcement/create/', create_announcement, name='create_announcement'),
     path('diary_board/announcement/upload-file/', upload_announcement_file, name='upload_announcement_file'),
     path('diary_board/announcement/file/<path:saved_name>/<str:action>/', get_announcement_file_url, name='get_announcement_file_url'),
+    path('diary_board/announcement/download/<path:saved_name>/', get_announcement_download_url, name='get_announcement_download_url'),
     
     # 알림 관련 URL
     path('diary_board/notifications/', views.get_notifications, name='get_notifications'),

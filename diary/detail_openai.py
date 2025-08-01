@@ -311,7 +311,7 @@ def extract_hwp_text_optimized(file_path, file_hash):
         # LibreOffice 상태 확인
         if not check_libreoffice_status():
             logger.error("LibreOffice가 설치되지 않았거나 실행할 수 없습니다.")
-            return "LibreOffice가 설치되지 않았거나 실행할 수 없습니다."
+            return "파일 변환에 실패했습니다."
         
         pdf_path = convert_hwp_to_pdf(file_path)
         if os.path.exists(pdf_path):
@@ -723,10 +723,32 @@ def ai_chat(request):
                                     try:
                                         debt_data = json.loads(attr_value.value) if isinstance(attr_value.value, str) else attr_value.value
                                         if isinstance(debt_data, dict):
+                                            # 영어 키를 한글로 변환하는 매핑
+                                            key_mapping = {
+                                                'credit_foundation': '신용보증재단',
+                                                'credit_guarantee': '신용보증',
+                                                'sbc': 'SBC',
+                                                'kibo': '기보',
+                                                'kibo_foundation': '기보재단',
+                                                'kibo_guarantee': '기보보증',
+                                                'sbc_foundation': 'SBC재단',
+                                                'sbc_guarantee': 'SBC보증',
+                                                'other': '기타',
+                                                'total': '총합',
+                                                'total_amount': '총금액',
+                                                'amount': '금액',
+                                                'limit': '한도',
+                                                'used': '사용액',
+                                                'available': '가용액',
+                                                'remaining': '잔여액'
+                                            }
+                                            
                                             debt_summary = []
                                             for key, value in debt_data.items():
                                                 if value and value != 0:
-                                                    debt_summary.append(f"{key}: {value:,}만원")
+                                                    # 영어 키를 한글로 변환
+                                                    korean_key = key_mapping.get(key, key)
+                                                    debt_summary.append(f"{korean_key}: {value:,}만원")
                                             if debt_summary:
                                                 row_data[attr_name] = " | ".join(debt_summary)
                                     except Exception as e:
@@ -738,6 +760,23 @@ def ai_chat(request):
                                     try:
                                         recommend_data = json.loads(attr_value.value) if isinstance(attr_value.value, str) else attr_value.value
                                         if isinstance(recommend_data, dict):
+                                            # 영어 키를 한글로 변환하는 매핑
+                                            recommend_key_mapping = {
+                                                'fund_name': '자금명',
+                                                'limit': '한도',
+                                                'institution': '기관',
+                                                'amount': '금액',
+                                                'total': '총합',
+                                                'total_amount': '총금액',
+                                                'available': '가용액',
+                                                'used': '사용액',
+                                                'remaining': '잔여액',
+                                                'interest_rate': '이자율',
+                                                'period': '기간',
+                                                'type': '유형',
+                                                'category': '카테고리'
+                                            }
+                                            
                                             # 총 자금 정보
                                             total_funds = recommend_data.get('총자금', 0)
                                             if total_funds:
@@ -761,6 +800,12 @@ def ai_chat(request):
                                                     fund_name = detail.get('fund_name', '')
                                                     limit = detail.get('limit', 0)
                                                     institution = detail.get('institution', '')
+                                                    
+                                                    # 영어 키를 한글로 변환
+                                                    korean_fund_name = recommend_key_mapping.get('fund_name', fund_name)
+                                                    korean_limit = recommend_key_mapping.get('limit', '한도')
+                                                    korean_institution = recommend_key_mapping.get('institution', '기관')
+                                                    
                                                     if fund_name and limit:
                                                         detail_summary.append(f"{fund_name}({institution}): {limit:,}원")
                                                 if detail_summary:

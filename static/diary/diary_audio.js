@@ -2173,7 +2173,7 @@ function showNoteFilePreview(fileId, fileInfo) {
                                 style="flex: 1; border: none; border-radius: 8px;"
                                 title="${fileName}">
                         </iframe>
-                        <div style="text-align: center; margin-top: 15px; padding: 10px; background: #f8f9fa; border-top: 1px solid #dee2e6;">
+                        <div style="display:none; text-align: center; margin-top: 15px; padding: 10px; background: #f8f9fa; border-top: 1px solid #dee2e6;">
                             <button onclick="window.open('${fileInfo.download_url || fileUrl}', '_blank')" 
                                     style="padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">
                                 원본 파일 다운로드

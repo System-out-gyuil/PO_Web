@@ -1729,7 +1729,8 @@
                                     style="padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">
                                 새 창에서 열기
                             </button>
-                            <button onclick="downloadFile('${file.saved_name}')" 
+                            <button data-saved-name="${file.saved_name}" data-original-name="${fileName}"
+                                    onclick="downloadFileFromButton(this)" 
                                     style="padding: 8px 16px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer;">
                                 다운로드
                             </button>
@@ -1750,7 +1751,7 @@
                                 style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; font-weight: 500; margin-right: 10px; cursor: pointer;">
                             새 창에서 열기
                         </button>
-                        <button onclick="downloadFile('${file.saved_name}')" 
+                        <button onclick="downloadFile('${file.saved_name}', '${fileName}')" 
                                 style="padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 4px; font-weight: 500; cursor: pointer;">
                             다운로드
                         </button>
@@ -1815,6 +1816,57 @@ function logout() {
       });
   }
 }
+
+        // 파일 다운로드
+        async function downloadFile(savedName, originalName) {
+            console.log('다운로드 함수 호출:', { savedName, originalName });
+            
+            try {
+                // 한글 파일명을 URL 인코딩하여 전달
+                const encodedOriginalName = encodeURIComponent(originalName);
+                
+                // 원본 파일명을 URL 파라미터로 전달
+                const params = new URLSearchParams({
+                    original_name: originalName  // 원본 파일명 그대로 전달 (백엔드에서 인코딩)
+                });
+                
+                // 서버에서 새로운 다운로드용 서명된 URL 요청
+                const response = await fetch(`/sales/diary_board/announcement/download/${savedName}/?${params}`, {
+                    method: 'GET',
+                    headers: {
+                        'X-CSRFToken': getCsrfToken()
+                    }
+                });
+                
+                const data = await response.json();
+                console.log('다운로드 URL 응답:', data);
+                
+                if (data.success && data.url) {
+                    // 새로운 서명된 URL로 다운로드 (원본 파일명 사용)
+                    const link = document.createElement('a');
+                    link.href = data.url;
+                    link.download = originalName; // 원본 파일명 사용
+                    link.style.display = 'none';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    console.log('다운로드 시작:', originalName);
+                } else {
+                    alert('파일 다운로드 URL을 생성할 수 없습니다: ' + (data.message || '알 수 없는 오류'));
+                }
+            } catch (error) {
+                console.error('파일 다운로드 오류:', error);
+                alert('파일 다운로드 중 오류가 발생했습니다.');
+            }
+        }
+        
+        // 버튼에서 파일 정보를 읽어와 다운로드하는 함수
+        function downloadFileFromButton(button) {
+            const savedName = button.getAttribute('data-saved-name');
+            const originalName = button.getAttribute('data-original-name');
+            console.log('버튼에서 파일 정보 읽기:', { savedName, originalName });
+            downloadFile(savedName, originalName);
+        }
     </script>
 </body>
 </html>

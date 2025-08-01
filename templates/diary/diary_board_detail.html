@@ -530,6 +530,8 @@
         
         // 파일 아이템 렌더링
         function renderFileItem(file) {
+            console.log('파일 아이템 렌더링:', file);
+            
             const fileIcon = getFileIcon(file.original_name);
             const fileSize = formatFileSize(file.file_size);
             
@@ -558,12 +560,23 @@
                     </div>
                     <div class="file-actions">
                         ${previewButton}
-                        <button class="file-btn download-btn" onclick="downloadFile('${file.saved_name}', '${file.original_name}', '${file.download_url || ''}')">
+                        <button class="file-btn download-btn" 
+                                data-saved-name="${escapeHtml(file.saved_name)}" 
+                                data-original-name="${escapeHtml(file.original_name)}"
+                                onclick="downloadFileFromButton(this)">
                             <i class="fas fa-download"></i> 다운로드
                         </button>
                     </div>
                 </div>
             `;
+        }
+        
+        // 버튼에서 파일 정보를 읽어와 다운로드하는 함수
+        function downloadFileFromButton(button) {
+            const savedName = button.getAttribute('data-saved-name');
+            const originalName = button.getAttribute('data-original-name');
+            console.log('버튼에서 파일 정보 읽기:', { savedName, originalName });
+            downloadFile(savedName, originalName);
         }
         
         // 파일 미리보기 가능 여부 확인
@@ -679,9 +692,7 @@
                         <div style="text-align: center; background: #f8f9fa; padding: 40px; border-radius: 8px;">
                             <div style="font-size: 48px; margin-bottom: 20px;">⏳</div>
                             <div style="font-size: 16px; color: #666;">HWP 파일을 PDF로 변환 중...</div>
-                            <div style="font-size: 14px; color: #999; margin-top: 10px;">
-                                LibreOffice를 사용하여 변환하고 있습니다.
-                            </div>
+                            
                         </div>
                     `;
                 }
@@ -760,11 +771,9 @@
                                 title="${fileName}">
                         </iframe>
                         <div style="text-align: center; margin-top: 15px; padding: 10px;">
-                            <button onclick="window.open('${fileUrl}', '_blank')" 
-                                    style="padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">
-                                새 창에서 열기
-                            </button>
-                            <button onclick="downloadFile('${file.saved_name}')" 
+                            
+                            <button data-saved-name="${file.saved_name}" data-original-name="${fileName}"
+                                    onclick="downloadFileFromButton(this)" 
                                     style="padding: 8px 16px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer;">
                                 다운로드
                             </button>
@@ -781,11 +790,9 @@
                         <div style="font-size: 14px; color: #666; margin-bottom: 20px;">
                             이 파일 타입은 미리보기를 지원하지 않습니다.
                         </div>
-                        <button onclick="window.open('${fileUrl}', '_blank')" 
-                                style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; font-weight: 500; margin-right: 10px; cursor: pointer;">
-                            새 창에서 열기
-                        </button>
-                        <button onclick="downloadFile('${file.saved_name}')" 
+                        
+                        <button data-saved-name="${file.saved_name}" data-original-name="${fileName}"
+                                onclick="downloadFileFromButton(this)" 
                                 style="padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 4px; font-weight: 500; cursor: pointer;">
                             다운로드
                         </button>
@@ -854,7 +861,8 @@
                                         style="padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px; font-size: 12px;">
                                     원본 파일 열기
                                 </button>
-                                <button onclick="downloadFile('${file.saved_name}')" 
+                                <button data-saved-name="${file.saved_name}" data-original-name="${fileName}"
+                                        onclick="downloadFileFromButton(this)" 
                                         style="padding: 8px 16px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
                                     다운로드
                                 </button>
@@ -876,11 +884,9 @@
                                 ${errorMessage}
                             </div>
                             <div style="display: flex; flex-direction: column; gap: 10px; align-items: center;">
-                                <button onclick="window.open('${fileUrl}', '_blank')" 
-                                        style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; font-weight: 500; cursor: pointer; width: 200px;">
-                                    새 창에서 열기
-                                </button>
-                                <button onclick="downloadFile('${file.saved_name}')" 
+                                
+                                <button data-saved-name="${file.saved_name}" data-original-name="${fileName}"
+                                        onclick="downloadFileFromButton(this)" 
                                         style="padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 4px; font-weight: 500; cursor: pointer; width: 200px;">
                                     다운로드
                                 </button>
@@ -900,11 +906,9 @@
                             서버 연결 오류가 발생했습니다.
                         </div>
                         <div style="display: flex; flex-direction: column; gap: 10px; align-items: center;">
-                            <button onclick="window.open('${fileUrl}', '_blank')" 
-                                    style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; font-weight: 500; cursor: pointer; width: 200px;">
-                                새 창에서 열기
-                            </button>
-                            <button onclick="downloadFile('${file.saved_name}')" 
+                            
+                            <button data-saved-name="${file.saved_name}" data-original-name="${fileName}"
+                                    onclick="downloadFileFromButton(this)" 
                                     style="padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 4px; font-weight: 500; cursor: pointer; width: 200px;">
                                 다운로드
                             </button>
@@ -923,15 +927,46 @@
         }
         
         // 파일 다운로드
-        function downloadFile(savedName, originalName, downloadUrl) {
-            // 항상 서버를 통해 다운로드 (S3 서명된 URL 만료 문제 방지)
-            const link = document.createElement('a');
-            link.href = `/sales/diary_board/download/${savedName}`;
-            link.download = originalName;
-            link.style.display = 'none';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+        async function downloadFile(savedName, originalName) {
+            console.log('다운로드 함수 호출:', { savedName, originalName });
+            
+            try {
+                // 한글 파일명을 URL 인코딩하여 전달
+                const encodedOriginalName = encodeURIComponent(originalName);
+                
+                // 원본 파일명을 URL 파라미터로 전달
+                const params = new URLSearchParams({
+                    original_name: originalName  // 원본 파일명 그대로 전달 (백엔드에서 인코딩)
+                });
+                
+                // 서버에서 새로운 다운로드용 서명된 URL 요청
+                const response = await fetch(`/sales/diary_board/announcement/download/${savedName}/?${params}`, {
+                    method: 'GET',
+                    headers: {
+                        'X-CSRFToken': getCsrfToken()
+                    }
+                });
+                
+                const data = await response.json();
+                console.log('다운로드 URL 응답:', data);
+                
+                if (data.success && data.url) {
+                    // 새로운 서명된 URL로 다운로드 (원본 파일명 사용)
+                    const link = document.createElement('a');
+                    link.href = data.url;
+                    link.download = originalName; // 원본 파일명 사용
+                    link.style.display = 'none';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    console.log('다운로드 시작:', originalName);
+                } else {
+                    alert('파일 다운로드 URL을 생성할 수 없습니다: ' + (data.message || '알 수 없는 오류'));
+                }
+            } catch (error) {
+                console.error('파일 다운로드 오류:', error);
+                alert('파일 다운로드 중 오류가 발생했습니다.');
+            }
         }
         
         // 읽음 처리
