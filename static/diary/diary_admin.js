@@ -298,7 +298,7 @@ async function loadUsers(page = 1) {
         const data = await response.json();
         
         if (data.success) {
-            renderUsersTable(data.users);
+            renderUsersTable(data.users, data.current_user_id, data.is_super_admin);
             renderPagination(data.pagination, 'users-pagination', loadUsers);
         } else {
             showAlert('사용자 목록을 불러오는데 실패했습니다.', 'danger');
@@ -380,7 +380,7 @@ function renderAlarmsTable(alarms) {
 }
 
 // 사용자 테이블 렌더링
-function renderUsersTable(users) {
+function renderUsersTable(users, currentUserId, isSuperAdmin) {
     const tbody = document.getElementById('users-table-body');
     if (!tbody) return;
     
@@ -392,7 +392,23 @@ function renderUsersTable(users) {
     }
     
     users.forEach(user => {
-        const adminBadge = user.is_admin ? '<span class="badge bg-danger">관리자</span>' : '<span class="badge bg-secondary">일반</span>';
+        let adminToggleBtn = '';
+        
+        // 최고 관리자(ID=1)만 관리자 권한 토글 버튼 표시
+        if (isSuperAdmin) {
+            adminToggleBtn = user.is_admin 
+                ? `<button class="admin-toggle-btn admin" onclick="toggleAdminStatus(${user.id}, '${user.name || '사용자'}', '${user.email}', false)">
+                       <i class="fas fa-user-shield"></i> 관리자
+                   </button>`
+                : `<button class="admin-toggle-btn user" onclick="toggleAdminStatus(${user.id}, '${user.name || '사용자'}', '${user.email}', true)">
+                       <i class="fas fa-user"></i> 일반
+                   </button>`;
+        } else {
+            // 일반 관리자는 읽기 전용으로 표시
+            adminToggleBtn = user.is_admin 
+                ? `<span class="badge bg-danger">관리자</span>`
+                : `<span class="badge bg-secondary">일반</span>`;
+        }
         
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -402,7 +418,7 @@ function renderUsersTable(users) {
             <td>${user.company_name || '-'}</td>
             <td>${user.phone_number || '-'}</td>
             <td>${formatDate(user.created_at)}</td>
-            <td>${adminBadge}</td>
+            <td>${adminToggleBtn}</td>
             <td>
                 <button class="btn btn-sm btn-outline-danger" onclick="confirmDeleteUser(${user.id}, '${user.name || '사용자'}', '${user.email}')">
                     <i class="fas fa-trash"></i> 삭제
@@ -411,6 +427,55 @@ function renderUsersTable(users) {
         `;
         tbody.appendChild(row);
     });
+}
+
+// 관리자 권한 토글 함수
+function toggleAdminStatus(userId, userName, userEmail, makeAdmin) {
+    const currentStatus = makeAdmin ? '일반' : '관리자';
+    const targetStatus = makeAdmin ? '관리자' : '일반';
+    
+    // 모달에 정보 설정
+    document.getElementById('current-admin-status').textContent = currentStatus;
+    document.getElementById('target-admin-status').textContent = targetStatus;
+    
+    // 확인 버튼에 함수 연결
+    const confirmBtn = document.getElementById('confirm-admin-change-btn');
+    confirmBtn.onclick = () => changeAdminStatus(userId, makeAdmin);
+    
+    // 모달 표시
+    const modal = new bootstrap.Modal(document.getElementById('adminChangeModal'));
+    modal.show();
+}
+
+// 관리자 권한 변경 실행 함수
+async function changeAdminStatus(userId, makeAdmin) {
+    try {
+        const response = await fetch(`/sales/diary_admin/users/${userId}/toggle_admin/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                make_admin: makeAdmin
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showAlert(data.message, 'success');
+            // 모달 닫기
+            bootstrap.Modal.getInstance(document.getElementById('adminChangeModal')).hide();
+            // 사용자 목록 새로고침
+            loadUsers();
+        } else {
+            showAlert(data.message, 'danger');
+        }
+    } catch (error) {
+        console.error('Error changing admin status:', error);
+        showAlert('관리자 권한 변경에 실패했습니다.', 'danger');
+    }
 }
 
 // 사용자 삭제 확인

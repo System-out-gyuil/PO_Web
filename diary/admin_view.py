@@ -649,7 +649,9 @@ def user_list(request):
     return JsonResponse({
         'success': True,
         'users': users_data,
-        'pagination': pagination
+        'pagination': pagination,
+        'current_user_id': user_id,  # 현재 로그인한 사용자 ID 추가
+        'is_super_admin': user_id == 1  # 최고 관리자 여부 추가
     })
 
 @csrf_exempt
@@ -706,3 +708,49 @@ def user_delete(request, user_id):
         return JsonResponse({'success': True, 'message': '사용자가 성공적으로 삭제되었습니다.'})
     except Exception as e:
         return JsonResponse({'success': False, 'message': f'사용자 삭제 중 오류가 발생했습니다: {str(e)}'})
+
+@csrf_exempt
+def user_toggle_admin(request, user_id):
+    """사용자 관리자 권한 토글 - 최고 관리자(ID=1)만 가능"""
+    admin_user_id = request.session.get('diary_member_id')
+    
+    if not admin_user_id:
+        return JsonResponse({'success': False, 'message': '로그인이 필요합니다.'})
+    
+    try:
+        admin_user = User.objects.get(id=admin_user_id)
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'message': '관리자를 찾을 수 없습니다.'})
+
+    # 최고 관리자(ID=1)만 권한 변경 가능
+    if admin_user.id != 1:
+        return JsonResponse({'success': False, 'message': '최고 관리자만 사용자 권한을 변경할 수 있습니다.'})
+    
+    # 자기 자신의 권한을 변경하려는 경우 방지
+    if admin_user_id == user_id:
+        return JsonResponse({'success': False, 'message': '자기 자신의 관리자 권한을 변경할 수 없습니다.'})
+    
+    try:
+        user_to_toggle = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'message': '변경할 사용자를 찾을 수 없습니다.'})
+    
+    try:
+        # POST 데이터 파싱
+        data = json.loads(request.body)
+        make_admin = data.get('make_admin', False)
+        
+        # 관리자 권한 변경
+        user_to_toggle.is_admin = make_admin
+        user_to_toggle.save()
+        
+        status_text = '관리자' if make_admin else '일반 사용자'
+        return JsonResponse({
+            'success': True, 
+            'message': f'사용자가 {status_text}로 변경되었습니다.',
+            'new_status': 'admin' if make_admin else 'user'
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': '잘못된 요청 형식입니다.'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'관리자 권한 변경 중 오류가 발생했습니다: {str(e)}'})

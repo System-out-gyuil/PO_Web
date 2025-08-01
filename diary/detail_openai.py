@@ -2248,7 +2248,7 @@ def call_openai_api_optimized(messages, retry_count=0):
         }
         
         payload = {
-            'model': 'gpt-4o-mini',  # 더 빠른 모델 사용
+            'model': 'gpt-4.1-mini',  # 더 빠른 모델 사용
             'messages': messages,
             'max_tokens': 2000,  # 1500 -> 2000으로 증가
             'temperature': 0.3,  # 0.7 -> 0.3으로 감소 (더 정확한 응답)

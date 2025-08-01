@@ -77,17 +77,175 @@
             border-color: #667eea;
             box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
         }
+        
+        /* 헤더 스타일 */
+        .main-header {
+            background: #fff;
+            color: white;
+            padding: 15px 0;
+            box-shadow: 2px 2px 2px 2px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header-container {
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header-left {
+            display: flex;
+            align-items: center;
+        }
+        
+        .header-title {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        /* 헤더 버튼 공통 스타일 */
+        .header-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            color: #333;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+        }
+        
+        .header-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        /* 메인페이지 버튼 스타일 */
+        .main-btn {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+        
+        .main-btn:hover {
+            background: #0056b3;
+            border-color: #0056b3;
+        }
+        
+        /* 다이어리페이지 버튼 스타일 */
+        .diary-btn {
+            background: #28a745;
+            color: white;
+            border-color: #28a745;
+        }
+        
+        .diary-btn:hover {
+            background: #1e7e34;
+            border-color: #1e7e34;
+        }
+        
+        /* 관리자 권한 토글 버튼 스타일 */
+        .admin-toggle-btn {
+            padding: 4px 8px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        
+        .admin-toggle-btn.admin {
+            background: #28a745;
+            color: white;
+        }
+        
+        .admin-toggle-btn.admin:hover {
+            background: #1e7e34;
+        }
+        
+        .admin-toggle-btn.user {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .admin-toggle-btn.user:hover {
+            background: #545b62;
+        }
+        
+        /* 관리자 권한 변경 확인 모달 스타일 */
+        .admin-change-modal .modal-content {
+            border-radius: 15px;
+        }
+        
+        .admin-change-modal .modal-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px 15px 0 0;
+        }
+        
+        .admin-change-modal .modal-body {
+            padding: 30px;
+        }
+        
+        .admin-change-modal .user-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .admin-change-modal .change-description {
+            color: #6c757d;
+            font-size: 14px;
+            line-height: 1.5;
+        }
     </style>
 </head>
 <body>
+    <!-- 헤더 -->
+    <header class="main-header">
+        <div class="header-container">
+            <div class="header-left">
+                <h1 class="header-title">관리자 페이지</h1>
+            </div>
+            <div class="header-right">
+                <!-- 메인페이지 버튼 -->
+                <a href="/sales/" class="header-btn main-btn">
+                    메인
+                </a>
+                
+                <!-- 다이어리페이지 버튼 -->
+                <a href="/sales/diary/" class="header-btn diary-btn">
+                    다이어리
+                </a>
+            </div>
+        </div>
+    </header>
+
     <div class="container-fluid">
         <div class="row">
             <!-- Sidebar -->
             <div class="col-md-3 col-lg-2 px-0">
                 <div class="sidebar p-3">
-                    <div class="text-center mb-4">
+                    {% comment %} <div class="text-center mb-4">
                         <h4 class="text-white"><i class="fas fa-cog"></i> 관리자</h4>
-                    </div>
+                    </div> {% endcomment %}
                     <nav class="nav flex-column">
                         <a class="nav-link active" href="javascript:void(0)" onclick="showDashboard(); return false;">
                             <i class="fas fa-tachometer-alt me-2"></i> 대시보드
@@ -470,6 +628,39 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-danger" id="confirm-user-delete-btn">
                         <i class="fas fa-trash"></i> 삭제
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 관리자 권한 변경 확인 모달 -->
+    <div class="modal fade admin-change-modal" id="adminChangeModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">관리자 권한 변경</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="user-info">
+                        <h6>변경할 사용자 정보</h6>
+                        <p class="change-description">
+                            현재 관리자 권한: <strong id="current-admin-status"></strong>
+                        </p>
+                        <p class="change-description">
+                            변경할 관리자 권한: <strong id="target-admin-status"></strong>
+                        </p>
+                    </div>
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>주의:</strong> 관리자 권한을 변경하면 해당 사용자의 모든 데이터(알림, 기타 관련 정보)가 함께 변경됩니다.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" id="confirm-admin-change-btn">
+                        <i class="fas fa-check"></i> 변경
                     </button>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
                 </div>
