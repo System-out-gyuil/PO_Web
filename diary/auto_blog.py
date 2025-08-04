@@ -313,20 +313,22 @@ def naver_login(driver, naver_id=None, naver_password=None):
         id_input = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "id")))
         id_input.click()
         time.sleep(1)
-        # try:
-        #     pyperclip.copy(naver_id)
-        #     id_input.send_keys(Keys.CONTROL, 'v')
-        # except pyperclip.PyperclipException:
-        #     print("⚠️ 클립보드 복사 실패: 직접 입력으로 대체")
-        #     id_input.send_keys(naver_id)
-        # time.sleep(1)
+        try:
+            pyperclip.copy(naver_id)
+            id_input.send_keys(Keys.CONTROL, 'v')
+        except pyperclip.PyperclipException:
+            print("⚠️ 클립보드 복사 실패: 직접 입력으로 대체")
+        time.sleep(1)
 
         # 비밀번호 입력
         pw_input = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "pw")))
         pw_input.click()
         time.sleep(1)
-        pyperclip.copy(naver_password)
-        pw_input.send_keys(Keys.CONTROL, 'v')  # ⬅️ 여기도 동일
+        try:
+            pyperclip.copy(naver_password)
+            pw_input.send_keys(Keys.CONTROL, 'v')
+        except pyperclip.PyperclipException:
+            print("⚠️ 클립보드 복사 실패: 직접 입력으로 대체")
         time.sleep(1)
 
         # 로그인 버튼 클릭
