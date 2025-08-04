@@ -1,9 +1,3 @@
-import os
-import tempfile
-import shutil
-import threading
-import platform
-import subprocess
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
@@ -21,115 +15,164 @@ import traceback
 import time
 import random
 from selenium.webdriver.common.keys import Keys
+import pyperclip
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 
-def is_docker_environment():
-    """Docker 환경인지 확인"""
-    return os.path.exists('/.dockerenv')
+@csrf_exempt
+@require_http_methods(["POST"])
+def upload_blog_file(request):
+    """
+    블로그 텍스트 파일 업로드 처리 - 파일 저장 없이 내용만 출력
+    """
+    try:
+        file_contents = []
+        text_content = ""
+        file_infos = []
+        
+        # 타이핑 설정 받기
+        typo_probability = float(request.POST.get('typo_probability', 0.1))
+        typing_speed = float(request.POST.get('typing_speed', 0.5))
+        
+        # 네이버 로그인 정보 받기 (nullable)
+        naver_id = request.POST.get('naver_id', '').strip()
+        naver_password = request.POST.get('naver_password', '').strip()
+        
+        # 값 범위 검증
+        typo_probability = max(0.0, min(1.0, typo_probability))
+        typing_speed = max(0.0, min(1.0, typing_speed))
+        
+        print("=" * 50)
+        print(f"타이핑 설정:")
+        print(f"오타 확률: {typo_probability}")
+        print(f"타자 속도: {typing_speed}")
+        if naver_id:
+            print(f"네이버 아이디: {naver_id}")
+            print(f"네이버 비밀번호: {'*' * len(naver_password)}")
+        else:
+            print("네이버 로그인 정보: 수동 입력 예정")
+        print("=" * 50)
+        
+        # 파일들이 요청에 포함되어 있는지 확인
+        if 'files' in request.FILES:
+            uploaded_files = request.FILES.getlist('files')
+            
+            for uploaded_file in uploaded_files:
+                # 파일 확장자 검사
+                if not uploaded_file.name.lower().endswith('.txt'):
+                    return JsonResponse({
+                        'success': False,
+                        'error': f'파일 "{uploaded_file.name}"은(는) 텍스트 파일(.txt)이 아닙니다.'
+                    })
+                
+                # 파일 크기 검사 (10MB 제한)
+                max_size = 10 * 1024 * 1024  # 10MB
+                if uploaded_file.size > max_size:
+                    return JsonResponse({
+                        'success': False,
+                        'error': f'파일 "{uploaded_file.name}"의 크기가 10MB를 초과합니다.'
+                    })
+                
+                # 파일 내용 읽기
+                file_content = uploaded_file.read().decode('utf-8')
+                file_contents.append(file_content)
+                
+                # 파일 정보 설정
+                file_info = {
+                    'original_name': uploaded_file.name,
+                    'file_size': uploaded_file.size,
+                    'content_length': len(file_content),
+                    'upload_time': datetime.now().isoformat()
+                }
+                file_infos.append(file_info)
+                
+                # 파일 내용을 콘솔에 출력
+                print("=" * 50)
+                print(f"업로드된 파일: {uploaded_file.name}")
+                print(f"파일 크기: {uploaded_file.size} bytes")
+                print("=" * 50)
+                print("파일 내용:")
+                print(file_content)
+                print("=" * 50)
+        
+        # 텍스트 입력 확인
+        if 'text' in request.POST:
+            text_content = request.POST['text'].strip()
+            if text_content:
+                print("=" * 50)
+                print("입력된 텍스트:")
+                print(text_content)
+                print("=" * 50)
+        
+        # 파일과 텍스트 모두 없는 경우
+        if not file_contents and not text_content:
+            return JsonResponse({
+                'success': False,
+                'error': '파일 또는 텍스트를 입력해주세요.'
+            })
+        
+        # auto_blog_naver 함수 호출 시 타이핑 설정 전달
+        auto_blog_naver(file_contents, text_content, typo_probability, typing_speed, naver_id, naver_password)
+        
+        # 응답 데이터 구성
+        response_data = {
+            'success': True,
+            'message': '내용이 성공적으로 처리되었습니다.',
+            'file_count': len(file_contents),
+            'file_infos': file_infos,
+            'typing_settings': {
+                'typo_probability': typo_probability,
+                'typing_speed': typing_speed
+            }
+        }
+        
+        if file_contents:
+            # 모든 파일의 내용을 하나로 합치거나 개별적으로 처리
+            combined_content = "\n\n".join([f"=== {info['original_name']} ===\n{content}" for info, content in zip(file_infos, file_contents)])
+            response_data['content_preview'] = combined_content[:1000] + '...' if len(combined_content) > 1000 else combined_content
+        
+        if text_content:
+            response_data['text_content'] = text_content
+        
+        return JsonResponse(response_data)
+        
+    except UnicodeDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': '파일 인코딩 오류. UTF-8 인코딩의 텍스트 파일만 지원합니다.'
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'처리 중 오류가 발생했습니다: {str(e)}'
+        })
+    
 
+
+@require_http_methods(["GET"])
+def get_blog_files(request):
+    """
+    업로드된 블로그 파일 목록 조회 - 현재는 파일을 저장하지 않으므로 빈 목록 반환
+    """
+    return JsonResponse({
+        'success': True,
+        'files': [],
+        'message': '현재 파일 저장 기능이 비활성화되어 있습니다.'
+    })
+
+# ✅ Selenium 설정
 def create_driver():
-    # 임시 디렉토리 생성
-    temp_dir = tempfile.mkdtemp(prefix="chrome_user_data_")
-    
-    # Docker 환경에서 가상 디스플레이 설정
-    if is_docker_environment():
-        # Docker 환경에서는 가상 디스플레이가 이미 설정되어 있음
-        print("✅ Docker 환경에서 실행 중")
-        print(f"✅ DISPLAY 환경변수: {os.environ.get('DISPLAY', 'not set')}")
-    
+
     options = webdriver.ChromeOptions()
-    options.add_argument(f"--user-data-dir={temp_dir}")
-    
-    # Docker 환경에서 필요한 옵션들
-    if is_docker_environment():
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
-        options.add_argument("--disable-gpu")
-        options.add_argument("--disable-extensions")
-        options.add_argument("--disable-plugins")
-        options.add_argument("--disable-images")
-        options.add_argument("--disable-web-security")
-        options.add_argument("--disable-features=VizDisplayCompositor")
-        options.add_argument("--window-size=1920,1080")
-        options.add_argument("--remote-debugging-port=0")
-        options.add_argument("--no-first-run")
-        options.add_argument("--no-default-browser-check")
-        options.add_argument("--disable-background-timer-throttling")
-        options.add_argument("--disable-backgrounding-occluded-windows")
-        options.add_argument("--disable-renderer-backgrounding")
-        options.add_argument("--disable-field-trial-config")
-        options.add_argument("--disable-ipc-flooding-protection")
-        options.add_argument("--disable-blink-features=AutomationControlled")
-        options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-        options.add_experimental_option("excludeSwitches", ["enable-automation"])
-        options.add_experimental_option('useAutomationExtension', False)
-        options.add_experimental_option("prefs", {
-            "profile.default_content_setting_values.notifications": 2,
-            "profile.default_content_settings.popups": 0,
-            "profile.managed_default_content_settings.images": 2
-        })
-    else:
-        # 로컬 환경에서는 일반 모드 사용
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
-        options.add_argument("--disable-gpu")
-        options.add_argument("--disable-extensions")
-        options.add_argument("--disable-plugins")
-        options.add_argument("--disable-images")
-        options.add_argument("--disable-web-security")
-        options.add_argument("--disable-features=VizDisplayCompositor")
-        options.add_argument("--start-maximized")
-        options.add_argument("--remote-debugging-port=0")
-        options.add_argument("--no-first-run")
-        options.add_argument("--no-default-browser-check")
-        options.add_argument("--disable-background-timer-throttling")
-        options.add_argument("--disable-backgrounding-occluded-windows")
-        options.add_argument("--disable-renderer-backgrounding")
-        options.add_argument("--disable-field-trial-config")
-        options.add_argument("--disable-ipc-flooding-protection")
-        options.add_argument("--disable-blink-features=AutomationControlled")
-        options.add_experimental_option("excludeSwitches", ["enable-automation"])
-        options.add_experimental_option('useAutomationExtension', False)
-        options.add_experimental_option("prefs", {
-            "profile.default_content_setting_values.notifications": 2,
-            "profile.default_content_settings.popups": 0,
-            "profile.managed_default_content_settings.images": 2
-        })
+    options.add_argument("user-data-dir=C:/Users/사용자명/AppData/Local/Google/Chrome/User Data")
+    options.add_argument("profile-directory=Default")  # 또는 "Profile 1" 등
+    options.add_argument("--start-maximized")
 
     service = Service(executable_path=ChromeDriverManager().install())
 
-    try:
-        driver = webdriver.Chrome(service=service, options=options)
-        # 드라이버 종료 시 임시 디렉토리 정리 함수 등록
-        driver._temp_dir = temp_dir
-        return driver
-    except Exception as e:
-        # 오류 발생 시 임시 디렉토리 정리
-        try:
-            shutil.rmtree(temp_dir, ignore_errors=True)
-        except:
-            pass
-        raise e
+    driver = webdriver.Chrome(service=service, options=options)
 
-def create_driver_headless(temp_dir):
-    """headless 모드로 드라이버 생성 (fallback) - 사용하지 않음"""
-    raise Exception("Docker 환경에서만 실행 가능합니다.")
-
-def cleanup_driver(driver):
-    """드라이버 종료 시 임시 디렉토리 정리"""
-    try:
-        if hasattr(driver, '_temp_dir') and driver._temp_dir:
-            driver.quit()
-            shutil.rmtree(driver._temp_dir, ignore_errors=True)
-        else:
-            driver.quit()
-    except Exception as e:
-        print(f"드라이버 정리 중 오류: {e}")
-        try:
-            driver.quit()
-        except:
-            pass
+    return driver
 
 def slow_type_with_actionchains(driver, element, text, min_delay=0.05, max_delay=0.1):
     actions = ActionChains(driver)
@@ -181,23 +224,6 @@ def slow_type_with_typos(driver, element, text, min_delay=0.05, max_delay=0.1, t
         actions.send_keys(char).perform()
         time.sleep(random.uniform(min_delay, max_delay))
 
-def copy_to_clipboard(text):
-    """Ubuntu 서버에서 클립보드에 텍스트 복사"""
-    try:
-        # xclip 사용 (Ubuntu에서 일반적으로 사용)
-        process = subprocess.Popen(['xclip', '-selection', 'clipboard'], stdin=subprocess.PIPE)
-        process.communicate(input=text.encode('utf-8'))
-        return True
-    except FileNotFoundError:
-        try:
-            # xsel 사용 (대안)
-            process = subprocess.Popen(['xsel', '--clipboard', '--input'], stdin=subprocess.PIPE)
-            process.communicate(input=text.encode('utf-8'))
-            return True
-        except FileNotFoundError:
-            print("⚠️ xclip 또는 xsel이 설치되지 않았습니다.")
-            return False
-
 # ✅ 네이버 로그인 (직접 입력 유도)
 def naver_login(driver, naver_id=None, naver_password=None):
     driver.get("https://nid.naver.com/nidlogin.login")
@@ -205,63 +231,41 @@ def naver_login(driver, naver_id=None, naver_password=None):
 
     # 로그인 정보가 제공된 경우 자동 로그인
     if naver_id and naver_password:
-        try:
-            # 아이디 입력
-            id_input = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "id")))
-            id_input.click()
-            time.sleep(1)
-            
-            # 클립보드에 복사 후 붙여넣기
-            if copy_to_clipboard(naver_id):
-                id_input.send_keys(Keys.CONTROL, 'v')
-            else:
-                # 클립보드 실패 시 직접 입력
-                id_input.clear()
-                id_input.send_keys(naver_id)
-            time.sleep(1)
+        # 아이디 입력
+        id_input = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "id")))
+        id_input.click()
+        time.sleep(1)
+        pyperclip.copy(naver_id)
+        id_input.send_keys(Keys.CONTROL, 'v')  # ⬅️ pyautogui 대신 이걸 사용
+        time.sleep(1)
 
-            # 비밀번호 입력
-            pw_input = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "pw")))
-            pw_input.click()
-            time.sleep(1)
-            
-            # 클립보드에 복사 후 붙여넣기
-            if copy_to_clipboard(naver_password):
-                pw_input.send_keys(Keys.CONTROL, 'v')
-            else:
-                # 클립보드 실패 시 직접 입력
-                pw_input.clear()
-                pw_input.send_keys(naver_password)
-            time.sleep(1)
+        # 비밀번호 입력
+        pw_input = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "pw")))
+        pw_input.click()
+        time.sleep(1)
+        pyperclip.copy(naver_password)
+        pw_input.send_keys(Keys.CONTROL, 'v')  # ⬅️ 여기도 동일
+        time.sleep(1)
 
-            # 로그인 버튼 클릭
-            login_btn = WebDriverWait(driver, 5).until(
-                EC.element_to_be_clickable((By.ID, "log.login"))
-            )
-            login_btn.click()
-            time.sleep(3)
-            print("✅ 자동 로그인 완료")
-        except Exception as e:
-            print(f"❌ 자동 로그인 실패: {str(e)}")
-            print("⚠️ 수동 로그인으로 전환합니다.")
-            # 수동 로그인으로 전환
-            manual_login_wait(driver)
+        # 로그인 버튼 클릭
+        login_btn = WebDriverWait(driver, 5).until(
+            EC.element_to_be_clickable((By.ID, "log.login"))
+        )
+        login_btn.click()
+        time.sleep(3)
+        print("✅ 자동 로그인 완료")
     else:
         # 수동 로그인 대기
-        manual_login_wait(driver)
-
-def manual_login_wait(driver):
-    """수동 로그인 대기"""
-    print("⏳ 네이버 창에서 수동으로 로그인해주세요...")
-    print("로그인 완료 후 자동으로 진행됩니다.")
-    
-    # 로그인 완료까지 대기 (네이버 메인 페이지로 이동하는지 확인)
-    try:
-        WebDriverWait(driver, 300).until(lambda d: "nid.naver.com" not in d.current_url)
-        print("✅ 수동 로그인 완료")
-    except:
-        print("❌ 로그인 대기 시간 초과")
-        raise Exception("로그인 시간 초과")
+        print("⏳ 네이버 창에서 수동으로 로그인해주세요...")
+        print("로그인 완료 후 자동으로 진행됩니다.")
+        
+        # 로그인 완료까지 대기 (네이버 메인 페이지로 이동하는지 확인)
+        try:
+            WebDriverWait(driver, 300).until(lambda d: "nid.naver.com" not in d.current_url)
+            print("✅ 수동 로그인 완료")
+        except:
+            print("❌ 로그인 대기 시간 초과")
+            raise Exception("로그인 시간 초과")
 
 # ✅ 블로그 글 작성페이지로 들어가기
 def naver_blog(driver):
@@ -417,210 +421,22 @@ def write_naver_blog(driver, user_id, title, content, typo_probability, typing_s
         traceback.print_exc()
 
 def auto_blog_naver(file_texts, user_input, typo_probability, typing_speed, naver_id, naver_password):
-    driver = None
-    try:
-        driver = create_driver()
-        naver_login(driver, naver_id, naver_password)
+    driver = create_driver()
+    naver_login(driver, naver_id, naver_password)
 
-        for file_text in file_texts:
-            try:
-                # 🔁 매 반복마다 작성 페이지 재진입
-                driver, user_id = naver_blog(driver)
+    for file_text in file_texts:
+        try:
+            # 🔁 매 반복마다 작성 페이지 재진입
+            driver, user_id = naver_blog(driver)
 
-                lines = file_text.strip().split("\n")
-                title = lines[0]
-                body = "\n".join(lines[1:])
+            lines = file_text.strip().split("\n")
+            title = lines[0]
+            body = "\n".join(lines[1:])
 
-                driver = write_naver_blog(driver, user_id, title, body, typo_probability, typing_speed)
+            driver = write_naver_blog(driver, user_id, title, body, typo_probability, typing_speed)
 
-                print("✅ 게시 완료")
+            print("✅ 게시 완료")
 
-            except Exception as e:
-                print(f"❌ 파일 처리 실패: {str(e)}")
-                traceback.print_exc()
-                continue  # 다음 파일로 계속 진행
-    except Exception as e:
-        print(f"❌ 전체 프로세스 실패: {str(e)}")
-        traceback.print_exc()
-    finally:
-        # 드라이버 정리
-        if driver:
-            try:
-                cleanup_driver(driver)
-                print("✅ 드라이버 정리 완료")
-            except Exception as e:
-                print(f"❌ 드라이버 정리 실패: {str(e)}")
-
-def is_local_environment():
-    """로컬 환경인지 확인"""
-    return platform.system() == "Windows" or platform.system() == "Darwin"
-
-def auto_blog_naver_background(file_texts, user_input, typo_probability, typing_speed, naver_id, naver_password):
-    """백그라운드에서 블로그 작성 실행"""
-    try:
-        print("🚀 백그라운드 블로그 작성 시작")
-        
-        # Docker 환경이 아니면 오류 발생
-        if not is_docker_environment():
-            print("❌ 블로그 자동화는 Docker 환경에서만 실행 가능합니다.")
-            print("❌ 로컬 환경에서는 실행할 수 없습니다.")
-            return
-            
-        auto_blog_naver(file_texts, user_input, typo_probability, typing_speed, naver_id, naver_password)
-        print("✅ 백그라운드 블로그 작성 완료")
-    except Exception as e:
-        print(f"❌ 백그라운드 블로그 작성 실패: {str(e)}")
-        traceback.print_exc()
-
-@csrf_exempt
-@require_http_methods(["POST"])
-def upload_blog_file(request):
-    """
-    블로그 텍스트 파일 업로드 처리 - 파일 저장 없이 내용만 출력
-    """
-    try:
-        # Docker 환경이 아니면 오류 반환
-        if not is_docker_environment():
-            return JsonResponse({
-                'success': False,
-                'error': '블로그 자동화는 Docker 환경에서만 실행 가능합니다. 로컬 환경에서는 실행할 수 없습니다.'
-            })
-        
-        file_contents = []
-        text_content = ""
-        file_infos = []
-        
-        # 타이핑 설정 받기
-        typo_probability = float(request.POST.get('typo_probability', 0.1))
-        typing_speed = float(request.POST.get('typing_speed', 0.5))
-        
-        # 네이버 로그인 정보 받기 (nullable)
-        naver_id = request.POST.get('naver_id', '').strip()
-        naver_password = request.POST.get('naver_password', '').strip()
-        
-        # 값 범위 검증
-        typo_probability = max(0.0, min(1.0, typo_probability))
-        typing_speed = max(0.0, min(1.0, typing_speed))
-        
-        print("=" * 50)
-        print(f"타이핑 설정:")
-        print(f"오타 확률: {typo_probability}")
-        print(f"타자 속도: {typing_speed}")
-        if naver_id:
-            print(f"네이버 아이디: {naver_id}")
-            print(f"네이버 비밀번호: {'*' * len(naver_password)}")
-        else:
-            print("네이버 로그인 정보: 수동 입력 예정")
-        print("=" * 50)
-        
-        # 파일들이 요청에 포함되어 있는지 확인
-        if 'files' in request.FILES:
-            uploaded_files = request.FILES.getlist('files')
-            
-            for uploaded_file in uploaded_files:
-                # 파일 확장자 검사
-                if not uploaded_file.name.lower().endswith('.txt'):
-                    return JsonResponse({
-                        'success': False,
-                        'error': f'파일 "{uploaded_file.name}"은(는) 텍스트 파일(.txt)이 아닙니다.'
-                    })
-                
-                # 파일 크기 검사 (10MB 제한)
-                max_size = 10 * 1024 * 1024  # 10MB
-                if uploaded_file.size > max_size:
-                    return JsonResponse({
-                        'success': False,
-                        'error': f'파일 "{uploaded_file.name}"의 크기가 10MB를 초과합니다.'
-                    })
-                
-                # 파일 내용 읽기
-                file_content = uploaded_file.read().decode('utf-8')
-                file_contents.append(file_content)
-                
-                # 파일 정보 설정
-                file_info = {
-                    'original_name': uploaded_file.name,
-                    'file_size': uploaded_file.size,
-                    'content_length': len(file_content),
-                    'upload_time': datetime.now().isoformat()
-                }
-                file_infos.append(file_info)
-                
-                # 파일 내용을 콘솔에 출력
-                print("=" * 50)
-                print(f"업로드된 파일: {uploaded_file.name}")
-                print(f"파일 크기: {uploaded_file.size} bytes")
-                print("=" * 50)
-                print("파일 내용:")
-                print(file_content)
-                print("=" * 50)
-        
-        # 텍스트 입력 확인
-        if 'text' in request.POST:
-            text_content = request.POST['text'].strip()
-            if text_content:
-                print("=" * 50)
-                print("입력된 텍스트:")
-                print(text_content)
-                print("=" * 50)
-        
-        # 파일과 텍스트 모두 없는 경우
-        if not file_contents and not text_content:
-            return JsonResponse({
-                'success': False,
-                'error': '파일 또는 텍스트를 입력해주세요.'
-            })
-        
-        # 백그라운드에서 auto_blog_naver 함수 실행
-        thread = threading.Thread(
-            target=auto_blog_naver_background,
-            args=(file_contents, text_content, typo_probability, typing_speed, naver_id, naver_password)
-        )
-        thread.daemon = True
-        thread.start()
-        
-        # 응답 데이터 구성
-        response_data = {
-            'success': True,
-            'message': '파일이 성공적으로 업로드되었습니다. Docker 환경에서 블로그 작성이 시작됩니다.',
-            'file_count': len(file_contents),
-            'file_infos': file_infos,
-            'typing_settings': {
-                'typo_probability': typo_probability,
-                'typing_speed': typing_speed
-            }
-        }
-        
-        if file_contents:
-            # 모든 파일의 내용을 하나로 합치거나 개별적으로 처리
-            combined_content = "\n\n".join([f"=== {info['original_name']} ===\n{content}" for info, content in zip(file_infos, file_contents)])
-            response_data['content_preview'] = combined_content[:1000] + '...' if len(combined_content) > 1000 else combined_content
-        
-        if text_content:
-            response_data['text_content'] = text_content
-        
-        return JsonResponse(response_data)
-        
-    except UnicodeDecodeError:
-        return JsonResponse({
-            'success': False,
-            'error': '파일 인코딩 오류. UTF-8 인코딩의 텍스트 파일만 지원합니다.'
-        })
-    except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'error': f'처리 중 오류가 발생했습니다: {str(e)}'
-        })
-
-
-
-@require_http_methods(["GET"])
-def get_blog_files(request):
-    """
-    업로드된 블로그 파일 목록 조회 - 현재는 파일을 저장하지 않으므로 빈 목록 반환
-    """
-    return JsonResponse({
-        'success': True,
-        'files': [],
-        'message': '현재 파일 저장 기능이 비활성화되어 있습니다.'
-    })
+        except Exception:
+            print(f"❌ 파일 처리 실패")
+            traceback.print_exc()
