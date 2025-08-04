@@ -20,7 +20,6 @@ import traceback
 import time
 import random
 from selenium.webdriver.common.keys import Keys
-import pyperclip
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 
@@ -318,41 +317,55 @@ def naver_login(driver, naver_id=None, naver_password=None):
 
     # 로그인 정보가 제공된 경우 자동 로그인
     if naver_id and naver_password:
-        # 아이디 입력
-        id_input = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "id")))
-        id_input.click()
-        time.sleep(1)
-        pyperclip.copy(naver_id)
-        id_input.send_keys(Keys.CONTROL, 'v')  # ⬅️ pyautogui 대신 이걸 사용
-        time.sleep(1)
+        try:
+            # 아이디 입력
+            id_input = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "id")))
+            id_input.click()
+            time.sleep(1)
+            
+            # pyperclip 대신 직접 입력
+            id_input.clear()
+            id_input.send_keys(naver_id)
+            time.sleep(1)
 
-        # 비밀번호 입력
-        pw_input = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "pw")))
-        pw_input.click()
-        time.sleep(1)
-        pyperclip.copy(naver_password)
-        pw_input.send_keys(Keys.CONTROL, 'v')  # ⬅️ 여기도 동일
-        time.sleep(1)
+            # 비밀번호 입력
+            pw_input = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "pw")))
+            pw_input.click()
+            time.sleep(1)
+            
+            # pyperclip 대신 직접 입력
+            pw_input.clear()
+            pw_input.send_keys(naver_password)
+            time.sleep(1)
 
-        # 로그인 버튼 클릭
-        login_btn = WebDriverWait(driver, 5).until(
-            EC.element_to_be_clickable((By.ID, "log.login"))
-        )
-        login_btn.click()
-        time.sleep(3)
-        print("✅ 자동 로그인 완료")
+            # 로그인 버튼 클릭
+            login_btn = WebDriverWait(driver, 5).until(
+                EC.element_to_be_clickable((By.ID, "log.login"))
+            )
+            login_btn.click()
+            time.sleep(3)
+            print("✅ 자동 로그인 완료")
+        except Exception as e:
+            print(f"❌ 자동 로그인 실패: {str(e)}")
+            print("⚠️ 수동 로그인으로 전환합니다.")
+            # 수동 로그인으로 전환
+            manual_login_wait(driver)
     else:
         # 수동 로그인 대기
-        print("⏳ 네이버 창에서 수동으로 로그인해주세요...")
-        print("로그인 완료 후 자동으로 진행됩니다.")
-        
-        # 로그인 완료까지 대기 (네이버 메인 페이지로 이동하는지 확인)
-        try:
-            WebDriverWait(driver, 300).until(lambda d: "nid.naver.com" not in d.current_url)
-            print("✅ 수동 로그인 완료")
-        except:
-            print("❌ 로그인 대기 시간 초과")
-            raise Exception("로그인 시간 초과")
+        manual_login_wait(driver)
+
+def manual_login_wait(driver):
+    """수동 로그인 대기"""
+    print("⏳ 네이버 창에서 수동으로 로그인해주세요...")
+    print("로그인 완료 후 자동으로 진행됩니다.")
+    
+    # 로그인 완료까지 대기 (네이버 메인 페이지로 이동하는지 확인)
+    try:
+        WebDriverWait(driver, 300).until(lambda d: "nid.naver.com" not in d.current_url)
+        print("✅ 수동 로그인 완료")
+    except:
+        print("❌ 로그인 대기 시간 초과")
+        raise Exception("로그인 시간 초과")
 
 # ✅ 블로그 글 작성페이지로 들어가기
 def naver_blog(driver):
