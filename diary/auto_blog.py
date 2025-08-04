@@ -203,84 +203,48 @@ def kill_chrome_processes():
 
 
 def create_driver():
-    import tempfile
-    import os
-    import shutil
-    import uuid
-    
-    # 기존 Chrome 프로세스 정리
+    import tempfile, os, shutil, uuid, time
+    from selenium import webdriver
+    from selenium.webdriver.chrome.service import Service
+    from webdriver_manager.chrome import ChromeDriverManager
+
+    # 기존 프로세스 정리
     kill_chrome_processes()
-    time.sleep(2)  # 프로세스 종료 대기
-    
+    time.sleep(2)
+
     options = webdriver.ChromeOptions()
-    
-    # UUID를 사용한 완전히 고유한 임시 디렉토리 생성
-    unique_id = str(uuid.uuid4())
-    temp_dir = tempfile.mkdtemp(prefix=f"chrome_selenium_{unique_id}_")
+
+    # 안전한 디렉토리 생성
+    base_profile_dir = os.path.expanduser("~/selenium_profiles")
+    os.makedirs(base_profile_dir, exist_ok=True)
+
+    safe_id = uuid.uuid4().hex
+    temp_dir = os.path.join(base_profile_dir, safe_id)
     temp_user_data_dir = os.path.join(temp_dir, "user_data")
     temp_cache_dir = os.path.join(temp_dir, "cache")
-    
-    # 디렉토리 생성
+
     os.makedirs(temp_user_data_dir, exist_ok=True)
     os.makedirs(temp_cache_dir, exist_ok=True)
     time.sleep(1)
-    
+
     print(f"🔧 생성된 임시 디렉토리: {temp_dir}")
-    
-    # Chrome 옵션 설정
+
     options.add_argument(f"--user-data-dir={temp_user_data_dir}")
     options.add_argument(f"--disk-cache-dir={temp_cache_dir}")
-    options.add_argument("--no-first-run")
-    options.add_argument("--no-default-browser-check")
-    options.add_argument("--disable-extensions")
-    options.add_argument("--disable-plugins")
-    options.add_argument("--disable-images")
-    options.add_argument("--disable-javascript")
-    options.add_argument("--disable-web-security")
-    options.add_argument("--disable-features=VizDisplayCompositor")
-    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--headless=new")
     options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
-    options.add_argument("--start-maximized")
     options.add_argument("--disable-blink-features=AutomationControlled")
-    options.add_argument("--remote-debugging-port=0")
-    options.add_argument("--disable-background-timer-throttling")
-    options.add_argument("--disable-backgrounding-occluded-windows")
-    options.add_argument("--disable-renderer-backgrounding")
-    options.add_argument("--disable-features=TranslateUI")
-    options.add_argument("--disable-ipc-flooding-protection")
-    options.add_argument("--disable-session-crashed-bubble")
-    options.add_argument("--disable-infobars")
-    options.add_argument("--disable-notifications")
-    options.add_argument("--disable-popup-blocking")
-    
-    # 자동화 감지 방지
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option('useAutomationExtension', False)
-    options.add_experimental_option("prefs", {
-        "profile.default_content_setting_values.notifications": 2,
-        "profile.default_content_settings.popups": 0,
-        "profile.managed_default_content_settings.images": 2,
-        "profile.default_content_setting_values.media_stream": 2,
-        "profile.default_content_setting_values.geolocation": 2
-    })
 
     try:
-        service = Service(executable_path=ChromeDriverManager().install())
+        service = Service(ChromeDriverManager().install())
         driver = webdriver.Chrome(service=service, options=options)
-        
-        # 자동화 감지 방지 스크립트 실행
-        driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
-        driver.execute_script("Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3, 4, 5]})")
-        driver.execute_script("Object.defineProperty(navigator, 'languages', {get: () => ['ko-KR', 'ko']})")
-        
-        # 임시 디렉토리 정보를 드라이버 객체에 저장 (나중에 정리용)
         driver.temp_dir = temp_dir
-        
         return driver
-        
     except Exception as e:
-        # 드라이버 생성 실패 시 임시 디렉토리 정리
         try:
             shutil.rmtree(temp_dir, ignore_errors=True)
             print(f"🧹 임시 디렉토리 정리 완료: {temp_dir}")
