@@ -161,36 +161,99 @@ def get_blog_files(request):
     })
 
 # ✅ Selenium 설정
+def kill_chrome_processes():
+    """기존 Chrome 프로세스들을 강제 종료"""
+    import subprocess
+    import platform
+    
+    try:
+        if platform.system() == "Windows":
+            subprocess.run(["taskkill", "/f", "/im", "chrome.exe"], 
+                         capture_output=True, check=False)
+            subprocess.run(["taskkill", "/f", "/im", "chromedriver.exe"], 
+                         capture_output=True, check=False)
+        else:
+            subprocess.run(["pkill", "-f", "chrome"], 
+                         capture_output=True, check=False)
+            subprocess.run(["pkill", "-f", "chromedriver"], 
+                         capture_output=True, check=False)
+        print("✅ 기존 Chrome 프로세스 정리 완료")
+    except Exception as e:
+        print(f"⚠️ Chrome 프로세스 정리 중 오류: {str(e)}")
+
 def create_driver():
     import tempfile
     import os
+    import shutil
+    
+    # 기존 Chrome 프로세스 정리
+    kill_chrome_processes()
+    time.sleep(2)  # 프로세스 종료 대기
     
     options = webdriver.ChromeOptions()
     
-    # 임시 사용자 데이터 디렉토리 생성
-    temp_user_data_dir = os.path.join(tempfile.gettempdir(), f"chrome_selenium_{int(time.time())}")
-    os.makedirs(temp_user_data_dir, exist_ok=True)
+    # 완전히 격리된 임시 디렉토리 생성
+    temp_dir = tempfile.mkdtemp(prefix="selenium_chrome_")
+    temp_user_data_dir = os.path.join(temp_dir, "user_data")
+    temp_cache_dir = os.path.join(temp_dir, "cache")
     
+    # 디렉토리 생성
+    os.makedirs(temp_user_data_dir, exist_ok=True)
+    os.makedirs(temp_cache_dir, exist_ok=True)
+    
+    # Chrome 옵션 설정
     options.add_argument(f"--user-data-dir={temp_user_data_dir}")
+    options.add_argument(f"--disk-cache-dir={temp_cache_dir}")
     options.add_argument("--no-first-run")
     options.add_argument("--no-default-browser-check")
     options.add_argument("--disable-extensions")
     options.add_argument("--disable-plugins")
     options.add_argument("--disable-images")
     options.add_argument("--disable-javascript")
+    options.add_argument("--disable-web-security")
+    options.add_argument("--disable-features=VizDisplayCompositor")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-gpu")
     options.add_argument("--start-maximized")
     options.add_argument("--disable-blink-features=AutomationControlled")
-    options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    options.add_experimental_option('useAutomationExtension', False)
-
-    service = Service(executable_path=ChromeDriverManager().install())
-
-    driver = webdriver.Chrome(service=service, options=options)
+    options.add_argument("--remote-debugging-port=0")
+    options.add_argument("--disable-background-timer-throttling")
+    options.add_argument("--disable-backgrounding-occluded-windows")
+    options.add_argument("--disable-renderer-backgrounding")
+    options.add_argument("--disable-features=TranslateUI")
+    options.add_argument("--disable-ipc-flooding-protection")
     
     # 자동화 감지 방지
-    driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
-    
-    return driver
+    options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    options.add_experimental_option('useAutomationExtension', False)
+    options.add_experimental_option("prefs", {
+        "profile.default_content_setting_values.notifications": 2,
+        "profile.default_content_settings.popups": 0,
+        "profile.managed_default_content_settings.images": 2
+    })
+
+    try:
+        service = Service(executable_path=ChromeDriverManager().install())
+        driver = webdriver.Chrome(service=service, options=options)
+        
+        # 자동화 감지 방지 스크립트 실행
+        driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+        driver.execute_script("Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3, 4, 5]})")
+        driver.execute_script("Object.defineProperty(navigator, 'languages', {get: () => ['ko-KR', 'ko']})")
+        
+        # 임시 디렉토리 정보를 드라이버 객체에 저장 (나중에 정리용)
+        driver.temp_dir = temp_dir
+        
+        return driver
+        
+    except Exception as e:
+        # 드라이버 생성 실패 시 임시 디렉토리 정리
+        try:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+        except:
+            pass
+        raise e
 
 def slow_type_with_actionchains(driver, element, text, min_delay=0.05, max_delay=0.1):
     actions = ActionChains(driver)
@@ -441,6 +504,10 @@ def write_naver_blog(driver, user_id, title, content, typo_probability, typing_s
 def auto_blog_naver(file_texts, user_input, typo_probability, typing_speed, naver_id, naver_password):
     driver = None
     try:
+        # 기존 Chrome 프로세스 정리
+        kill_chrome_processes()
+        time.sleep(3)  # 프로세스 종료 대기
+        
         driver = create_driver()
         naver_login(driver, naver_id, naver_password)
 
@@ -471,5 +538,15 @@ def auto_blog_naver(file_texts, user_input, typo_probability, typing_speed, nave
             try:
                 driver.quit()
                 print("✅ 브라우저 종료 완료")
+                
+                # 임시 디렉토리 정리
+                if hasattr(driver, 'temp_dir'):
+                    try:
+                        import shutil
+                        shutil.rmtree(driver.temp_dir, ignore_errors=True)
+                        print("✅ 임시 디렉토리 정리 완료")
+                    except Exception as e:
+                        print(f"⚠️ 임시 디렉토리 정리 중 오류: {str(e)}")
+                        
             except Exception as e:
                 print(f"⚠️ 브라우저 종료 중 오류: {str(e)}")
