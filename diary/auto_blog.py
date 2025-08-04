@@ -162,16 +162,34 @@ def get_blog_files(request):
 
 # ✅ Selenium 설정
 def create_driver():
-
+    import tempfile
+    import os
+    
     options = webdriver.ChromeOptions()
-    options.add_argument("user-data-dir=C:/Users/사용자명/AppData/Local/Google/Chrome/User Data")
-    options.add_argument("profile-directory=Default")  # 또는 "Profile 1" 등
+    
+    # 임시 사용자 데이터 디렉토리 생성
+    temp_user_data_dir = os.path.join(tempfile.gettempdir(), f"chrome_selenium_{int(time.time())}")
+    os.makedirs(temp_user_data_dir, exist_ok=True)
+    
+    options.add_argument(f"--user-data-dir={temp_user_data_dir}")
+    options.add_argument("--no-first-run")
+    options.add_argument("--no-default-browser-check")
+    options.add_argument("--disable-extensions")
+    options.add_argument("--disable-plugins")
+    options.add_argument("--disable-images")
+    options.add_argument("--disable-javascript")
     options.add_argument("--start-maximized")
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    options.add_experimental_option('useAutomationExtension', False)
 
     service = Service(executable_path=ChromeDriverManager().install())
 
     driver = webdriver.Chrome(service=service, options=options)
-
+    
+    # 자동화 감지 방지
+    driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+    
     return driver
 
 def slow_type_with_actionchains(driver, element, text, min_delay=0.05, max_delay=0.1):
@@ -421,22 +439,37 @@ def write_naver_blog(driver, user_id, title, content, typo_probability, typing_s
         traceback.print_exc()
 
 def auto_blog_naver(file_texts, user_input, typo_probability, typing_speed, naver_id, naver_password):
-    driver = create_driver()
-    naver_login(driver, naver_id, naver_password)
+    driver = None
+    try:
+        driver = create_driver()
+        naver_login(driver, naver_id, naver_password)
 
-    for file_text in file_texts:
-        try:
-            # 🔁 매 반복마다 작성 페이지 재진입
-            driver, user_id = naver_blog(driver)
+        for file_text in file_texts:
+            try:
+                # 🔁 매 반복마다 작성 페이지 재진입
+                driver, user_id = naver_blog(driver)
 
-            lines = file_text.strip().split("\n")
-            title = lines[0]
-            body = "\n".join(lines[1:])
+                lines = file_text.strip().split("\n")
+                title = lines[0]
+                body = "\n".join(lines[1:])
 
-            driver = write_naver_blog(driver, user_id, title, body, typo_probability, typing_speed)
+                driver = write_naver_blog(driver, user_id, title, body, typo_probability, typing_speed)
 
-            print("✅ 게시 완료")
+                print("✅ 게시 완료")
 
-        except Exception:
-            print(f"❌ 파일 처리 실패")
-            traceback.print_exc()
+            except Exception as e:
+                print(f"❌ 파일 처리 실패: {str(e)}")
+                traceback.print_exc()
+                continue  # 다음 파일로 계속 진행
+                
+    except Exception as e:
+        print(f"❌ 초기화 실패: {str(e)}")
+        traceback.print_exc()
+    finally:
+        # 드라이버 종료
+        if driver:
+            try:
+                driver.quit()
+                print("✅ 브라우저 종료 완료")
+            except Exception as e:
+                print(f"⚠️ 브라우저 종료 중 오류: {str(e)}")
