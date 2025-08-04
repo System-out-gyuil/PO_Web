@@ -24,45 +24,78 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 
-def is_windows_environment():
-    """윈도우 환경인지 확인"""
-    return platform.system() == "Windows"
+def is_docker_environment():
+    """Docker 환경인지 확인"""
+    return os.path.exists('/.dockerenv')
 
 def create_driver():
-    # 윈도우 환경이 아니면 오류 발생
-    if not is_windows_environment():
-        raise Exception("블로그 자동화는 윈도우 환경에서만 실행 가능합니다.")
-    
     # 임시 디렉토리 생성
     temp_dir = tempfile.mkdtemp(prefix="chrome_user_data_")
     
+    # Docker 환경에서 가상 디스플레이 설정
+    if is_docker_environment():
+        # Docker 환경에서는 가상 디스플레이가 이미 설정되어 있음
+        print("✅ Docker 환경에서 실행 중")
+        print(f"✅ DISPLAY 환경변수: {os.environ.get('DISPLAY', 'not set')}")
+    
     options = webdriver.ChromeOptions()
     options.add_argument(f"--user-data-dir={temp_dir}")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--disable-extensions")
-    options.add_argument("--disable-plugins")
-    options.add_argument("--disable-images")
-    options.add_argument("--disable-web-security")
-    options.add_argument("--disable-features=VizDisplayCompositor")
-    options.add_argument("--start-maximized")
-    options.add_argument("--remote-debugging-port=0")
-    options.add_argument("--no-first-run")
-    options.add_argument("--no-default-browser-check")
-    options.add_argument("--disable-background-timer-throttling")
-    options.add_argument("--disable-backgrounding-occluded-windows")
-    options.add_argument("--disable-renderer-backgrounding")
-    options.add_argument("--disable-field-trial-config")
-    options.add_argument("--disable-ipc-flooding-protection")
-    options.add_argument("--disable-blink-features=AutomationControlled")
-    options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    options.add_experimental_option('useAutomationExtension', False)
-    options.add_experimental_option("prefs", {
-        "profile.default_content_setting_values.notifications": 2,
-        "profile.default_content_settings.popups": 0,
-        "profile.managed_default_content_settings.images": 2
-    })
+    
+    # Docker 환경에서 필요한 옵션들
+    if is_docker_environment():
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--disable-extensions")
+        options.add_argument("--disable-plugins")
+        options.add_argument("--disable-images")
+        options.add_argument("--disable-web-security")
+        options.add_argument("--disable-features=VizDisplayCompositor")
+        options.add_argument("--window-size=1920,1080")
+        options.add_argument("--remote-debugging-port=0")
+        options.add_argument("--no-first-run")
+        options.add_argument("--no-default-browser-check")
+        options.add_argument("--disable-background-timer-throttling")
+        options.add_argument("--disable-backgrounding-occluded-windows")
+        options.add_argument("--disable-renderer-backgrounding")
+        options.add_argument("--disable-field-trial-config")
+        options.add_argument("--disable-ipc-flooding-protection")
+        options.add_argument("--disable-blink-features=AutomationControlled")
+        options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+        options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        options.add_experimental_option('useAutomationExtension', False)
+        options.add_experimental_option("prefs", {
+            "profile.default_content_setting_values.notifications": 2,
+            "profile.default_content_settings.popups": 0,
+            "profile.managed_default_content_settings.images": 2
+        })
+    else:
+        # 로컬 환경에서는 일반 모드 사용
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--disable-extensions")
+        options.add_argument("--disable-plugins")
+        options.add_argument("--disable-images")
+        options.add_argument("--disable-web-security")
+        options.add_argument("--disable-features=VizDisplayCompositor")
+        options.add_argument("--start-maximized")
+        options.add_argument("--remote-debugging-port=0")
+        options.add_argument("--no-first-run")
+        options.add_argument("--no-default-browser-check")
+        options.add_argument("--disable-background-timer-throttling")
+        options.add_argument("--disable-backgrounding-occluded-windows")
+        options.add_argument("--disable-renderer-backgrounding")
+        options.add_argument("--disable-field-trial-config")
+        options.add_argument("--disable-ipc-flooding-protection")
+        options.add_argument("--disable-blink-features=AutomationControlled")
+        options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        options.add_experimental_option('useAutomationExtension', False)
+        options.add_experimental_option("prefs", {
+            "profile.default_content_setting_values.notifications": 2,
+            "profile.default_content_settings.popups": 0,
+            "profile.managed_default_content_settings.images": 2
+        })
 
     service = Service(executable_path=ChromeDriverManager().install())
 
@@ -81,7 +114,7 @@ def create_driver():
 
 def create_driver_headless(temp_dir):
     """headless 모드로 드라이버 생성 (fallback) - 사용하지 않음"""
-    raise Exception("윈도우 환경에서만 실행 가능합니다.")
+    raise Exception("Docker 환경에서만 실행 가능합니다.")
 
 def cleanup_driver(driver):
     """드라이버 종료 시 임시 디렉토리 정리"""
@@ -427,10 +460,10 @@ def auto_blog_naver_background(file_texts, user_input, typo_probability, typing_
     try:
         print("🚀 백그라운드 블로그 작성 시작")
         
-        # 윈도우 환경이 아니면 오류 발생
-        if not is_windows_environment():
-            print("❌ 블로그 자동화는 윈도우 환경에서만 실행 가능합니다.")
-            print("❌ 서버 환경에서는 실행할 수 없습니다.")
+        # Docker 환경이 아니면 오류 발생
+        if not is_docker_environment():
+            print("❌ 블로그 자동화는 Docker 환경에서만 실행 가능합니다.")
+            print("❌ 로컬 환경에서는 실행할 수 없습니다.")
             return
             
         auto_blog_naver(file_texts, user_input, typo_probability, typing_speed, naver_id, naver_password)
@@ -446,11 +479,11 @@ def upload_blog_file(request):
     블로그 텍스트 파일 업로드 처리 - 파일 저장 없이 내용만 출력
     """
     try:
-        # 윈도우 환경이 아니면 오류 반환
-        if not is_windows_environment():
+        # Docker 환경이 아니면 오류 반환
+        if not is_docker_environment():
             return JsonResponse({
                 'success': False,
-                'error': '블로그 자동화는 윈도우 환경에서만 실행 가능합니다. 서버 환경에서는 실행할 수 없습니다.'
+                'error': '블로그 자동화는 Docker 환경에서만 실행 가능합니다. 로컬 환경에서는 실행할 수 없습니다.'
             })
         
         file_contents = []
@@ -549,7 +582,7 @@ def upload_blog_file(request):
         # 응답 데이터 구성
         response_data = {
             'success': True,
-            'message': '파일이 성공적으로 업로드되었습니다. 윈도우 환경에서 Chrome 창이 열리고 블로그 작성이 시작됩니다.',
+            'message': '파일이 성공적으로 업로드되었습니다. Docker 환경에서 블로그 작성이 시작됩니다.',
             'file_count': len(file_contents),
             'file_infos': file_infos,
             'typing_settings': {
