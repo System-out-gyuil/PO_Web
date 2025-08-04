@@ -179,7 +179,16 @@ def create_driver():
     if not is_local_environment():
         # 가상 디스플레이 시작
         try:
-            subprocess.run(['Xvfb', ':99', '-screen', '0', '1920x1080x24', '&'], check=True)
+            # 기존 Xvfb 프로세스 종료
+            subprocess.run(['pkill', 'Xvfb'], capture_output=True)
+            time.sleep(1)
+            
+            # 새로운 가상 디스플레이 시작 (백그라운드에서)
+            subprocess.Popen(['Xvfb', ':99', '-screen', '0', '1920x1080x24', '-ac', '+extension', 'GLX', '+render', '-noreset'], 
+                           stdout=subprocess.DEVNULL, 
+                           stderr=subprocess.DEVNULL)
+            time.sleep(2)  # 시작 대기
+            
             os.environ['DISPLAY'] = ':99'
             print("✅ 가상 디스플레이 시작 완료")
         except Exception as e:
