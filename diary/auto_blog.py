@@ -185,6 +185,7 @@ def create_driver():
     import tempfile
     import os
     import shutil
+    import uuid
     
     # 기존 Chrome 프로세스 정리
     kill_chrome_processes()
@@ -192,8 +193,21 @@ def create_driver():
     
     options = webdriver.ChromeOptions()
     
-    # 사용자 데이터 디렉토리를 사용하지 않음 (매번 새로운 세션)
-    options.add_argument("--incognito")  # 시크릿 모드 사용
+    # UUID를 사용한 완전히 고유한 임시 디렉토리 생성
+    unique_id = str(uuid.uuid4())
+    temp_dir = tempfile.mkdtemp(prefix=f"chrome_selenium_{unique_id}_")
+    temp_user_data_dir = os.path.join(temp_dir, "user_data")
+    temp_cache_dir = os.path.join(temp_dir, "cache")
+    
+    # 디렉토리 생성
+    os.makedirs(temp_user_data_dir, exist_ok=True)
+    os.makedirs(temp_cache_dir, exist_ok=True)
+    
+    print(f"🔧 생성된 임시 디렉토리: {temp_dir}")
+    
+    # Chrome 옵션 설정
+    options.add_argument(f"--user-data-dir={temp_user_data_dir}")
+    options.add_argument(f"--disk-cache-dir={temp_cache_dir}")
     options.add_argument("--no-first-run")
     options.add_argument("--no-default-browser-check")
     options.add_argument("--disable-extensions")
@@ -238,9 +252,18 @@ def create_driver():
         driver.execute_script("Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3, 4, 5]})")
         driver.execute_script("Object.defineProperty(navigator, 'languages', {get: () => ['ko-KR', 'ko']})")
         
+        # 임시 디렉토리 정보를 드라이버 객체에 저장 (나중에 정리용)
+        driver.temp_dir = temp_dir
+        
         return driver
         
     except Exception as e:
+        # 드라이버 생성 실패 시 임시 디렉토리 정리
+        try:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+            print(f"🧹 임시 디렉토리 정리 완료: {temp_dir}")
+        except:
+            pass
         raise e
 
 def slow_type_with_actionchains(driver, element, text, min_delay=0.05, max_delay=0.1):
@@ -526,6 +549,15 @@ def auto_blog_naver(file_texts, user_input, typo_probability, typing_speed, nave
             try:
                 driver.quit()
                 print("✅ 브라우저 종료 완료")
+                
+                # 임시 디렉토리 정리
+                if hasattr(driver, 'temp_dir'):
+                    try:
+                        import shutil
+                        shutil.rmtree(driver.temp_dir, ignore_errors=True)
+                        print(f"🧹 임시 디렉토리 정리 완료: {driver.temp_dir}")
+                    except Exception as e:
+                        print(f"⚠️ 임시 디렉토리 정리 중 오류: {str(e)}")
                         
             except Exception as e:
                 print(f"⚠️ 브라우저 종료 중 오류: {str(e)}")
