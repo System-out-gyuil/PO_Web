@@ -18,158 +18,6 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'diary/diary_main.css' %}">
-    <style>
-        * {
-            font-family: 'Noto Sans KR', sans-serif;
-        }
-        .speech-bubble {
-            position: relative;
-            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-            border-radius: 20px;
-            padding: 25px 30px;
-            margin: 25px 0;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-            border: 2px solid #e2e8f0;
-            transition: all 0.3s ease;
-        }
-        .speech-bubble:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
-        }
-        .speech-bubble.left {
-            margin-left: 0;
-            margin-right: 60px;
-        }
-        .speech-bubble.right {
-            margin-left: 60px;
-            margin-right: 0;
-        }
-        .speech-bubble::before {
-            content: '';
-            position: absolute;
-            width: 0;
-            height: 0;
-            border-style: solid;
-        }
-        .speech-bubble.left::before {
-            left: -15px;
-            top: 25px;
-            border-width: 10px 15px 10px 0;
-            border-color: transparent #f8fafc transparent transparent;
-        }
-        .speech-bubble.right::before {
-            right: -15px;
-            top: 25px;
-            border-width: 10px 0 10px 15px;
-            border-color: transparent transparent transparent #f8fafc;
-        }
-        .speech-text {
-            font-size: 18px;
-            line-height: 1.6;
-            color: #374151;
-            font-weight: 500;
-        }
-        .gradient-bg {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-        .hero-gradient {
-            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
-        }
-        @media (max-width: 768px) {
-            .speech-bubble.left,
-            .speech-bubble.right {
-                margin-left: 0;
-                margin-right: 0;
-            }
-            .speech-bubble::before {
-                display: none;
-            }
-            .speech-text {
-                font-size: 16px;
-            }
-        }
-        .notification-btn {
-            background: #facc15;
-            border: none;
-            color: #1f2937;
-            font-size: 16px;
-            cursor: pointer;
-            padding: 8px 24px;
-            border-radius: 12px;
-            transition: all 0.2s ease;
-            position: relative;
-            display: flex;
-            align-items: center;
-            font-weight: 500;
-        }
-        .notification-btn:hover {
-            background: #fde047;
-        }
-        .notification-badge {
-            position: absolute;
-            top: -8px;
-            right: -8px;
-            background: #ef4444;
-            color: white;
-            border-radius: 50%;
-            width: 20px;
-            height: 20px;
-            font-size: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            border: 2px solid white;
-        }
-        .notification-panel {
-            position: absolute;
-            top: 110%;
-            right: 0;
-            width: 320px;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-            z-index: 1001;
-            margin-top: 5px;
-            border: 1px solid #e5e7eb;
-            display: none;
-        }
-        .notification-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 16px;
-            border-bottom: 1px solid #f3f4f6;
-        }
-        .notification-list {
-            max-height: 260px;
-            overflow-y: auto;
-            padding: 8px 0;
-        }
-        .close-notification-btn {
-            background: none;
-            border: none;
-            font-size: 22px;
-            cursor: pointer;
-            color: #888;
-        }
-        .close-notification-btn:hover {
-            color: #333;
-        }
-
-        .alarm-message {
-            color: #666;
-            font-size: 13px;
-            line-height: 1.4;
-            margin-bottom: 8px;
-            max-height: 55px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            display: -webkit-box;
-            -webkit-line-clamp: 3;
-            -webkit-box-orient: vertical;
-        }
-    </style>
     <!-- Meta Pixel Code -->
 <script>
     !function(f,b,e,v,n,t,s)
@@ -196,25 +44,25 @@
     <!-- Header -->
     <header class="bg-white shadow-sm fixed w-full z-50">
         <nav class="container mx-auto px-6 py-4">
-            <div class="flex justify-between items-center">
+            <div class="flex justify-between">
                 <div class="flex items-center">
-                    <h1 class="text-2xl font-bold text-blue-600">💎 자금왕</h1>
-                    <span class="ml-3 text-sm text-gray-500 ">정책자금 전용 CRM</span>
+                    <h1 class="header-title text-2xl font-bold text-blue-600">💎 자금왕</h1>
+                    <span class="ml-3 text-sm text-gray-500 header-sub-title">정책자금 전용 CRM</span>
                 </div>
-                <div class="hidden md:flex space-x-8">
+                <div class="hidden md:flex space-x-8 header-menu">
                     <a href="#features" class="text-gray-600 hover:text-blue-600 transition">기능소개</a>
                     <a href="#success" class="text-gray-600 hover:text-blue-600 transition">성공사례</a>
                     <a href="#pricing" class="text-gray-600 hover:text-blue-600 transition">가격정보</a>
                 </div>
-                <div class="flex items-center space-x-2">
+                <div class="diary-btn-container flex items-center space-x-2">
                     <a href="/sales/diary/">
-                        <button class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg transition font-medium">
+                        <button class="diary-btn bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg transition font-medium">
                             다이어리
                         </button>
                     </a>
                     {% if is_authenticated %}
                     <div class="notification-container relative">
-                        <button class="notification-btn bg-yellow-400 hover:bg-yellow-500 text-gray-900 w-10 h-10 px-0 py-0 rounded-lg transition font-medium flex items-center justify-center relative" id="notificationBtn" type="button" onclick="toggleNotificationPanel()">
+                        <button class="notification-btn bg-yellow-400 hover:bg-yellow-500 text-gray-900 w-10 h-10 px-0 py-0 rounded-lg transition font-medium flex items-center justify-center relative alarm-btn" id="notificationBtn" type="button" onclick="toggleNotificationPanel()">
                             <i class="fas fa-bell text-lg"></i>
                             <span class="notification-badge absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold border-2 border-white" id="notificationBadge" style="display:none;">0</span>
                         </button>
@@ -242,7 +90,7 @@
                     </a>
                     {% endif %}
                     {% else %}
-                        <a href="{% url 'login' %}"><button class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition font-medium">
+                        <a href="{% url 'login' %}"><button class="login-btn bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition font-medium">
                             로그인
                         </button></a>
                     {% endif %}
@@ -255,15 +103,15 @@
     <section class="hero-gradient text-white pt-24 pb-16">
         <div class="container mx-auto px-6 text-center">
             <div class="max-w-4xl mx-auto">
-                <h1 class="text-4xl md:text-6xl font-bold mb-6 leading-tight">
+                <h1 class="text-4xl md:text-6xl font-bold mb-6 leading-tight top-explainer">
                     하루 커피 한 잔 값 5천원으로<br>
                     <span class="text-yellow-300">매출 1,500만원 증가</span>
                 </h1>
-                <p class="text-xl md:text-2xl mb-8 opacity-90">
+                <p class="text-xl md:text-2xl mb-8 opacity-90 top-sub-explainer">
                     1차 콜에서 전문성을 보여주지 못해 계약을 놓치고 있는<br>
                     법인영업 전문가를 위한 솔루션
                 </p>
-                <p class="text-lg mb-10 opacity-80">
+                <p class="text-lg mb-10 opacity-80 top-sub-explainer">
                     법인영업 출신이 직접 겪은 고통을 해결하기 위해 만든 자금왕 CRM
                 </p>
                 <div class="space-y-4 md:space-y-0 md:space-x-4 md:flex justify-center">
@@ -360,8 +208,6 @@
 
     <div class="img-container">
         <iframe 
-        width="80%" 
-        height="500px" 
         src="https://www.youtube.com/embed/Dy-mSi1lP9g?si=Lxmysfa3di8d_Ot2&autoplay=1&mute=1&controls=0&loop=1&showinfo=0&playlist=Dy-mSi1lP9g" 
         title=" "
         frameBorder="0"
@@ -377,8 +223,8 @@
         <div class="container mx-auto px-6 text-center">
             <div class="max-w-3xl mx-auto">
                 <h2 class="text-3xl md:text-4xl font-bold text-red-600 mb-8">본질적인 의문</h2>
-                <div class="bg-white p-8 rounded-xl shadow-lg border-l-4 border-red-500">
-                    <p class="text-xl md:text-2xl text-gray-800 font-medium leading-relaxed">
+                <div class="bg-white p-8 rounded-xl shadow-lg border-l-4 border-red-500 survey-box">
+                    <p class="text-xl md:text-2xl text-gray-800 font-medium leading-relaxed survey-text">
                         고객은 전문적인 서비스를 원하는데<br>
                         우리에게는 그걸 즉시 제공할 도구가 없다는 게<br>
                         <span class="text-red-600 font-bold">과연 정상일까요?</span>
@@ -389,13 +235,13 @@
     </section>
 
     <!-- Guide Section -->
-    <section class="py-16 bg-blue-50">
+    <section class="py-16 bg-blue-50 guide-section">
         <div class="container mx-auto px-6">
             <div class="max-w-4xl mx-auto text-center">
-                <h2 class="text-3xl md:text-4xl font-bold text-blue-600 mb-8">저도 정확히 같은 고통을 겪었습니다</h2>
+                <h2 class="text-3xl md:text-4xl font-bold text-blue-600 mb-8 guide-title">저도 정확히 같은 고통을 겪었습니다</h2>
                 <div class="bg-white p-8 rounded-xl shadow-lg mb-12">
-                    <img src="https://cdn1.genspark.ai/user-upload-image/4_generated/011d08af-8896-4dea-bdc2-6acb52fda23d" alt="스트레스 받는 직장인" class="w-64 h-40 object-cover rounded-lg mx-auto mb-6">
-                    <blockquote class="text-lg text-gray-700 italic mb-6">
+                    <img src="https://cdn1.genspark.ai/user-upload-image/4_generated/011d08af-8896-4dea-bdc2-6acb52fda23d" alt="스트레스 받는 직장인" class="w-64 h-40 object-cover rounded-lg mx-auto mb-6 guide-img">
+                    <blockquote class="text-lg text-gray-700 italic mb-6 guide-sub-text">
                         "법인영업을 하면서 수천 번의 1차 콜을 받았습니다.<br>
                         매번 '확인하고 연락드리겠습니다'라는 말을 할 때마다<br>
                         고객의 실망하는 목소리를 들어야 했죠."
@@ -434,26 +280,26 @@
         <div class="container mx-auto px-6">
             <div class="text-center mb-16">
                 <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6">자금왕의 핵심 기능과 가치</h2>
-                <p class="text-xl text-gray-600">5가지 핵심 기능으로 당신을 전문가로 만들어드립니다</p>
+                <p class="text-xl text-gray-600 features-text">5가지 핵심 기능으로 당신을 전문가로 만들어드립니다</p>
             </div>
             
             <div class="space-y-16">
                 <!-- Feature 1 -->
                 <div class="flex flex-col md:flex-row items-center">
                     <div class="md:w-1/2 mb-8 md:mb-0">
-                        <div class="bg-blue-50 p-8 rounded-xl">
+                        <div class="bg-blue-50 p-8 rounded-xl features-box">
                             <div class="flex items-center mb-4">
                                 <i class="fas fa-calculator text-blue-600 text-3xl mr-4"></i>
                                 <h3 class="text-2xl font-bold text-gray-900">1. 즉석 자금한도 시뮬레이션</h3>
                             </div>
-                            <p class="text-gray-600 mb-4"><strong>기능:</strong> 기업정보 입력만으로 기관별, 자금별 가능한도 즉시 확인</p>
-                            <p class="text-blue-600 font-semibold"><strong>가치:</strong> 1차 콜에서 바로 전문적인 답변 제공으로 계약률 30% 향상</p>
+                            <p class="text-gray-600 mb-4 features-inner-text"><strong>기능:</strong> 기업정보 입력만으로 기관별, 자금별 가능한도 즉시 확인</p>
+                            <p class="text-blue-600 font-semibold features-inner-text"><strong>가치:</strong> 1차 콜에서 바로 전문적인 답변 제공으로 계약률 30% 향상</p>
                             
                             <div class="mt-6 p-4 bg-white rounded-lg border-l-4 border-blue-500">
                                 <p class="text-sm text-gray-500 mb-2"><strong>Before:</strong></p>
-                                <p class="text-gray-700 mb-3">"팀장님께 물어보고 가능한 자금 다시 연락드릴게요"</p>
+                                <p class="text-gray-700 mb-3 features-inner-text">"팀장님께 물어보고 가능한 자금 다시 연락드릴게요"</p>
                                 <p class="text-sm text-green-600 mb-2"><strong>After:</strong></p>
-                                <p class="text-gray-700">"기보 3억, 중진공 1억, 소진공 5천, 총 4억5천 가능하십니다"</p>
+                                <p class="text-gray-700 features-inner-text">"기보 3억, 중진공 1억, 소진공 5천, 총 4억5천 가능하십니다"</p>
                             </div>
                         </div>
                     </div>
@@ -464,20 +310,20 @@
 
                 <!-- Feature 2 -->
                 <div class="flex flex-col md:flex-row-reverse items-center">
-                    <div class="md:w-1/2 mb-8 md:mb-0">
-                        <div class="bg-green-50 p-8 rounded-xl">
+                    <div class="md:w-1/2 mb-8 md:mb-0 features-container">
+                        <div class="bg-green-50 p-8 rounded-xl features-box">
                             <div class="flex items-center mb-4">
                                 <i class="fas fa-folder-open text-green-600 text-3xl mr-4"></i>
                                 <h3 class="text-2xl font-bold text-gray-900">2. 통합 기업자료 관리</h3>
                             </div>
-                            <p class="text-gray-600 mb-4"><strong>기능:</strong> 흩어진 기업 자료를 한 곳에서 체계적으로 관리</p>
-                            <p class="text-green-600 font-semibold"><strong>가치:</strong> 자료 찾는 시간 90% 단축, 고객 대기시간 10분 → 30초</p>
+                            <p class="text-gray-600 mb-4 features-inner-text"><strong>기능:</strong> 흩어진 기업 자료를 한 곳에서 체계적으로 관리</p>
+                            <p class="text-green-600 font-semibold features-inner-text"><strong>가치:</strong> 자료 찾는 시간 90% 단축, 고객 대기시간 10분 → 30초</p>
                             
                             <div class="mt-6 p-4 bg-white rounded-lg border-l-4 border-green-500">
                                 <p class="text-sm text-gray-500 mb-2"><strong>Before:</strong></p>
-                                <p class="text-gray-700 mb-3">"잠깐만요, 자료를 찾아볼게요... (10분 대기)"</p>
+                                <p class="text-gray-700 mb-3 features-inner-text">"잠깐만요, 자료를 찾아볼게요... (10분 대기)"</p>
                                 <p class="text-sm text-green-600 mb-2"><strong>After:</strong></p>
-                                <p class="text-gray-700">"네, 바로 확인해드리겠습니다. (30초 완료)"</p>
+                                <p class="text-gray-700 features-inner-text">"네, 바로 확인해드리겠습니다. (30초 완료)"</p>
                             </div>
                         </div>
                     </div>
@@ -488,20 +334,20 @@
 
                 <!-- Feature 3 -->
                 <div class="flex flex-col md:flex-row items-center">
-                    <div class="md:w-1/2 mb-8 md:mb-0">
-                        <div class="bg-purple-50 p-8 rounded-xl">
+                    <div class="md:w-1/2 mb-8 md:mb-0 features-container">
+                        <div class="bg-purple-50 p-8 rounded-xl features-box">
                             <div class="flex items-center mb-4">
                                 <i class="fas fa-bullseye text-purple-600 text-3xl mr-4"></i>
                                 <h3 class="text-2xl font-bold text-gray-900">3. 맞춤형 지원사업 추천</h3>
                             </div>
-                            <p class="text-gray-600 mb-4"><strong>기능:</strong> AI 기반으로 매일 100개+ 공고 중 고객사 맞춤 지원사업 선별</p>
-                            <p class="text-purple-600 font-semibold"><strong>가치:</strong> 지속적인 고객 관계 유지로 추가 계약 기회 300% 증가</p>
+                            <p class="text-gray-600 mb-4 features-inner-text"><strong>기능:</strong> AI 기반으로 매일 100개+ 공고 중 고객사 맞춤 지원사업 선별</p>
+                            <p class="text-purple-600 font-semibold features-inner-text"><strong>가치:</strong> 지속적인 고객 관계 유지로 추가 계약 기회 300% 증가</p>
                             
                             <div class="mt-6 p-4 bg-white rounded-lg border-l-4 border-purple-500">
                                 <p class="text-sm text-gray-500 mb-2"><strong>Before:</strong></p>
-                                <p class="text-gray-700 mb-3">"새로운 지원사업 나오면 연락드릴게요" (연락 못함)</p>
+                                <p class="text-gray-700 mb-3 features-inner-text">"새로운 지원사업 나오면 연락드릴게요" (연락 못함)</p>
                                 <p class="text-sm text-green-600 mb-2"><strong>After:</strong></p>
-                                <p class="text-gray-700">"이번 주 새로 나온 지원사업 3개 중 딱 맞는 게 있어서 연락드렸어요"</p>
+                                <p class="text-gray-700 features-inner-text">"이번 주 새로 나온 지원사업 3개 중 딱 맞는 게 있어서 연락드렸어요"</p>
                             </div>
                         </div>
                     </div>
@@ -512,33 +358,33 @@
 
                 <!-- Feature 4 & 5 -->
                 <div class="grid md:grid-cols-2 gap-8">
-                    <div class="bg-orange-50 p-8 rounded-xl">
+                    <div class="bg-orange-50 p-8 rounded-xl features-box">
                         <div class="flex items-center mb-4">
                             <i class="fas fa-sync text-orange-600 text-3xl mr-4"></i>
                             <h3 class="text-xl font-bold text-gray-900">4. 진행상황 실시간 추적</h3>
                         </div>
-                        <p class="text-gray-600 mb-4"><strong>기능:</strong> 기관별 진행상황을 한눈에 파악하고 관리</p>
-                        <p class="text-orange-600 font-semibold mb-4"><strong>가치:</strong> 놓치는 업무 제로, 고객 신뢰도 극대화</p>
+                        <p class="text-gray-600 mb-4 features-inner-text"><strong>기능:</strong> 기관별 진행상황을 한눈에 파악하고 관리</p>
+                        <p class="text-orange-600 font-semibold mb-4 features-inner-text"><strong>가치:</strong> 놓치는 업무 제로, 고객 신뢰도 극대화</p>
                         <div class="p-3 bg-white rounded-lg text-sm">
                             <p class="text-gray-500 mb-1"><strong>Before:</strong></p>
-                            <p class="text-gray-700 mb-2">"어... 기보 심사가 언제까지였지?"</p>
+                            <p class="text-gray-700 mb-2 features-inner-text">"어... 기보 심사가 언제까지였지?"</p>
                             <p class="text-green-600 mb-1"><strong>After:</strong></p>
-                            <p class="text-gray-700">"기보는 내일까지 추가서류 제출, 중진공은 다음주 면접이네요"</p>
+                            <p class="text-gray-700 features-inner-text">"기보는 내일까지 추가서류 제출, 중진공은 다음주 면접이네요"</p>
                         </div>
                     </div>
                     
-                    <div class="bg-pink-50 p-8 rounded-xl">
+                    <div class="bg-pink-50 p-8 rounded-xl features-box">
                         <div class="flex items-center mb-4">
                             <i class="fas fa-edit text-pink-600 text-3xl mr-4"></i>
                             <h3 class="text-xl font-bold text-gray-900">5. 자연스러운 블로그 마케팅</h3>
                         </div>
-                        <p class="text-gray-600 mb-4"><strong>기능:</strong> 메모장 내용을 사람이 직접 타이핑하는 것처럼 블로그 작성</p>
-                        <p class="text-pink-600 font-semibold mb-4"><strong>가치:</strong> 검색엔진 최적화로 신규 고객 유입 200% 증가</p>
+                        <p class="text-gray-600 mb-4 features-inner-text"><strong>기능:</strong> 메모장 내용을 사람이 직접 타이핑하는 것처럼 블로그 작성</p>
+                        <p class="text-pink-600 font-semibold mb-4 features-inner-text"><strong>가치:</strong> 검색엔진 최적화로 신규 고객 유입 200% 증가</p>
                         <div class="p-3 bg-white rounded-lg text-sm">
                             <p class="text-gray-500 mb-1"><strong>Before:</strong></p>
-                            <p class="text-gray-700 mb-2">AI 글 작성 → 검색엔진 외면 → 노출 없음</p>
+                            <p class="text-gray-700 mb-2 features-inner-text">AI 글 작성 → 검색엔진 외면 → 노출 없음</p>
                             <p class="text-green-600 mb-1"><strong>After:</strong></p>
-                            <p class="text-gray-700">자연스러운 타이핑 → 검색 상위 노출 → 신규 고객 유입</p>
+                            <p class="text-gray-700 features-inner-text">자연스러운 타이핑 → 검색 상위 노출 → 신규 고객 유입</p>
                         </div>
                     </div>
                 </div>
@@ -666,7 +512,7 @@
                         </div>
                         <h3 class="text-xl font-bold text-gray-900">오전 9시 - 첫 번째 고객 전화</h3>
                     </div>
-                    <blockquote class="text-lg text-gray-700 italic border-l-4 border-blue-500 pl-6">
+                    <blockquote class="text-lg text-gray-700 italic border-l-4 border-blue-500 pl-6 features-text">
                         "네, 귀하의 회사는 기보 3억, 중진공 1억, 소진공 5천까지 가능하시고,<br>
                         현재 진행 중인 딱 맞는 지원사업이 3개 있습니다."
                     </blockquote>
@@ -679,7 +525,7 @@
                         </div>
                         <h3 class="text-xl font-bold text-gray-900">오후 2시 - 계약 성사</h3>
                     </div>
-                    <blockquote class="text-lg text-gray-700 italic border-l-4 border-green-500 pl-6">
+                    <blockquote class="text-lg text-gray-700 italic border-l-4 border-green-500 pl-6 features-text">
                         "와, 이렇게 전문적으로 상담해주시는 곳은 처음이네요.<br>
                         바로 계약 진행하겠습니다."
                     </blockquote>
@@ -778,8 +624,8 @@
             
             <div class="max-w-6xl mx-auto">
                 <!-- 메인 가격 카드 -->
-                <div class="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-2xl p-12 mb-12 text-center">
-                    <h3 class="text-4xl font-bold mb-6">💰 하루 단돈 5천원으로<br>월 1,730만원의 추가 수익</h3>
+                <div class="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-2xl p-12 mb-12 text-center features-box">
+                    <h3 class="text-4xl font-bold mb-6 features-title">💰 하루 단돈 5천원으로<br>월 1,730만원의 추가 수익</h3>
                     <p class="text-xl mb-8">📊 커피 한 잔 값으로 계약률 30% 향상</p>
                     
                     <div class="bg-white bg-opacity-20 rounded-xl p-8 mb-8">
@@ -790,7 +636,7 @@
                                 <h5 class="text-lg font-bold mb-2">스타벅스 아메리카노 1잔</h5>
                                 <p class="text-2xl font-bold">5,500원</p>
                             </div>
-                            <div class="bg-white bg-opacity-30 p-6 rounded-lg border-2 border-yellow-300">
+                            <div class="bg-white bg-opacity-30 p-6 rounded-lg border-2 border-yellow-300 features-box">
                                 <div class="text-3xl mb-4">💎</div>
                                 <h5 class="text-lg font-bold mb-2">자금왕 하루 이용료</h5>
                                 <p class="text-2xl font-bold">5,000원</p>
@@ -805,26 +651,26 @@
                     <div class="bg-gray-50 p-8 rounded-xl">
                         <h4 class="text-2xl font-bold text-gray-900 mb-6">📈 투자 대비 수익률</h4>
                         <div class="space-y-4">
-                            <div class="flex justify-between items-center p-4 bg-white rounded-lg">
+                            <div class="flex justify-between items-center p-4 bg-white rounded-lg items-justify">
                                 <span class="text-gray-600">하루 투자금</span>
                                 <span class="font-bold text-blue-600">5,000원</span>
                             </div>
-                            <div class="flex justify-between items-center p-4 bg-white rounded-lg">
+                            <div class="flex justify-between items-center p-4 bg-white rounded-lg items-justify">
                                 <span class="text-gray-600">월 투자금 (30일)</span>
                                 <span class="font-bold text-blue-600">150,000원</span>
                             </div>
-                            <div class="flex justify-between items-center p-4 bg-green-100 rounded-lg border-2 border-green-500">
+                            <div class="flex justify-between items-center p-4 bg-green-100 rounded-lg border-2 border-green-500 items-justify">
                                 <span class="text-gray-600">월 수익 창출</span>
                                 <span class="font-bold text-green-600 text-xl">17,300,000원</span>
                             </div>
-                            <div class="flex justify-between items-center p-4 bg-yellow-100 rounded-lg">
+                            <div class="flex justify-between items-center p-4 bg-yellow-100 rounded-lg items-justify">
                                 <span class="text-gray-600">ROI</span>
                                 <span class="font-bold text-yellow-600 text-xl">11,533% (115배)</span>
                             </div>
                         </div>
                     </div>
                     
-                    <div class="bg-blue-50 p-8 rounded-xl">
+                    <div class="bg-blue-50 p-8 rounded-xl features-box">
                         <h4 class="text-2xl font-bold text-gray-900 mb-6">💡 절약되는 비용</h4>
                         <div class="space-y-4">
                             <div class="p-4 bg-white rounded-lg">
@@ -878,7 +724,7 @@
     <!-- Urgency Section -->
     <section class="py-16 bg-red-600 text-white">
         <div class="container mx-auto px-6 text-center">
-            <h2 class="text-3xl md:text-4xl font-bold mb-8">⏰ 지금 당장 시작해야 하는 이유</h2>
+            <h2 class="text-3xl md:text-4xl font-bold mb-8 features-title">⏰ 지금 당장 시작해야 하는 이유</h2>
             
             <div class="max-w-4xl mx-auto grid md:grid-cols-2 gap-8">
                 <div class="bg-white bg-opacity-10 p-8 rounded-xl">
@@ -903,8 +749,8 @@
                 </div>
             </div>
             
-            <div class="mt-12 p-8 bg-white bg-opacity-10 rounded-2xl">
-                <h3 class="text-2xl font-bold mb-6">⏰ 하루 5천원 투자를 망설이는 사이<br>경쟁사는 이미 월 1,500만원 더 벌고 있습니다</h3>
+            <div class="mt-12 p-8 bg-white bg-opacity-10 rounded-2xl features-box">
+                <h3 class="text-2xl font-bold mb-6 features-title2">⏰ 하루 5천원 투자를 망설이는 사이<br>경쟁사는 이미 월 1,500만원 더 벌고 있습니다</h3>
                 <div class="space-y-4 md:space-y-0 md:space-x-4 md:flex justify-center">
                     <div class="bg-white bg-opacity-20 p-6 rounded-xl">
                         <p class="text-lg mb-2">🎯 하루 5천원이 아깝다면...</p>
@@ -923,7 +769,7 @@
     <section class="py-16 bg-blue-600 text-white">
         <div class="container mx-auto px-6 text-center">
             <h2 class="text-3xl md:text-4xl font-bold mb-8">지금 바로 시작하세요!</h2>
-            <p class="text-xl mb-12">1주일 무료 체험으로 자금왕의 강력함을 직접 경험해보세요</p>
+            <p class="text-xl mb-12 features-text">1주일 무료 체험으로 자금왕의 강력함을 직접 경험해보세요</p>
             
             <div class="space-y-4 md:space-y-0 md:space-x-6 md:flex justify-center">
                 <button onclick="window.location.href='#register'" class="bg-yellow-400 hover:bg-yellow-500 text-gray-900 px-10 py-4 rounded-lg text-xl font-bold transition transform hover:scale-105 w-full md:w-auto">

@@ -1466,3 +1466,830 @@ th.resizing .attribute-name-text {
     padding: 10px;
     width: 31%;
 }
+
+/* 로그아웃 버튼 스타일 */
+.logout-container {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 999;
+}
+
+.logout-btn {
+    padding: 8px 16px;
+    background: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.logout-btn:hover {
+    background: #c82333;
+    transform: translateY(-1px);
+}
+
+/* 관리자 버튼 스타일 */
+.admin-btn {
+    padding: 8px 16px;
+    background: #28a745;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.admin-btn:hover {
+    background: #218838;
+    transform: translateY(-1px);
+}
+
+/* 헤더 스타일 */
+.main-header {
+    background: #fff;
+    color: white;
+    padding: 15px 0;
+    box-shadow: 2px 2px 2px 2px rgba(0, 0, 0, 0.1);
+    margin-bottom: 10px;
+}
+
+.header-container {
+    margin: 0 auto;
+    padding: 0 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+}
+
+.header-title {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 600;
+    color: #333;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+/* 헤더 버튼 공통 스타일 */
+.header-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    color: #333;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+}
+
+.header-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* 알림 버튼 스타일 */
+.notification-btn {
+    background: #facc15;
+    border: none;
+    color: #1f2937;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 8px 24px;
+    border-radius: 12px;
+    transition: all 0.2s ease;
+    position: relative;
+    display: flex;
+    align-items: center;
+    font-weight: 500;
+}
+
+.notification-btn:hover {
+    background: #fde047;
+}
+
+.notification-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #ef4444;
+    color: white;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    border: 2px solid white;
+}
+
+/* 문의하기 버튼 스타일 */
+.inquiry-btn {
+    background: #28a745;
+    color: white;
+    border-color: #28a745;
+}
+
+.board-btn {
+    background: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+.board-btn:hover {
+    background: #0056b3;
+    border-color: #0056b3;
+}
+
+.inquiry-btn:hover {
+    background: #1e7e34;
+    border-color: #1e7e34;
+}
+
+/* 관리자 페이지 버튼 스타일 */
+.admin-btn {
+    background: #ffc107;
+    color: #212529;
+    border-color: #ffc107;
+}
+
+.admin-btn:hover {
+    background: #e0a800;
+    border-color: #e0a800;
+}
+
+/* 로그아웃 버튼 스타일 */
+.logout-btn {
+    background: #dc3545;
+    color: white;
+    border-color: #dc3545;
+}
+
+.logout-btn:hover {
+    background: #c82333;
+    border-color: #c82333;
+}
+
+/* 알림 스타일 */
+.notification-container {
+    position: relative;
+}
+
+.notification-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #ff4757;
+    color: white;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    border: 2px solid white;
+}
+
+.notification-panel {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    width: 350px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    z-index: 1001;
+    margin-top: 5px;
+    border: 1px solid #e9ecef;
+}
+
+.notification-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.notification-header h3 {
+    margin: 0;
+    color: #333;
+    font-size: 16px;
+}
+
+.close-notification-btn {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: #666;
+}
+
+.notification-list {
+    max-height: 250px;
+    overflow-y: auto;
+    padding: 10px 0;
+}
+
+/* 사용자 메뉴 스타일 */
+.user-menu-container {
+    position: relative;
+}
+
+.user-menu-btn {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+}
+
+.user-menu-btn:hover {
+    background: rgba(255,255,255,0.2);
+}
+
+.user-name {
+    font-weight: 500;
+}
+
+.user-menu-icon {
+    font-size: 12px;
+}
+
+.user-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    z-index: 1001;
+    margin-top: 10px;
+    min-width: 200px;
+}
+
+.user-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 20px;
+    color: #333;
+    text-decoration: none;
+    transition: background 0.2s ease;
+}
+
+.user-menu-item:hover {
+    background: #f8f9fa;
+    text-decoration: none;
+    color: #333;
+}
+
+.menu-icon {
+    font-size: 16px;
+}
+
+/* 컨테이너 상대 위치 설정 */
+.container {
+    position: relative;
+}
+
+/* 다중 선택 관련 스타일 */
+.row-checkbox {
+    margin-right: 8px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+/* 테이블에 마우스 오버 시 체크박스 표시 */
+#tableView:hover .row-checkbox {
+    opacity: 1;
+}
+
+/* 전체 선택 체크박스는 항상 표시 */
+#selectAllCheckbox {
+    margin-right: 8px;
+    cursor: pointer;
+    opacity: 1;
+}
+
+.bulk-delete-btn {
+    transition: all 0.3s ease;
+}
+
+.bulk-delete-btn:hover {
+    background: #c82333rtant;
+    transform: scale(1.05);
+}
+
+.button-container {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.drag-cell[object Object]{
+    min-width:120;
+}
+
+/* 컬럼 리사이즈 핸들 스타일 */
+.column-resize-handle {
+    position: absolute;
+    right: -3px;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+    cursor: col-resize;
+    background: transparent;
+    z-index: 10;
+    transition: background-color 0.2s ease, opacity 0.2s ease;
+    will-change: background-color, opacity;
+}
+
+.column-resize-handle:hover {
+    background: #007bff !important;
+    opacity: 0.5 !important;
+}
+
+/* 리사이즈 중인 컬럼 스타일 */
+th.resizing {
+    background-color: #f8f9fa !important;
+    border-right: 2px solid #007bff !important;
+    will-change: width;
+}
+
+/* 테이블 헤더 상대 위치 설정 */
+#entryTable thead th {
+    position: relative;
+    will-change: width;
+}
+
+/* 속성 추가 열은 리사이즈 제외 */
+.add-attribute-th {
+    position: relative !important;
+}
+
+.add-attribute-th .column-resize-handle {
+    display: none;
+}
+
+/* 테이블 성능 최적화 */
+#entryTable {
+    will-change: auto;
+}
+
+#entryTable.resizing {
+    will-change: layout;
+}
+
+/* 첫 번째 열 스타일 개선 */
+.drag-cell {
+    min-width: 140px !important;
+    width: 140px !important;
+    max-width: 140px !important;
+    padding: 8px 12px !important;
+    background-color: #f8f9fa;
+    border-right: 2px solid #dee2e6;
+}
+
+/* 헤더의 전체 선택 영역 */
+.select-all-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+}
+
+.select-all-container label {
+    font-size: 12px;
+    color: #495057;
+    font-weight: 500;
+    margin: 0;
+    cursor: pointer;
+}
+
+/* 셀 내부 버튼 컨테이너 */
+.cell-button-container {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: nowrap;
+}
+
+/* 체크박스 스타일 */
+.row-checkbox, #selectAllCheckbox {
+    margin: 0;
+    cursor: pointer;
+    width: 20px;
+    height: 20px;
+}
+
+/* 버튼 공통 스타일 */
+.action-btn {
+    padding: 4px 6px;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    min-width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 삭제 버튼 */
+.delete-row-btn {
+    background: #dc3545;
+    color: white;
+}
+
+.delete-row-btn:hover {
+    background: #c82333;
+    transform: scale(1.05);
+}
+
+/* 복제 버튼 */
+.duplicate-row-btn {
+    background: #28a745;
+    color: white;
+}
+
+.duplicate-row-btn:hover {
+    background: #218838;
+    transform: scale(1.05);
+}
+
+/* 드래그 핸들 */
+.drag-handle {
+    color: #6c757d;
+    cursor: move;
+    font-size: 17px;
+    padding: 2px;
+    border-radius: 2px;
+    transition: background-color 0.2s ease;
+}
+
+.drag-handle:hover {
+    background-color: #e9ecef;
+}
+
+/* 블로그 모달 스타일 */
+.blog-modal {
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.blog-modal-content {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    width: 90%;
+    max-width: 500px;
+    max-height: 80vh;
+    overflow: hidden;
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-50px) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.blog-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid #dee2e6;
+    background-color: #f8f9fa;
+}
+
+.blog-modal-header h3 {
+    margin: 0;
+    color: #495057;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.blog-modal-close {
+    font-size: 24px;
+    font-weight: bold;
+    color: #6c757d;
+    cursor: pointer;
+    line-height: 1;
+    transition: color 0.2s ease;
+}
+
+.blog-modal-close:hover {
+    color: #dc3545;
+}
+
+.blog-modal-body {
+    padding: 24px;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.file-upload-area {
+    text-align: center;
+}
+
+.file-drop-zone {
+    border: 2px dashed #dee2e6;
+    border-radius: 8px;
+    padding: 40px 20px;
+    background-color: #f8f9fa;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-bottom: 20px;
+}
+
+.file-drop-zone:hover {
+    border-color: #007bff;
+    background-color: #e3f2fd;
+}
+
+.file-drop-text {
+    color: #6c757d;
+}
+
+.file-drop-text p {
+    margin: 8px 0;
+    font-size: 14px;
+}
+
+.file-drop-text p:first-of-type {
+    font-size: 16px;
+    font-weight: 500;
+    color: #495057;
+}
+
+#selectedFileInfo {
+    background-color: #e8f5e8;
+    border: 1px solid #c3e6c3;
+    border-radius: 6px;
+    padding: 15px;
+    margin-top: 15px;
+}
+
+#selectedFileInfo p {
+    margin: 5px 0;
+    font-size: 14px;
+    color: #155724;
+}
+
+.blog-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 20px 24px;
+    border-top: 1px solid #dee2e6;
+    background-color: #f8f9fa;
+}
+
+.btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.btn-secondary {
+    background-color: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: #5a6268;
+}
+
+.btn-primary {
+    background-color: #007bff;
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #0056b3;
+}
+
+.btn-primary:disabled {
+    background-color: #6c757d;
+    cursor: not-allowed;
+}
+
+/* 블로그 div 스타일 */
+.filter-controls div:last-child {
+    cursor: pointer;
+    padding: 8px 12px;
+    background: #007bff;
+    color: white;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.filter-controls div:last-child:hover {
+    background: #0056b3;
+    transform: translateY(-1px);
+}
+
+/* 알림 애니메이션 */
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideOutRight {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+}
+
+/* 알림 아이템 스타일 */
+.notification-item {
+    display: flex;
+    align-items: flex-start;
+    padding: 15px 20px;
+    border-bottom: 1px solid #eee;
+    transition: background 0.2s ease;
+    position: relative;
+    cursor: pointer;  /* 클릭 가능함을 표시 */
+}
+
+.notification-item:hover {
+    background: #f8f9fa;
+}
+
+.notification-item.unread {
+    background: #f0f8ff;
+}
+
+.notification-item.unread:hover {
+    background: #e6f3ff;
+}
+
+.notification-content {
+    flex: 1;
+}
+
+.notification-title {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 5px;
+    font-size: 14px;
+}
+
+.notification-message {
+    color: #666;
+    font-size: 13px;
+    line-height: 1.4;
+    margin-bottom: 8px;
+    max-height: 55px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+}
+
+.notification-time {
+    color: #999;
+    font-size: 11px;
+}
+
+.unread-indicator {
+    width: 8px;
+    height: 8px;
+    background: #007bff;
+    border-radius: 50%;
+    margin-left: 10px;
+    margin-top: 5px;
+}
+
+.no-notifications {
+    padding: 20px;
+    text-align: center;
+    color: #666;
+    font-style: italic;
+}
+
+/* 컨테이너 상대 위치 설정 */
+.notification-container {
+    position: relative;
+}
+
+.notification-icon {
+    font-size: 16px;
+}
+
+@media (max-width: 768px) {
+    .main-section-container {
+        height: 37px;
+        gap: 3px;
+    }
+
+    .header-title {
+        font-size: 19px;
+    }
+
+    .header-sub-title {
+        display: none;
+        font-size: 13px;
+    }
+
+    .diary-btn {
+        width: 80px;
+        height: 40px;
+        font-size: 15px;
+        padding: 0;
+    }
+
+    .login-btn, .logout-btn, .header-btn {
+        width: 70px;
+        height: 35px;
+        font-size: 14px;
+        padding: 0;
+        justify-content: center;
+    }
+
+    .alarm-btn {
+        height: 35px;
+    }
+
+    .notification-panel {
+        right: -180%;
+    }
+    .header-right {
+        gap: 5px;
+    }
+
+    .header-container {
+        padding: 0 5px;
+    }
+
+    .container {
+        padding: 0 5px;
+        max-width: 100%;
+    }
+}
