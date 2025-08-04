@@ -223,6 +223,7 @@ def create_driver():
     # 디렉토리 생성
     os.makedirs(temp_user_data_dir, exist_ok=True)
     os.makedirs(temp_cache_dir, exist_ok=True)
+    time.sleep(1)
     
     print(f"🔧 생성된 임시 디렉토리: {temp_dir}")
     
