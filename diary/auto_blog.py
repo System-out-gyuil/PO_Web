@@ -209,7 +209,6 @@ def create_driver():
     from webdriver_manager.chrome import ChromeDriverManager
 
     # 기존 프로세스 정리
-    kill_chrome_processes()
     time.sleep(2)
 
     options = webdriver.ChromeOptions()
@@ -231,13 +230,20 @@ def create_driver():
 
     options.add_argument(f"--user-data-dir={temp_user_data_dir}")
     options.add_argument(f"--disk-cache-dir={temp_cache_dir}")
-    options.add_argument("--headless=new")
+    # options.add_argument("--headless=new")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option('useAutomationExtension', False)
+    
+    # 기존 크롬과 충돌하지 않도록 추가 옵션
+    options.add_argument("--remote-debugging-port=0")  # 랜덤 포트 사용
+    options.add_argument("--disable-extensions")  # 확장 프로그램 비활성화
+    options.add_argument("--disable-plugins")  # 플러그인 비활성화
+    options.add_argument("--disable-images")  # 이미지 로딩 비활성화 (성능 향상)
+    # options.add_argument("--disable-javascript")  # JavaScript 비활성화 (네이버 로그인에 필요하므로 주석 처리)
 
     try:
         service = Service(ChromeDriverManager().install())
@@ -533,9 +539,9 @@ def auto_blog_naver_with_lock(file_texts, user_input, typo_probability, typing_s
 def auto_blog_naver(file_texts, user_input, typo_probability, typing_speed, naver_id, naver_password):
     driver = None
     try:
-        # 기존 Chrome 프로세스 정리
-        kill_chrome_processes()
-        time.sleep(3)  # 프로세스 종료 대기
+        # 기존 Chrome 프로세스 정리 제거 - 기존 크롬을 유지
+        # kill_chrome_processes()
+        # time.sleep(3)  # 프로세스 종료 대기
         
         driver = create_driver()
         naver_login(driver, naver_id, naver_password)
