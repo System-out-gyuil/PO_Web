@@ -175,17 +175,24 @@ def create_driver():
     # 임시 디렉토리 생성
     temp_dir = tempfile.mkdtemp(prefix="chrome_user_data_")
     
-    # 서버 환경에서 display 오류 방지
+    # 서버 환경에서 가상 디스플레이 설정
     if not is_local_environment():
-        os.environ['DISPLAY'] = ':99'
-        os.environ['XAUTHORITY'] = '/tmp/.Xauthority'
+        # 가상 디스플레이 시작
+        try:
+            subprocess.run(['Xvfb', ':99', '-screen', '0', '1920x1080x24', '&'], check=True)
+            os.environ['DISPLAY'] = ':99'
+            print("✅ 가상 디스플레이 시작 완료")
+        except Exception as e:
+            print(f"⚠️ 가상 디스플레이 시작 실패: {str(e)}")
+            print("⚠️ headless 모드로 전환합니다.")
+            # headless 모드로 fallback
+            return create_driver_headless(temp_dir)
     
     options = webdriver.ChromeOptions()
     options.add_argument(f"--user-data-dir={temp_dir}")
     
-    # 서버 환경에서는 headless 모드 사용
+    # 서버 환경에서는 가상 디스플레이 사용
     if not is_local_environment():
-        options.add_argument("--headless=new")  # 새로운 headless 모드 사용
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
@@ -249,6 +256,51 @@ def create_driver():
         return driver
     except Exception as e:
         # 오류 발생 시 임시 디렉토리 정리
+        try:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+        except:
+            pass
+        raise e
+
+def create_driver_headless(temp_dir):
+    """headless 모드로 드라이버 생성 (fallback)"""
+    options = webdriver.ChromeOptions()
+    options.add_argument(f"--user-data-dir={temp_dir}")
+    options.add_argument("--headless=new")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--window-size=1920,1080")
+    options.add_argument("--disable-web-security")
+    options.add_argument("--disable-features=VizDisplayCompositor")
+    options.add_argument("--remote-debugging-port=0")
+    options.add_argument("--no-first-run")
+    options.add_argument("--no-default-browser-check")
+    options.add_argument("--disable-background-timer-throttling")
+    options.add_argument("--disable-backgrounding-occluded-windows")
+    options.add_argument("--disable-renderer-backgrounding")
+    options.add_argument("--disable-field-trial-config")
+    options.add_argument("--disable-ipc-flooding-protection")
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    options.add_argument("--disable-extensions")
+    options.add_argument("--disable-plugins")
+    options.add_argument("--disable-images")
+    options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+    options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    options.add_experimental_option('useAutomationExtension', False)
+    options.add_experimental_option("prefs", {
+        "profile.default_content_setting_values.notifications": 2,
+        "profile.default_content_settings.popups": 0,
+        "profile.managed_default_content_settings.images": 2
+    })
+
+    service = Service(executable_path=ChromeDriverManager().install())
+
+    try:
+        driver = webdriver.Chrome(service=service, options=options)
+        driver._temp_dir = temp_dir
+        return driver
+    except Exception as e:
         try:
             shutil.rmtree(temp_dir, ignore_errors=True)
         except:
