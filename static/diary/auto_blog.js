@@ -329,7 +329,7 @@ function uploadBlogFile() {
             }
             
             // 추가 정보 표시
-            console.log('블로그 작성이 백그라운드에서 시작되었습니다.');
+            console.log('블로그 작성이 윈도우 환경에서 시작되었습니다.');
             console.log('Chrome 브라우저가 곧 열릴 예정입니다.');
             
             // 모달 닫기
