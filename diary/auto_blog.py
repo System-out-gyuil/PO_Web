@@ -3,6 +3,7 @@ import tempfile
 import shutil
 import threading
 import platform
+import subprocess
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
@@ -310,6 +311,23 @@ def slow_type_with_typos(driver, element, text, min_delay=0.05, max_delay=0.1, t
         actions.send_keys(char).perform()
         time.sleep(random.uniform(min_delay, max_delay))
 
+def copy_to_clipboard(text):
+    """Ubuntu 서버에서 클립보드에 텍스트 복사"""
+    try:
+        # xclip 사용 (Ubuntu에서 일반적으로 사용)
+        process = subprocess.Popen(['xclip', '-selection', 'clipboard'], stdin=subprocess.PIPE)
+        process.communicate(input=text.encode('utf-8'))
+        return True
+    except FileNotFoundError:
+        try:
+            # xsel 사용 (대안)
+            process = subprocess.Popen(['xsel', '--clipboard', '--input'], stdin=subprocess.PIPE)
+            process.communicate(input=text.encode('utf-8'))
+            return True
+        except FileNotFoundError:
+            print("⚠️ xclip 또는 xsel이 설치되지 않았습니다.")
+            return False
+
 # ✅ 네이버 로그인 (직접 입력 유도)
 def naver_login(driver, naver_id=None, naver_password=None):
     driver.get("https://nid.naver.com/nidlogin.login")
@@ -323,9 +341,13 @@ def naver_login(driver, naver_id=None, naver_password=None):
             id_input.click()
             time.sleep(1)
             
-            # pyperclip 대신 직접 입력
-            id_input.clear()
-            id_input.send_keys(naver_id)
+            # 클립보드에 복사 후 붙여넣기
+            if copy_to_clipboard(naver_id):
+                id_input.send_keys(Keys.CONTROL, 'v')
+            else:
+                # 클립보드 실패 시 직접 입력
+                id_input.clear()
+                id_input.send_keys(naver_id)
             time.sleep(1)
 
             # 비밀번호 입력
@@ -333,9 +355,13 @@ def naver_login(driver, naver_id=None, naver_password=None):
             pw_input.click()
             time.sleep(1)
             
-            # pyperclip 대신 직접 입력
-            pw_input.clear()
-            pw_input.send_keys(naver_password)
+            # 클립보드에 복사 후 붙여넣기
+            if copy_to_clipboard(naver_password):
+                pw_input.send_keys(Keys.CONTROL, 'v')
+            else:
+                # 클립보드 실패 시 직접 입력
+                pw_input.clear()
+                pw_input.send_keys(naver_password)
             time.sleep(1)
 
             # 로그인 버튼 클릭
