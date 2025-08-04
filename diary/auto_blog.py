@@ -18,6 +18,7 @@ from selenium.webdriver.common.keys import Keys
 import pyperclip
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
+import shutil
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -230,7 +231,7 @@ def create_driver():
 
     options.add_argument(f"--user-data-dir={temp_user_data_dir}")
     options.add_argument(f"--disk-cache-dir={temp_cache_dir}")
-    # options.add_argument("--headless=new")
+    options.add_argument("--headless=new")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
@@ -573,11 +574,11 @@ def auto_blog_naver(file_texts, user_input, typo_probability, typing_speed, nave
             try:
                 driver.quit()
                 print("✅ 브라우저 종료 완료")
-                
-                # 임시 디렉토리 정리
+
+                time.sleep(2)  # ⏳ 크롬 종료 대기
+
                 if hasattr(driver, 'temp_dir'):
                     try:
-                        import shutil
                         shutil.rmtree(driver.temp_dir, ignore_errors=True)
                         print(f"🧹 임시 디렉토리 정리 완료: {driver.temp_dir}")
                     except Exception as e:
