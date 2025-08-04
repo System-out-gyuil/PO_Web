@@ -160,26 +160,34 @@ def get_blog_files(request):
         'message': '현재 파일 저장 기능이 비활성화되어 있습니다.'
     })
 
-# ✅ Selenium 설정
 def kill_chrome_processes():
-    """기존 Chrome 프로세스들을 강제 종료"""
+    """기존 Chrome 및 Chromedriver 프로세스를 완전히 종료"""
     import subprocess
     import platform
-    
+
+    def kill_by_name(process_name):
+        try:
+            result = subprocess.run(["pgrep", "-f", process_name], capture_output=True, text=True)
+            pids = result.stdout.strip().split("\n")
+            for pid in pids:
+                if pid.isdigit():
+                    subprocess.run(["kill", "-9", pid], check=False)
+        except Exception as e:
+            print(f"⚠️ {process_name} 강제 종료 중 오류: {e}")
+
     try:
         if platform.system() == "Windows":
-            subprocess.run(["taskkill", "/f", "/im", "chrome.exe"], 
-                         capture_output=True, check=False)
-            subprocess.run(["taskkill", "/f", "/im", "chromedriver.exe"], 
-                         capture_output=True, check=False)
+            subprocess.run(["taskkill", "/f", "/im", "chrome.exe"], capture_output=True, check=False)
+            subprocess.run(["taskkill", "/f", "/im", "chromedriver.exe"], capture_output=True, check=False)
         else:
-            subprocess.run(["pkill", "-f", "chrome"], 
-                         capture_output=True, check=False)
-            subprocess.run(["pkill", "-f", "chromedriver"], 
-                         capture_output=True, check=False)
-        print("✅ 기존 Chrome 프로세스 정리 완료")
+            kill_by_name("chrome")
+            kill_by_name("chromedriver")
+
+        print("✅ 모든 Chrome 관련 프로세스 완전 종료 완료")
+
     except Exception as e:
         print(f"⚠️ Chrome 프로세스 정리 중 오류: {str(e)}")
+
 
 def create_driver():
     import tempfile
