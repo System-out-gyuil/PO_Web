@@ -1,6 +1,7 @@
 import os
 import tempfile
 import shutil
+import threading
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
@@ -114,13 +115,18 @@ def upload_blog_file(request):
                 'error': '파일 또는 텍스트를 입력해주세요.'
             })
         
-        # auto_blog_naver 함수 호출 시 타이핑 설정 전달
-        auto_blog_naver(file_contents, text_content, typo_probability, typing_speed, naver_id, naver_password)
+        # 백그라운드에서 auto_blog_naver 함수 실행
+        thread = threading.Thread(
+            target=auto_blog_naver_background,
+            args=(file_contents, text_content, typo_probability, typing_speed, naver_id, naver_password)
+        )
+        thread.daemon = True
+        thread.start()
         
         # 응답 데이터 구성
         response_data = {
             'success': True,
-            'message': '내용이 성공적으로 처리되었습니다.',
+            'message': '파일이 성공적으로 업로드되었습니다. 잠시 기다려 주시면 새 창에서 블로그 작성이 진행됩니다.',
             'file_count': len(file_contents),
             'file_infos': file_infos,
             'typing_settings': {
@@ -500,3 +506,13 @@ def auto_blog_naver(file_texts, user_input, typo_probability, typing_speed, nave
                 print("✅ 드라이버 정리 완료")
             except Exception as e:
                 print(f"❌ 드라이버 정리 실패: {str(e)}")
+
+def auto_blog_naver_background(file_texts, user_input, typo_probability, typing_speed, naver_id, naver_password):
+    """백그라운드에서 블로그 작성 실행"""
+    try:
+        print("🚀 백그라운드 블로그 작성 시작")
+        auto_blog_naver(file_texts, user_input, typo_probability, typing_speed, naver_id, naver_password)
+        print("✅ 백그라운드 블로그 작성 완료")
+    except Exception as e:
+        print(f"❌ 백그라운드 블로그 작성 실패: {str(e)}")
+        traceback.print_exc()
