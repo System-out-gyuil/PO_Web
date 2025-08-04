@@ -112,7 +112,20 @@ def upload_blog_file(request):
             })
         
         # auto_blog_naver 함수 호출 시 타이핑 설정 전달
-        auto_blog_naver(file_contents, text_content, typo_probability, typing_speed, naver_id, naver_password)
+        try:
+            auto_blog_naver_with_lock(file_contents, text_content, typo_probability, typing_speed, naver_id, naver_password)
+        except Exception as e:
+            error_message = str(e)
+            if "다른 Selenium 작업이 실행 중" in error_message:
+                return JsonResponse({
+                    'success': False,
+                    'error': '다른 사용자가 블로그 작업을 진행 중입니다. 잠시 후 다시 시도해주세요.'
+                })
+            else:
+                return JsonResponse({
+                    'success': False,
+                    'error': f'블로그 작업 중 오류가 발생했습니다: {error_message}'
+                })
         
         # 응답 데이터 구성
         response_data = {
@@ -519,6 +532,32 @@ def write_naver_blog(driver, user_id, title, content, typo_probability, typing_s
     except Exception:
         print("❌ iframe(mainFrame) 진입 또는 제목 입력 실패:")
         traceback.print_exc()
+
+def auto_blog_naver_with_lock(file_texts, user_input, typo_probability, typing_speed, naver_id, naver_password):
+    """FileLock을 사용하여 안전한 Selenium 작업 실행"""
+    from filelock import FileLock, Timeout
+    import time
+    
+    lock_path = "/tmp/selenium_auto_blog.lock"
+    lock = FileLock(lock_path, timeout=60)  # 최대 60초 기다림
+    
+    try:
+        with lock:
+            print("🔐 Lock 획득: Selenium 자동 블로그 작업 시작")
+            print(f"⏰ Lock 획득 시간: {time.strftime('%Y-%m-%d %H:%M:%S')}")
+            
+            # 기존 auto_blog_naver 함수 호출
+            auto_blog_naver(file_texts, user_input, typo_probability, typing_speed, naver_id, naver_password)
+            
+            print("✅ Selenium 자동 블로그 작업 완료")
+            
+    except Timeout:
+        print("⏱️ Lock 획득 실패: 다른 Selenium 작업이 실행 중입니다.")
+        print("💡 잠시 후 다시 시도해주세요.")
+        raise Exception("다른 Selenium 작업이 실행 중입니다. 잠시 후 다시 시도해주세요.")
+    except Exception as e:
+        print(f"❌ Selenium 작업 중 오류 발생: {str(e)}")
+        raise e
 
 def auto_blog_naver(file_texts, user_input, typo_probability, typing_speed, naver_id, naver_password):
     driver = None
