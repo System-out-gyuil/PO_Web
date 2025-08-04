@@ -31,13 +31,6 @@ def upload_blog_file(request):
     블로그 텍스트 파일 업로드 처리 - 파일 저장 없이 내용만 출력
     """
     try:
-        # 로컬 환경이 아니면 오류 반환
-        if not is_local_environment():
-            return JsonResponse({
-                'success': False,
-                'error': '서버 환경에서는 블로그 자동화가 지원되지 않습니다. 로컬 환경에서만 실행 가능합니다.'
-            })
-        
         file_contents = []
         text_content = ""
         file_infos = []
@@ -184,31 +177,59 @@ def create_driver():
     
     options = webdriver.ChromeOptions()
     options.add_argument(f"--user-data-dir={temp_dir}")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--disable-extensions")
-    options.add_argument("--disable-plugins")
-    options.add_argument("--disable-images")
-    options.add_argument("--disable-web-security")
-    options.add_argument("--disable-features=VizDisplayCompositor")
-    options.add_argument("--start-maximized")
-    options.add_argument("--remote-debugging-port=0")
-    options.add_argument("--no-first-run")
-    options.add_argument("--no-default-browser-check")
-    options.add_argument("--disable-background-timer-throttling")
-    options.add_argument("--disable-backgrounding-occluded-windows")
-    options.add_argument("--disable-renderer-backgrounding")
-    options.add_argument("--disable-field-trial-config")
-    options.add_argument("--disable-ipc-flooding-protection")
-    options.add_argument("--disable-blink-features=AutomationControlled")
-    options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    options.add_experimental_option('useAutomationExtension', False)
-    options.add_experimental_option("prefs", {
-        "profile.default_content_setting_values.notifications": 2,
-        "profile.default_content_settings.popups": 0,
-        "profile.managed_default_content_settings.images": 2
-    })
+    
+    # 서버 환경에서는 headless 모드 사용
+    if not is_local_environment():
+        options.add_argument("--headless")
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--window-size=1920,1080")
+        options.add_argument("--disable-web-security")
+        options.add_argument("--disable-features=VizDisplayCompositor")
+        options.add_argument("--remote-debugging-port=0")
+        options.add_argument("--no-first-run")
+        options.add_argument("--no-default-browser-check")
+        options.add_argument("--disable-background-timer-throttling")
+        options.add_argument("--disable-backgrounding-occluded-windows")
+        options.add_argument("--disable-renderer-backgrounding")
+        options.add_argument("--disable-field-trial-config")
+        options.add_argument("--disable-ipc-flooding-protection")
+        options.add_argument("--disable-blink-features=AutomationControlled")
+        options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        options.add_experimental_option('useAutomationExtension', False)
+        options.add_experimental_option("prefs", {
+            "profile.default_content_setting_values.notifications": 2,
+            "profile.default_content_settings.popups": 0,
+            "profile.managed_default_content_settings.images": 2
+        })
+    else:
+        # 로컬 환경에서는 일반 모드 사용
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--disable-extensions")
+        options.add_argument("--disable-plugins")
+        options.add_argument("--disable-images")
+        options.add_argument("--disable-web-security")
+        options.add_argument("--disable-features=VizDisplayCompositor")
+        options.add_argument("--start-maximized")
+        options.add_argument("--remote-debugging-port=0")
+        options.add_argument("--no-first-run")
+        options.add_argument("--no-default-browser-check")
+        options.add_argument("--disable-background-timer-throttling")
+        options.add_argument("--disable-backgrounding-occluded-windows")
+        options.add_argument("--disable-renderer-backgrounding")
+        options.add_argument("--disable-field-trial-config")
+        options.add_argument("--disable-ipc-flooding-protection")
+        options.add_argument("--disable-blink-features=AutomationControlled")
+        options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        options.add_experimental_option('useAutomationExtension', False)
+        options.add_experimental_option("prefs", {
+            "profile.default_content_setting_values.notifications": 2,
+            "profile.default_content_settings.popups": 0,
+            "profile.managed_default_content_settings.images": 2
+        })
 
     service = Service(executable_path=ChromeDriverManager().install())
 
@@ -528,14 +549,7 @@ def is_local_environment():
 def auto_blog_naver_background(file_texts, user_input, typo_probability, typing_speed, naver_id, naver_password):
     """백그라운드에서 블로그 작성 실행"""
     try:
-        print("🚀 백그라운드 블로그 작성 시작")
-        
-        # 로컬 환경이 아니면 오류 발생
-        if not is_local_environment():
-            print("❌ 서버 환경에서는 블로그 자동화가 지원되지 않습니다.")
-            print("❌ 로컬 환경에서만 실행 가능합니다.")
-            return
-            
+        print("�� 백그라운드 블로그 작성 시작")
         auto_blog_naver(file_texts, user_input, typo_probability, typing_speed, naver_id, naver_password)
         print("✅ 백그라운드 블로그 작성 완료")
     except Exception as e:
