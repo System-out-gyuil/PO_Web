@@ -2,6 +2,7 @@ import os
 import tempfile
 import shutil
 import threading
+import platform
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
@@ -30,6 +31,13 @@ def upload_blog_file(request):
     블로그 텍스트 파일 업로드 처리 - 파일 저장 없이 내용만 출력
     """
     try:
+        # 로컬 환경이 아니면 오류 반환
+        if not is_local_environment():
+            return JsonResponse({
+                'success': False,
+                'error': '서버 환경에서는 블로그 자동화가 지원되지 않습니다. 로컬 환경에서만 실행 가능합니다.'
+            })
+        
         file_contents = []
         text_content = ""
         file_infos = []
@@ -155,7 +163,7 @@ def upload_blog_file(request):
             'success': False,
             'error': f'처리 중 오류가 발생했습니다: {str(e)}'
         })
-    
+
 
 
 @require_http_methods(["GET"])
@@ -193,8 +201,14 @@ def create_driver():
     options.add_argument("--disable-renderer-backgrounding")
     options.add_argument("--disable-field-trial-config")
     options.add_argument("--disable-ipc-flooding-protection")
+    options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option('useAutomationExtension', False)
+    options.add_experimental_option("prefs", {
+        "profile.default_content_setting_values.notifications": 2,
+        "profile.default_content_settings.popups": 0,
+        "profile.managed_default_content_settings.images": 2
+    })
 
     service = Service(executable_path=ChromeDriverManager().install())
 
@@ -507,10 +521,21 @@ def auto_blog_naver(file_texts, user_input, typo_probability, typing_speed, nave
             except Exception as e:
                 print(f"❌ 드라이버 정리 실패: {str(e)}")
 
+def is_local_environment():
+    """로컬 환경인지 확인"""
+    return platform.system() == "Windows" or platform.system() == "Darwin"
+
 def auto_blog_naver_background(file_texts, user_input, typo_probability, typing_speed, naver_id, naver_password):
     """백그라운드에서 블로그 작성 실행"""
     try:
         print("🚀 백그라운드 블로그 작성 시작")
+        
+        # 로컬 환경이 아니면 오류 발생
+        if not is_local_environment():
+            print("❌ 서버 환경에서는 블로그 자동화가 지원되지 않습니다.")
+            print("❌ 로컬 환경에서만 실행 가능합니다.")
+            return
+            
         auto_blog_naver(file_texts, user_input, typo_probability, typing_speed, naver_id, naver_password)
         print("✅ 백그라운드 블로그 작성 완료")
     except Exception as e:
