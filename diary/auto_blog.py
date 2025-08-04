@@ -1,3 +1,6 @@
+import os
+import tempfile
+import shutil
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
@@ -162,17 +165,60 @@ def get_blog_files(request):
 
 # ✅ Selenium 설정
 def create_driver():
-
+    # 임시 디렉토리 생성
+    temp_dir = tempfile.mkdtemp(prefix="chrome_user_data_")
+    
     options = webdriver.ChromeOptions()
-    options.add_argument("user-data-dir=C:/Users/사용자명/AppData/Local/Google/Chrome/User Data")
-    options.add_argument("profile-directory=Default")  # 또는 "Profile 1" 등
+    options.add_argument(f"--user-data-dir={temp_dir}")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--disable-extensions")
+    options.add_argument("--disable-plugins")
+    options.add_argument("--disable-images")
+    options.add_argument("--disable-web-security")
+    options.add_argument("--disable-features=VizDisplayCompositor")
     options.add_argument("--start-maximized")
+    options.add_argument("--remote-debugging-port=0")
+    options.add_argument("--no-first-run")
+    options.add_argument("--no-default-browser-check")
+    options.add_argument("--disable-background-timer-throttling")
+    options.add_argument("--disable-backgrounding-occluded-windows")
+    options.add_argument("--disable-renderer-backgrounding")
+    options.add_argument("--disable-field-trial-config")
+    options.add_argument("--disable-ipc-flooding-protection")
+    options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    options.add_experimental_option('useAutomationExtension', False)
 
     service = Service(executable_path=ChromeDriverManager().install())
 
-    driver = webdriver.Chrome(service=service, options=options)
+    try:
+        driver = webdriver.Chrome(service=service, options=options)
+        # 드라이버 종료 시 임시 디렉토리 정리 함수 등록
+        driver._temp_dir = temp_dir
+        return driver
+    except Exception as e:
+        # 오류 발생 시 임시 디렉토리 정리
+        try:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+        except:
+            pass
+        raise e
 
-    return driver
+def cleanup_driver(driver):
+    """드라이버 종료 시 임시 디렉토리 정리"""
+    try:
+        if hasattr(driver, '_temp_dir') and driver._temp_dir:
+            driver.quit()
+            shutil.rmtree(driver._temp_dir, ignore_errors=True)
+        else:
+            driver.quit()
+    except Exception as e:
+        print(f"드라이버 정리 중 오류: {e}")
+        try:
+            driver.quit()
+        except:
+            pass
 
 def slow_type_with_actionchains(driver, element, text, min_delay=0.05, max_delay=0.1):
     actions = ActionChains(driver)
@@ -421,22 +467,36 @@ def write_naver_blog(driver, user_id, title, content, typo_probability, typing_s
         traceback.print_exc()
 
 def auto_blog_naver(file_texts, user_input, typo_probability, typing_speed, naver_id, naver_password):
-    driver = create_driver()
-    naver_login(driver, naver_id, naver_password)
+    driver = None
+    try:
+        driver = create_driver()
+        naver_login(driver, naver_id, naver_password)
 
-    for file_text in file_texts:
-        try:
-            # 🔁 매 반복마다 작성 페이지 재진입
-            driver, user_id = naver_blog(driver)
+        for file_text in file_texts:
+            try:
+                # 🔁 매 반복마다 작성 페이지 재진입
+                driver, user_id = naver_blog(driver)
 
-            lines = file_text.strip().split("\n")
-            title = lines[0]
-            body = "\n".join(lines[1:])
+                lines = file_text.strip().split("\n")
+                title = lines[0]
+                body = "\n".join(lines[1:])
 
-            driver = write_naver_blog(driver, user_id, title, body, typo_probability, typing_speed)
+                driver = write_naver_blog(driver, user_id, title, body, typo_probability, typing_speed)
 
-            print("✅ 게시 완료")
+                print("✅ 게시 완료")
 
-        except Exception:
-            print(f"❌ 파일 처리 실패")
-            traceback.print_exc()
+            except Exception as e:
+                print(f"❌ 파일 처리 실패: {str(e)}")
+                traceback.print_exc()
+                continue  # 다음 파일로 계속 진행
+    except Exception as e:
+        print(f"❌ 전체 프로세스 실패: {str(e)}")
+        traceback.print_exc()
+    finally:
+        # 드라이버 정리
+        if driver:
+            try:
+                cleanup_driver(driver)
+                print("✅ 드라이버 정리 완료")
+            except Exception as e:
+                print(f"❌ 드라이버 정리 실패: {str(e)}")

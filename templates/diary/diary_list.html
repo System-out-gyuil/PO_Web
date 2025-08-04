@@ -5,7 +5,6 @@
 <head>
     <meta charset="UTF-8">
     <title>영업 관리표</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
     <link rel="stylesheet" href="{% static 'diary/diary_styles.css' %}">
@@ -144,10 +143,7 @@
 <!-- 헤더 -->
 <header class="main-header">
     <div class="header-container">
-        {% comment %} <div class="header-left">
-            <h1 class="header-title">영업 관리표</h1>
-        </div> {% endcomment %}
-        <div class="flex items-center" onclick="window.location.href='/sales/'" style="cursor: pointer;">
+        <div class="flex items-center header-logo-container" onclick="window.location.href='/sales/'">
             <h1 class="text-2xl font-bold text-blue-600 header-title">💎 자금왕</h1>
             <span class="ml-3 text-sm text-gray-500 header-sub-title">정책자금 전용 CRM</span>
         </div>
@@ -156,11 +152,11 @@
             <div class="notification-container">
                 <button class="w-10 h-10 bg-yellow-400 hover:bg-yellow-500 text-gray-900 rounded-lg transition flex items-center justify-center relative alarm-btn" id="notificationBtn" type="button">
                     <i class="fas fa-bell text-lg"></i>
-                    <span class="notification-badge absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold border-2 border-white" id="notificationBadge" style="display: none;">0</span>
+                    <span class="notification-badge absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold border-2 border-white notification-badge-hidden" id="notificationBadge">0</span>
                 </button>
                 
                 <!-- 알림 패널 -->
-                <div class="notification-panel absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg z-50 border border-gray-200" id="notificationPanel" style="display: none;">
+                <div class="notification-panel absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg z-50 border border-gray-200 notification-panel-hidden" id="notificationPanel">
                     <div class="notification-header">
                         <h3>알림</h3>
                         <button class="close-notification-btn" onclick="toggleNotificationPanel()">×</button>
@@ -197,55 +193,53 @@
 
 <section class="main-section">
     <div class="main-section-container">
-        <div class="main-section-item1"></div>
-        <div class="main-section-item2"></div>
-        <div class="main-section-item3"></div>
+        <div class="main-section-item1 main-section-item"></div>
+        <div class="main-section-item2 main-section-item"></div>
+        <div class="main-section-item3 main-section-item"></div>
     </div>
 </section>
 
 <div class="container">
     <!-- 필터 컨트롤 -->
     <div class="filter-controls">
-        <div style="display: flex; gap: 10px; align-items: center;">
+        <div class="filter-controls-container">
             <span class="filter-status" id="filterStatus">전체 데이터 표시 중</span>
-            <button class="attribute-visibility-btn" onclick="openAttributeVisibilityModal()" 
-            style="padding: 8px 12px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+            <button class="attribute-visibility-btn" onclick="openAttributeVisibilityModal()">
             속성 관리
             </button>
             <button class="clear-filters-btn" onclick="clearAllFilters()">필터 초기화</button>
-            <button id="bulkDeleteBtn" class="bulk-delete-btn" onclick="bulkDeleteRows()" 
-                    style="padding: 8px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; display: none;">
+            <button id="bulkDeleteBtn" class="bulk-delete-btn" onclick="bulkDeleteRows()">
                 🗑️ 선택된 행 삭제 (<span id="selectedCount">0</span>)
             </button>
         </div>
-        <div>블로그 자동쓰기</div>
+        <div class="blog-auto-write-btn">블로그 자동쓰기</div>
     </div>
 
     <!-- 상태 탭 -->
-    <div id="statusTabs" style="margin-bottom: 20px;">
-        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-            <span style="font-weight: bold; color: #495057;">상태별 필터:</span>
-            <div id="tabContainer" style="display: flex; gap: 5px; flex-wrap: wrap;"></div>
+    <div id="statusTabs" class="status-tabs-container">
+        <div class="status-tabs-header">
+            <span class="status-tabs-title">상태별 필터:</span>
+            <div id="tabContainer" class="tab-container"></div>
         </div>
     </div>
     
-    <div id="tableView" style="overflow-x:auto; max-width:100%;">
-        <table id="entryTable" style="width:auto; min-width:unset;">
+    <div id="tableView" class="table-view-container">
+        <table id="entryTable" class="entry-table-container">
             <thead class="sticky">
             <tr>
                 <th class="drag-cell">
                     <div class="select-all-container">
-                        <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this)" style="margin-right: 8px;">
-                        <label for="selectAllCheckbox" style="font-size:12px; color: #666;">전체</label>
+                        <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this)" class="select-all-checkbox">
+                        <label for="selectAllCheckbox" class="select-all-label">전체</label>
                     </div>
                 </th>
                 {% for attr in attributes %}
                     {% if forloop.last and attr.assential %}
-                        <th data-column="{{ attr.name }}" class="attribute-header essential-separator" data-essential="{{ attr.assential|yesno:'true,false' }}" style="width: {{ attr.width }}px; min-width: {{ attr.width }}px; max-width: {{ attr.width }}px;">
+                        <th data-column="{{ attr.name }}" class="attribute-header essential-separator attribute-header-width" data-essential="{{ attr.assential|yesno:'true,false' }}" style="--attr-width: {{ attr.width }}px;">
                     {% elif forloop.first and not attr.assential %}
-                        <th data-column="{{ attr.name }}" class="attribute-header non-essential-start" data-essential="{{ attr.assential|yesno:'true,false' }}" style="width: {{ attr.width }}px; min-width: {{ attr.width }}px; max-width: {{ attr.width }}px;">
+                        <th data-column="{{ attr.name }}" class="attribute-header non-essential-start attribute-header-width" data-essential="{{ attr.assential|yesno:'true,false' }}" style="--attr-width: {{ attr.width }}px;">
                     {% else %}
-                        <th data-column="{{ attr.name }}" class="attribute-header" data-essential="{{ attr.assential|yesno:'true,false' }}" style="width: {{ attr.width }}px; min-width: {{ attr.width }}px; max-width: {{ attr.width }}px;">
+                        <th data-column="{{ attr.name }}" class="attribute-header attribute-header-width" data-essential="{{ attr.assential|yesno:'true,false' }}" style="--attr-width: {{ attr.width }}px;">
                     {% endif %}
                         <div class="sort-filter-container">
                             <div class="header-content">
@@ -273,7 +267,7 @@
                         </div>
                     </th>
                 {% endfor %}
-                <th class="add-attribute-th" style="background:#f8f9fa;border:2px dashed #dee2e6;cursor:pointer;text-align:center;color:#6c757d;font-weight:normal;min-width:120px;" onclick="openAddAttributeModal()">
+                <th class="add-attribute-th add-attribute-header" onclick="openAddAttributeModal()">
                     + 속성 추가
                 </th>
                 {% comment %} <th style="background:#f8f9fa;border:2px solid #dee2e6;text-align:center;color:#6c757d;font-weight:normal;min-width:120px;">
@@ -289,7 +283,7 @@
                 <tr data-id="{{ row.id }}">
                     <td class="drag-cell">
                         <div class="cell-button-container">
-                            <input type="checkbox" class="row-checkbox" data-row-id="{{ row.id }}" onchange="updateBulkDeleteButton()" style="margin-right: 8px;">
+                            <input type="checkbox" class="row-checkbox" data-row-id="{{ row.id }}" onchange="updateBulkDeleteButton()" class="row-checkbox-margin">
                             <button class="delete-row-btn action-btn">×</button>
                             <button class="duplicate-row-btn action-btn">📋</button>
                             <span class="drag-handle">⋮⋮⋮</span>
@@ -300,7 +294,7 @@
                             <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" class="{% if attr.assential %}essential-column{% endif %}">
                                 <div class="name-container">
                                     <div class="name-text">{{ row.values|get_item:attr.name|get_item:'label' }}</div>
-                                    <div class="more-btn-wrapper"><div class="more-btn" style="cursor:pointer;">⋯</div></div>
+                                    <div class="more-btn-wrapper"><div class="more-btn more-btn-cursor">⋯</div></div>
                                 </div>
                             </td>
                         {% elif attr.attributeType_name == 'dropdown' %}
@@ -308,18 +302,18 @@
                             <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" class="{% if attr.assential %}essential-column{% endif %}" data-value="{{ dropdown_value.raw_value|default:'' }}">
                                 {% if dropdown_value.selected_options and dropdown_value.selected_options|length > 0 %}
                                     {% with option=dropdown_value.selected_options.0 %}
-                                        <div class="dropdown-pill" style="background:{{ option.color|default:''|to_rgba:'0.18' }}; color:#333; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">{{ option.label }}</div>
+                                        <div class="dropdown-pill dropdown-pill-colored" style="--option-color: {{ option.color|default:''|to_rgba:'0.18' }};">{{ option.label }}</div>
                                     {% endwith %}
                                 {% elif dropdown_value.label %}
-                                    <div class="dropdown-pill" style="background:{{ dropdown_value.color|default:''|to_rgba:'0.18' }}; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">
+                                    <div class="dropdown-pill dropdown-pill-colored" style="--option-color: {{ dropdown_value.color|default:''|to_rgba:'0.18' }};">
                                         {{ dropdown_value.label }}
                                     </div>
                                 {% elif dropdown_value.raw_value %}
-                                    <div class="dropdown-pill" style="background:#f8f9fa; color:#6c757d; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center; border:1px solid #dee2e6;">
+                                    <div class="dropdown-pill dropdown-pill-default">
                                         {{ dropdown_value.raw_value }}
                                     </div>
                                 {% else %}
-                                    <div class="dropdown-pill" style="background:#eee; color:#333; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center; border:1px solid #dee2e6;">
+                                    <div class="dropdown-pill dropdown-pill-empty">
                                         선택 없음
                                     </div>
                                 {% endif %}
@@ -332,9 +326,9 @@
                         {% elif attr.attributeType_name == 'file' %}
                             <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" class="{% if attr.assential %}essential-column{% endif %}">
                                 {% if row.values|get_item:attr.name|get_item:'label' %}
-                                    <span style="color: #007bff; font-size: 12px;">📎 {{ row.values|get_item:attr.name|get_item:'label' }}</span>
+                                    <span class="file-link">📎 {{ row.values|get_item:attr.name|get_item:'label' }}</span>
                                 {% else %}
-                                    <span style="color: #6c757d; font-size: 12px;">파일 없음</span>
+                                    <span class="file-empty">파일 없음</span>
                                 {% endif %}
                             </td>
                         {% elif attr.name == '기대출' %}
@@ -357,7 +351,7 @@
                                 {% endif %}
                             </td>
                         {% elif attr.name == '메모' %}
-                            <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" class="{% if attr.assential %}essential-column{% endif %}" style="text-align:left;">
+                            <td data-field="{{ attr.name }}" data-type="{{ attr.attributeType_name }}" class="{% if attr.assential %}essential-column{% endif %} memo-field">
                                 {{ row.values|get_item:attr.name|get_item:'label' }}
                             </td>
                         {% else %}
@@ -370,11 +364,11 @@
                             </td>
                         {% endif %}
                     {% endfor %}
-                    <td class="add-attribute-cell" style="background:#f8f9fa;"></td>
+                    <td class="add-attribute-cell"></td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="{{ attributes|length|add:2 }}" style="text-align: center; padding: 40px; color: #6c757d; font-size: 14px; background: #f8f9fa;">
+                    <td colspan="{{ attributes|length|add:2 }}" class="empty-data-cell">
                         작성된 데이터가 없습니다.
                     </td>
                 </tr>
@@ -382,20 +376,20 @@
             </tbody>
         </table>
     </div>
-    <div style="margin:10px 0 20px 0;">
-        <div style="display: flex; gap: 10px; align-items: center;">
-            <button id="addRowBtn" class="add-btn" style="width:180px;" onclick="addNewRow()">+ 새로 만들기</button>
-            <button id="addExcelBtn" class="add-btn" style="width:180px; background: #28a745;">📊 엑셀 추가</button>
+    <div class="button-container-margin">
+        <div class="button-container-flex">
+            <button id="addRowBtn" class="add-btn add-row-btn" onclick="addNewRow()">+ 새로 만들기</button>
+            <button id="addExcelBtn" class="add-btn add-excel-btn" onclick="addNewRow()">📊 엑셀 추가</button>
         </div>
     </div>
 
     <hr>
     
     <!-- 칸반보드 필터 UI -->
-    <div id="kanbanFilterSection" style="margin: 20px 0 0; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef; display: none;">
-        <div style="display: flex; align-items: center; gap: 15px; flex-direction: column;">
+    <div id="kanbanFilterSection" class="kanban-filter-section">
+        <div class="kanban-filter-container">
             
-            <div id="kanbanLoadingIndicator" style="display: none; color: #6c757d; font-size: 14px;">
+            <div id="kanbanLoadingIndicator" class="kanban-loading-indicator">
                 <span>로딩 중...</span>
             </div>
         </div>
@@ -404,8 +398,8 @@
     <div id="boardView">
         <div class="board-container">
             {% for col in board %}
-            <div class="board-col" data-status-id="{{ col.status.id }}" data-attr-name="{{ selected_kanban_attr }}" style="background:{% if col.status.color %}{{ col.status.color|to_rgba:'0.10' }}{% endif %};">
-                <div class="board-col-title" style="background:{% if col.status.color %}{{ col.status.color|to_rgba:'0.18' }}{% endif %};border-left:6px solid {{ col.status.color|default:'#007bff' }};padding-left:10px;">{{ col.status.name }}</div>
+            <div class="board-col board-col-colored" data-status-id="{{ col.status.id }}" data-attr-name="{{ selected_kanban_attr }}" style="--status-color: {% if col.status.color %}{{ col.status.color|to_rgba:'0.10' }}{% endif %};">
+                <div class="board-col-title board-col-title-colored" style="--status-color-light: {% if col.status.color %}{{ col.status.color|to_rgba:'0.18' }}{% endif %}; --status-color-default: {{ col.status.color|default:'#007bff' }};">{{ col.status.name }}</div>
                 <div class="board-cards">
                     {% for entry in col.entries %}
                     <div class="board-card" data-entry-id="{{ entry.id }}">
@@ -414,21 +408,20 @@
                     </div>
                     {% endfor %}
                 </div>
-                <button class="add-card-btn" style="display:none;"></button>
+                <button class="add-card-btn add-card-btn-hidden"></button>
             </div>
             {% endfor %}
         </div>
     </div>
-    <div style="display: flex; flex-direction: row; width: 100%; align-items: center; justify-content: flex-end; margin-bottom: 10px;">
-        <button id="kanbanSettingsBtn" onclick="showKanbanSettingsModal()" style="padding:8px 16px;background:#007bff;color:white;border:none;border-radius:4px;cursor:pointer;font-size:14px;">⚙️ 칸반보드 설정</button>
+    <div class="calendar-settings-container">
+        <button id="kanbanSettingsBtn" onclick="showKanbanSettingsModal()" class="kanban-settings-btn">⚙️ 칸반보드 설정</button>
     </div>
     <hr>
     
-    <div style="margin-top:40px;">
+    <div class="calendar-section">
         <div id="calendar"></div>
-        <div style="display:flex;justify-content:flex-end;align-items:center;margin-bottom:10px;margin-top:10px;">
-            <button onclick="showCalendarSettingsModal()" 
-                    style="padding:8px 16px;background:#007bff;color:white;border:none;border-radius:4px;cursor:pointer;font-size:14px;">
+        <div class="calendar-settings-container">
+            <button onclick="showCalendarSettingsModal()" class="calendar-settings-btn">
                 ⚙️ 캘린더 설정
             </button>
         </div>
@@ -436,79 +429,72 @@
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
     <!-- 모달창 -->
-    <div id="memoModal" style="display:none;position:fixed;left:0;top:0;width:100vw;height:100vh;background:rgba(0,0,0,0.4);z-index:1000;align-items:center;justify-content:center;">
-      <div style="background:#fff;padding:24px 20px 16px 20px;border-radius:8px;min-width:350px;max-width:90vw;min-height:200px;max-height:80vh;overflow:auto;position:relative;">
+    <div id="memoModal" class="memo-modal">
+      <div class="memo-modal-content">
         <h3 id="modalTitle">F/U 메모</h3>
-        <textarea id="memoInput" style="width:100%;height:120px;"></textarea>
-        <div style="margin:10px 0;">
+        <textarea id="memoInput" class="memo-input"></textarea>
+        <div class="memo-preview-container">
           <b>미리보기:</b>
-          <div id="memoPreview" style="border:1px solid #eee;padding:8px 10px;background:#fafbfc;min-height:40px;"></div>
+          <div id="memoPreview" class="memo-preview"></div>
         </div>
-        <button id="saveMemoBtn" style="background:#007bff;color:#fff;border:none;padding:7px 15px;border-radius:5px;">저장</button>
-        <button id="closeMemoBtn" style="margin-left:8px;">닫기</button>
+        <button id="saveMemoBtn" class="save-memo-btn">저장</button>
+        <button id="closeMemoBtn" class="close-memo-btn">닫기</button>
       </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
-    <div id="detailModal" style="display:none;position:fixed;left:0;top:0;width:100vw;height:100vh;z-index:999;background:rgba(0,0,0,0.3);align-items:center;justify-content:center;">
-      <div style="background:#fff;width:90vw;height:90vh;border-radius:10px;position:relative;display:flex;">
+    <div id="detailModal" class="detail-modal">
+      <div class="detail-modal-content">
         <!-- 닫기 버튼 -->
-        <button onclick="closeDetailModal()" style="position:absolute;top:10px;right:15px;background:none;border:none;font-size:20px;cursor:pointer;z-index:10;">&times;</button>
+        <button onclick="closeDetailModal()" class="detail-modal-close">&times;</button>
         
         <!-- 좌측: 기존 상세 정보 -->
-        <div id="detailModalContent" style="flex:1;padding:30px;overflow:auto;border-right:1px solid #eee;">
+        <div id="detailModalContent" class="detail-modal-left">
           <!-- 여기에 기존 상세 정보가 들어감 -->
         </div>
         
         <!-- 우측: 음성파일 업로드 및 텍스트 영역 -->
-        <div style="flex:1;padding:30px;overflow:auto;display:flex;flex-direction:column;gap:20px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div class="detail-modal-right">
+          <div class="detail-modal-header">
             <h3>영업노트</h3>
             <div>
-                <button onclick="openAIChatModalFromDetail()" 
-                        style="padding: 8px 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; margin-right: 8px;">
+                <button onclick="openAIChatModalFromDetail()" class="ai-chat-btn">
                 🤖 AI 대화하기
                 </button>
-                {% comment %} <button onclick="addTextArea()" 
-                        style="padding: 8px 12px; background:rgb(168, 194, 174); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                {% comment %} <button onclick="addTextArea()" class="add-text-btn">
                 + 텍스트 추가
                 </button>
-                <button onclick="showNewAudioUpload()" 
-                        style="padding: 8px 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                <button onclick="showNewAudioUpload()" class="add-file-btn">
                 + 파일 추가
                 </button> {% endcomment %}
             </div>
           </div>
           
           <!-- 음성파일 목록 영역 (드래그 앤 드롭 지원) -->
-          <div id="audioFilesList" style="border:1px solid #ddd;border-radius:8px;background:#fff;padding:20px;">
-            <div id="noAudioFilesMessage" style="text-align:center;color:#666;padding:40px;">
+          <div id="audioFilesList" class="audio-files-list">
+            <div id="noAudioFilesMessage" class="no-audio-files-message">
               아직 업로드된 음성파일이 없습니다.
             </div>
             <!-- New text input area -->
-            <div class="draggable-text-area" style="margin-top: 10px; padding: 10px; border: 1px solid #ccc; border-radius: 4px; cursor: move;">
-                <textarea placeholder="텍스트 입력..." style="width: 100%; height: 50px;"></textarea>
+            <div class="draggable-text-area">
+                <textarea placeholder="텍스트 입력..." class="draggable-text-input"></textarea>
             </div>
           </div>
           
           <!-- 새 음성파일 업로드 영역 -->
-          <div id="newAudioFileArea" style="display: none;">
-            <input type="file" id="audioFileInput" accept="audio/*" style="display:none;" onchange="handleAudioFileUpload(this)">
+          <div id="newAudioFileArea" class="new-audio-file-area">
+            <input type="file" id="audioFileInput" accept="audio/*" class="audio-file-input" onchange="handleAudioFileUpload(this)">
           </div>
           
           <!-- 선택된 음성파일의 텍스트 표시 및 편집 영역 -->
-          <div id="selectedAudioTextArea" style="flex:1;display:flex;flex-direction:column;display:none;">
-            <h4 style="margin-bottom:10px;">변환된 텍스트 <span id="selectedAudioFileName" style="color:#666;font-size:12px;"></span></h4>
-            <textarea id="convertedText" 
-                      style="flex:1;min-height:300px;padding:15px;border:1px solid #ddd;border-radius:6px;font-size:14px;line-height:1.6;resize:none;" 
-                      placeholder="음성파일을 선택하면 변환된 텍스트가 여기에 표시됩니다."></textarea>
-            <div style="margin-top:10px;display:flex;gap:10px;">
-              <button type="button" onclick="saveConvertedText()" 
-                      style="padding:10px 20px;background:#28a745;color:white;border:none;border-radius:6px;cursor:pointer;">
+          <div id="selectedAudioTextArea" class="selected-audio-text-area">
+            <h4 class="selected-audio-title">변환된 텍스트 <span id="selectedAudioFileName" class="selected-audio-filename"></span></h4>
+            <textarea id="convertedText" class="converted-text-area" placeholder="음성파일을 선택하면 변환된 텍스트가 여기에 표시됩니다."></textarea>
+            <div class="audio-text-buttons">
+              <button type="button" onclick="saveConvertedText()" class="save-text-btn">
                 텍스트 저장
               </button>
-              <button type="button" onclick="deleteSelectedAudioFile()" 
-                      style="padding:10px 20px;background:#dc3545;color:white;border:none;border-radius:6px;cursor:pointer;">
+              <button type="button" onclick="deleteSelectedAudioFile()" class="delete-audio-btn">
                 파일 삭제
               </button>
             </div>
@@ -518,106 +504,106 @@
     </div>
     
     <!-- 속성 추가 모달 -->
-    <div id="addAttributeModal" style="display:none;position:fixed;left:0;top:0;width:100vw;height:100vh;background:rgba(0,0,0,0.4);z-index:2000;align-items:center;justify-content:center;">
-      <div style="background:#fff;padding:30px;border-radius:10px;min-width:400px;max-width:90vw;">
-        <h3 style="margin:0 0 20px 0;">새 속성 추가</h3>
-        <div style="margin-bottom:15px;">
-          <label style="display:block;margin-bottom:5px;font-weight:bold;">속성명:</label>
-          <input type="text" id="attributeName" placeholder="속성명을 입력하세요" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;">
+    <div id="addAttributeModal" class="add-attribute-modal">
+      <div class="add-attribute-modal-content">
+        <h3 class="add-attribute-title">새 속성 추가</h3>
+        <div class="add-attribute-field">
+          <label class="add-attribute-label">속성명:</label>
+          <input type="text" id="attributeName" placeholder="속성명을 입력하세요" class="add-attribute-input">
         </div>
-        <div style="margin-bottom:20px;">
-          <label style="display:block;margin-bottom:5px;font-weight:bold;">속성 타입:</label>
-          <select id="attributeType" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;">
+        <div class="add-attribute-field">
+          <label class="add-attribute-label">속성 타입:</label>
+          <select id="attributeType" class="add-attribute-select">
             <option value="text">텍스트</option>
             <option value="dropdown">드롭다운</option>
             <option value="datetime">날짜</option>
             {% comment %} <option value="file">파일</option> {% endcomment %}
           </select>
         </div>
-        <div style="text-align:right;">
-          <button onclick="closeAddAttributeModal()" style="margin-right:10px;padding:8px 16px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer;">취소</button>
-          <button onclick="saveNewAttribute()" style="padding:8px 16px;background:#007bff;color:#fff;border:none;border-radius:4px;cursor:pointer;">추가</button>
+        <div class="add-attribute-buttons">
+          <button onclick="closeAddAttributeModal()" class="cancel-attribute-btn">취소</button>
+          <button onclick="saveNewAttribute()" class="save-attribute-btn">추가</button>
         </div>
       </div>
     </div>
 
     <!-- 기대출 상세 모달 -->
-    <div id="debtModal" style="display:none;position:fixed;left:0;top:0;width:100vw;height:100vh;background:rgba(0,0,0,0.4);z-index:3000;align-items:center;justify-content:center;">
-      <div style="background:#fff;padding:30px;border-radius:10px;min-width:600px;max-width:90vw;max-height:80vh;overflow:auto;">
-        <h3 style="margin:0 0 20px 0;">기대출 상세 정보</h3>
+    <div id="debtModal" class="debt-modal">
+      <div class="debt-modal-content">
+        <h3 class="debt-modal-title">기대출 상세 정보</h3>
         <div id="debtFormContainer">
           <!-- 첫 번째 줄 (4개) -->
-          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 15px;">
-              <div style="text-align: center;">
-                  <label style="display: block; font-size: 12px; font-weight: bold; color: #495057; margin-bottom: 5px;">기술보증</label>
-                  <div style="display: flex; align-items: center; justify-content: center; gap: 5px;">
+          <div class="debt-form-container">
+              <div class="debt-category-item">
+                  <label class="debt-category-label">기술보증</label>
+                  <div class="debt-category-input-container">
                       <input type="text" 
                              id="debt_tech_guarantee_modal" 
                              placeholder="0"
-                             style="width: 70px; height: 28px; padding: 4px 6px; border: 1px solid #ced4da; border-radius: 3px; font-size: 12px; text-align: center;">
-                      <span style="font-size: 11px; color: #6c757d;">만원</span>
+                             class="debt-category-input">
+                      <span class="debt-category-unit">만원</span>
                   </div>
               </div>
-              <div style="text-align: center;">
-                  <label style="display: block; font-size: 12px; font-weight: bold; color: #495057; margin-bottom: 5px;">신용보증</label>
-                  <div style="display: flex; align-items: center; justify-content: center; gap: 5px;">
+              <div class="debt-category-item">
+                  <label class="debt-category-label">신용보증</label>
+                  <div class="debt-category-input-container">
                       <input type="text" 
                              id="debt_credit_guarantee_modal" 
                              placeholder="0">
                     </div>
               </div>
 
-                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-bottom:20px;">
+                <div class="debt-form-container">
                 <div class="debt-category">
-                    <label style="display:block;margin-bottom:10px;font-weight:bold;text-align:center;">기술보증기금</label>
-                    <input type="text" id="debt_tech_guarantee" placeholder="금액 입력" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;text-align:center;">
-                    <div style="text-align:center;margin-top:5px;color:#6c757d;font-size:14px;">만원</div>
+                    <label class="debt-category-full">기술보증기금</label>
+                    <input type="text" id="debt_tech_guarantee" placeholder="금액 입력" class="debt-category-input-full">
+                    <div class="debt-category-unit-full">만원</div>
                 </div>
                 <div class="debt-category">
-                    <label style="display:block;margin-bottom:10px;font-weight:bold;text-align:center;">신용보증기금</label>
-                    <input type="text" id="debt_credit_guarantee" placeholder="금액 입력" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;text-align:center;">
-                    <div style="text-align:center;margin-top:5px;color:#6c757d;font-size:14px;">만원</div>
+                    <label class="debt-category-full">신용보증기금</label>
+                    <input type="text" id="debt_credit_guarantee" placeholder="금액 입력" class="debt-category-input-full">
+                    <div class="debt-category-unit-full">만원</div>
                 </div>
                 <div class="debt-category">
-                    <label style="display:block;margin-bottom:10px;font-weight:bold;text-align:center;">신용보증재단</label>
-                    <input type="text" id="debt_credit_foundation" placeholder="금액 입력" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;text-align:center;">
-                    <div style="text-align:center;margin-top:5px;color:#6c757d;font-size:14px;">만원</div>
+                    <label class="debt-category-full">신용보증재단</label>
+                    <input type="text" id="debt_credit_foundation" placeholder="금액 입력" class="debt-category-input-full">
+                    <div class="debt-category-unit-full">만원</div>
                 </div>
                 <div class="debt-category">
-                    <label style="display:block;margin-bottom:10px;font-weight:bold;text-align:center;">중진공</label>
-                    <input type="text" id="debt_smba" placeholder="금액 입력" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;text-align:center;">
-                    <div style="text-align:center;margin-top:5px;color:#6c757d;font-size:14px;">만원</div>
+                    <label class="debt-category-full">중진공</label>
+                    <input type="text" id="debt_smba" placeholder="금액 입력" class="debt-category-input-full">
+                    <div class="debt-category-unit-full">만원</div>
                 </div>
                 </div>
             </div>
           
           <!-- 두 번째 줄 (4개) -->
-          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-bottom:20px;">
+          <div class="debt-form-container">
             <div class="debt-category">
-              <label style="display:block;margin-bottom:10px;font-weight:bold;text-align:center;">소진공-혁신성장</label>
-              <input type="text" id="debt_semas_innovation" placeholder="금액 입력" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;text-align:center;">
-              <div style="text-align:center;margin-top:5px;color:#6c757d;font-size:14px;">만원</div>
+              <label class="debt-category-full">소진공-혁신성장</label>
+              <input type="text" id="debt_semas_innovation" placeholder="금액 입력" class="debt-category-input-full">
+              <div class="debt-category-unit-full">만원</div>
             </div>
             <div class="debt-category">
-              <label style="display:block;margin-bottom:10px;font-weight:bold;text-align:center;">소진공-저신용</label>
-              <input type="text" id="debt_semas_lowcredit" placeholder="금액 입력" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;text-align:center;">
-              <div style="text-align:center;margin-top:5px;color:#6c757d;font-size:14px;">만원</div>
+              <label class="debt-category-full">소진공-저신용</label>
+              <input type="text" id="debt_semas_lowcredit" placeholder="금액 입력" class="debt-category-input-full">
+              <div class="debt-category-unit-full">만원</div>
             </div>
             <div class="debt-category">
-              <label style="display:block;margin-bottom:10px;font-weight:bold;text-align:center;">담보</label>
-              <input type="text" id="debt_collateral" placeholder="금액 입력" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;text-align:center;">
-              <div style="text-align:center;margin-top:5px;color:#6c757d;font-size:14px;">만원</div>
+              <label class="debt-category-full">담보</label>
+              <input type="text" id="debt_collateral" placeholder="금액 입력" class="debt-category-input-full">
+              <div class="debt-category-unit-full">만원</div>
             </div>
             <div class="debt-category">
-              <label style="display:block;margin-bottom:10px;font-weight:bold;text-align:center;">신용</label>
-              <input type="text" id="debt_credit" placeholder="금액 입력" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;text-align:center;">
-              <div style="text-align:center;margin-top:5px;color:#6c757d;font-size:14px;">만원</div>
+              <label class="debt-category-full">신용</label>
+              <input type="text" id="debt_credit" placeholder="금액 입력" class="debt-category-input-full">
+              <div class="debt-category-unit-full">만원</div>
             </div>
           </div>
         </div>
-        <div style="text-align:right;margin-top:30px;">
-          <button onclick="closeDebtModal()" style="margin-right:10px;padding:8px 16px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer;">취소</button>
-          <button onclick="saveDebtDetails()" style="padding:8px 16px;background:#007bff;color:#fff;border:none;border-radius:4px;cursor:pointer;">저장</button>
+        <div class="debt-modal-buttons">
+          <button onclick="closeDebtModal()" class="cancel-debt-btn">취소</button>
+          <button onclick="saveDebtDetails()" class="save-debt-btn">저장</button>
         </div>
       </div>
     </div>
@@ -3480,6 +3466,13 @@ function setupDropdownUpdateListeners() {
     
     console.log('드롭다운 업데이트 리스너 설정 완료');
 }
+
+{% comment %} if (window.innerWidth < 1000) {
+    document.querySelector('.row-checkbox').style.opacity = '1';
+    document.querySelector('.delete-row').style.opacity = '1';
+    document.querySelector('.duplicate-row').style.opacity = '1';
+    document.querySelector('.drag-handle').style.opacity = '1';
+} {% endcomment %}
 
 // 드롭다운 옵션 변경 처리 함수
 {% comment %} function handleDropdownOptionChange(event) {

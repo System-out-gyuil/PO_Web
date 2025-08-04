@@ -117,7 +117,7 @@ function showDetailModal(rowData, rowId) {
                                            id="debt_${category.key}_${rowId}" 
                                            value="${displayValue}" 
                                            placeholder="0"
-                                           style="width: 90px; height: 28px; padding: 4px 6px; border: 1px solid #ced4da; border-radius: 3px; font-size: 12px; text-align: center;"
+                                           style="width: 67px; height: 28px; padding: 4px 6px; border: 1px solid #ced4da; border-radius: 3px; font-size: 12px; text-align: center;"
                                            oninput="formatDebtInputRealtime(this, '${rowId}', '${category.key}')"
                                            onblur="updateDebtField('${rowId}', '${category.key}', this.value)">
                                     <span style="font-size: 11px; color: #6c757d;">만원</span>
@@ -142,7 +142,7 @@ function showDetailModal(rowData, rowId) {
                                            id="debt_${category.key}_${rowId}" 
                                            value="${displayValue}" 
                                            placeholder="0"
-                                           style="width: 90px; height: 28px; padding: 4px 6px; border: 1px solid #ced4da; border-radius: 3px; font-size: 12px; text-align: center;"
+                                           style="width: 65px; height: 28px; padding: 4px 6px; border: 1px solid #ced4da; border-radius: 3px; font-size: 12px; text-align: center;"
                                            oninput="formatDebtInputRealtime(this, '${rowId}', '${category.key}')"
                                            onblur="updateDebtField('${rowId}', '${category.key}', this.value)">
                                     <span style="font-size: 11px; color: #6c757d;">만원</span>
@@ -662,7 +662,12 @@ function showDetailModal(rowData, rowId) {
             
             // 음성파일 영역 업데이트
             updateAudioFileSection(rowId, audioFileValue);
-            
+
+            console.log('window.innerWidth:', window.innerWidth);
+
+            if (window.innerWidth < 1000) {
+                document.querySelector('.detail-modal-content').style.flexDirection = 'column';
+            }
             // 모달 표시
             document.getElementById('detailModal').style.display = 'flex';
             

@@ -681,8 +681,8 @@ function initializeCalendarWithSettings() {
                             padding:3px 0 3px 0;
                             ${!isLast ? 'border-bottom:1px solid #e5e7eb;' : ''}
                         ">
-                            <span style="color:#888;min-width:70px;flex-shrink:0;">${field}</span>
-                            <span style="margin-left:8px;color:#222;word-break:break-all;white-space:normal;display:inline-block;max-width:180px;text-align:left;">${fieldValue}</span>
+                            <span class="calendar-card-title">${field}</span>
+                            <span class="calendar-card-value">${fieldValue}</span>
                         </div>
                     `;
                 }).join('');
@@ -694,19 +694,10 @@ function initializeCalendarWithSettings() {
 
             return {
                 html: `
-                    <div style="
-                        width:100%;
-                        box-sizing:border-box;
-                        padding:10px 12px 8px 12px;
-                        border-radius:12px;
-                        background:${colorRgba};
-                        box-shadow:0 2px 8px 0 rgba(0,0,0,0.06);
-                        border:1px solid rgb(158, 158, 158);
-                        color:#222;
-                    ">
+                    <div class="calendar-card-container" style="background:${colorRgba};">
                     <div style="display:flex;align-items:center;justify-content:space-between;">
-                        ${dateFieldName !== '커스텀' ? `<div style="width:30%; font-size:1.05em;font-weight:bold;color:000;margin-bottom:2px;">${dateFieldName}</div>` : ''}
-                        <div style="width:70%; font-weight:bold; font-size:1.08em; margin-bottom:6px;">${name}</div>
+                        ${dateFieldName !== '커스텀' ? `<div class="calendar-card-bold-title1">${dateFieldName}</div>` : ''}
+                        <div class="calendar-card-bold-title2">${name}</div>
                     </div>
                         ${fields}
                         ${statusHtml}
