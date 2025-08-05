@@ -122,27 +122,34 @@ def upload_blog_file(request):
             })
         
         # auto_blog_naver 함수 호출 시 타이핑 설정 전달
-        auto_blog_naver(file_contents, text_content, typo_probability, typing_speed, naver_id, naver_password)
+        success, message = auto_blog_naver(file_contents, text_content, typo_probability, typing_speed, naver_id, naver_password)
         
-        # 응답 데이터 구성
-        response_data = {
-            'success': True,
-            'message': '블로그 작성이 성공적으로 완료되었습니다.',
-            'file_count': len(file_contents),
-            'file_infos': file_infos,
-            'typing_settings': {
-                'typo_probability': typo_probability,
-                'typing_speed': typing_speed
+        # 성공/실패에 따른 응답 데이터 구성
+        if success:
+            response_data = {
+                'success': True,
+                'message': message,
+                'file_count': len(file_contents),
+                'file_infos': file_infos,
+                'typing_settings': {
+                    'typo_probability': typo_probability,
+                    'typing_speed': typing_speed
+                }
             }
-        }
-        
-        if file_contents:
-            # 모든 파일의 내용을 하나로 합치거나 개별적으로 처리
-            combined_content = "\n\n".join([f"=== {info['original_name']} ===\n{content}" for info, content in zip(file_infos, file_contents)])
-            response_data['content_preview'] = combined_content[:1000] + '...' if len(combined_content) > 1000 else combined_content
-        
-        if text_content:
-            response_data['text_content'] = text_content
+            
+            if file_contents:
+                # 모든 파일의 내용을 하나로 합치거나 개별적으로 처리
+                combined_content = "\n\n".join([f"=== {info['original_name']} ===\n{content}" for info, content in zip(file_infos, file_contents)])
+                response_data['content_preview'] = combined_content[:1000] + '...' if len(combined_content) > 1000 else combined_content
+            
+            if text_content:
+                response_data['text_content'] = text_content
+                
+        else:
+            response_data = {
+                'success': False,
+                'error': message
+            }
         
         return JsonResponse(response_data)
         
@@ -258,37 +265,61 @@ def slow_type_with_typos(driver, element, text, min_delay=0.05, max_delay=0.1, t
 
 # ✅ 네이버 로그인 (자동 로그인)
 def naver_login(driver, naver_id, naver_password):
-    driver.get("https://nid.naver.com/nidlogin.login")
-    time.sleep(2)
+    try:
+        driver.get("https://nid.naver.com/nidlogin.login")
+        time.sleep(2)
 
-    # 자동 로그인
-    # 아이디 입력 (JavaScript로 직접 값 설정)
-    id_input = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "id")))
-    id_input.click()
-    time.sleep(1)
-    
-    # JavaScript로 직접 값 설정 (pyperclip 대신)
-    driver.execute_script("arguments[0].value = arguments[1];", id_input, naver_id)
-    driver.execute_script("arguments[0].dispatchEvent(new Event('input', { bubbles: true }));", id_input)
-    time.sleep(1)
+        # 자동 로그인
+        # 아이디 입력 (JavaScript로 직접 값 설정)
+        id_input = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "id")))
+        id_input.click()
+        time.sleep(1)
+        
+        # JavaScript로 직접 값 설정 (pyperclip 대신)
+        driver.execute_script("arguments[0].value = arguments[1];", id_input, naver_id)
+        driver.execute_script("arguments[0].dispatchEvent(new Event('input', { bubbles: true }));", id_input)
+        time.sleep(1)
 
-    # 비밀번호 입력 (JavaScript로 직접 값 설정)
-    pw_input = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "pw")))
-    pw_input.click()
-    time.sleep(1)
-    
-    # JavaScript로 직접 값 설정 (pyperclip 대신)
-    driver.execute_script("arguments[0].value = arguments[1];", pw_input, naver_password)
-    driver.execute_script("arguments[0].dispatchEvent(new Event('input', { bubbles: true }));", pw_input)
-    time.sleep(1)
+        # 비밀번호 입력 (JavaScript로 직접 값 설정)
+        pw_input = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "pw")))
+        pw_input.click()
+        time.sleep(1)
+        
+        # JavaScript로 직접 값 설정 (pyperclip 대신)
+        driver.execute_script("arguments[0].value = arguments[1];", pw_input, naver_password)
+        driver.execute_script("arguments[0].dispatchEvent(new Event('input', { bubbles: true }));", pw_input)
+        time.sleep(1)
 
-    # 로그인 버튼 클릭
-    login_btn = WebDriverWait(driver, 5).until(
-        EC.element_to_be_clickable((By.ID, "log.login"))
-    )
-    login_btn.click()
-    time.sleep(3)
-    print("✅ 자동 로그인 완료")
+        # 로그인 버튼 클릭
+        login_btn = WebDriverWait(driver, 5).until(
+            EC.element_to_be_clickable((By.ID, "log.login"))
+        )
+        login_btn.click()
+        time.sleep(3)
+        
+        # 로그인 성공 여부 확인
+        try:
+            # 로그인 실패 시 나타나는 오류 메시지 확인
+            error_element = driver.find_element(By.CLASS_NAME, "error_txt")
+            if error_element and error_element.is_displayed():
+                error_text = error_element.text
+                print(f"❌ 네이버 로그인 실패: {error_text}")
+                return False, f"네이버 로그인 실패: {error_text}"
+        except:
+            pass
+        
+        # 현재 URL 확인으로 로그인 성공 여부 판단
+        current_url = driver.current_url
+        if "nid.naver.com" in current_url:
+            print("❌ 네이버 로그인 실패: 로그인 페이지에 머물러 있음")
+            return False, "네이버 로그인 실패: 아이디 또는 비밀번호를 확인해주세요"
+        
+        print("✅ 자동 로그인 완료")
+        return True, "네이버 로그인 성공"
+        
+    except Exception as e:
+        print(f"❌ 네이버 로그인 중 오류 발생: {str(e)}")
+        return False, f"네이버 로그인 중 오류 발생: {str(e)}"
 
 # ✅ 블로그 글 작성페이지로 들어가기
 def naver_blog(driver):
@@ -328,20 +359,19 @@ def naver_blog(driver):
                 user_id = current_url.rstrip("/").split("/")[-1]
                 print(f"✅ 블로그 사용자 ID 추출 완료: {user_id}")
 
-                return driver, user_id
+                return True, driver, user_id
             
-            except Exception:
-                print("❌ 블로그 사용자 ID 추출 실패:")
-                traceback.print_exc()
+            except Exception as e:
+                print(f"❌ 블로그 사용자 ID 추출 실패: {str(e)}")
+                return False, None, f"블로그 사용자 ID 추출 실패: {str(e)}"
 
+        except Exception as e:
+            print(f"❌ 내 블로그 버튼 클릭 실패: {str(e)}")
+            return False, None, f"내 블로그 버튼 클릭 실패: {str(e)}"
 
-        except Exception:
-            print("❌ 내 블로그 버튼 클릭 실패:")
-            traceback.print_exc()
-
-    except Exception:
-        print("❌ 블로그 탭 클릭 실패:")
-        traceback.print_exc()
+    except Exception as e:
+        print(f"❌ 블로그 탭 클릭 실패: {str(e)}")
+        return False, None, f"블로그 탭 클릭 실패: {str(e)}"
 
 def write_naver_blog(driver, user_id, title, content, typo_probability, typing_speed):
     min_d, max_d = get_typing_delays(typing_speed)
@@ -351,9 +381,9 @@ def write_naver_blog(driver, user_id, title, content, typo_probability, typing_s
         driver.get(f"https://blog.naver.com/{user_id}?Redirect=Write&")
         print("✅ 블로그 글 작성 페이지로 이동 완료")
 
-    except Exception:
-        print("❌ 블로그 글 작성 페이지로 이동 실패:")
-        traceback.print_exc()
+    except Exception as e:
+        print(f"❌ 블로그 글 작성 페이지로 이동 실패: {str(e)}")
+        return False, f"블로그 글 작성 페이지로 이동 실패: {str(e)}"
     
     try:
         WebDriverWait(driver, 10).until(
@@ -371,7 +401,6 @@ def write_naver_blog(driver, user_id, title, content, typo_probability, typing_s
 
         except Exception:
             print("⚠️ 글 이어쓰기 취소 실패 (없거나 클릭 안됨)")
-            traceback.print_exc()
 
         try:
             help_btn = WebDriverWait(driver, 5).until(
@@ -383,7 +412,6 @@ def write_naver_blog(driver, user_id, title, content, typo_probability, typing_s
 
         except Exception:
             print("⚠️ 도움말 패널 닫기 실패 (없거나 클릭 안됨)")
-            traceback.print_exc()
 
         # ✅ 제목 입력
         try:
@@ -394,9 +422,9 @@ def write_naver_blog(driver, user_id, title, content, typo_probability, typing_s
             print("✅ 제목 입력 완료")
             time.sleep(1)
 
-        except Exception:
-            print("❌ 제목 입력 실패:")
-            traceback.print_exc()
+        except Exception as e:
+            print(f"❌ 제목 입력 실패: {str(e)}")
+            return False, f"제목 입력 실패: {str(e)}"
 
         # ✅ 본문 입력
         try:
@@ -413,53 +441,95 @@ def write_naver_blog(driver, user_id, title, content, typo_probability, typing_s
             print("✅ 본문 입력 완료")
             time.sleep(1)
 
-        except Exception:
-            print("❌ 본문 입력 실패:")
-            traceback.print_exc()
+        except Exception as e:
+            print(f"❌ 본문 입력 실패: {str(e)}")
+            return False, f"본문 입력 실패: {str(e)}"
 
-        
-
-        publish_button = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.XPATH, "//button[.//span[text()='저장']]"))
-        )
-        publish_button.click()
-        print("✅ 저장 버튼 클릭 완료")
-        time.sleep(1)
-
-        # ✅ 저장 후: 현재 창 닫고 원래 창으로 복귀
-        driver.close()  # 현재 블로그 작성 창 닫기
-        driver.switch_to.window(driver.window_handles[0])  # 원래 창으로 전환
-        print("✅ 블로그 작성 창 닫고 원래 창으로 전환 완료")
-
-        # ✅ 네이버 메인으로 이동
-        driver.get("https://www.naver.com")
-        print("✅ 네이버 메인으로 이동 완료")
-        time.sleep(1)
-
-        return driver
-
-
-    except Exception:
-        print("❌ iframe(mainFrame) 진입 또는 제목 입력 실패:")
-        traceback.print_exc()
-
-def auto_blog_naver(file_texts, user_input, typo_probability, typing_speed, naver_id, naver_password):
-    driver = create_driver()
-    naver_login(driver, naver_id, naver_password)
-
-    for file_text in file_texts:
         try:
-            # 🔁 매 반복마다 작성 페이지 재진입
-            driver, user_id = naver_blog(driver)
+            publish_button = WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.XPATH, "//button[.//span[text()='저장']]"))
+            )
+            publish_button.click()
+            print("✅ 저장 버튼 클릭 완료")
+            time.sleep(1)
 
-            lines = file_text.strip().split("\n")
-            title = lines[0]
-            body = "\n".join(lines[1:])
+            # ✅ 저장 후: 현재 창 닫고 원래 창으로 복귀
+            driver.close()  # 현재 블로그 작성 창 닫기
+            driver.switch_to.window(driver.window_handles[0])  # 원래 창으로 전환
+            print("✅ 블로그 작성 창 닫고 원래 창으로 전환 완료")
 
-            driver = write_naver_blog(driver, user_id, title, body, typo_probability, typing_speed)
+            # ✅ 네이버 메인으로 이동
+            driver.get("https://www.naver.com")
+            print("✅ 네이버 메인으로 이동 완료")
+            time.sleep(1)
 
-            print("✅ 게시 완료")
+            return True, "블로그 글 작성 완료"
+            
+        except Exception as e:
+            print(f"❌ 저장 버튼 클릭 실패: {str(e)}")
+            return False, f"저장 버튼 클릭 실패: {str(e)}"
 
-        except Exception:
-            print(f"❌ 파일 처리 실패")
-            traceback.print_exc()
+    except Exception as e:
+        print(f"❌ iframe(mainFrame) 진입 실패: {str(e)}")
+        return False, f"iframe(mainFrame) 진입 실패: {str(e)}"
+
+def auto_blog_naver(file_texts, text_content, typo_probability, typing_speed, naver_id, naver_password):
+    driver = None
+    try:
+        driver = create_driver()
+        
+        # 로그인 시도
+        login_success, login_message = naver_login(driver, naver_id, naver_password)
+        if not login_success:
+            return False, login_message
+
+        # 처리할 콘텐츠 목록 생성
+        contents_to_process = []
+        
+        # 파일 내용 추가
+        for i, file_text in enumerate(file_texts):
+            contents_to_process.append(('파일', i+1, file_text))
+        
+        # 텍스트 내용 추가 (있는 경우)
+        if text_content and text_content.strip():
+            contents_to_process.append(('텍스트', 1, text_content))
+
+        if not contents_to_process:
+            return False, "처리할 콘텐츠가 없습니다."
+
+        for content_type, content_index, content_text in contents_to_process:
+            try:
+                # 🔁 매 반복마다 작성 페이지 재진입
+                blog_success, driver_or_error, user_id_or_message = naver_blog(driver)
+                if not blog_success:
+                    return False, user_id_or_message
+
+                driver = driver_or_error
+                user_id = user_id_or_message
+
+                lines = content_text.strip().split("\n")
+                title = lines[0] if lines else f"{content_type} {content_index}"
+                body = "\n".join(lines[1:]) if len(lines) > 1 else content_text
+
+                write_success, write_message = write_naver_blog(driver, user_id, title, body, typo_probability, typing_speed)
+                if not write_success:
+                    return False, f"{content_type} {content_index} 작성 실패: {write_message}"
+
+                print(f"✅ {content_type} {content_index} 게시 완료")
+
+            except Exception as e:
+                print(f"❌ {content_type} {content_index} 처리 실패: {str(e)}")
+                return False, f"{content_type} {content_index} 처리 실패: {str(e)}"
+        
+        return True, "모든 블로그 글 작성이 완료되었습니다"
+        
+    except Exception as e:
+        print(f"❌ 블로그 작성 중 전체적인 오류 발생: {str(e)}")
+        return False, f"블로그 작성 중 오류 발생: {str(e)}"
+    finally:
+        if driver:
+            try:
+                driver.quit()
+                print("✅ 브라우저 종료 완료")
+            except Exception as e:
+                print(f"⚠️ 브라우저 종료 실패: {str(e)}")
