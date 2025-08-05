@@ -1570,7 +1570,7 @@ function showFundingRecommendationModal(recommendation, analysisData) {
                                     font-size: 12px;
                                     font-weight: bold;
                                 ">
-                                    우선순위 ${index + 1}
+                                    가능자금 ${index + 1}
                                 </div>
                                 <div style="font-weight: bold; color: #495057; margin-bottom: 8px; margin-right: 60px;">
                                     ${fund.fund_name}
@@ -1995,9 +1995,7 @@ function showFundingDetailModal(rowId, fieldName) {
                                                 font-size: 12px;
                                                 font-weight: bold;
                                             ">
-                                                ${normalizedData.individual_funds.length === 2 ? 
-                                                    `우선순위 ${index + 1}` : 
-                                                    `우선순위 ${index + 1}`}
+                                               가능자금 ${index + 1}
                                             </div>
                                             <div style="font-weight: bold; color: #495057; margin-bottom: 8px; margin-right: 60px;">
                                                 ${fund.fund_name}

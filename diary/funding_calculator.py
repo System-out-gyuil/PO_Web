@@ -177,6 +177,15 @@ class PolicyFundRecommendationEngineV2:
         
         return safe_data
     
+    def _calculate_kibo_max_limit(self, annual_revenue: int) -> int:
+        """
+        기보 최대 한도 계산 (test.py와 동일한 로직)
+        매출의 30% 또는 최소 1억원 중 큰 값
+        """
+        revenue_based_limit = annual_revenue * 0.30
+        minimum_limit = 100_000_000  # 1억원
+        return max(revenue_based_limit, minimum_limit)
+    
     def _analyze_kibo_enhancement(self, company_data: Dict, existing_funds: Dict) -> Optional[Dict]:
         """
         기보 자금 증액/전환 분석 (핵심 개선 로직)
@@ -187,6 +196,7 @@ class PolicyFundRecommendationEngineV2:
         industry = company_data.get('industry', '기타')
         credit_score = company_data.get('credit_score', 0)
         experience_years = company_data.get('experience_years', 0)  # 경력 (별도 속성)
+        annual_revenue = company_data.get('annual_revenue', 0)  # 매출 추가
         
         if not (
             industry in ['제조업', '정보통신업'] and
@@ -199,14 +209,17 @@ class PolicyFundRecommendationEngineV2:
         current_kibo_general = existing_funds.get('kibo_general', 0)
         
         print(f"현재 기보 일반보증: {current_kibo_general:,}원")
+        print(f"연매출: {annual_revenue:,}원")
         
         # 기보 제외한 기타 기대출 계산
         other_debt = company_data.get('existing_debt', 0) - current_kibo_general
         print(f"기타 부채: {other_debt:,}원")
         
-        # 현재 가능한 총 기보 한도 계산
-        general_total_possible = 100_000_000 - other_debt
+        # 매출 기반 기보 최대 한도 계산 (test.py와 동일한 로직)
+        max_kibo_limit = self._calculate_kibo_max_limit(annual_revenue)
+        general_total_possible = max_kibo_limit - other_debt
         
+        print(f"매출 기반 기보 최대 한도: {max_kibo_limit:,}원")
         print(f"일반보증 가능 총액: {general_total_possible:,}원")
         
         max_possible = self._round_up_to_50m_unit_always(general_total_possible)
@@ -224,10 +237,10 @@ class PolicyFundRecommendationEngineV2:
         # 기존 사용 상황에 따른 추천 전략
         if current_kibo_general > 0:
             fund_name = '기보_일반보증_증액'
-            note = f'기존 일반보증 {additional_amount//10000000}천만원 증액 가능'
+            note = f'기존 일반보증 {additional_amount//10000000}천만원 증액 가능 (매출 {annual_revenue//100000000}억 기준 30%)'
         else:
             fund_name = '기보_일반보증'
-            note = f'신규 일반보증 {max_possible//10000000}천만원 가능'
+            note = f'신규 일반보증 {max_possible//10000000}천만원 가능 (매출 {annual_revenue//100000000}억 기준 30%)'
         
         exclusion_note = '제조업 우선 원칙으로 신보 제외' if industry == '제조업' else None
         
@@ -239,6 +252,7 @@ class PolicyFundRecommendationEngineV2:
                 'fund_name': fund_name,
                 'limit': int(additional_amount),
                 'total_limit_after': int(max_possible),
+                'max_kibo_limit': int(max_kibo_limit),
                 'priority': 1,
                 'institution': '기술보증기금',
                 'calculation_note': note,
