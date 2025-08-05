@@ -330,7 +330,7 @@ function showNotification(message, type = 'info', important = false) {
       color: white;
       font-weight: bold;
       z-index: 10000;
-      max-width: 300px;
+      max-width: 500px;
       word-wrap: break-word;
       box-shadow: 0 4px 12px rgba(0,0,0,0.2);
       animation: slideIn 0.3s ease;

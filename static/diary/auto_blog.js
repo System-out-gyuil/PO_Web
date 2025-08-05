@@ -62,33 +62,41 @@ function createBlogModal() {
                     </div>
                     
                     <div class="login-settings" style="margin-top: 20px;">
-                        <h4 style="margin-bottom: 15px; color: #495057; font-size: 16px;">네이버 로그인 설정 (선택사항)</h4>
-                        <small style="color: #6c757d; font-size: 12px; display: block; margin-bottom: 10px;">
-                            입력하지 않으면 네이버 창에서 직접 로그인하세요.
+                        <h4 style="margin-bottom: 15px; color: #495057; font-size: 16px;">네이버 로그인 설정 (필수)</h4>
+                        <small style="color: #dc3545; font-size: 12px; display: block; margin-bottom: 10px; font-weight: bold;">
+                            네이버 아이디와 비밀번호를 반드시 정확하게 입력해주세요. 
                         </small>
                         
                         <div class="setting-row" style="margin-bottom: 15px;">
                             <label for="naverId" style="display: block; margin-bottom: 5px; font-weight: 500; color: #495057;">
-                                네이버 아이디
+                                네이버 아이디 <span style="color: #dc3545;">*</span>
                             </label>
                             <input 
                                 type="text" 
                                 id="naverId" 
-                                placeholder="네이버 아이디를 입력하세요 (선택사항)"
+                                placeholder="네이버 아이디를 입력하세요"
+                                required
                                 style="width: 100%; padding: 8px; border: 1px solid #dee2e6; border-radius: 4px; font-size: 14px;"
                             >
+                            <div id="naverIdError" class="error-message" style="color: #dc3545; font-size: 12px; margin-top: 5px; display: none;">
+                                네이버 아이디를 입력해주세요.
+                            </div>
                         </div>
                         
                         <div class="setting-row" style="margin-bottom: 15px;">
                             <label for="naverPassword" style="display: block; margin-bottom: 5px; font-weight: 500; color: #495057;">
-                                네이버 비밀번호
+                                네이버 비밀번호 <span style="color: #dc3545;">*</span>
                             </label>
                             <input 
                                 type="password" 
                                 id="naverPassword" 
-                                placeholder="네이버 비밀번호를 입력하세요 (선택사항)"
+                                placeholder="네이버 비밀번호를 입력하세요"
+                                required
                                 style="width: 100%; padding: 8px; border: 1px solid #dee2e6; border-radius: 4px; font-size: 14px;"
                             >
+                            <div id="naverPasswordError" class="error-message" style="color: #dc3545; font-size: 12px; margin-top: 5px; display: none;">
+                                네이버 비밀번호를 입력해주세요.
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -131,6 +139,34 @@ function openBlogModal() {
     const dropZone = document.querySelector('.file-drop-zone');
     dropZone.ondragover = handleDragOver;
     dropZone.ondrop = handleFileDrop;
+    
+    // 네이버 로그인 필드 실시간 유효성 검사
+    const naverIdInput = document.getElementById('naverId');
+    const naverPasswordInput = document.getElementById('naverPassword');
+    const naverIdError = document.getElementById('naverIdError');
+    const naverPasswordError = document.getElementById('naverPasswordError');
+    
+    // 네이버 아이디 실시간 검사
+    naverIdInput.addEventListener('input', function() {
+        if (this.value.trim()) {
+            this.style.border = '1px solid #dee2e6';
+            naverIdError.style.display = 'none';
+        } else {
+            this.style.border = '2px solid #dc3545';
+            naverIdError.style.display = 'block';
+        }
+    });
+    
+    // 네이버 비밀번호 실시간 검사
+    naverPasswordInput.addEventListener('input', function() {
+        if (this.value.trim()) {
+            this.style.border = '1px solid #dee2e6';
+            naverPasswordError.style.display = 'none';
+        } else {
+            this.style.border = '2px solid #dc3545';
+            naverPasswordError.style.display = 'block';
+        }
+    });
 }
 
 // 블로그 모달 닫기
@@ -275,11 +311,42 @@ function uploadBlogFile() {
     
     const typoProbability = typoProbabilityInput.value;
     const typingSpeed = typingSpeedInput.value;
-    const naverId = naverIdInput.value;
-    const naverPassword = naverPasswordInput.value;
+    const naverId = naverIdInput.value.trim();
+    const naverPassword = naverPasswordInput.value.trim();
     
-    if (files.length === 0 && !typoProbability && !typingSpeed && !naverId && !naverPassword) {
-        alert('파일 또는 타이핑 설정을 입력해주세요.');
+    // 유효성 검사 초기화
+    let isValid = true;
+    
+    // 네이버 아이디 검사
+    const naverIdError = document.getElementById('naverIdError');
+    if (!naverId) {
+        naverIdInput.style.border = '2px solid #dc3545';
+        naverIdError.style.display = 'block';
+        isValid = false;
+    } else {
+        naverIdInput.style.border = '1px solid #dee2e6';
+        naverIdError.style.display = 'none';
+    }
+    
+    // 네이버 비밀번호 검사
+    const naverPasswordError = document.getElementById('naverPasswordError');
+    if (!naverPassword) {
+        naverPasswordInput.style.border = '2px solid #dc3545';
+        naverPasswordError.style.display = 'block';
+        isValid = false;
+    } else {
+        naverPasswordInput.style.border = '1px solid #dee2e6';
+        naverPasswordError.style.display = 'none';
+    }
+    
+    // 파일 검사 (최소 1개 파일 필요)
+    if (files.length === 0) {
+        alert('업로드할 파일을 선택해주세요.');
+        isValid = false;
+    }
+    
+    // 유효성 검사 실패 시 중단
+    if (!isValid) {
         return;
     }
     
@@ -294,22 +361,14 @@ function uploadBlogFile() {
     for (let i = 0; i < files.length; i++) {
         formData.append('files', files[i]); // 파일 여러 개 처리
     }
-    if (typoProbability) {
-        formData.append('typo_probability', typoProbability);
-    }
-    if (typingSpeed) {
-        formData.append('typing_speed', typingSpeed);
-    }
-    if (naverId) {
-        formData.append('naver_id', naverId);
-    }
-    if (naverPassword) {
-        formData.append('naver_password', naverPassword);
-    }
+    formData.append('typo_probability', typoProbability);
+    formData.append('typing_speed', typingSpeed);
+    formData.append('naver_id', naverId);
+    formData.append('naver_password', naverPassword);
     
     // 모달 닫기 및 백그라운드 작업 알림 표시
     closeBlogModal();
-    showNotification('백그라운드에서 블로그를 작성합니다. 창을 닫지 말고 기다려주세요', 'info');
+    showNotification('백그라운드에서 블로그 작성을 시작합니다. 창을 닫지 말고 기다려주세요', 'info');
     
     // 서버로 파일 업로드
     fetch('/sales/upload_blog_file/', {

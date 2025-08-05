@@ -34,9 +34,22 @@ def upload_blog_file(request):
         typo_probability = float(request.POST.get('typo_probability', 0.1))
         typing_speed = float(request.POST.get('typing_speed', 0.5))
         
-        # 네이버 로그인 정보 받기 (nullable)
+        # 네이버 로그인 정보 받기 (필수)
         naver_id = request.POST.get('naver_id', '').strip()
         naver_password = request.POST.get('naver_password', '').strip()
+        
+        # 네이버 로그인 정보 필수 검증
+        if not naver_id:
+            return JsonResponse({
+                'success': False,
+                'error': '네이버 아이디를 입력해주세요.'
+            })
+        
+        if not naver_password:
+            return JsonResponse({
+                'success': False,
+                'error': '네이버 비밀번호를 입력해주세요.'
+            })
         
         # 값 범위 검증
         typo_probability = max(0.0, min(1.0, typo_probability))
@@ -46,11 +59,8 @@ def upload_blog_file(request):
         print(f"타이핑 설정:")
         print(f"오타 확률: {typo_probability}")
         print(f"타자 속도: {typing_speed}")
-        if naver_id:
-            print(f"네이버 아이디: {naver_id}")
-            print(f"네이버 비밀번호: {'*' * len(naver_password)}")
-        else:
-            print("네이버 로그인 정보: 수동 입력 예정")
+        print(f"네이버 아이디: {naver_id}")
+        print(f"네이버 비밀번호: {'*' * len(naver_password)}")
         print("=" * 50)
         
         # 파일들이 요청에 포함되어 있는지 확인
@@ -246,52 +256,39 @@ def slow_type_with_typos(driver, element, text, min_delay=0.05, max_delay=0.1, t
         actions.send_keys(char).perform()
         time.sleep(random.uniform(min_delay, max_delay))
 
-# ✅ 네이버 로그인 (직접 입력 유도)
-def naver_login(driver, naver_id=None, naver_password=None):
+# ✅ 네이버 로그인 (자동 로그인)
+def naver_login(driver, naver_id, naver_password):
     driver.get("https://nid.naver.com/nidlogin.login")
     time.sleep(2)
 
-    # 로그인 정보가 제공된 경우 자동 로그인
-    if naver_id and naver_password:
-        # 아이디 입력 (JavaScript로 직접 값 설정)
-        id_input = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "id")))
-        id_input.click()
-        time.sleep(1)
-        
-        # JavaScript로 직접 값 설정 (pyperclip 대신)
-        driver.execute_script("arguments[0].value = arguments[1];", id_input, naver_id)
-        driver.execute_script("arguments[0].dispatchEvent(new Event('input', { bubbles: true }));", id_input)
-        time.sleep(1)
+    # 자동 로그인
+    # 아이디 입력 (JavaScript로 직접 값 설정)
+    id_input = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "id")))
+    id_input.click()
+    time.sleep(1)
+    
+    # JavaScript로 직접 값 설정 (pyperclip 대신)
+    driver.execute_script("arguments[0].value = arguments[1];", id_input, naver_id)
+    driver.execute_script("arguments[0].dispatchEvent(new Event('input', { bubbles: true }));", id_input)
+    time.sleep(1)
 
-        # 비밀번호 입력 (JavaScript로 직접 값 설정)
-        pw_input = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "pw")))
-        pw_input.click()
-        time.sleep(1)
-        
-        # JavaScript로 직접 값 설정 (pyperclip 대신)
-        driver.execute_script("arguments[0].value = arguments[1];", pw_input, naver_password)
-        driver.execute_script("arguments[0].dispatchEvent(new Event('input', { bubbles: true }));", pw_input)
-        time.sleep(1)
+    # 비밀번호 입력 (JavaScript로 직접 값 설정)
+    pw_input = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "pw")))
+    pw_input.click()
+    time.sleep(1)
+    
+    # JavaScript로 직접 값 설정 (pyperclip 대신)
+    driver.execute_script("arguments[0].value = arguments[1];", pw_input, naver_password)
+    driver.execute_script("arguments[0].dispatchEvent(new Event('input', { bubbles: true }));", pw_input)
+    time.sleep(1)
 
-        # 로그인 버튼 클릭
-        login_btn = WebDriverWait(driver, 5).until(
-            EC.element_to_be_clickable((By.ID, "log.login"))
-        )
-        login_btn.click()
-        time.sleep(3)
-        print("✅ 자동 로그인 완료")
-    else:
-        # 수동 로그인 대기
-        print("⏳ 네이버 창에서 수동으로 로그인해주세요...")
-        print("로그인 완료 후 자동으로 진행됩니다.")
-        
-        # 로그인 완료까지 대기 (네이버 메인 페이지로 이동하는지 확인)
-        try:
-            WebDriverWait(driver, 300).until(lambda d: "nid.naver.com" not in d.current_url)
-            print("✅ 수동 로그인 완료")
-        except:
-            print("❌ 로그인 대기 시간 초과")
-            raise Exception("로그인 시간 초과")
+    # 로그인 버튼 클릭
+    login_btn = WebDriverWait(driver, 5).until(
+        EC.element_to_be_clickable((By.ID, "log.login"))
+    )
+    login_btn.click()
+    time.sleep(3)
+    print("✅ 자동 로그인 완료")
 
 # ✅ 블로그 글 작성페이지로 들어가기
 def naver_blog(driver):
