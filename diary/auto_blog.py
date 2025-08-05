@@ -18,7 +18,6 @@ from selenium.webdriver.common.keys import Keys
 import pyperclip
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
-import shutil
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -113,20 +112,7 @@ def upload_blog_file(request):
             })
         
         # auto_blog_naver 함수 호출 시 타이핑 설정 전달
-        try:
-            auto_blog_naver_with_lock(file_contents, text_content, typo_probability, typing_speed, naver_id, naver_password)
-        except Exception as e:
-            error_message = str(e)
-            if "다른 Selenium 작업이 실행 중" in error_message:
-                return JsonResponse({
-                    'success': False,
-                    'error': '다른 사용자가 블로그 작업을 진행 중입니다. 잠시 후 다시 시도해주세요.'
-                })
-            else:
-                return JsonResponse({
-                    'success': False,
-                    'error': f'블로그 작업 중 오류가 발생했습니다: {error_message}'
-                })
+        auto_blog_naver(file_contents, text_content, typo_probability, typing_speed, naver_id, naver_password)
         
         # 응답 데이터 구성
         response_data = {
@@ -174,90 +160,19 @@ def get_blog_files(request):
         'message': '현재 파일 저장 기능이 비활성화되어 있습니다.'
     })
 
-def kill_chrome_processes():
-    """기존 Chrome 및 Chromedriver 프로세스를 완전히 종료"""
-    import subprocess
-    import platform
-
-    def kill_by_name(process_name):
-        try:
-            result = subprocess.run(["pgrep", "-f", process_name], capture_output=True, text=True)
-            pids = result.stdout.strip().split("\n")
-            for pid in pids:
-                if pid.isdigit():
-                    subprocess.run(["kill", "-9", pid], check=False)
-        except Exception as e:
-            print(f"⚠️ {process_name} 강제 종료 중 오류: {e}")
-
-    try:
-        if platform.system() == "Windows":
-            subprocess.run(["taskkill", "/f", "/im", "chrome.exe"], capture_output=True, check=False)
-            subprocess.run(["taskkill", "/f", "/im", "chromedriver.exe"], capture_output=True, check=False)
-        else:
-            kill_by_name("chrome")
-            kill_by_name("chromedriver")
-
-        print("✅ 모든 Chrome 관련 프로세스 완전 종료 완료")
-
-    except Exception as e:
-        print(f"⚠️ Chrome 프로세스 정리 중 오류: {str(e)}")
-
-
+# ✅ Selenium 설정
 def create_driver():
-    import tempfile, os, shutil, uuid, time
-    from selenium import webdriver
-    from selenium.webdriver.chrome.service import Service
-    from webdriver_manager.chrome import ChromeDriverManager
-
-    # 기존 프로세스 정리
-    time.sleep(2)
 
     options = webdriver.ChromeOptions()
+    options.add_argument("user-data-dir=C:/Users/사용자명/AppData/Local/Google/Chrome/User Data")
+    options.add_argument("profile-directory=Default")  # 또는 "Profile 1" 등
+    options.add_argument("--start-maximized")
 
-    # 안전한 디렉토리 생성
-    base_profile_dir = os.path.expanduser("~/selenium_profiles")
-    os.makedirs(base_profile_dir, exist_ok=True)
+    service = Service(executable_path=ChromeDriverManager().install())
 
-    safe_id = uuid.uuid4().hex
-    temp_dir = os.path.join(base_profile_dir, safe_id)
-    temp_user_data_dir = os.path.join(temp_dir, "user_data")
-    temp_cache_dir = os.path.join(temp_dir, "cache")
+    driver = webdriver.Chrome(service=service, options=options)
 
-    os.makedirs(temp_user_data_dir, exist_ok=True)
-    os.makedirs(temp_cache_dir, exist_ok=True)
-    time.sleep(1)
-
-    print(f"🔧 생성된 임시 디렉토리: {temp_dir}")
-
-    options.add_argument(f"--user-data-dir={temp_user_data_dir}")
-    options.add_argument(f"--disk-cache-dir={temp_cache_dir}")
-    options.add_argument("--headless=new")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--disable-blink-features=AutomationControlled")
-    options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    options.add_experimental_option('useAutomationExtension', False)
-    
-    # 기존 크롬과 충돌하지 않도록 추가 옵션
-    options.add_argument("--remote-debugging-port=0")  # 랜덤 포트 사용
-    options.add_argument("--disable-extensions")  # 확장 프로그램 비활성화
-    options.add_argument("--disable-plugins")  # 플러그인 비활성화
-    options.add_argument("--disable-images")  # 이미지 로딩 비활성화 (성능 향상)
-    # options.add_argument("--disable-javascript")  # JavaScript 비활성화 (네이버 로그인에 필요하므로 주석 처리)
-
-    try:
-        service = Service(ChromeDriverManager().install())
-        driver = webdriver.Chrome(service=service, options=options)
-        driver.temp_dir = temp_dir
-        return driver
-    except Exception as e:
-        try:
-            shutil.rmtree(temp_dir, ignore_errors=True)
-            print(f"🧹 임시 디렉토리 정리 완료: {temp_dir}")
-        except:
-            pass
-        raise e
+    return driver
 
 def slow_type_with_actionchains(driver, element, text, min_delay=0.05, max_delay=0.1):
     actions = ActionChains(driver)
@@ -320,22 +235,16 @@ def naver_login(driver, naver_id=None, naver_password=None):
         id_input = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "id")))
         id_input.click()
         time.sleep(1)
-        try:
-            pyperclip.copy(naver_id)
-            id_input.send_keys(Keys.CONTROL, 'v')
-        except pyperclip.PyperclipException:
-            print("⚠️ 클립보드 복사 실패: 직접 입력으로 대체")
+        pyperclip.copy(naver_id)
+        id_input.send_keys(Keys.CONTROL, 'v')  # ⬅️ pyautogui 대신 이걸 사용
         time.sleep(1)
 
         # 비밀번호 입력
         pw_input = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "pw")))
         pw_input.click()
         time.sleep(1)
-        try:
-            pyperclip.copy(naver_password)
-            pw_input.send_keys(Keys.CONTROL, 'v')
-        except pyperclip.PyperclipException:
-            print("⚠️ 클립보드 복사 실패: 직접 입력으로 대체")
+        pyperclip.copy(naver_password)
+        pw_input.send_keys(Keys.CONTROL, 'v')  # ⬅️ 여기도 동일
         time.sleep(1)
 
         # 로그인 버튼 클릭
@@ -511,78 +420,23 @@ def write_naver_blog(driver, user_id, title, content, typo_probability, typing_s
         print("❌ iframe(mainFrame) 진입 또는 제목 입력 실패:")
         traceback.print_exc()
 
-def auto_blog_naver_with_lock(file_texts, user_input, typo_probability, typing_speed, naver_id, naver_password):
-    """FileLock을 사용하여 안전한 Selenium 작업 실행"""
-    from filelock import FileLock, Timeout
-    import time
-    
-    lock_path = "/tmp/selenium_auto_blog.lock"
-    lock = FileLock(lock_path, timeout=60)  # 최대 60초 기다림
-    
-    try:
-        with lock:
-            print("🔐 Lock 획득: Selenium 자동 블로그 작업 시작")
-            print(f"⏰ Lock 획득 시간: {time.strftime('%Y-%m-%d %H:%M:%S')}")
-            
-            # 기존 auto_blog_naver 함수 호출
-            auto_blog_naver(file_texts, user_input, typo_probability, typing_speed, naver_id, naver_password)
-            
-            print("✅ Selenium 자동 블로그 작업 완료")
-            
-    except Timeout:
-        print("⏱️ Lock 획득 실패: 다른 Selenium 작업이 실행 중입니다.")
-        print("💡 잠시 후 다시 시도해주세요.")
-        raise Exception("다른 Selenium 작업이 실행 중입니다. 잠시 후 다시 시도해주세요.")
-    except Exception as e:
-        print(f"❌ Selenium 작업 중 오류 발생: {str(e)}")
-        raise e
-
 def auto_blog_naver(file_texts, user_input, typo_probability, typing_speed, naver_id, naver_password):
-    driver = None
-    try:
-        # 기존 Chrome 프로세스 정리 제거 - 기존 크롬을 유지
-        # kill_chrome_processes()
-        # time.sleep(3)  # 프로세스 종료 대기
-        
-        driver = create_driver()
-        naver_login(driver, naver_id, naver_password)
+    driver = create_driver()
+    naver_login(driver, naver_id, naver_password)
 
-        for file_text in file_texts:
-            try:
-                # 🔁 매 반복마다 작성 페이지 재진입
-                driver, user_id = naver_blog(driver)
+    for file_text in file_texts:
+        try:
+            # 🔁 매 반복마다 작성 페이지 재진입
+            driver, user_id = naver_blog(driver)
 
-                lines = file_text.strip().split("\n")
-                title = lines[0]
-                body = "\n".join(lines[1:])
+            lines = file_text.strip().split("\n")
+            title = lines[0]
+            body = "\n".join(lines[1:])
 
-                driver = write_naver_blog(driver, user_id, title, body, typo_probability, typing_speed)
+            driver = write_naver_blog(driver, user_id, title, body, typo_probability, typing_speed)
 
-                print("✅ 게시 완료")
+            print("✅ 게시 완료")
 
-            except Exception as e:
-                print(f"❌ 파일 처리 실패: {str(e)}")
-                traceback.print_exc()
-                continue  # 다음 파일로 계속 진행
-                
-    except Exception as e:
-        print(f"❌ 초기화 실패: {str(e)}")
-        traceback.print_exc()
-    finally:
-        # 드라이버 종료
-        if driver:
-            try:
-                driver.quit()
-                print("✅ 브라우저 종료 완료")
-
-                time.sleep(2)  # ⏳ 크롬 종료 대기
-
-                if hasattr(driver, 'temp_dir'):
-                    try:
-                        shutil.rmtree(driver.temp_dir, ignore_errors=True)
-                        print(f"🧹 임시 디렉토리 정리 완료: {driver.temp_dir}")
-                    except Exception as e:
-                        print(f"⚠️ 임시 디렉토리 정리 중 오류: {str(e)}")
-                        
-            except Exception as e:
-                print(f"⚠️ 브라우저 종료 중 오류: {str(e)}")
+        except Exception:
+            print(f"❌ 파일 처리 실패")
+            traceback.print_exc()
