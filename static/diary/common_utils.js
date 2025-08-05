@@ -245,8 +245,51 @@ function removeCommaFromNumber(value) {
   return value.toString().replace(/[,]/g, '');
 }
 
+// 브라우저 알림 표시 함수 (크롬 아이콘 깜빡임)
+function showBrowserNotification(message, title = '알림') {
+    // 브라우저가 포커스되지 않은 상태일 때만 실행
+    if (document.hasFocus && !document.hasFocus()) {
+        // 브라우저 알림 권한 확인 및 요청
+        if ('Notification' in window) {
+            if (Notification.permission === 'granted') {
+                // 알림 생성 (크롬 아이콘 깜빡임 효과)
+                const browserNotification = new Notification(title, {
+                    body: message,
+                    icon: '/favicon.ico', // 사이트 파비콘 사용
+                    tag: 'important-notification', // 중복 알림 방지
+                    requireInteraction: false,
+                    silent: true // 소리 없이
+                });
+                
+                // 5초 후 알림 자동 닫기
+                setTimeout(() => {
+                    browserNotification.close();
+                }, 5000);
+                
+            } else if (Notification.permission !== 'denied') {
+                // 권한 요청
+                Notification.requestPermission().then(permission => {
+                    if (permission === 'granted') {
+                        const browserNotification = new Notification(title, {
+                            body: message,
+                            icon: '/favicon.ico',
+                            tag: 'important-notification',
+                            requireInteraction: false,
+                            silent: true
+                        });
+                        
+                        setTimeout(() => {
+                            browserNotification.close();
+                        }, 5000);
+                    }
+                });
+            }
+        }
+    }
+}
+
 // 알림 표시 함수 (기존에 없다면 추가)
-function showNotification(message, type = 'info') {
+function showNotification(message, type = 'info', important = false) {
     console.log("show noti 호출됨")
   // 기존 알림 제거
   const existingNotifications = document.querySelectorAll('.notification');
@@ -271,6 +314,42 @@ function showNotification(message, type = 'info') {
       text-align: center;
   `;
   
+  // 메시지 설정
+  notification.textContent = message;
+  
+  // important일 때만 특별한 처리
+  if (important) {
+      notification.style.paddingRight = '40px';
+      notification.style.position = 'relative';
+      
+      const closeButton = document.createElement('span');
+      closeButton.innerHTML = '&times;';
+      closeButton.style.cssText = `
+          position: absolute;
+          top: 8px;
+          right: 12px;
+          font-size: 20px;
+          cursor: pointer;
+          color: white;
+          font-weight: bold;
+          line-height: 1;
+      `;
+      closeButton.onclick = function() {
+          if (notification.parentNode) {
+              notification.style.animation = 'slideOut 0.3s ease';
+              setTimeout(() => {
+                  if (notification.parentNode) {
+                      notification.remove();
+                  }
+              }, 300);
+          }
+      };
+      notification.appendChild(closeButton);
+      
+      // important일 때만 브라우저 알림도 표시
+      showBrowserNotification(message, '알림');
+  }
+  
   // 타입별 스타일 설정
   switch (type) {
       case 'success':
@@ -287,20 +366,22 @@ function showNotification(message, type = 'info') {
           notification.style.background = '#17a2b8';
   }
   
-  notification.textContent = message;
   document.body.appendChild(notification);
   
-  // 3초 후 자동 제거
-  setTimeout(() => {
-      if (notification.parentNode) {
-          notification.style.animation = 'slideOut 0.3s ease';
-          setTimeout(() => {
-              if (notification.parentNode) {
-                  notification.remove();
-              }
-          }, 300);
-      }
-  }, 3000);
+  // important가 아닐 때만 자동 제거
+  if (!important) {
+      // 3초 후 자동 제거
+      setTimeout(() => {
+          if (notification.parentNode) {
+              notification.style.animation = 'slideOut 0.3s ease';
+              setTimeout(() => {
+                  if (notification.parentNode) {
+                      notification.remove();
+                  }
+              }, 300);
+          }
+      }, 3000);
+  }
   
   // CSS 애니메이션 추가
   if (!document.getElementById('notification-styles')) {

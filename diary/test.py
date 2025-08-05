@@ -1,25 +1,52 @@
 import math
+from datetime import date, datetime
 
 class PolicyFundRecommender:
     def __init__(self):
         """정책자금 추천 시스템 초기화"""
-        self.version = "2.1"
+        self.version = "2.2"
         
     def round_up_to_50m_unit_always(self, amount):
-        """5천만원 단위로 무조건 상향 조정"""
+        """5천만원 단위로 무조건 상향 조정 (기보 제외 모든 자금)"""
         if amount <= 0:
             return 0
         unit = 50_000_000
         return ((int(amount) + unit - 1) // unit) * unit
 
     def calculate_kibo_max_limit(self, annual_revenue):
-        """기보 최대 한도 계산"""
-        revenue_based_limit = annual_revenue * 0.30
+        """기보 최대 한도 계산 (20% 기준으로 변경)"""
+        revenue_based_limit = annual_revenue * 0.20  # 30% → 20%로 변경
         minimum_limit = 100_000_000  # 1억원
         return max(revenue_based_limit, minimum_limit)
 
+    def ensure_kibo_minimum_100m(self, calculated_limit):
+        """기보 최소 1억원 보장 함수 (핵심 추가)"""
+        if calculated_limit > 0 and calculated_limit < 100_000_000:
+            return 100_000_000  # 1억원 미만이면 1억원으로 보정
+        return calculated_limit
+
+    def calculate_company_age_months(self, opening_date_str):
+        """개업일로부터 업력(개월) 계산"""
+        try:
+            if isinstance(opening_date_str, str):
+                # 다양한 날짜 형식 지원
+                if '년' in opening_date_str:
+                    opening_date = datetime.strptime(opening_date_str, '%Y년%m월%d일').date()
+                else:
+                    opening_date = datetime.strptime(opening_date_str, '%Y-%m-%d').date()
+            elif isinstance(opening_date_str, date):
+                opening_date = opening_date_str
+            else:
+                return 0
+            
+            today = date.today()
+            months = (today.year - opening_date.year) * 12 + (today.month - opening_date.month)
+            return max(0, months)
+        except:
+            return 0
+
     def calculate_kibo(self, company_data):
-        """기보 자금 계산 (증액 우선 원칙)"""
+        """기보 자금 계산 (수정된 20% 기준 + 최소 1억원 보장)"""
         # 데이터 추출 및 검증
         is_manufacturing_it = company_data.get('is_manufacturing_it', False)
         credit_score = company_data.get('credit_score', 0)
@@ -67,10 +94,15 @@ class PolicyFundRecommender:
                 'reason': '유관경력 3년 미만'
             }
 
-        # 기보 최대 한도 계산
+        # 기보 최대 한도 계산 (20% 기준)
         max_kibo_limit = self.calculate_kibo_max_limit(annual_revenue)
         additional_limit = max_kibo_limit - existing_kibo_debt
-        final_limit = self.round_up_to_50m_unit_always(additional_limit)
+        
+        # 5천만원 단위 상향 조정 (기존 로직 유지)
+        limit_after_rounding = self.round_up_to_50m_unit_always(additional_limit)
+        
+        # 핵심 추가: 최소 1억원 보장
+        final_limit = self.ensure_kibo_minimum_100m(limit_after_rounding)
         
         # 자금 유형 결정
         is_existing_user = existing_kibo_debt > 0
@@ -81,7 +113,8 @@ class PolicyFundRecommender:
             'limit': int(final_limit),
             'max_total_limit': int(max_kibo_limit),
             'existing_debt': int(existing_kibo_debt),
-            'eligible': final_limit > 0
+            'eligible': final_limit > 0,
+            'calculation_detail': f'매출 {annual_revenue:,}원 × 20% = {annual_revenue * 0.20:,.0f}원, 최소 1억원 보장 적용'
         }
 
     def calculate_shinbo(self, company_data):
@@ -92,6 +125,11 @@ class PolicyFundRecommender:
         annual_revenue = company_data.get('annual_revenue', 0)
         existing_debt_shinbo = company_data.get('existing_debt_shinbo', 0)
         is_manufacturing_it = company_data.get('is_manufacturing_it', False)
+        
+        # 개업일 정보가 있으면 업력 자동 계산
+        opening_date = company_data.get('opening_date')
+        if opening_date and company_age_months == 0:
+            company_age_months = self.calculate_company_age_months(opening_date)
         
         # 타입 안전성 확보
         try:
@@ -151,13 +189,18 @@ class PolicyFundRecommender:
         }
 
     def calculate_jungjincg_youth(self, company_data):
-        """중진공 청년창업 자금"""
+        """중진공 청년창업 자금 (금리 2.5% 정보 추가)"""
         # 데이터 추출 및 검증
         is_manufacturing_it = company_data.get('is_manufacturing_it', False)
         age = company_data.get('age', 0)
         company_age_months = company_data.get('company_age_months', 0)
         credit_score = company_data.get('credit_score', 0)
         career_years = company_data.get('career_years', 0)
+        
+        # 개업일 정보가 있으면 업력 자동 계산
+        opening_date = company_data.get('opening_date')
+        if opening_date and company_age_months == 0:
+            company_age_months = self.calculate_company_age_months(opening_date)
 
         try:
             age = int(age)
@@ -217,11 +260,13 @@ class PolicyFundRecommender:
         return {
             'fund_name': '중진공_청년창업',
             'limit': 100_000_000,
-            'eligible': True
+            'eligible': True,
+            'interest_rate': '연 2.5%',  # 금리 정보 추가
+            'special_benefit': '청년창업 우대금리'
         }
 
     def calculate_sojingong_innovation(self, company_data):
-        """소진공 혁신성장 자금 (강화된 검증)"""
+        """소진공 혁신성장 자금 (기존 로직 유지)"""
         # 데이터 추출
         employees = company_data.get('employees', 0)
         annual_revenue = company_data.get('annual_revenue', 0)
@@ -291,7 +336,7 @@ class PolicyFundRecommender:
         }
 
     def calculate_sojingong_low_credit(self, company_data):
-        """소진공 저신용 자금"""
+        """소진공 저신용 자금 (기존 로직 유지)"""
         # 데이터 추출
         employees = company_data.get('employees', 0)
         credit_score = company_data.get('credit_score', 0)
@@ -344,15 +389,17 @@ class PolicyFundRecommender:
         }
 
     def calculate_shinbojaedan(self, company_data):
-        """신용보증재단 자금"""
+        """신용보증재단 자금 (기대출 반영)"""
         # 데이터 추출
         credit_score = company_data.get('credit_score', 0)
         annual_revenue = company_data.get('annual_revenue', 0)
+        existing_debt_jaedan = company_data.get('existing_debt_jaedan', 0)  # 신규 추가
 
         # 타입 안전성 확보
         try:
             credit_score = int(credit_score)
             annual_revenue = int(annual_revenue)
+            existing_debt_jaedan = int(existing_debt_jaedan)
         except (ValueError, TypeError):
             return {
                 'fund_name': '신용보증재단',
@@ -390,9 +437,12 @@ class PolicyFundRecommender:
                 'eligible': True
             }
 
+        # 핵심 추가: 기존 재단 대출 차감
+        final_limit = final_limit - existing_debt_jaedan
+
         return {
             'fund_name': '신용보증재단',
-            'limit': int(final_limit),
+            'limit': int(max(0, final_limit)),
             'eligible': final_limit > 0
         }
 
@@ -430,10 +480,9 @@ class PolicyFundRecommender:
         if jaedan_result['eligible']:
             eligible_funds.append(jaedan_result)
 
-        # 핵심 변경: 한도 큰 순서로 정렬 (내림차순)
+        # 한도 큰 순서로 정렬 (내림차순)
         def get_sort_key(fund):
             limit = fund.get('limit', 0)
-            # '상담필요'인 경우 4천만원으로 처리하여 적절한 위치에 정렬
             if limit == '상담필요':
                 return 40_000_000
             return limit if isinstance(limit, int) else 0
@@ -456,59 +505,54 @@ class PolicyFundRecommender:
             if isinstance(limit, int):
                 total += limit
             elif limit == '상담필요':
-                total += 40_000_000  # 상담필요는 4천만원으로 계산
+                total += 40_000_000
         return total
 
 
-# 사용 예시 및 테스트
-def test_system():
-    """시스템 테스트 함수"""
+# 대표님 사례 테스트 함수
+def test_user_case():
+    """대표님 제시 사례 테스트"""
     recommender = PolicyFundRecommender()
     
-    # 테스트 케이스 1: 고매출 제조업 (기보 증액)
-    test_case1 = {
-        'annual_revenue': 4_500_000_000,    # 45억
-        'existing_debt_kibo': 150_000_000,  # 기존 1.5억
-        'existing_debt_shinbo': 0,
-        'credit_score': 890,
+    # 매출 2.3억, 신용969점, 제조업, 재단 5천만원 기대출, 2024.1.1 개업, 40세 미만
+    test_case = {
+        'annual_revenue': 230_000_000,      # 2.3억
+        'credit_score': 969,
         'is_manufacturing_it': True,
-        'career_years': 18,
-        'age': 45,
-        'employees': 25
-    }
-    
-    print("=== 테스트 케이스 1: 고매출 제조업 ===")
-    results1 = recommender.recommend_funds(test_case1)
-    for result in results1:
-        limit_str = f"{result['limit']:,}원" if isinstance(result['limit'], int) else result['limit']
-        print(f"{result['fund_label']}: {result['fund_name']} - {limit_str}")
-    
-    total1 = recommender.get_total_funding_amount(results1)
-    print(f"총 조달 가능: {total1:,}원\n")
-    
-    # 테스트 케이스 2: 매출 0원 서비스업
-    test_case2 = {
-        'annual_revenue': 0,
         'existing_debt_kibo': 0,
         'existing_debt_shinbo': 0,
-        'credit_score': 826,
-        'is_manufacturing_it': False,
-        'employees': 0,
-        'is_special_employee_industry': False,
-        'company_age_months': 1,
-        'age': 35,
-        'career_years': 5
+        'existing_debt_jaedan': 50_000_000,  # 재단 5천만원 기대출
+        'opening_date': '2024년1월1일',
+        'age': 35,                          # 40세 미만 가정
+        'career_years': 5,                  # 기보/중진공 조건 충족 가정
+        'employees': 3
     }
     
-    print("=== 테스트 케이스 2: 매출 0원 서비스업 ===")
-    results2 = recommender.recommend_funds(test_case2)
-    for result in results2:
+    print("=== 대표님 사례 테스트 결과 ===")
+    print(f"매출: {test_case['annual_revenue']:,}원")
+    print(f"신용점수: {test_case['credit_score']}점")
+    print(f"업종: 제조업")
+    print(f"재단 기대출: {test_case['existing_debt_jaedan']:,}원")
+    print()
+    
+    results = recommender.recommend_funds(test_case)
+    
+    for result in results:
         limit_str = f"{result['limit']:,}원" if isinstance(result['limit'], int) else result['limit']
         print(f"{result['fund_label']}: {result['fund_name']} - {limit_str}")
+        
+        # 중진공 금리 정보 출력
+        if 'interest_rate' in result:
+            print(f"  → 금리: {result['interest_rate']}")
+        
+        # 기보 계산 상세 출력
+        if 'calculation_detail' in result:
+            print(f"  → 계산: {result['calculation_detail']}")
     
-    total2 = recommender.get_total_funding_amount(results2)
-    print(f"총 조달 가능: {total2:,}원")
+    print()
+    total = recommender.get_total_funding_amount(results)
+    print(f"총 조달 가능: {total:,}원")
 
 
 if __name__ == "__main__":
-    test_system()
+    test_user_case()

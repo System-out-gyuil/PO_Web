@@ -307,6 +307,10 @@ function uploadBlogFile() {
         formData.append('naver_password', naverPassword);
     }
     
+    // 모달 닫기 및 백그라운드 작업 알림 표시
+    closeBlogModal();
+    showNotification('백그라운드에서 블로그 작성중이니 창을 닫지 말고 기다려주세요', 'info');
+    
     // 서버로 파일 업로드
     fetch('/sales/upload_blog_file/', {
         method: 'POST',
@@ -316,7 +320,8 @@ function uploadBlogFile() {
     .then(data => {
         if (data.success) {
             // 성공 메시지 표시
-            showNotification(data.message, 'success');
+            showNotification(data.message, 'success', true);
+            showBrowserNotification(data.message, '블로그 작성 완료');
             
             // 파일 정보 콘솔에 출력
             console.log('업로드된 파일 개수:', data.file_count);
@@ -327,9 +332,6 @@ function uploadBlogFile() {
             if (data.text_content) {
                 console.log('입력된 텍스트:', data.text_content);
             }
-            
-            // 모달 닫기
-            closeBlogModal();
         } else {
             // 오류 메시지 표시
             showNotification(data.error, 'error');
@@ -338,65 +340,7 @@ function uploadBlogFile() {
     .catch(error => {
         console.error('업로드 오류:', error);
         showNotification('파일 업로드 중 오류가 발생했습니다.', 'error');
-    })
-    .finally(() => {
-        // 업로드 버튼 상태 복원
-        uploadBtn.textContent = originalText;
-        uploadBtn.disabled = false;
     });
-}
-
-// 알림 메시지 표시 함수
-function showNotification(message, type = 'info') {
-    // 기존 알림 제거
-    const existingNotification = document.querySelector('.blog-notification');
-    if (existingNotification) {
-        existingNotification.remove();
-    }
-    
-    // 새 알림 생성
-    const notification = document.createElement('div');
-    notification.className = `blog-notification blog-notification-${type}`;
-    notification.textContent = message;
-    
-    // 스타일 적용
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        padding: 12px 20px;
-        border-radius: 6px;
-        color: white;
-        font-weight: 500;
-        z-index: 10000;
-        animation: slideInRight 0.3s ease-out;
-        max-width: 400px;
-        word-wrap: break-word;
-    `;
-    
-    // 타입별 색상 설정
-    if (type === 'success') {
-        notification.style.backgroundColor = '#28a745';
-    } else if (type === 'error') {
-        notification.style.backgroundColor = '#dc3545';
-    } else {
-        notification.style.backgroundColor = '#17a2b8';
-    }
-    
-    // 알림 추가
-    document.body.appendChild(notification);
-    
-    // 3초 후 자동 제거
-    setTimeout(() => {
-        if (notification.parentNode) {
-            notification.style.animation = 'slideOutRight 0.3s ease-in';
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.remove();
-                }
-            }, 300);
-        }
-    }, 3000);
 }
 
 // 페이지 로드 시 블로그 div에 클릭 이벤트 추가
