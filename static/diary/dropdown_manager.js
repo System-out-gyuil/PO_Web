@@ -723,202 +723,211 @@ function createNewDropdown(td, type, id, currentId, currentSubregion) {
 function showModalDropdownOptions(rowId, fieldName, btn) {
     console.log('showModalDropdownOptions 호출됨:', rowId, fieldName, btn);
     
-    // 드롭다운 옵션 가져오기
-    fetch('/sales/dropdown_options/?field=' + encodeURIComponent(fieldName))
-        .then(r => r.json())
-        .then(function(data) {
-            console.log('모달 드롭다운 옵션 로드됨:', data);
-            if (!data.options) {
+    // 캐싱된 데이터가 있는지 확인
+    if (window.dropdownOptionsCache && window.dropdownOptionsCache[fieldName]) {
+        // 캐시된 데이터 사용
+        const data = window.dropdownOptionsCache[fieldName];
+        processModalDropdownOptions(data, rowId, fieldName, btn);
+    } else {
+        // 캐시에 없는 경우에만 API 요청
+        fetch('/sales/dropdown_options/?field=' + encodeURIComponent(fieldName))
+            .then(r => r.json())
+            .then(function(data) {
+                // 캐시에 저장
+                if (!window.dropdownOptionsCache) {
+                    window.dropdownOptionsCache = {};
+                }
+                window.dropdownOptionsCache[fieldName] = data;
+                
+                processModalDropdownOptions(data, rowId, fieldName, btn);
+            })
+            .catch(error => {
+                console.error('모달 드롭다운 옵션 로드 실패:', error);
                 alert('드롭다운 옵션을 불러올 수 없습니다.');
+            });
+    }
+}
+
+// 모달 드롭다운 옵션 처리를 위한 별도 함수
+function processModalDropdownOptions(data, rowId, fieldName, btn) {
+    if (!data.options) {
+        alert('드롭다운 옵션을 불러올 수 없습니다.');
+        return;
+    }
+    
+    // 기존 드롭다운이 있으면 닫기 - 완전한 정리
+    if (typeof closeDropdown === 'function') {
+      closeDropdown();
+    }
+    
+    // 추가적으로 남아있을 수 있는 모든 드롭다운 요소들 제거
+    const existingDropdowns = document.querySelectorAll('.dropdown-edit');
+    existingDropdowns.forEach(function(dropdown) {
+      if (dropdown.parentNode) {
+        dropdown.parentNode.removeChild(dropdown);
+      }
+    });
+    
+    // 현재 선택된 값 가져오기
+    const currentValue = btn.textContent.trim();
+    
+    // 드롭다운 메뉴 생성 - select 태그처럼 자연스럽게
+    const dropdown = document.createElement('div');
+    dropdown.className = 'dropdown-edit';
+    dropdown.id = 'modal-dropdown-' + Date.now();
+    
+    // 버튼의 위치 정보 가져오기
+    const rect = btn.getBoundingClientRect();
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+    
+    // 버튼 바로 아래에 위치하도록 계산
+    const topPosition = rect.bottom + scrollTop + 2;
+    const leftPosition = rect.left + scrollLeft;
+    
+    // select 태그처럼 자연스러운 스타일 적용
+    dropdown.setAttribute('style', `
+      position: absolute !important;
+      background: white !important;
+      border: 1px solid #ccc !important;
+      border-radius: 4px !important;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
+      z-index: 10000 !important;
+      min-width: ${Math.max(rect.width, 300)}px !important;
+      max-height: 200px !important;
+      overflow-y: auto !important;
+      display: block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      font-size: 14px !important;
+      font-family: inherit !important;
+      top: ${topPosition}px !important;
+      left: ${leftPosition}px !important;
+      padding: 4px 0 !important;
+    `);
+    
+    // 드롭다운 항목들 생성
+    let html = '';
+    data.options.forEach(function(option) {
+        const label = option.option || option.name; // option 또는 name 필드 사용
+        if (!label) return; // 값이 없으면 스킵
+        const isSelected = label === currentValue;
+        const backgroundColor = option.color ? hexToRgba(option.color, 0.18) : 'white';
+        html += `
+          <div class="dropdown-item" data-option-id="${option.id}" data-option-text="${label}" data-color="${option.color||''}"
+               style="padding: 8px 12px; 
+                      cursor: pointer; 
+                      border-bottom: 1px solid #f0f0f0;
+                      background: ${backgroundColor};
+                      color: #333;
+                      ${isSelected ? 'border-left: 3px solid #007bff; font-weight: bold;' : ''}
+                      transition: background-color 0.2s;">
+            ${label}
+          </div>
+        `;
+    });
+    
+    dropdown.innerHTML = html;
+    document.body.appendChild(dropdown);
+    
+    // 전역 dropdown 변수에 저장 (closeDropdown 함수에서 사용)
+    window.dropdown = dropdown;
+    
+    console.log('모달 드롭다운 생성 완료:', {
+      element: dropdown,
+      parentNode: dropdown.parentNode,
+      offsetWidth: dropdown.offsetWidth,
+      offsetHeight: dropdown.offsetHeight,
+      computedDisplay: window.getComputedStyle(dropdown).display,
+      computedVisibility: window.getComputedStyle(dropdown).visibility,
+      computedOpacity: window.getComputedStyle(dropdown).opacity,
+      computedZIndex: window.getComputedStyle(dropdown).zIndex
+    });
+    
+    // 호버 효과와 클릭 이벤트 바인딩
+    dropdown.querySelectorAll('.dropdown-item[data-option-id]').forEach(function(item) {
+        // 기존 이벤트 리스너 제거 (중복 방지)
+        const newItem = item.cloneNode(true);
+        item.parentNode.replaceChild(newItem, item);
+        
+        // 호버 효과
+        newItem.addEventListener('mouseenter', function() {
+            if (!this.style.borderLeft.includes('#007bff')) {
+                const color = this.getAttribute('data-color');
+                if (color && color !== 'null' && color !== 'undefined') {
+                    this.style.background = hexToRgba(color, 0.3);
+                } else {
+                    this.style.background = '#f8f9fa';
+                }
+            }
+        });
+        // mouseleave → mouseout
+        newItem.addEventListener('mouseout', function() {
+            if (!this.style.borderLeft.includes('#007bff')) {
+                const color = this.getAttribute('data-color');
+                if (color && color !== 'null' && color !== 'undefined') {
+                    this.style.background = hexToRgba(color, 0.18);
+                } else {
+                    this.style.background = '#f8f9fa';
+                }
+            }
+        });
+        
+        // 클릭 이벤트
+        newItem.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // 전역 처리 상태 확인
+            if (isProcessingRequest) {
+                console.log('전역 처리 중이므로 클릭 무시');
                 return;
             }
             
-            // 기존 드롭다운이 있으면 닫기 - 완전한 정리
-            if (typeof closeDropdown === 'function') {
-              closeDropdown();
+            // 이미 처리 중인지 확인
+            if (this.dataset.processing === 'true') {
+                console.log('이미 처리 중인 옵션 클릭 무시');
+                return;
             }
             
-            // 추가적으로 남아있을 수 있는 모든 드롭다운 요소들 제거
-            const existingDropdowns = document.querySelectorAll('.dropdown-edit');
-            existingDropdowns.forEach(function(dropdown) {
-              if (dropdown.parentNode) {
+            // 전역 처리 상태 설정
+            isProcessingRequest = true;
+            
+            // 처리 중 상태로 설정
+            this.dataset.processing = 'true';
+            
+            const selectedOptionId = this.getAttribute('data-option-id');
+            const selectedOptionText = this.getAttribute('data-option-text');
+            const selectedColor = this.getAttribute('data-color');
+            
+            // 드롭다운 닫기
+            if (dropdown && dropdown.parentNode) {
                 dropdown.parentNode.removeChild(dropdown);
-              }
-            });
+                window.dropdown = null;
+            }
             
-            // 현재 선택된 값 가져오기
-            const currentValue = btn.textContent.trim();
-            console.log('현재 선택된 값:', currentValue);
+            // 버튼 배경색 변경
+            btn.textContent = selectedOptionText;
+            btn.style.background = selectedColor ? hexToRgba(selectedColor, 0.18) : '#f8f9fa';
+            btn.style.color = '#333';
             
-            // 드롭다운 메뉴 생성 - select 태그처럼 자연스럽게
-            const dropdown = document.createElement('div');
-            dropdown.className = 'dropdown-edit';
-            dropdown.id = 'modal-dropdown-' + Date.now();
+            // 드롭다운 옵션 선택 처리
+            selectModalDropdownOption(rowId, fieldName, selectedOptionId, selectedOptionText, btn, selectedColor);
             
-            // 버튼의 위치 정보 가져오기
-            const rect = btn.getBoundingClientRect();
-            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-            const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
-            
-            // 버튼 바로 아래에 위치하도록 계산
-            const topPosition = rect.bottom + scrollTop + 2;
-            const leftPosition = rect.left + scrollLeft;
-            
-            // select 태그처럼 자연스러운 스타일 적용
-            dropdown.setAttribute('style', `
-              position: absolute !important;
-              background: white !important;
-              border: 1px solid #ccc !important;
-              border-radius: 4px !important;
-              box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
-              z-index: 10000 !important;
-              min-width: ${Math.max(rect.width, 300)}px !important;
-              max-height: 200px !important;
-              overflow-y: auto !important;
-              display: block !important;
-              visibility: visible !important;
-              opacity: 1 !important;
-              font-size: 14px !important;
-              font-family: inherit !important;
-              top: ${topPosition}px !important;
-              left: ${leftPosition}px !important;
-              padding: 4px 0 !important;
-            `);
-            
-            console.log('모달 드롭다운 위치 설정:', {
-              top: topPosition,
-              left: leftPosition,
-              buttonWidth: rect.width,
-              buttonRect: rect
-            });
-            
-            // 드롭다운 항목들 생성
-            let html = '';
-            data.options.forEach(function(option) {
-                const label = option.option || option.name; // option 또는 name 필드 사용
-                if (!label) return; // 값이 없으면 스킵
-                const isSelected = label === currentValue;
-                const backgroundColor = option.color ? hexToRgba(option.color, 0.18) : 'white';
-                html += `
-                  <div class="dropdown-item" data-option-id="${option.id}" data-option-text="${label}" data-color="${option.color||''}"
-                       style="padding: 8px 12px; 
-                              cursor: pointer; 
-                              border-bottom: 1px solid #f0f0f0;
-                              background: ${backgroundColor};
-                              color: #333;
-                              ${isSelected ? 'border-left: 3px solid #007bff; font-weight: bold;' : ''}
-                              transition: background-color 0.2s;">
-                    ${label}
-                  </div>
-                `;
-            });
-            
-            dropdown.innerHTML = html;
-            document.body.appendChild(dropdown);
-            
-            // 전역 dropdown 변수에 저장 (closeDropdown 함수에서 사용)
-            window.dropdown = dropdown;
-            
-            console.log('모달 드롭다운 생성 완료:', {
-              element: dropdown,
-              parentNode: dropdown.parentNode,
-              offsetWidth: dropdown.offsetWidth,
-              offsetHeight: dropdown.offsetHeight,
-              computedDisplay: window.getComputedStyle(dropdown).display,
-              computedVisibility: window.getComputedStyle(dropdown).visibility,
-              computedOpacity: window.getComputedStyle(dropdown).opacity,
-              computedZIndex: window.getComputedStyle(dropdown).zIndex
-            });
-            
-            // 호버 효과와 클릭 이벤트 바인딩
-            dropdown.querySelectorAll('.dropdown-item[data-option-id]').forEach(function(item) {
-                // 기존 이벤트 리스너 제거 (중복 방지)
-                const newItem = item.cloneNode(true);
-                item.parentNode.replaceChild(newItem, item);
-                
-                // 호버 효과
-                newItem.addEventListener('mouseenter', function() {
-                    if (!this.style.borderLeft.includes('#007bff')) {
-                        const color = this.getAttribute('data-color');
-                        if (color && color !== 'null' && color !== 'undefined') {
-                            this.style.background = hexToRgba(color, 0.3);
-                        } else {
-                            this.style.background = '#f8f9fa';
-                        }
-                    }
-                });
-                // mouseleave → mouseout
-                newItem.addEventListener('mouseout', function() {
-                    if (!this.style.borderLeft.includes('#007bff')) {
-                        const color = this.getAttribute('data-color');
-                        if (color && color !== 'null' && color !== 'undefined') {
-                            this.style.background = hexToRgba(color, 0.18);
-                        } else {
-                            this.style.background = '#f8f9fa';
-                        }
-                    }
-                });
-                
-                // 클릭 이벤트
-                newItem.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    
-                    // 전역 처리 상태 확인
-                    if (isProcessingRequest) {
-                        console.log('전역 처리 중이므로 클릭 무시');
-                        return;
-                    }
-                    
-                    // 이미 처리 중인지 확인
-                    if (this.dataset.processing === 'true') {
-                        console.log('이미 처리 중인 옵션 클릭 무시');
-                        return;
-                    }
-                    
-                    // 전역 처리 상태 설정
-                    isProcessingRequest = true;
-                    
-                    // 처리 중 상태로 설정
-                    this.dataset.processing = 'true';
-                    
-                    const selectedOptionId = this.getAttribute('data-option-id');
-                    const selectedOptionText = this.getAttribute('data-option-text');
-                    const selectedColor = this.getAttribute('data-color');
-                    
-                    // 드롭다운 닫기
-                    if (dropdown && dropdown.parentNode) {
-                        dropdown.parentNode.removeChild(dropdown);
-                        window.dropdown = null;
-                    }
-                    
-                    // 버튼 배경색 변경
-                    btn.textContent = selectedOptionText;
-                    btn.style.background = selectedColor ? hexToRgba(selectedColor, 0.18) : '#f8f9fa';
-                    btn.style.color = '#333';
-                    
-                    // 드롭다운 옵션 선택 처리
-                    selectModalDropdownOption(rowId, fieldName, selectedOptionId, selectedOptionText, btn, selectedColor);
-                    
-                    // 처리 완료 후 상태 제거 (약간의 지연 후)
-                    setTimeout(() => {
-                        this.dataset.processing = 'false';
-                        isProcessingRequest = false;
-                    }, 1000);
-                });
-            });
-            
-            // 드롭다운 외부 클릭 시 닫기
-            addGlobalClickHandler(dropdown, btn);
-        })
-        .catch(function(error) {
-            console.error('모달 드롭다운 옵션 로드 실패:', error);
-            alert('드롭다운 옵션을 불러오는데 실패했습니다: ' + error.message);
+            // 처리 완료 후 상태 제거 (약간의 지연 후)
+            setTimeout(() => {
+                this.dataset.processing = 'false';
+                isProcessingRequest = false;
+            }, 1000);
         });
-  }
-  
-  // 모달용 드롭다운 옵션 선택 함수
-  function selectModalDropdownOption(rowId, fieldName, optionId, optionText, btn, color) {
+    });
+    
+    // 드롭다운 외부 클릭 시 닫기
+    addGlobalClickHandler(dropdown, btn);
+}
+
+// 모달용 드롭다운 옵션 선택 함수
+function selectModalDropdownOption(rowId, fieldName, optionId, optionText, btn, color) {
     console.log('selectModalDropdownOption 호출됨:', rowId, fieldName, optionId, optionText);
     
     // 중복 요청 방지를 위한 디바운싱
@@ -1158,212 +1167,217 @@ function showModalDropdownOptions(rowId, fieldName, btn) {
   
   // 상세 모달용 드롭다운 오픈 함수
   function openDetailDropdown(rowId, fieldName, btn) {
-    console.log('openDetailDropdown 호출됨:', rowId, fieldName, btn);
-    
     // 지역과 상세지역은 특별 처리
     if (fieldName === '지역') {
-        console.log('지역 드롭다운 호출');
         showModalRegionDropdown(rowId, fieldName, btn);
         return;
     } else if (fieldName === '상세지역') {
-        console.log('상세지역 드롭다운 호출');
         showModalSubregionDropdown(rowId, fieldName, btn);
         return;
     }
     
-    console.log('일반 드롭다운 처리');
-    // 일반 드롭다운 속성 처리
-    fetch('/sales/get_user_attributes/')
-        .then(r => r.json())
-        .then(function(attributesData) {
-            if (!attributesData.success) {
-                alert('속성 정보를 불러올 수 없습니다.');
-                return;
-            }
-            
-            const attr = attributesData.attributes.find(a => a.name === fieldName);
-            if (!attr) {
-                alert('해당 속성을 찾을 수 없습니다.');
-                return;
-            }
-            
-            if (attr.type === 'dropdown') {
-                // 드롭다운 옵션들을 가져와서 표시
-                showModalDropdownOptions(rowId, fieldName, btn);
-            } else {
-                alert('드롭다운 타입이 아닙니다.');
-            }
-        });
+    // 캐시된 사용자 속성이 있는지 확인
+    if (window.userAttributesCache) {
+        // 캐시된 데이터 사용
+        const attr = window.userAttributesCache.find(a => a.name === fieldName);
+        if (!attr) {
+            alert('해당 속성을 찾을 수 없습니다.');
+            return;
+        }
+        
+        if (attr.type === 'dropdown') {
+            // 드롭다운 옵션들을 가져와서 표시
+            showModalDropdownOptions(rowId, fieldName, btn);
+        } else {
+            alert('드롭다운 타입이 아닙니다.');
+        }
+    } else {
+        // 캐시에 없는 경우에만 API 요청
+        fetch('/sales/get_user_attributes/')
+            .then(r => r.json())
+            .then(function(attributesData) {
+                if (!attributesData.success) {
+                    alert('속성 정보를 불러올 수 없습니다.');
+                    return;
+                }
+                
+                // 캐시에 저장
+                window.userAttributesCache = attributesData.attributes;
+                
+                const attr = attributesData.attributes.find(a => a.name === fieldName);
+                if (!attr) {
+                    alert('해당 속성을 찾을 수 없습니다.');
+                    return;
+                }
+                
+                if (attr.type === 'dropdown') {
+                    // 드롭다운 옵션들을 가져와서 표시
+                    showModalDropdownOptions(rowId, fieldName, btn);
+                } else {
+                    alert('드롭다운 타입이 아닙니다.');
+                }
+            })
+            .catch(error => {
+                console.error('사용자 속성 로드 실패:', error);
+                alert('속성 정보를 불러오는 중 오류가 발생했습니다.');
+            });
+    }
   }
   
   // 모달용 상세지역 드롭다운 표시 함수
   function showModalSubregionDropdown(rowId, fieldName, btn) {
-    console.log('showModalSubregionDropdown 호출됨:', rowId, fieldName, btn);
+    // 캐시된 행 데이터가 있는지 확인 (상세모달에서 이미 가져온 데이터 재사용)
+    if (window.currentDetailRowId === rowId && window.currentDetailRowData) {
+        // 캐시된 데이터로 처리
+        processSubregionDropdown(window.currentDetailRowData, rowId, fieldName, btn);
+    } else {
+        // 서버에서 현재 지역 가져오기
+        fetch(`/sales/get_row_details/${rowId}/`)
+          .then(response => response.json())
+          .then(data => {
+            if (data.success && data.row_data) {
+                // 캐시에 저장
+                window.currentDetailRowData = data.row_data;
+                processSubregionDropdown(data.row_data, rowId, fieldName, btn);
+            } else {
+                alert('행 데이터를 불러올 수 없습니다.');
+            }
+          })
+          .catch(error => {
+            console.error('상세지역 드롭다운 로딩 오류:', error);
+            alert('상세지역 정보를 불러오는 중 오류가 발생했습니다.');
+          });
+    }
+  }
+  
+  // 상세지역 드롭다운 처리를 위한 별도 함수
+  function processSubregionDropdown(rowData, rowId, fieldName, btn) {
+    // 현재 지역과 상세지역 정보 추출
+    let currentRegion = '';
+    let currentSubregion = '';
     
-    // 서버에서 현재 지역 가져오기
-    fetch(`/sales/get_row_details/${rowId}/`)
-      .then(response => response.json())
-      .then(data => {
-        console.log('서버 응답 데이터:', data);
-        
-        // 현재 지역과 상세지역 정보 추출
-        let currentRegion = '';
-        let currentSubregion = '';
-        
-        if (data.success && data.row_data) {
-          currentRegion = data.row_data['지역'] || '';
-          currentSubregion = data.row_data['상세지역'] || '';
-        } else if (data.region) {
-          currentRegion = data.region;
-          currentSubregion = data.region_detail || '';
-        }
-        
-        console.log('현재 지역:', currentRegion, '현재 상세지역:', currentSubregion);
-        
-        // 지역이 없으면 경고
-        if (!currentRegion) {
-          alert('먼저 지역을 선택해주세요.');
-          return;
-        }
-        
-        // 기존 드롭다운이 있으면 닫기 - 완전한 정리
-        if (typeof closeDropdown === 'function') {
-          closeDropdown();
-        }
-        
-        // 추가적으로 남아있을 수 있는 모든 드롭다운 요소들 제거
-        const existingDropdowns = document.querySelectorAll('.dropdown-edit');
-        existingDropdowns.forEach(function(dropdown) {
-          if (dropdown.parentNode) {
-            dropdown.parentNode.removeChild(dropdown);
-          }
+    currentRegion = rowData['지역'] || '';
+    currentSubregion = rowData['상세지역'] || '';
+    
+    // 지역이 없으면 경고
+    if (!currentRegion) {
+      alert('먼저 지역을 선택해주세요.');
+      return;
+    }
+    
+    // 기존 드롭다운이 있으면 닫기 - 완전한 정리
+    if (typeof closeDropdown === 'function') {
+      closeDropdown();
+    }
+    
+    // 추가적으로 남아있을 수 있는 모든 드롭다운 요소들 제거
+    const existingDropdowns = document.querySelectorAll('.dropdown-edit');
+    existingDropdowns.forEach(function(dropdown) {
+      if (dropdown.parentNode) {
+        dropdown.parentNode.removeChild(dropdown);
+      }
+    });
+    
+    // 상세지역 목록 가져오기
+    const subregions = getSubregions(currentRegion);
+    
+    if (!subregions || subregions.length === 0) {
+      alert(`${currentRegion}에 대한 상세지역 정보가 없습니다.`);
+      return;
+    }
+    
+    // 드롭다운 메뉴 생성 - select 태그처럼 자연스럽게
+    const dropdown = document.createElement('div');
+    dropdown.className = 'dropdown-edit';
+    dropdown.id = 'modal-subregion-dropdown-' + Date.now();
+    
+    // 버튼의 위치 정보 가져오기
+    const rect = btn.getBoundingClientRect();
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+    
+    // 버튼 바로 아래에 위치하도록 계산
+    const topPosition = rect.bottom + scrollTop + 2;
+    const leftPosition = rect.left + scrollLeft;
+    
+    // select 태그처럼 자연스러운 스타일 적용
+    dropdown.setAttribute('style', `
+      position: absolute !important;
+      background: white !important;
+      border: 1px solid #ccc !important;
+      border-radius: 4px !important;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
+      z-index: 10000 !important;
+      min-width: ${Math.max(rect.width, 300)}px !important;
+      max-height: 200px !important;
+      overflow-y: auto !important;
+      display: block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      font-size: 14px !important;
+      font-family: inherit !important;
+      top: ${topPosition}px !important;
+      left: ${leftPosition}px !important;
+      padding: 4px 0 !important;
+    `);
+    
+    // 드롭다운 항목들 생성
+    let html = '';
+    subregions.forEach(function(subregion) {
+        const isSelected = subregion === currentSubregion;
+        html += `
+          <div class="dropdown-item" data-subregion="${subregion}" 
+               style="padding: 8px 12px !important; 
+                      cursor: pointer !important; 
+                      border-bottom: 1px solid #f0f0f0 !important;
+                      ${isSelected ? 'background: #007bff !important; color: white !important;' : 'background: white !important; color: #333 !important;'}
+                      transition: background-color 0.2s !important;">
+            ${subregion}
+          </div>
+        `;
+    });
+    
+    dropdown.innerHTML = html;
+    document.body.appendChild(dropdown);
+    
+    // 전역 dropdown 변수에 저장 (closeDropdown 함수에서 사용)
+    window.dropdown = dropdown;
+    
+    // 호버 효과와 클릭 이벤트 바인딩
+    dropdown.querySelectorAll('.dropdown-item[data-subregion]').forEach(function(item) {
+        // 호버 효과
+        item.addEventListener('mouseenter', function() {
+            if (!this.style.background.includes('#007bff')) {
+                this.style.background = '#f8f9fa !important';
+            }
         });
         
-        // 상세지역 목록 가져오기
-        const subregions = getSubregions(currentRegion);
-        console.log('상세지역 목록:', subregions);
-        
-        if (!subregions || subregions.length === 0) {
-          alert(`${currentRegion}에 대한 상세지역 정보가 없습니다.`);
-          return;
-        }
-        
-        // 드롭다운 메뉴 생성 - select 태그처럼 자연스럽게
-        const dropdown = document.createElement('div');
-        dropdown.className = 'dropdown-edit';
-        dropdown.id = 'modal-subregion-dropdown-' + Date.now();
-        
-        // 버튼의 위치 정보 가져오기
-        const rect = btn.getBoundingClientRect();
-        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-        const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
-        
-        // 버튼 바로 아래에 위치하도록 계산
-        const topPosition = rect.bottom + scrollTop + 2;
-        const leftPosition = rect.left + scrollLeft;
-        
-        // select 태그처럼 자연스러운 스타일 적용
-        dropdown.setAttribute('style', `
-          position: absolute !important;
-          background: white !important;
-          border: 1px solid #ccc !important;
-          border-radius: 4px !important;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
-          z-index: 10000 !important;
-          min-width: ${Math.max(rect.width, 300)}px !important;
-          max-height: 200px !important;
-          overflow-y: auto !important;
-          display: block !important;
-          visibility: visible !important;
-          opacity: 1 !important;
-          font-size: 14px !important;
-          font-family: inherit !important;
-          top: ${topPosition}px !important;
-          left: ${leftPosition}px !important;
-          padding: 4px 0 !important;
-        `);
-        
-        console.log('모달 상세지역 드롭다운 위치 설정:', {
-          top: topPosition,
-          left: leftPosition,
-          buttonWidth: rect.width,
-          buttonRect: rect
+        item.addEventListener('mouseleave', function() {
+            if (!this.style.background.includes('#007bff')) {
+                this.style.background = 'white !important';
+            }
         });
         
-        // 드롭다운 항목들 생성
-        let html = '';
-        subregions.forEach(function(subregion) {
-            const isSelected = subregion === currentSubregion;
-            html += `
-              <div class="dropdown-item" data-subregion="${subregion}" 
-                   style="padding: 8px 12px !important; 
-                          cursor: pointer !important; 
-                          border-bottom: 1px solid #f0f0f0 !important;
-                          ${isSelected ? 'background: #007bff !important; color: white !important;' : 'background: white !important; color: #333 !important;'}
-                          transition: background-color 0.2s !important;">
-                ${subregion}
-              </div>
-            `;
-        });
-        
-        dropdown.innerHTML = html;
-        document.body.appendChild(dropdown);
-        
-        // 전역 dropdown 변수에 저장 (closeDropdown 함수에서 사용)
-        window.dropdown = dropdown;
-        
-        console.log('모달 상세지역 드롭다운 생성 완료:', {
-          element: dropdown,
-          parentNode: dropdown.parentNode,
-          offsetWidth: dropdown.offsetWidth,
-          offsetHeight: dropdown.offsetHeight,
-          computedDisplay: window.getComputedStyle(dropdown).display,
-          computedVisibility: window.getComputedStyle(dropdown).visibility,
-          computedOpacity: window.getComputedStyle(dropdown).opacity,
-          computedZIndex: window.getComputedStyle(dropdown).zIndex
-        });
-        
-        // 호버 효과와 클릭 이벤트 바인딩
-        dropdown.querySelectorAll('.dropdown-item[data-subregion]').forEach(function(item) {
-            // 호버 효과
-            item.addEventListener('mouseenter', function() {
-                if (!this.style.background.includes('#007bff')) {
-                    this.style.background = '#f8f9fa !important';
-                }
-            });
+        // 클릭 이벤트
+        item.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
             
-            item.addEventListener('mouseleave', function() {
-                if (!this.style.background.includes('#007bff')) {
-                    this.style.background = 'white !important';
-                }
-            });
+            const selectedSubregion = this.getAttribute('data-subregion');
             
-            // 클릭 이벤트
-            item.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                
-                const selectedSubregion = this.getAttribute('data-subregion');
-                console.log('모달에서 상세지역 선택됨:', selectedSubregion);
-                
-                // 드롭다운 제거
-                if (dropdown && dropdown.parentNode) {
-                    dropdown.parentNode.removeChild(dropdown);
-                    window.dropdown = null;
-                }
-                
-                // 상세지역 선택 처리
-                selectModalSubregionOption(rowId, selectedSubregion, this);
-            });
+            // 드롭다운 제거
+            if (dropdown && dropdown.parentNode) {
+                dropdown.parentNode.removeChild(dropdown);
+                window.dropdown = null;
+            }
+            
+            // 상세지역 선택 처리
+            selectModalSubregionOption(rowId, selectedSubregion, this);
         });
-        
-        // 드롭다운 외부 클릭 시 닫기
-        addGlobalClickHandler(dropdown, btn);
-      })
-      .catch(error => {
-        console.error('상세지역 드롭다운 로딩 오류:', error);
-        alert('상세지역 정보를 불러오는 중 오류가 발생했습니다.');
-      });
+    });
+    
+    // 드롭다운 외부 클릭 시 닫기
+    addGlobalClickHandler(dropdown, btn);
   }
   
   // 드롭다운 셀 값 변경 후 항상 칸반보드 새로고침 (최적화: debounce)

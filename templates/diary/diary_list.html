@@ -2139,10 +2139,8 @@ function refreshTable() {
                                 let width = null;
                                 if (savedWidth) {
                                     width = parseInt(savedWidth);
-                                    console.log(`localStorage에서 너비 복원: ${attrName} = ${width}px`);
                                 } else if (dataWidth) {
                                     width = parseInt(dataWidth);
-                                    console.log(`data-width에서 너비 적용: ${attrName} = ${width}px`);
                                 }
                                 
                                 if (width) {
@@ -2162,7 +2160,6 @@ function refreshTable() {
                                         cell.style.whiteSpace = 'nowrap';
                                     });
                                     
-                                    console.log(`리렌더링 후 컬럼 너비 적용: ${attrName} = ${width}px`);
                                 }
                                 
                                 // 최대 너비도 복원
@@ -2174,7 +2171,6 @@ function refreshTable() {
                                         cell.style.textOverflow = 'ellipsis';
                                         cell.style.whiteSpace = 'nowrap';
                                     });
-                                    console.log(`리렌더링 후 max-width 복원: ${attrName} = ${savedMaxWidth}px`);
                                 }
                             }
                         });

@@ -1,4 +1,8 @@
-// 상세보기 모달 함수 - 새로운 Row 시스템에 맞게 수정
+// 사용자 속성 정보 캐시
+let userAttributesCache = null;
+let attributesCacheTimestamp = null;
+const CACHE_DURATION = 5 * 60 * 1000; // 5분
+
 function showDetailModal(rowData, rowId) {
     console.log('===== showDetailModal 시작 =====');
     
@@ -9,7 +13,16 @@ function showDetailModal(rowData, rowId) {
     // 사용자의 속성들을 기준으로 표시
     // const user = { id: 1 }; // 임시로 user id 1 사용
     
+    // 캐시 확인: 5분 이내의 데이터가 있으면 재사용
+    const now = Date.now();
+    if (userAttributesCache && attributesCacheTimestamp && (now - attributesCacheTimestamp < CACHE_DURATION)) {
+        console.log('캐시된 속성 데이터 사용');
+        generateDetailModalContent(userAttributesCache, rowData, rowId);
+        return;
+    }
+    
     // 백엔드에서 사용자의 속성 목록을 가져와야 함
+    console.log('새로운 속성 데이터 요청');
     fetch('/sales/get_user_attributes/')
         .then(response => response.json())
         .then(data => {
@@ -18,706 +31,712 @@ function showDetailModal(rowData, rowId) {
                 return;
             }
             
-            const attributes = data.attributes;
+            // 캐시에 저장
+            userAttributesCache = data.attributes;
+            attributesCacheTimestamp = now;
             
-            // 속성을 순서대로 정렬 (sort_order 기준)
-            const sortedAttributes = attributes.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
-            
-            // 읽기 전용 필드 목록 - 모든 필드를 수정 가능하게 하기 위해 비움
-            const readonlyFields = [];
-            
-            // 숨김 필드 목록 (표시하지 않을 속성들)
-            const hiddenFields = ['음성파일', '변환된 텍스트'];
-            
-            let html = '<h3>상세 정보</h3>';
-            let textAttributeValue = ''; // text 타입 속성의 값을 저장
-            let audioFileValue = ''; // 음성파일 속성의 값을 저장
-            
-            // 지역 정보를 저장할 변수들
-            let regionValue = '';
-            let subregionValue = '';
-            let regionProcessed = false;
-            
-            sortedAttributes.forEach(function(attr) {
-                const value = rowData[attr.name] || '';
-                let inputHtml = '';
-                
-                // 숨김 필드들은 좌측에 표시하지 않음
-                if (hiddenFields.includes(attr.name)) {
-                    if (attr.name === '음성파일') {
-                        audioFileValue = value;
-                    }
-                    return; // 이 속성은 좌측 테이블에 추가하지 않음
-                }
-                
-                // 지역과 상세지역을 한 줄로 표시하기 위한 처리
-                if (attr.name === '지역') {
-                    regionValue = value;
-                    return; // 지역은 일단 저장만 하고 건너뛰기
-                } else if (attr.name === '상세지역') {
-                    subregionValue = value;
-                    // 지역과 상세지역을 한 줄로 표시
-                    if (!regionProcessed) {
-                        html += `
-                            <div style="display:flex;align-items:center;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #eee;">
-                                <label style="width:120px;font-weight:bold;color:#333;">지역:</label>
-                                <div style="flex:1;display:flex;align-items:center;gap:10px;">
-                                    <button type="button" class="add-btn" style="width: 50%; background:#f8f9fa;color:#333;border:1px solid #eee;padding:8px 12px;border-radius:4px;" onclick="openDetailDropdown('${rowId}','지역',this)">${regionValue||'선택'}</button>
-                                    <button type="button" class="add-btn" style="width: 50%; background:#f8f9fa;color:#333;border:1px solid #eee;padding:8px 12px;border-radius:4px;" onclick="openDetailDropdown('${rowId}','상세지역',this)">${subregionValue||'선택'}</button>
-                                </div>
-                            </div>
-                        `;
-                        regionProcessed = true;
-                    }
-                    return; // 상세지역 처리 완료
-                }
-                
-                if (readonlyFields.includes(attr.name)) {
-                    inputHtml = `<input type="text" value="${value}" style="background:#f8f9fa;">`;
-                } else if (attr.name === '기대출') {
-                    // 기대출 필드는 8개 카테고리를 4칸씩 2줄로 표시
-                    let debtData = {};
-                    try {
-                        if (value && typeof value === 'object') {
-                            debtData = value;
-                        } else if (value && typeof value === 'string' && value.startsWith('{')) {
-                            debtData = JSON.parse(value);
-                        }
-                    } catch (e) {
-                        console.error('기대출 데이터 파싱 오류:', e);
-                    }
-                    
-                    // 8개 카테고리 정의
-                    const debtCategories = [
-                        { key: 'tech_guarantee', label: '기술보증기금' },
-                        { key: 'credit_guarantee', label: '신용보증기금' },
-                        { key: 'credit_foundation', label: '신용보증재단' },
-                        { key: 'smba', label: '중진공' },
-                        { key: 'semas_innovation', label: '소진공-혁신성장' },
-                        { key: 'semas_lowcredit', label: '소진공-저신용' },
-                        { key: 'collateral', label: '담보' },
-                        { key: 'credit', label: '신용' }
-                    ];
-                    
-                    // 전역 debtData 초기화
-                    window.debtData = debtData;
-                    
-                    // 첫 번째 줄 (4개) - 4x2 그리드 형태로 변경
-                    let firstRowHtml = '<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 15px;">';
-                    for (let i = 0; i < 4; i++) {
-                        const category = debtCategories[i];
-                        const currentValue = debtData[category.key] || '';
-                        // 만원 단위 값 표시
-                        const displayValue = currentValue ? currentValue.toString() : '';
-                        firstRowHtml += `
-                            <div style="text-align: center;">
-                                <label style="display: block; font-size: 12px; font-weight: bold; color: #495057; margin-bottom: 5px;">${category.label}</label>
-                                <div style="display: flex; align-items: center; justify-content: center; gap: 5px;">
-                                    <input type="text" 
-                                           id="debt_${category.key}_${rowId}" 
-                                           value="${displayValue}" 
-                                           placeholder="0"
-                                           style="width: 67px; height: 28px; padding: 4px 6px; border: 1px solid #ced4da; border-radius: 3px; font-size: 12px; text-align: center;"
-                                           oninput="formatDebtInputRealtime(this, '${rowId}', '${category.key}')"
-                                           onblur="updateDebtField('${rowId}', '${category.key}', this.value)">
-                                    <span style="font-size: 11px; color: #6c757d;">만원</span>
-                                </div>
-                            </div>
-                        `;
-                    }
-                    firstRowHtml += '</div>';
-                    
-                    // 두 번째 줄 (4개)
-                    let secondRowHtml = '<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px;">';
-                    for (let i = 4; i < 8; i++) {
-                        const category = debtCategories[i];
-                        const currentValue = debtData[category.key] || '';
-                        // 만원 단위 값 표시
-                        const displayValue = currentValue ? currentValue.toString() : '';
-                        secondRowHtml += `
-                            <div style="text-align: center;">
-                                <label style="display: block; font-size: 12px; font-weight: bold; color: #495057; margin-bottom: 5px;">${category.label}</label>
-                                <div style="display: flex; align-items: center; justify-content: center; gap: 5px;">
-                                    <input type="text" 
-                                           id="debt_${category.key}_${rowId}" 
-                                           value="${displayValue}" 
-                                           placeholder="0"
-                                           style="width: 65px; height: 28px; padding: 4px 6px; border: 1px solid #ced4da; border-radius: 3px; font-size: 12px; text-align: center;"
-                                           oninput="formatDebtInputRealtime(this, '${rowId}', '${category.key}')"
-                                           onblur="updateDebtField('${rowId}', '${category.key}', this.value)">
-                                    <span style="font-size: 11px; color: #6c757d;">만원</span>
-                                </div>
-                            </div>
-                        `;
-                    }
-                    secondRowHtml += '</div>';
-                    
-                    // 총액 표시 (만원 단위)
-                    const totalAmount = Object.values(debtData).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
-                    const totalDisplayValue = totalAmount ? `${totalAmount}만원` : '0만원';
-                    const totalHtml = `
-                        <div style="margin-top: 10px; padding: 8px; background: #f8f9fa; border-radius: 4px; text-align: center;">
-                            <span style="font-weight: bold; color: #495057;">총 기대출: </span>
-                            <span id="debt_total_${rowId}" style="font-weight: bold; color: #007bff;">${totalDisplayValue}</span>
-                        </div>
-                    `;
-                    
-                    inputHtml = `
-                        <div class="input-field" style="padding: 12px; background: #fff;">
-                            ${firstRowHtml}
-                            ${secondRowHtml}
-                            ${totalHtml}
-                        </div>
-                    `;
-                }else if (attr.type === 'recommend') {
-                    // 추천자금 필드 처리
-                    let displayValue = '';
-                    let detailData = null;
-                    
-                    // 저장된 값이 JSON 형태인지 확인
-                    try {
-                        if (value && typeof value === 'string' && value.startsWith('{')) {
-                            detailData = JSON.parse(value);
-                            const totalAmount = detailData['총자금'] || 0;
-                            displayValue = totalAmount ? formatToKoreanCurrency(totalAmount) : '0';
-                        } else {
-                            displayValue = value || '';
-                        }
-                    } catch (e) {
-                        displayValue = value || '';
-                    }
-                    
-                    inputHtml = `
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <input type="text" 
-                                   value="${displayValue}" 
-                                   data-field="${attr.name}" 
-                                   onchange="detailUpdateRowField('${rowId}', '${attr.name}', this.value)"
-                                   style="flex: 1; padding: 8px; border: 1px solid #000; border-radius: 4px;">
-                            ${detailData ? `
-                            <button type="button" 
-                                    onclick="showFundingDetailModal('${rowId}', '${attr.name}')" 
-                                    style="padding: 8px 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; white-space: nowrap; font-size: 14px;">
-                                상세보기
-                            </button>
-                            ` : ''}
-                            <button type="button" 
-                                    onclick="requestFundingRecommendation('${rowId}')" 
-                                    style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; white-space: nowrap; font-size: 14px;">
-                                추천받기
-                            </button>
-                        </div>
-                    `;
-                } else if (attr.name === '추천자금') {
-                    // 속성명으로도 추천자금 필드 처리 (fallback)
-                    let displayValue = '';
-                    let detailData = null;
-                    
-                    // 저장된 값이 JSON 형태인지 확인
-                    try {
-                        if (value && typeof value === 'string' && value.startsWith('{')) {
-                            detailData = JSON.parse(value);
-                            const totalAmount = detailData['총자금'] || 0;
-                            displayValue = totalAmount ? formatToKoreanCurrency(totalAmount) : '0';
-                        } else {
-                            displayValue = value || '';
-                        }
-                    } catch (e) {
-                        displayValue = value || '';
-                    }
-                    
-                    inputHtml = `
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <input type="text" 
-                                   value="${displayValue}" 
-                                   data-field="${attr.name}" 
-                                   onchange="detailUpdateRowField('${rowId}', '${attr.name}', this.value)"
-                                   style="flex: 1; padding: 8px; border: 1px solid #ced4da; border-radius: 4px;">
-                            ${detailData ? `
-                            <button type="button" 
-                                    onclick="showFundingDetailModal('${rowId}', '${attr.name}')" 
-                                    style="padding: 8px 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; white-space: nowrap; font-size: 14px;">
-                                상세보기
-                            </button>
-                            ` : ''}
-                            <button type="button" 
-                                    onclick="requestFundingRecommendation('${rowId}')" 
-                                    style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; white-space: nowrap; font-size: 14px;">
-                                추천받기
-                            </button>
-                        </div>
-                    `;
-                } else if (attr.name === '매출' || attr.name.includes('매출')) {
-                    // 매출 필드는 억과 천만 단위로 분리된 입력칸 항상 표시, 저장/취소 버튼 없이 blur로 저장
-                    const numericValue = parseFloat(value) || 0;
-                    const eok = Math.floor(numericValue / 100000000);
-                    const cheonman = Math.floor((numericValue % 100000000) / 10000000);
-                    inputHtml = `
-                        <div class="sales-field-container" data-field="${attr.name}" data-raw="${numericValue}" style="display: flex; align-items: center; gap: 10px; width: 100%; background: white; padding: 8px; min-height: 20px;">
-                            <div style="display: flex; align-items: center; gap: 5px; flex: 1;">
-                                <input class="input-field" type="number" id="sales_eok_${rowId}" value="${eok}" placeholder="0" min="0"
-                                    style="width: 80px; padding: 8px; border: 1px solid #ced4da; border-radius: 4px; font-size: inherit; font-family: inherit; box-sizing: border-box;"
-                                    onblur="saveSalesInput('${rowId}', '${attr.name}')">
-                                <span style="font-size: 14px; color: #495057;">억</span>
-                            </div>
-                            <div style="display: flex; align-items: center; gap: 5px; flex: 1;">
-                                <input class="input-field" type="number" id="sales_cheonman_${rowId}" value="${cheonman}" placeholder="0" min="0" max="99"
-                                    style="width: 80px; padding: 8px; border: 1px solid #ced4da; border-radius: 4px; font-size: inherit; font-family: inherit; box-sizing: border-box;"
-                                    onblur="saveSalesInput('${rowId}', '${attr.name}')">
-                                <span style="font-size: 14px; color: #495057;">천만</span>
-                            </div>
-                        </div>
-                    `;
-                } else if (attr.name === '개업년월') {
-                    // 개업년월 필드 처리 - 달력과 년전 입력 옵션
-                    let businessData = {};
-                    let displayText = '';
-                    
-                    try {
-                        if (value && typeof value === 'string') {
-                            businessData = JSON.parse(value);
-                        } else if (value && typeof value === 'object') {
-                            businessData = value;
-                        }
-                    } catch (e) {
-                        console.error('개업년월 데이터 파싱 오류:', e);
-                        businessData = {};
-                    }
-                    
-                    // 현재 값에 따른 표시
-                    if (businessData.opening_date) {
-                        displayText = `개업일: ${businessData.opening_date}`;
-                    } else if (businessData.years_ago) {
-                        displayText = `${businessData.years_ago}년 전`;
-                    } else {
-                        displayText = '개업 정보 없음';
-                    }
-                    
-                    inputHtml = `
-                        <div style="border: 1px solid #000000; border-radius: 4px; padding: 12px; background: #fff;" data-field="${attr.name}" data-current-value='${JSON.stringify(businessData)}'>
-                            <div style="display: flex; flex-direction: column; gap: 12px;">
-                                <!-- 개업일 입력 -->
-                                <div style="display: flex; align-items: center; gap: 10px;">
-                                    <label style="width: 80px; font-weight: bold; color: #495057;">개업일:</label>
-                                    <input type="date" 
-                                           id="opening_date_${rowId}" 
-                                           value="${businessData.opening_date || ''}"
-                                           style="flex: 1; padding: 8px; border: 1px solid #ced4da; border-radius: 4px;"
-                                           onchange="updateBusinessField('${rowId}', '${attr.name}', 'opening_date', this.value)">
-                                    
-                                    <!-- 년전 입력 -->
-                                    <div style="display: flex; align-items: center; gap: 10px;">
-                                        <label style="display: flex; align-items: center; gap: 3px; cursor: pointer;">
-                                            <input class="input-field" type="number" 
-                                                   id="years_ago_${rowId}"
-                                                   value="${businessData.years_ago || ''}"
-                                                   placeholder="년수"
-                                                   min="0"
-                                                   max="100"
-                                                   style="width: 60px; padding: 4px; border: 1px solid #ced4da; border-radius: 4px; margin: 0 5px;"
-                                                   onchange="updateBusinessField('${rowId}', '${attr.name}', 'years_ago', this.value)">
-                                            <span style="font-size: 12px;">년 전</span>
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                } else if (attr.name === '업종') {
-                    // 업종 드롭다운 처리
-                    const industryOptions = [
-                        "농업, 임업 및 어업",
-                        "광업",
-                        "제조업",
-                        "전기, 가스, 증기 및 공기 조절 공급업",
-                        "수도, 하수 및 폐기물 처리, 원료 재생업",
-                        "건설업",
-                        "도매 및 소매업",
-                        "운수 및 창고업",
-                        "숙박 및 음식점업",
-                        "정보통신업",
-                        "금융 및 보험업",
-                        "부동산업",
-                        "전문, 과학 및 기술 서비스업",
-                        "사업시설 관리, 사업 지원 및 임대 서비스업",
-                        "교육서비스업",
-                        "보건업 및 사회복지 서비스업",
-                        "예술 스포츠 및 여가관련 서비스업",
-                        "협회 및 단체, 수리 및 기타 개인서비스업"
-                    ];
-                    
-                    const selectOptions = industryOptions.map(option => 
-                        `<option value="${option}" ${value === option ? 'selected' : ''}>${option}</option>`
-                    ).join('');
-                    
-                    inputHtml = `
-                        <select onchange="detailUpdateRowField('${rowId}', '${attr.name}', this.value)" 
-                                style="width:100%;padding:8px;background:white;" class="input-field">
-                            <option value="">업종 선택</option>
-                            ${selectOptions}
-                        </select>
-                    `;
-                } else if (attr.type === 'file') {
-                    // 파일 타입 속성 처리 (여러 파일 지원)
-                    let filesData = [];
-                    let hasFiles = false;
-                    
-                    // 파일 정보 파싱
-                    try {
-                        if (value && value !== null && value !== undefined) {
-                            if (typeof value === 'object') {
-                                // 단일 파일인 경우 배열로 변환
-                                if (Array.isArray(value)) {
-                                    filesData = value;
-                                } else {
-                                    filesData = [value];
-                                }
-                                hasFiles = true;
-                            } else if (typeof value === 'string' && value.trim() !== '') {
-                                if (value.trim().startsWith('[')) {
-                                    // JSON 배열
-                                    filesData = JSON.parse(value);
-                                } else if (value.trim().startsWith('{')) {
-                                    // JSON 객체 (단일 파일)
-                                    filesData = [JSON.parse(value)];
-                                } else {
-                                    // 문자열 (단일 파일명)
-                                    filesData = [{
-                                        original_filename: value.trim(),
-                                        type: 'file'
-                                    }];
-                                }
-                                hasFiles = true;
-                            }
-                        }
-                    } catch (e) {
-                        console.error('파일 정보 파싱 오류:', e, 'value:', value);
-                        if (value) {
-                            filesData = [{
-                                original_filename: String(value),
-                                type: 'file'
-                            }];
-                            hasFiles = true;
-                        }
-                    }
-                    
-                    if (hasFiles && filesData.length > 0) {
-                        // 여러 파일을 세로로 정렬하여 표시
-                        let filesHtml = '';
-                        
-                        filesData.forEach((fileInfo, index) => {
-                            const displayFileName = fileInfo.original_filename || fileInfo.stored_filename || fileInfo.filename || 'unknown';
-                            
-                            // 디버깅: 각 파일 정보 로그
-                            console.log(`파일 ${index}:`, fileInfo);
-                            console.log(`파일 ${index} displayFileName:`, displayFileName);
-                            
-                            // 파일의 고유 ID 생성 (기존 ID가 없으면 stored_filename 사용)
-                            const fileId = fileInfo.id || fileInfo.stored_filename || `file_${index}`;
-                            
-                            // 파일 타입별 처리
-                            if (fileInfo.type === 'img' || fileInfo.content_type?.startsWith('image/')) {
-                                filesHtml += `
-                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding: 8px; border: 1px solid #000; border-radius: 4px; background: #f8f9fa;">
-                                        <span style="flex: 1; font-size: 14px;">📄 ${displayFileName}</span>
-                                        <button onclick="showFilePreviewModal(${JSON.stringify({...fileInfo, id: fileId, field_name: attr.name, row_id: rowId}).replace(/\"/g, '&quot;')})"
-                                                style="padding: 4px 8px; background: #ffc107; color: #333; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
-                                            미리보기
-                                        </button>
-                                        <button onclick="downloadFile('${rowId}', '${attr.name}', '${fileId}')"
-                                                style="padding: 4px 8px; background: #17a2b8; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
-                                            다운로드
-                                        </button>
-                                        <button class="delete-file-btn" 
-                                                data-row-id="${rowId}" 
-                                                data-field-name="${attr.name}" 
-                                                data-file-index="${index}"
-                                                style="padding: 4px 8px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
-                                            삭제
-                                        </button>
-                                    </div>
-                                `;
-                            } else if (fileInfo.type === 'audio') {
-                                filesHtml += `
-                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding: 8px; border: 1px solid #e9ecef; border-radius: 4px; background: #f8f9fa;">
-                                        <span style="flex: 1; font-size: 14px;">🎵 ${displayFileName}</span>
-                                        <button onclick="showFilePreviewModal(${JSON.stringify({...fileInfo, id: fileId, field_name: attr.name, row_id: rowId}).replace(/\"/g, '&quot;')})"
-                                                style="padding: 4px 8px; background: #ffc107; color: #333; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
-                                            미리보기
-                                        </button>
-                                        <button onclick="downloadFile('${rowId}', '${attr.name}', '${fileId}')"
-                                                style="padding: 4px 8px; background: #17a2b8; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
-                                            다운로드
-                                        </button>
-                                        <button class="delete-file-btn" 
-                                                data-row-id="${rowId}" 
-                                                data-field-name="${attr.name}" 
-                                                data-file-index="${index}"
-                                                style="padding: 4px 8px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
-                                            삭제
-                                        </button>
-                                    </div>
-                                `;
-                            } else {
-                                // 일반 파일
-                                filesHtml += `
-                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding: 8px; border: 1px solid #e9ecef; border-radius: 4px; background: #f8f9fa;">
-                                        <span style="flex: 1; font-size: 14px;">📄 ${displayFileName}</span>
-                                        <button onclick="showFilePreviewModal(${JSON.stringify({...fileInfo, field_name: attr.name, row_id: rowId}).replace(/\"/g, '&quot;')})"
-                                                style="padding: 4px 8px; background: #ffc107; color: #333; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
-                                            미리보기
-                                        </button>
-                                        <button onclick="downloadFile('${rowId}', '${attr.name}', '${fileId}')"
-                                                style="padding: 4px 8px; background: #17a2b8; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
-                                            다운로드
-                                        </button>
-                                        <button class="delete-file-btn" 
-                                                data-row-id="${rowId}" 
-                                                data-field-name="${attr.name}" 
-                                                data-file-index="${index}"
-                                                style="padding: 4px 8px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
-                                            삭제
-                                        </button>
-                                    </div>
-                                `;
-                            }
-                        });
-                        
-                        // 파일 추가 버튼
-                        filesHtml += `
-                            <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px; padding: 8px; border: 1px solid #dee2e6; border-radius: 4px; background: #fff;">
-                                <span style="flex: 1; color: #6c757d; font-size: 14px;">파일 추가</span>
-                                <button type="button" 
-                                        onclick="document.getElementById('file_${attr.name}_${rowId}').click()" 
-                                        style="padding: 6px 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;">
-                                    + 파일 추가
-                                </button>
-                                <input type="file" 
-                                       id="file_${attr.name}_${rowId}" 
-                                       style="display: none;"
-                                       multiple
-                                       onchange="uploadFile('${rowId}', '${attr.name}', this)">
-                            </div>
-                        `;
-                        
-                        inputHtml = filesHtml;
-                    } else {
-                        // 파일이 없는 경우: 파일 선택 버튼 (다중 선택 지원)
-                        inputHtml = `
-                            <div style="display: flex; align-items: center;">
-                                <span style="flex: 1; color: #6c757d; font-size: 14px; padding: 8px 0;">파일이 선택되지 않았습니다</span>
-                                <button type="button" 
-                                        onclick="document.getElementById('file_${attr.name}_${rowId}').click()" 
-                                        style="padding: 6px 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;">
-                                    파일 선택
-                                </button>
-                                <input type="file" 
-                                       id="file_${attr.name}_${rowId}" 
-                                       style="display: none;"
-                                       multiple
-                                       onchange="uploadFile('${rowId}', '${attr.name}', this)">
-                            </div>
-                        `;
-                    }
-                } else if (attr.type === 'dropdown') {
-                    // value가 있을 때 색상 정보도 가져오기 위해 options를 fetch
-                    inputHtml = `<button type="button" class="add-btn" id="modal-dropdown-btn-${rowId}-${attr.name}" style="width:100%;background:#f8f9fa;color:#333;border:1px solid #eee;" onclick="openDetailDropdown('${rowId}','${attr.name}',this)">${value||'선택'}</button>`;
-                    // 옵션 색상 fetch 후 버튼 배경색 적용
-                    setTimeout(() => {
-                        fetch('/sales/dropdown_options/?field=' + encodeURIComponent(attr.name))
-                            .then(r => r.json())
-                            .then(data => {
-                                console.log('dropdown_options 데이터:', data);
-                                if (data.options) {
-                                    const opt = data.options.find(o => o.option === value);
-                                    const btn = document.getElementById(`modal-dropdown-btn-${rowId}-${attr.name}`);
-                                    if (btn && opt && opt.color) {
-                                        btn.style.background = hexToRgba(opt.color, 0.18);
-                                        btn.style.color = '#333';
-                                    }
-                                }
-                            });
-                    }, 0);
-                } else if (attr.type === 'datetime') {
-                    // 날짜 형식 변환
-                    let dateValue = '';
-                    if (value) {
-                        try {
-                            const dt = new Date(value);
-                            dateValue = dt.toISOString().split('T')[0];
-                        } catch(e) {
-                            dateValue = value;
-                        }
-                    }
-                    inputHtml = `<input class="input-field" type="date" value="${dateValue}" data-field="${attr.name}" onchange="detailUpdateRowField('${rowId}', '${attr.name}', this.value)">`;
-                } else if (attr.type === 'number') {
-                    inputHtml = `<input class="input-field" type="number" value="${value}" data-field="${attr.name}" onchange="detailUpdateRowField('${rowId}', '${attr.name}', this.value)">`;
-                } else if (attr.type === 'age') {
-                    // 나이 필드 처리 - 달력과 체크박스 포함
-                    let ageData = {};
-                    let displayText = '';
-                    
-                    try {
-                        if (value && typeof value === 'string') {
-                            ageData = JSON.parse(value);
-                        }
-                    } catch (e) {
-                        ageData = {};
-                    }
-                    
-                    // 현재 값에 따른 표시
-                    if (ageData.birth_date) {
-                        displayText = `생년월일: ${ageData.birth_date}`;
-                    } else if (ageData.age_range) {
-                        displayText = ageData.age_range === 'under40' ? '40세 미만' : '40세 이상';
-                    } else {
-                        displayText = '나이 정보 없음';
-                    }
-                    
-                    inputHtml = `
-                        <div style="border: 1px solid rgb(0, 0, 0); border-radius: 4px; padding: 12px; background: #fff;" data-field="${attr.name}" data-current-value='${JSON.stringify(ageData)}'>
-                            <div style="display: flex; flex-direction: column; gap: 12px;">
-                                <!-- 생년월일 입력 -->
-                                <div style="display: flex; align-items: center; gap: 10px;">
-                                    <label style="width: 80px; font-weight: bold; color: #495057;">생년월일:</label>
-                                    <input type="date" 
-                                           id="birth_date_${rowId}" 
-                                           value="${ageData.birth_date || ''}"
-                                           style="flex: 1; padding: 8px; border: 1px solid #ced4da; border-radius: 4px;"
-                                           onchange="updateAgeField('${rowId}', '${attr.name}', 'birth_date', this.value)">
-                                    
-                                    <!-- 연령대 체크박스 -->
-                                    <div style="display: flex; gap: 10px;">
-                                        <label style="display: flex; align-items: center; gap: 3px; cursor: pointer;">
-                                            <input type="checkbox" 
-                                                   ${ageData.age_range === 'under40' ? 'checked' : ''}
-                                                   onchange="updateAgeField('${rowId}', '${attr.name}', 'age_range', this.checked ? 'under40' : '')"
-                                                   style="margin: 0; width: 12px; height: 12px;">
-                                            <span style="font-size: 12px;">40세 미만</span>
-                                        </label>
-                                        <label style="display: flex; align-items: center; gap: 3px; cursor: pointer;">
-                                            <input type="checkbox" 
-                                                   ${ageData.age_range === 'over40' ? 'checked' : ''}
-                                                   onchange="updateAgeField('${rowId}', '${attr.name}', 'age_range', this.checked ? 'over40' : '')"
-                                                   style="margin: 0; width: 12px; height: 12px;">
-                                            <span style="font-size: 12px;">40세 이상</span>
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                } else if (attr.type === 'multi_select') {
-                    // 다중 선택 필드 처리
-                    let selectedValues = [];
-                    try {
-                        if (value && typeof value === 'string') {
-                            selectedValues = JSON.parse(value);
-                        } else if (Array.isArray(value)) {
-                            selectedValues = value;
-                        }
-                    } catch (e) {
-                        selectedValues = [];
-                    }
-                    
-                    const displayText = selectedValues.length > 0 ? selectedValues.join(', ') : '선택';
-                    inputHtml = `<button type="button" class="add-btn" style="width:100%;background:#f8f9fa;color:#333;border:1px solid #eee;" onclick="openDetailDropdown('${rowId}','${attr.name}',this)">${displayText}</button>`;
-                } else {
-                    // 기본 텍스트 필드
-                    if (attr.name === '신용점수') {
-                        // 신용점수 필드는 실시간 검증 추가
-                        inputHtml = `<input type="text" value="${value}" class="input-field" data-field="${attr.name}" 
-                                   onchange="detailUpdateRowField('${rowId}', '${attr.name}', this.value); highlightRequiredField(this, this.value && this.value !== '0' ? false : true);" 
-                                   oninput="highlightRequiredField(this, this.value && this.value !== '0' ? false : true);">`;
-                    } else {
-                        inputHtml = `<input class="input-field" type="text" value="${value}" data-field="${attr.name}" onchange="detailUpdateRowField('${rowId}', '${attr.name}', this.value)">`;
-                    }
-                }
-                
-                // 지역 관련 필드가 아닌 경우에만 HTML에 추가
-                if (attr.name !== '지역' && attr.name !== '상세지역') {
-                    // 라벨 색상 설정
-                    let labelColor = '#333'; // 기본 색상
-                    
-                    // 파란색 라벨 (지역, 기대출, 개업년월, 나이, 경력, 직원수)
-                    if (['기대출', '개업년월', '나이', '경력', '직원수'].includes(attr.name)) {
-                        labelColor = '#007bff';
-                    }
-                    // 붉은색 라벨 (매출, 신용점수, 업종)
-                    else if (['매출', '신용점수', '업종'].includes(attr.name)) {
-                        labelColor = '#dc3545';
-                    }
-                    
-                    html += `
-                        <div style="display:flex;align-items:center;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #eee;">
-                            <label style="width:120px;font-weight:bold;color:${labelColor};">${attr.name}:</label>
-                            <div style="flex:1;">${inputHtml}</div>
-                        </div>
-                    `;
-                }
-            });
-            
-            // 상세정보 모달 내용 업데이트
-            document.getElementById('detailModalContent').innerHTML = html;
-            
-            // 음성파일 영역 업데이트
-            updateAudioFileSection(rowId, audioFileValue);
-
-            console.log('window.innerWidth:', window.innerWidth);
-
-            if (window.innerWidth < 1000) {
-                document.querySelector('.detail-modal-content').style.flexDirection = 'column';
-            }
-            // 모달 표시
-            document.getElementById('detailModal').style.display = 'flex';
-            
-            // 행 복제 버튼 재생성
-            if (typeof recreateDuplicateButtons === 'function') {
-                setTimeout(() => {
-                    recreateDuplicateButtons();
-                    console.log('상세보기 모달에서 행 복제 버튼 재생성 완료');
-                }, 100);
-            }
-            
-            // 파일 삭제 버튼 이벤트 리스너 추가 (setTimeout으로 지연)
-            setTimeout(() => {
-                const deleteButtons = document.querySelectorAll('.delete-file-btn');
-                console.log('찾은 삭제 버튼 개수:', deleteButtons.length);
-                
-                deleteButtons.forEach((btn, index) => {
-                    console.log(`버튼 ${index}:`, btn);
-                    console.log(`버튼 ${index}의 data 속성:`, {
-                        rowId: btn.getAttribute('data-row-id'),
-                        fieldName: btn.getAttribute('data-field-name'),
-                        fileIndex: btn.getAttribute('data-file-index')
-                    });
-                    
-                    btn.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        
-                        const rowId = this.getAttribute('data-row-id');
-                        const fieldName = this.getAttribute('data-field-name');
-                        const fileIndex = this.getAttribute('data-file-index');
-                        
-                        console.log('파일 삭제 버튼 클릭됨:', rowId, fieldName, fileIndex);
-                        console.log('fileIndex 타입:', typeof fileIndex);
-                        console.log('fileIndex 값:', fileIndex);
-                        
-                        // fileIndex를 숫자로 변환
-                        const numericFileIndex = parseInt(fileIndex, 10);
-                        console.log('변환된 fileIndex:', numericFileIndex);
-                        
-                        console.log('deleteFile 함수 호출 전');
-                        deleteFile(rowId, fieldName, numericFileIndex);
-                        console.log('deleteFile 함수 호출 후');
-                    });
-                });
-            }, 100);
+            generateDetailModalContent(data.attributes, rowData, rowId);
         })
         .catch(error => {
-            console.error('속성 목록 가져오기 오류:', error);
+            console.error('속성 정보 요청 실패:', error);
         });
+}
+
+function generateDetailModalContent(attributes, rowData, rowId) {
+    // 속성을 순서대로 정렬 (sort_order 기준)
+    const sortedAttributes = attributes.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+    
+    // 읽기 전용 필드 목록 - 모든 필드를 수정 가능하게 하기 위해 비움
+    const readonlyFields = [];
+    
+    // 숨김 필드 목록 (표시하지 않을 속성들)
+    const hiddenFields = ['음성파일', '변환된 텍스트'];
+    
+    let html = '<h3>상세 정보</h3>';
+    let textAttributeValue = ''; // text 타입 속성의 값을 저장
+    let audioFileValue = ''; // 음성파일 속성의 값을 저장
+    
+    // 지역 정보를 저장할 변수들
+    let regionValue = '';
+    let subregionValue = '';
+    let regionProcessed = false;
+    
+    sortedAttributes.forEach(function(attr) {
+        const value = rowData[attr.name] || '';
+        let inputHtml = '';
+        
+        // 숨김 필드들은 좌측에 표시하지 않음
+        if (hiddenFields.includes(attr.name)) {
+            if (attr.name === '음성파일') {
+                audioFileValue = value;
+            }
+            return; // 이 속성은 좌측 테이블에 추가하지 않음
+        }
+        
+        // 지역과 상세지역을 한 줄로 표시하기 위한 처리
+        if (attr.name === '지역') {
+            regionValue = value;
+            return; // 지역은 일단 저장만 하고 건너뛰기
+        } else if (attr.name === '상세지역') {
+            subregionValue = value;
+            // 지역과 상세지역을 한 줄로 표시
+            if (!regionProcessed) {
+                html += `
+                    <div style="display:flex;align-items:center;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #eee;">
+                        <label style="width:120px;font-weight:bold;color:#333;">지역:</label>
+                        <div style="flex:1;display:flex;align-items:center;gap:10px;">
+                            <button type="button" class="add-btn" style="width: 50%; background:#f8f9fa;color:#333;border:1px solid #eee;padding:8px 12px;border-radius:4px;" onclick="openDetailDropdown('${rowId}','지역',this)">${regionValue||'선택'}</button>
+                            <button type="button" class="add-btn" style="width: 50%; background:#f8f9fa;color:#333;border:1px solid #eee;padding:8px 12px;border-radius:4px;" onclick="openDetailDropdown('${rowId}','상세지역',this)">${subregionValue||'선택'}</button>
+                        </div>
+                    </div>
+                `;
+                regionProcessed = true;
+            }
+            return; // 상세지역 처리 완료
+        }
+        
+        if (readonlyFields.includes(attr.name)) {
+            inputHtml = `<input type="text" value="${value}" style="background:#f8f9fa;">`;
+        } else if (attr.name === '기대출') {
+            // 기대출 필드는 8개 카테고리를 4칸씩 2줄로 표시
+            let debtData = {};
+            try {
+                if (value && typeof value === 'object') {
+                    debtData = value;
+                } else if (value && typeof value === 'string' && value.startsWith('{')) {
+                    debtData = JSON.parse(value);
+                }
+            } catch (e) {
+                console.error('기대출 데이터 파싱 오류:', e);
+            }
+            
+            // 8개 카테고리 정의
+            const debtCategories = [
+                { key: 'tech_guarantee', label: '기술보증기금' },
+                { key: 'credit_guarantee', label: '신용보증기금' },
+                { key: 'credit_foundation', label: '신용보증재단' },
+                { key: 'smba', label: '중진공' },
+                { key: 'semas_innovation', label: '소진공-혁신성장' },
+                { key: 'semas_lowcredit', label: '소진공-저신용' },
+                { key: 'collateral', label: '담보' },
+                { key: 'credit', label: '신용' }
+            ];
+            
+            // 전역 debtData 초기화
+            window.debtData = debtData;
+            
+            // 첫 번째 줄 (4개) - 4x2 그리드 형태로 변경
+            let firstRowHtml = '<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 15px;">';
+            for (let i = 0; i < 4; i++) {
+                const category = debtCategories[i];
+                const currentValue = debtData[category.key] || '';
+                // 만원 단위 값 표시
+                const displayValue = currentValue ? currentValue.toString() : '';
+                firstRowHtml += `
+                    <div style="text-align: center;">
+                        <label style="display: block; font-size: 12px; font-weight: bold; color: #495057; margin-bottom: 5px;">${category.label}</label>
+                        <div style="display: flex; align-items: center; justify-content: center; gap: 5px;">
+                            <input type="text" 
+                                   id="debt_${category.key}_${rowId}" 
+                                   value="${displayValue}" 
+                                   placeholder="0"
+                                   style="width: 67px; height: 28px; padding: 4px 6px; border: 1px solid #ced4da; border-radius: 3px; font-size: 12px; text-align: center;"
+                                   oninput="formatDebtInputRealtime(this, '${rowId}', '${category.key}')"
+                                   onblur="updateDebtField('${rowId}', '${category.key}', this.value)">
+                            <span style="font-size: 11px; color: #6c757d;">만원</span>
+                        </div>
+                    </div>
+                `;
+            }
+            firstRowHtml += '</div>';
+            
+            // 두 번째 줄 (4개)
+            let secondRowHtml = '<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px;">';
+            for (let i = 4; i < 8; i++) {
+                const category = debtCategories[i];
+                const currentValue = debtData[category.key] || '';
+                // 만원 단위 값 표시
+                const displayValue = currentValue ? currentValue.toString() : '';
+                secondRowHtml += `
+                    <div style="text-align: center;">
+                        <label style="display: block; font-size: 12px; font-weight: bold; color: #495057; margin-bottom: 5px;">${category.label}</label>
+                        <div style="display: flex; align-items: center; justify-content: center; gap: 5px;">
+                            <input type="text" 
+                                   id="debt_${category.key}_${rowId}" 
+                                   value="${displayValue}" 
+                                   placeholder="0"
+                                   style="width: 65px; height: 28px; padding: 4px 6px; border: 1px solid #ced4da; border-radius: 3px; font-size: 12px; text-align: center;"
+                                   oninput="formatDebtInputRealtime(this, '${rowId}', '${category.key}')"
+                                   onblur="updateDebtField('${rowId}', '${category.key}', this.value)">
+                            <span style="font-size: 11px; color: #6c757d;">만원</span>
+                        </div>
+                    </div>
+                `;
+            }
+            secondRowHtml += '</div>';
+            
+            // 총액 표시 (만원 단위)
+            const totalAmount = Object.values(debtData).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
+            const totalDisplayValue = totalAmount ? `${totalAmount}만원` : '0만원';
+            const totalHtml = `
+                <div style="margin-top: 10px; padding: 8px; background: #f8f9fa; border-radius: 4px; text-align: center;">
+                    <span style="font-weight: bold; color: #495057;">총 기대출: </span>
+                    <span id="debt_total_${rowId}" style="font-weight: bold; color: #007bff;">${totalDisplayValue}</span>
+                </div>
+            `;
+            
+            inputHtml = `
+                <div class="input-field" style="padding: 12px; background: #fff;">
+                    ${firstRowHtml}
+                    ${secondRowHtml}
+                    ${totalHtml}
+                </div>
+            `;
+        }else if (attr.type === 'recommend') {
+            // 추천자금 필드 처리
+            let displayValue = '';
+            let detailData = null;
+            
+            // 저장된 값이 JSON 형태인지 확인
+            try {
+                if (value && typeof value === 'string' && value.startsWith('{')) {
+                    detailData = JSON.parse(value);
+                    const totalAmount = detailData['총자금'] || 0;
+                    displayValue = totalAmount ? formatToKoreanCurrency(totalAmount) : '0';
+                } else {
+                    displayValue = value || '';
+                }
+            } catch (e) {
+                displayValue = value || '';
+            }
+            
+            inputHtml = `
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <input type="text" 
+                           value="${displayValue}" 
+                           data-field="${attr.name}" 
+                           onchange="detailUpdateRowField('${rowId}', '${attr.name}', this.value)"
+                           style="flex: 1; padding: 8px; border: 1px solid #000; border-radius: 4px;">
+                    ${detailData ? `
+                    <button type="button" 
+                            onclick="showFundingDetailModal('${rowId}', '${attr.name}')" 
+                            style="padding: 8px 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; white-space: nowrap; font-size: 14px;">
+                        상세보기
+                    </button>
+                    ` : ''}
+                    <button type="button" 
+                            onclick="requestFundingRecommendation('${rowId}')" 
+                            style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; white-space: nowrap; font-size: 14px;">
+                        추천받기
+                    </button>
+                </div>
+            `;
+        } else if (attr.name === '추천자금') {
+            // 속성명으로도 추천자금 필드 처리 (fallback)
+            let displayValue = '';
+            let detailData = null;
+            
+            // 저장된 값이 JSON 형태인지 확인
+            try {
+                if (value && typeof value === 'string' && value.startsWith('{')) {
+                    detailData = JSON.parse(value);
+                    const totalAmount = detailData['총자금'] || 0;
+                    displayValue = totalAmount ? formatToKoreanCurrency(totalAmount) : '0';
+                } else {
+                    displayValue = value || '';
+                }
+            } catch (e) {
+                displayValue = value || '';
+            }
+            
+            inputHtml = `
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <input type="text" 
+                           value="${displayValue}" 
+                           data-field="${attr.name}" 
+                           onchange="detailUpdateRowField('${rowId}', '${attr.name}', this.value)"
+                           style="flex: 1; padding: 8px; border: 1px solid #ced4da; border-radius: 4px;">
+                    ${detailData ? `
+                    <button type="button" 
+                            onclick="showFundingDetailModal('${rowId}', '${attr.name}')" 
+                            style="padding: 8px 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; white-space: nowrap; font-size: 14px;">
+                        상세보기
+                    </button>
+                    ` : ''}
+                    <button type="button" 
+                            onclick="requestFundingRecommendation('${rowId}')" 
+                            style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; white-space: nowrap; font-size: 14px;">
+                        추천받기
+                    </button>
+                </div>
+            `;
+        } else if (attr.name === '매출' || attr.name.includes('매출')) {
+            // 매출 필드는 억과 천만 단위로 분리된 입력칸 항상 표시, 저장/취소 버튼 없이 blur로 저장
+            const numericValue = parseFloat(value) || 0;
+            const eok = Math.floor(numericValue / 100000000);
+            const cheonman = Math.floor((numericValue % 100000000) / 10000000);
+            inputHtml = `
+                <div class="sales-field-container" data-field="${attr.name}" data-raw="${numericValue}" style="display: flex; align-items: center; gap: 10px; width: 100%; background: white; padding: 8px; min-height: 20px;">
+                    <div style="display: flex; align-items: center; gap: 5px; flex: 1;">
+                        <input class="input-field" type="number" id="sales_eok_${rowId}" value="${eok}" placeholder="0" min="0"
+                            style="width: 80px; padding: 8px; border: 1px solid #ced4da; border-radius: 4px; font-size: inherit; font-family: inherit; box-sizing: border-box;"
+                            onblur="saveSalesInput('${rowId}', '${attr.name}')">
+                        <span style="font-size: 14px; color: #495057;">억</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 5px; flex: 1;">
+                        <input class="input-field" type="number" id="sales_cheonman_${rowId}" value="${cheonman}" placeholder="0" min="0" max="99"
+                            style="width: 80px; padding: 8px; border: 1px solid #ced4da; border-radius: 4px; font-size: inherit; font-family: inherit; box-sizing: border-box;"
+                            onblur="saveSalesInput('${rowId}', '${attr.name}')">
+                        <span style="font-size: 14px; color: #495057;">천만</span>
+                    </div>
+                </div>
+            `;
+        } else if (attr.name === '개업년월') {
+            // 개업년월 필드 처리 - 달력과 년전 입력 옵션
+            let businessData = {};
+            let displayText = '';
+            
+            try {
+                if (value && typeof value === 'string') {
+                    businessData = JSON.parse(value);
+                } else if (value && typeof value === 'object') {
+                    businessData = value;
+                }
+            } catch (e) {
+                console.error('개업년월 데이터 파싱 오류:', e);
+                businessData = {};
+            }
+            
+            // 현재 값에 따른 표시
+            if (businessData.opening_date) {
+                displayText = `개업일: ${businessData.opening_date}`;
+            } else if (businessData.years_ago) {
+                displayText = `${businessData.years_ago}년 전`;
+            } else {
+                displayText = '개업 정보 없음';
+            }
+            
+            inputHtml = `
+                <div style="border: 1px solid #000000; border-radius: 4px; padding: 12px; background: #fff;" data-field="${attr.name}" data-current-value='${JSON.stringify(businessData)}'>
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <!-- 개업일 입력 -->
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <label style="width: 80px; font-weight: bold; color: #495057;">개업일:</label>
+                            <input type="date" 
+                                   id="opening_date_${rowId}" 
+                                   value="${businessData.opening_date || ''}"
+                                   style="flex: 1; padding: 8px; border: 1px solid #ced4da; border-radius: 4px;"
+                                   onchange="updateBusinessField('${rowId}', '${attr.name}', 'opening_date', this.value)">
+                            
+                            <!-- 년전 입력 -->
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <label style="display: flex; align-items: center; gap: 3px; cursor: pointer;">
+                                    <input class="input-field" type="number" 
+                                           id="years_ago_${rowId}"
+                                           value="${businessData.years_ago || ''}"
+                                           placeholder="년수"
+                                           min="0"
+                                           max="100"
+                                           style="width: 60px; padding: 4px; border: 1px solid #ced4da; border-radius: 4px; margin: 0 5px;"
+                                           onchange="updateBusinessField('${rowId}', '${attr.name}', 'years_ago', this.value)">
+                                    <span style="font-size: 12px;">년 전</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else if (attr.name === '업종') {
+            // 업종 드롭다운 처리
+            const industryOptions = [
+                "농업, 임업 및 어업",
+                "광업",
+                "제조업",
+                "전기, 가스, 증기 및 공기 조절 공급업",
+                "수도, 하수 및 폐기물 처리, 원료 재생업",
+                "건설업",
+                "도매 및 소매업",
+                "운수 및 창고업",
+                "숙박 및 음식점업",
+                "정보통신업",
+                "금융 및 보험업",
+                "부동산업",
+                "전문, 과학 및 기술 서비스업",
+                "사업시설 관리, 사업 지원 및 임대 서비스업",
+                "교육서비스업",
+                "보건업 및 사회복지 서비스업",
+                "예술 스포츠 및 여가관련 서비스업",
+                "협회 및 단체, 수리 및 기타 개인서비스업"
+            ];
+            
+            const selectOptions = industryOptions.map(option => 
+                `<option value="${option}" ${value === option ? 'selected' : ''}>${option}</option>`
+            ).join('');
+            
+            inputHtml = `
+                <select onchange="detailUpdateRowField('${rowId}', '${attr.name}', this.value)" 
+                        style="width:100%;padding:8px;background:white;" class="input-field">
+                    <option value="">업종 선택</option>
+                    ${selectOptions}
+                </select>
+            `;
+        } else if (attr.type === 'file') {
+            // 파일 타입 속성 처리 (여러 파일 지원)
+            let filesData = [];
+            let hasFiles = false;
+            
+            // 파일 정보 파싱
+            try {
+                if (value && value !== null && value !== undefined) {
+                    if (typeof value === 'object') {
+                        // 단일 파일인 경우 배열로 변환
+                        if (Array.isArray(value)) {
+                            filesData = value;
+                        } else {
+                            filesData = [value];
+                        }
+                        hasFiles = true;
+                    } else if (typeof value === 'string' && value.trim() !== '') {
+                        if (value.trim().startsWith('[')) {
+                            // JSON 배열
+                            filesData = JSON.parse(value);
+                        } else if (value.trim().startsWith('{')) {
+                            // JSON 객체 (단일 파일)
+                            filesData = [JSON.parse(value)];
+                        } else {
+                            // 문자열 (단일 파일명)
+                            filesData = [{
+                                original_filename: value.trim(),
+                                type: 'file'
+                            }];
+                        }
+                        hasFiles = true;
+                    }
+                }
+            } catch (e) {
+                console.error('파일 정보 파싱 오류:', e, 'value:', value);
+                if (value) {
+                    filesData = [{
+                        original_filename: String(value),
+                        type: 'file'
+                    }];
+                    hasFiles = true;
+                }
+            }
+            
+            if (hasFiles && filesData.length > 0) {
+                // 여러 파일을 세로로 정렬하여 표시
+                let filesHtml = '';
+                
+                filesData.forEach((fileInfo, index) => {
+                    const displayFileName = fileInfo.original_filename || fileInfo.stored_filename || fileInfo.filename || 'unknown';
+                    
+                    // 디버깅: 각 파일 정보 로그
+                    console.log(`파일 ${index}:`, fileInfo);
+                    console.log(`파일 ${index} displayFileName:`, displayFileName);
+                    
+                    // 파일의 고유 ID 생성 (기존 ID가 없으면 stored_filename 사용)
+                    const fileId = fileInfo.id || fileInfo.stored_filename || `file_${index}`;
+                    
+                    // 파일 타입별 처리
+                    if (fileInfo.type === 'img' || fileInfo.content_type?.startsWith('image/')) {
+                        filesHtml += `
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding: 8px; border: 1px solid #000; border-radius: 4px; background: #f8f9fa;">
+                                <span style="flex: 1; font-size: 14px;">📄 ${displayFileName}</span>
+                                <button onclick="showFilePreviewModal(${JSON.stringify({...fileInfo, id: fileId, field_name: attr.name, row_id: rowId}).replace(/\"/g, '&quot;')})"
+                                        style="padding: 4px 8px; background: #ffc107; color: #333; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                    미리보기
+                                </button>
+                                <button onclick="downloadFile('${rowId}', '${attr.name}', '${fileId}')"
+                                        style="padding: 4px 8px; background: #17a2b8; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                    다운로드
+                                </button>
+                                <button class="delete-file-btn" 
+                                        data-row-id="${rowId}" 
+                                        data-field-name="${attr.name}" 
+                                        data-file-index="${index}"
+                                        style="padding: 4px 8px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                    삭제
+                                </button>
+                            </div>
+                        `;
+                    } else if (fileInfo.type === 'audio') {
+                        filesHtml += `
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding: 8px; border: 1px solid #e9ecef; border-radius: 4px; background: #f8f9fa;">
+                                <span style="flex: 1; font-size: 14px;">🎵 ${displayFileName}</span>
+                                <button onclick="showFilePreviewModal(${JSON.stringify({...fileInfo, id: fileId, field_name: attr.name, row_id: rowId}).replace(/\"/g, '&quot;')})"
+                                        style="padding: 4px 8px; background: #ffc107; color: #333; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                    미리보기
+                                </button>
+                                <button onclick="downloadFile('${rowId}', '${attr.name}', '${fileId}')"
+                                        style="padding: 4px 8px; background: #17a2b8; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                    다운로드
+                                </button>
+                                <button class="delete-file-btn" 
+                                        data-row-id="${rowId}" 
+                                        data-field-name="${attr.name}" 
+                                        data-file-index="${index}"
+                                        style="padding: 4px 8px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                    삭제
+                                </button>
+                            </div>
+                        `;
+                    } else {
+                        // 일반 파일
+                        filesHtml += `
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding: 8px; border: 1px solid #e9ecef; border-radius: 4px; background: #f8f9fa;">
+                                <span style="flex: 1; font-size: 14px;">📄 ${displayFileName}</span>
+                                <button onclick="showFilePreviewModal(${JSON.stringify({...fileInfo, field_name: attr.name, row_id: rowId}).replace(/\"/g, '&quot;')})"
+                                        style="padding: 4px 8px; background: #ffc107; color: #333; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                    미리보기
+                                </button>
+                                <button onclick="downloadFile('${rowId}', '${attr.name}', '${fileId}')"
+                                        style="padding: 4px 8px; background: #17a2b8; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                    다운로드
+                                </button>
+                                <button class="delete-file-btn" 
+                                        data-row-id="${rowId}" 
+                                        data-field-name="${attr.name}" 
+                                        data-file-index="${index}"
+                                        style="padding: 4px 8px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
+                                    삭제
+                                </button>
+                            </div>
+                        `;
+                    }
+                });
+                
+                // 파일 추가 버튼
+                filesHtml += `
+                    <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px; padding: 8px; border: 1px solid #dee2e6; border-radius: 4px; background: #fff;">
+                        <span style="flex: 1; color: #6c757d; font-size: 14px;">파일 추가</span>
+                        <button type="button" 
+                                onclick="document.getElementById('file_${attr.name}_${rowId}').click()" 
+                                style="padding: 6px 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;">
+                            + 파일 추가
+                        </button>
+                        <input type="file" 
+                               id="file_${attr.name}_${rowId}" 
+                               style="display: none;"
+                               multiple
+                               onchange="uploadFile('${rowId}', '${attr.name}', this)">
+                    </div>
+                `;
+                
+                inputHtml = filesHtml;
+            } else {
+                // 파일이 없는 경우: 파일 선택 버튼 (다중 선택 지원)
+                inputHtml = `
+                    <div style="display: flex; align-items: center;">
+                        <span style="flex: 1; color: #6c757d; font-size: 14px; padding: 8px 0;">파일이 선택되지 않았습니다</span>
+                        <button type="button" 
+                                onclick="document.getElementById('file_${attr.name}_${rowId}').click()" 
+                                style="padding: 6px 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;">
+                            파일 선택
+                        </button>
+                        <input type="file" 
+                               id="file_${attr.name}_${rowId}" 
+                               style="display: none;"
+                               multiple
+                               onchange="uploadFile('${rowId}', '${attr.name}', this)">
+                    </div>
+                `;
+            }
+        } else if (attr.type === 'dropdown') {
+            // value가 있을 때 색상 정보도 가져오기 위해 options를 fetch
+            inputHtml = `<button type="button" class="add-btn" id="modal-dropdown-btn-${rowId}-${attr.name}" style="width:100%;background:#f8f9fa;color:#333;border:1px solid #eee;" onclick="openDetailDropdown('${rowId}','${attr.name}',this)">${value||'선택'}</button>`;
+            // 옵션 색상 fetch 후 버튼 배경색 적용
+            setTimeout(() => {
+                fetch('/sales/dropdown_options/?field=' + encodeURIComponent(attr.name))
+                    .then(r => r.json())
+                    .then(data => {
+                        console.log('dropdown_options 데이터:', data);
+                        if (data.options) {
+                            const opt = data.options.find(o => o.option === value);
+                            const btn = document.getElementById(`modal-dropdown-btn-${rowId}-${attr.name}`);
+                            if (btn && opt && opt.color) {
+                                btn.style.background = hexToRgba(opt.color, 0.18);
+                                btn.style.color = '#333';
+                            }
+                        }
+                    });
+            }, 0);
+        } else if (attr.type === 'datetime') {
+            // 날짜 형식 변환
+            let dateValue = '';
+            if (value) {
+                try {
+                    const dt = new Date(value);
+                    dateValue = dt.toISOString().split('T')[0];
+                } catch(e) {
+                    dateValue = value;
+                }
+            }
+            inputHtml = `<input class="input-field" type="date" value="${dateValue}" data-field="${attr.name}" onchange="detailUpdateRowField('${rowId}', '${attr.name}', this.value)">`;
+        } else if (attr.type === 'number') {
+            inputHtml = `<input class="input-field" type="number" value="${value}" data-field="${attr.name}" onchange="detailUpdateRowField('${rowId}', '${attr.name}', this.value)">`;
+        } else if (attr.type === 'age') {
+            // 나이 필드 처리 - 달력과 체크박스 포함
+            let ageData = {};
+            let displayText = '';
+            
+            try {
+                if (value && typeof value === 'string') {
+                    ageData = JSON.parse(value);
+                }
+            } catch (e) {
+                ageData = {};
+            }
+            
+            // 현재 값에 따른 표시
+            if (ageData.birth_date) {
+                displayText = `생년월일: ${ageData.birth_date}`;
+            } else if (ageData.age_range) {
+                displayText = ageData.age_range === 'under40' ? '40세 미만' : '40세 이상';
+            } else {
+                displayText = '나이 정보 없음';
+            }
+            
+            inputHtml = `
+                <div style="border: 1px solid rgb(0, 0, 0); border-radius: 4px; padding: 12px; background: #fff;" data-field="${attr.name}" data-current-value='${JSON.stringify(ageData)}'>
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <!-- 생년월일 입력 -->
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <label style="width: 80px; font-weight: bold; color: #495057;">생년월일:</label>
+                            <input type="date" 
+                                   id="birth_date_${rowId}" 
+                                   value="${ageData.birth_date || ''}"
+                                   style="flex: 1; padding: 8px; border: 1px solid #ced4da; border-radius: 4px;"
+                                   onchange="updateAgeField('${rowId}', '${attr.name}', 'birth_date', this.value)">
+                            
+                            <!-- 연령대 체크박스 -->
+                            <div style="display: flex; gap: 10px;">
+                                <label style="display: flex; align-items: center; gap: 3px; cursor: pointer;">
+                                    <input type="checkbox" 
+                                           ${ageData.age_range === 'under40' ? 'checked' : ''}
+                                           onchange="updateAgeField('${rowId}', '${attr.name}', 'age_range', this.checked ? 'under40' : '')"
+                                           style="margin: 0; width: 12px; height: 12px;">
+                                    <span style="font-size: 12px;">40세 미만</span>
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 3px; cursor: pointer;">
+                                    <input type="checkbox" 
+                                           ${ageData.age_range === 'over40' ? 'checked' : ''}
+                                           onchange="updateAgeField('${rowId}', '${attr.name}', 'age_range', this.checked ? 'over40' : '')"
+                                           style="margin: 0; width: 12px; height: 12px;">
+                                    <span style="font-size: 12px;">40세 이상</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else if (attr.type === 'multi_select') {
+            // 다중 선택 필드 처리
+            let selectedValues = [];
+            try {
+                if (value && typeof value === 'string') {
+                    selectedValues = JSON.parse(value);
+                } else if (Array.isArray(value)) {
+                    selectedValues = value;
+                }
+            } catch (e) {
+                selectedValues = [];
+            }
+            
+            const displayText = selectedValues.length > 0 ? selectedValues.join(', ') : '선택';
+            inputHtml = `<button type="button" class="add-btn" style="width:100%;background:#f8f9fa;color:#333;border:1px solid #eee;" onclick="openDetailDropdown('${rowId}','${attr.name}',this)">${displayText}</button>`;
+        } else {
+            // 기본 텍스트 필드
+            if (attr.name === '신용점수') {
+                // 신용점수 필드는 실시간 검증 추가
+                inputHtml = `<input type="text" value="${value}" class="input-field" data-field="${attr.name}" 
+                           onchange="detailUpdateRowField('${rowId}', '${attr.name}', this.value); highlightRequiredField(this, this.value && this.value !== '0' ? false : true);" 
+                           oninput="highlightRequiredField(this, this.value && this.value !== '0' ? false : true);">`;
+            } else {
+                inputHtml = `<input class="input-field" type="text" value="${value}" data-field="${attr.name}" onchange="detailUpdateRowField('${rowId}', '${attr.name}', this.value)">`;
+            }
+        }
+        
+        // 지역 관련 필드가 아닌 경우에만 HTML에 추가
+        if (attr.name !== '지역' && attr.name !== '상세지역') {
+            // 라벨 색상 설정
+            let labelColor = '#333'; // 기본 색상
+            
+            // 파란색 라벨 (지역, 기대출, 개업년월, 나이, 경력, 직원수)
+            if (['기대출', '개업년월', '나이', '경력', '직원수'].includes(attr.name)) {
+                labelColor = '#007bff';
+            }
+            // 붉은색 라벨 (매출, 신용점수, 업종)
+            else if (['매출', '신용점수', '업종'].includes(attr.name)) {
+                labelColor = '#dc3545';
+            }
+            
+            html += `
+                <div style="display:flex;align-items:center;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #eee;">
+                    <label style="width:120px;font-weight:bold;color:${labelColor};">${attr.name}:</label>
+                    <div style="flex:1;">${inputHtml}</div>
+                </div>
+            `;
+        }
+    });
+    
+    // 상세정보 모달 내용 업데이트
+    document.getElementById('detailModalContent').innerHTML = html;
+    
+    // 음성파일 영역 업데이트
+    updateAudioFileSection(rowId, audioFileValue);
+
+    console.log('window.innerWidth:', window.innerWidth);
+
+    if (window.innerWidth < 1000) {
+        document.querySelector('.detail-modal-content').style.flexDirection = 'column';
+    }
+    // 모달 표시
+    document.getElementById('detailModal').style.display = 'flex';
+    
+    // 행 복제 버튼 재생성
+    if (typeof recreateDuplicateButtons === 'function') {
+        setTimeout(() => {
+            recreateDuplicateButtons();
+            console.log('상세보기 모달에서 행 복제 버튼 재생성 완료');
+        }, 100);
+    }
+    
+    // 파일 삭제 버튼 이벤트 리스너 추가 (setTimeout으로 지연)
+    setTimeout(() => {
+        const deleteButtons = document.querySelectorAll('.delete-file-btn');
+        console.log('찾은 삭제 버튼 개수:', deleteButtons.length);
+        
+        deleteButtons.forEach((btn, index) => {
+            console.log(`버튼 ${index}:`, btn);
+            console.log(`버튼 ${index}의 data 속성:`, {
+                rowId: btn.getAttribute('data-row-id'),
+                fieldName: btn.getAttribute('data-field-name'),
+                fileIndex: btn.getAttribute('data-file-index')
+            });
+            
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const rowId = this.getAttribute('data-row-id');
+                const fieldName = this.getAttribute('data-field-name');
+                const fileIndex = this.getAttribute('data-file-index');
+                
+                console.log('파일 삭제 버튼 클릭됨:', rowId, fieldName, fileIndex);
+                console.log('fileIndex 타입:', typeof fileIndex);
+                console.log('fileIndex 값:', fileIndex);
+                
+                // fileIndex를 숫자로 변환
+                const numericFileIndex = parseInt(fileIndex, 10);
+                console.log('변환된 fileIndex:', numericFileIndex);
+                
+                console.log('deleteFile 함수 호출 전');
+                deleteFile(rowId, fieldName, numericFileIndex);
+                console.log('deleteFile 함수 호출 후');
+            });
+        });
+    }, 100);
 }
 
 // 한국어 통화 단위로 업데이트하는 함수
@@ -2410,9 +2429,7 @@ function updateFileFieldInModal(rowId, fieldName, fileInfo) {
                         border-radius: 4px; 
                         cursor: pointer; 
                         font-size: 12px;
-                        font-weight: 500;
-                        margin-right: 5px;
-                    ">
+                        font-weight: 500;">
                     미리보기
                 </button>
                 <button type="button" 
@@ -2425,9 +2442,7 @@ function updateFileFieldInModal(rowId, fieldName, fileInfo) {
                         border-radius: 4px; 
                         cursor: pointer; 
                         font-size: 12px;
-                        font-weight: 500;
-                        margin-right: 5px;
-                    ">
+                        font-weight: 500;">
                     다운로드
                 </button>
                 <button type="button" 
@@ -2440,6 +2455,8 @@ function updateFileFieldInModal(rowId, fieldName, fileInfo) {
                         border-radius: 4px; 
                         cursor: pointer; 
                         font-size: 12px;
+                        font-weight: 500;">
+                    수정
                         font-weight: 500;
                         margin-right: 5px;
                     ">
@@ -2455,8 +2472,7 @@ function updateFileFieldInModal(rowId, fieldName, fileInfo) {
                         border-radius: 4px; 
                         cursor: pointer; 
                         font-size: 12px;
-                        font-weight: 500;
-                    ">
+                        font-weight: 500;">
                     삭제
                 </button>
                 <input type="file" 
@@ -3659,18 +3675,34 @@ function bindDetailButtonEvents() {
         return;
     }
     
+    let processedCount = 0;
+    let skippedCount = 0;
+    
     moreButtons.forEach((btn, index) => {
+        
+        // 이미 처리된 버튼인지 확인 (data-event-bound 속성으로 추적)
+        if (btn.getAttribute('data-event-bound') === 'true') {
+            skippedCount++;
+            console.log(`버튼 ${index}는 이미 이벤트가 바인딩되어 건너뜁니다.`);
+            return;
+        }
         
         // 버튼이 클릭 가능하도록 스타일 설정
         btn.style.cursor = 'pointer';
         btn.style.pointerEvents = 'auto';
         btn.style.userSelect = 'none';
         
-        // 기존 이벤트 제거
+        // 기존 이벤트 리스너 완전 제거
         btn.onclick = null;
+        // 기존 addEventListener로 추가된 이벤트들도 제거하기 위해 클론 생성
+        const newBtn = btn.cloneNode(true);
+        btn.parentNode.replaceChild(newBtn, btn);
         
-        // 새 이벤트 바인딩
-        btn.onclick = function(e) {
+        // 처리됨을 표시
+        newBtn.setAttribute('data-event-bound', 'true');
+        
+        // 새 버튼에 단일 이벤트만 바인딩
+        newBtn.addEventListener('click', function(e) {
             console.log(`상세보기 버튼 ${index} 클릭됨!`);
             e.stopPropagation();
             e.preventDefault();
@@ -3707,51 +3739,12 @@ function bindDetailButtonEvents() {
                     console.error('상세정보 불러오기 실패:', err);
                     alert('상세정보 불러오기 실패: 네트워크 오류\n' + err);
                 });
-        };
-        
-        // 추가로 addEventListener도 사용
-        btn.addEventListener('click', function(e) {
-            console.log(`상세보기 버튼 ${index} addEventListener 클릭됨!`);
-            e.stopPropagation();
-            e.preventDefault();
-            
-            const tr = this.closest('tr');
-            const id = tr.getAttribute('data-id') || tr.getAttribute('data-row-id');
-            console.log(`addEventListener 클릭된 행 ID: ${id}`);
-            
-            if (!id) { 
-                console.error('ID 정보가 없습니다.');
-                alert('ID 정보가 없습니다.'); 
-                return; 
-            }
-            
-            console.log(`addEventListener 상세보기 버튼 클릭: ID = ${id}`);
-            console.log('addEventListener fetch 요청 시작...');
-            
-            fetch('/sales/get_row_details/' + id + '/')
-                .then(r => {
-                    console.log('addEventListener fetch 응답 받음:', r.status);
-                    return r.json();
-                })
-                .then(function(data) {
-                    console.log('addEventListener JSON 파싱 완료:', data);
-                    if (data.success) {
-                        console.log('addEventListener showDetailModal 호출...');
-                        showDetailModal(data.row_data, data.row_id);
-                    } else {
-                        console.error('addEventListener 상세정보 불러오기 실패:', data.error);
-                        alert('상세정보 불러오기 실패: ' + (data.error || ''));
-                    }
-                })
-                .catch(function(err) {
-                    console.error('addEventListener 상세정보 불러오기 실패:', err);
-                    alert('상세정보 불러오기 실패: 네트워크 오류\n' + err);
-                });
         });
         
+        processedCount++;
     });
     
-    console.log('=== bindDetailButtonEvents 함수 완료 ===');
+    console.log(`=== bindDetailButtonEvents 완료: 처리됨 ${processedCount}개, 건너뜀 ${skippedCount}개 ===`);
 }
 
 // 종속된 행들을 찾아서 업데이트하는 함수
@@ -4061,4 +4054,3 @@ async function checkKanbanAndRefresh(fieldName) {
         }
     }
 }
-
