@@ -10,12 +10,12 @@ from selenium.webdriver.common.by import By
 import time
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium import webdriver
 from selenium.webdriver import ActionChains
 import traceback
 import time
 import random
 from selenium.webdriver.common.keys import Keys
-import pyperclip
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 
@@ -253,20 +253,24 @@ def naver_login(driver, naver_id=None, naver_password=None):
 
     # 로그인 정보가 제공된 경우 자동 로그인
     if naver_id and naver_password:
-        # 아이디 입력
+        # 아이디 입력 (JavaScript로 직접 값 설정)
         id_input = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "id")))
         id_input.click()
         time.sleep(1)
-        pyperclip.copy(naver_id)
-        id_input.send_keys(Keys.CONTROL, 'v')  # ⬅️ pyautogui 대신 이걸 사용
+        
+        # JavaScript로 직접 값 설정 (pyperclip 대신)
+        driver.execute_script("arguments[0].value = arguments[1];", id_input, naver_id)
+        driver.execute_script("arguments[0].dispatchEvent(new Event('input', { bubbles: true }));", id_input)
         time.sleep(1)
 
-        # 비밀번호 입력
+        # 비밀번호 입력 (JavaScript로 직접 값 설정)
         pw_input = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "pw")))
         pw_input.click()
         time.sleep(1)
-        pyperclip.copy(naver_password)
-        pw_input.send_keys(Keys.CONTROL, 'v')  # ⬅️ 여기도 동일
+        
+        # JavaScript로 직접 값 설정 (pyperclip 대신)
+        driver.execute_script("arguments[0].value = arguments[1];", pw_input, naver_password)
+        driver.execute_script("arguments[0].dispatchEvent(new Event('input', { bubbles: true }));", pw_input)
         time.sleep(1)
 
         # 로그인 버튼 클릭
