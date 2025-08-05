@@ -247,15 +247,14 @@ function removeCommaFromNumber(value) {
 
 // 브라우저 알림 표시 함수 (크롬 아이콘 깜빡임)
 function showBrowserNotification(message, title = '알림') {
-    // 브라우저가 포커스되지 않은 상태일 때만 실행
-    if (document.hasFocus && !document.hasFocus()) {
-        // 브라우저 알림 권한 확인 및 요청
-        if ('Notification' in window) {
-            if (Notification.permission === 'granted') {
+    // 브라우저 알림 권한 확인 및 요청 (포커스 상태와 관계없이 실행)
+    if ('Notification' in window) {
+        if (Notification.permission === 'granted') {
+            try {
                 // 알림 생성 (크롬 아이콘 깜빡임 효과)
                 const browserNotification = new Notification(title, {
                     body: message,
-                    icon: '/favicon.ico', // 사이트 파비콘 사용
+                    // favicon 오류 방지를 위해 icon 제거 또는 기본값 사용
                     tag: 'important-notification', // 중복 알림 방지
                     requireInteraction: false,
                     silent: true // 소리 없이
@@ -265,14 +264,18 @@ function showBrowserNotification(message, title = '알림') {
                 setTimeout(() => {
                     browserNotification.close();
                 }, 5000);
-                
-            } else if (Notification.permission !== 'denied') {
-                // 권한 요청
-                Notification.requestPermission().then(permission => {
-                    if (permission === 'granted') {
+            } catch (error) {
+                console.log('브라우저 알림 생성 중 오류:', error);
+            }
+            
+        } else if (Notification.permission !== 'denied') {
+            // 권한 요청
+            Notification.requestPermission().then(permission => {
+                if (permission === 'granted') {
+                    try {
                         const browserNotification = new Notification(title, {
                             body: message,
-                            icon: '/favicon.ico',
+                            // favicon 오류 방지를 위해 icon 제거
                             tag: 'important-notification',
                             requireInteraction: false,
                             silent: true
@@ -281,22 +284,42 @@ function showBrowserNotification(message, title = '알림') {
                         setTimeout(() => {
                             browserNotification.close();
                         }, 5000);
+                    } catch (error) {
+                        console.log('브라우저 알림 생성 중 오류:', error);
                     }
-                });
-            }
+                }
+            });
         }
     }
 }
 
 // 알림 표시 함수 (기존에 없다면 추가)
 function showNotification(message, type = 'info', important = false) {
-    console.log("show noti 호출됨")
-  // 기존 알림 제거
-  const existingNotifications = document.querySelectorAll('.notification');
-  existingNotifications.forEach(notification => notification.remove());
+    console.log("show noti 호출됨", { message, type, important });
+    
+  // 기존 알림 제거 로직 개선
+  if (important) {
+      // important 알림인 경우: 일반 알림만 제거 (important 알림은 유지)
+      const regularNotifications = document.querySelectorAll('.notification:not([data-important="true"])');
+      console.log("일반 알림 개수:", regularNotifications.length);
+      regularNotifications.forEach(notification => notification.remove());
+  } else {
+      // 일반 알림인 경우: 모든 알림 제거
+      const existingNotifications = document.querySelectorAll('.notification');
+      console.log("기존 알림 개수:", existingNotifications.length);
+      existingNotifications.forEach(notification => notification.remove());
+  }
   
   const notification = document.createElement('div');
   notification.className = 'notification';
+  
+  // important 알림 표시
+  if (important) {
+      notification.setAttribute('data-important', 'true');
+  }
+  
+  console.log("알림 요소 생성됨:", notification);
+  
   notification.style.cssText = `
       position: fixed;
       top: 20px;
@@ -316,11 +339,13 @@ function showNotification(message, type = 'info', important = false) {
   
   // 메시지 설정
   notification.textContent = message;
+  console.log("메시지 설정됨:", message);
   
   // important일 때만 특별한 처리
   if (important) {
+      console.log("important=true 처리 시작");
       notification.style.paddingRight = '40px';
-      notification.style.position = 'relative';
+      notification.style.position = 'absolute';
       
       const closeButton = document.createElement('span');
       closeButton.innerHTML = '&times;';
@@ -345,9 +370,16 @@ function showNotification(message, type = 'info', important = false) {
           }
       };
       notification.appendChild(closeButton);
+      console.log("X 버튼 추가됨");
       
-      // important일 때만 브라우저 알림도 표시
-      showBrowserNotification(message, '알림');
+      // important일 때 브라우저 알림도 시도 (오류가 있어도 페이지 내 알림은 표시됨)
+      try {
+          console.log("브라우저 알림 호출 시작");
+          showBrowserNotification(message, '알림');
+          console.log("브라우저 알림 호출 완료");
+      } catch (error) {
+          console.log('브라우저 알림 오류:', error);
+      }
   }
   
   // 타입별 스타일 설정
@@ -365,11 +397,16 @@ function showNotification(message, type = 'info', important = false) {
       default:
           notification.style.background = '#17a2b8';
   }
+  console.log("스타일 설정 완료, 배경색:", notification.style.background);
   
+  console.log("DOM에 추가하기 전 body 확인:", document.body);
   document.body.appendChild(notification);
+  console.log("DOM에 추가 완료, 현재 알림 요소:", notification);
+  console.log("현재 DOM의 .notification 요소들:", document.querySelectorAll('.notification'));
   
   // important가 아닐 때만 자동 제거
   if (!important) {
+      console.log("자동 제거 타이머 설정");
       // 3초 후 자동 제거
       setTimeout(() => {
           if (notification.parentNode) {
@@ -381,10 +418,13 @@ function showNotification(message, type = 'info', important = false) {
               }, 300);
           }
       }, 3000);
+  } else {
+      console.log("important=true이므로 자동 제거 안함");
   }
   
   // CSS 애니메이션 추가
   if (!document.getElementById('notification-styles')) {
+      console.log("CSS 애니메이션 스타일 추가");
       const style = document.createElement('style');
       style.id = 'notification-styles';
       style.textContent = `
@@ -398,6 +438,8 @@ function showNotification(message, type = 'info', important = false) {
           }
       `;
       document.head.appendChild(style);
+  } else {
+      console.log("CSS 애니메이션 스타일 이미 존재함");
   }
 }
 

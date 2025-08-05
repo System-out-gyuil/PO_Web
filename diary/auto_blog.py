@@ -117,7 +117,7 @@ def upload_blog_file(request):
         # 응답 데이터 구성
         response_data = {
             'success': True,
-            'message': '내용이 성공적으로 처리되었습니다.',
+            'message': '블로그 작성이 성공적으로 완료되었습니다.',
             'file_count': len(file_contents),
             'file_infos': file_infos,
             'typing_settings': {

@@ -309,7 +309,7 @@ function uploadBlogFile() {
     
     // 모달 닫기 및 백그라운드 작업 알림 표시
     closeBlogModal();
-    showNotification('백그라운드에서 블로그 작성중이니 창을 닫지 말고 기다려주세요', 'info');
+    showNotification('백그라운드에서 블로그를 작성합니다. 창을 닫지 말고 기다려주세요', 'info');
     
     // 서버로 파일 업로드
     fetch('/sales/upload_blog_file/', {

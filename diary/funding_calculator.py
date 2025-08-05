@@ -180,7 +180,7 @@ class PolicyFundRecommendationEngineV2:
     def _calculate_kibo_max_limit(self, annual_revenue: int) -> int:
         """
         기보 최대 한도 계산 (test.py와 동일한 로직)
-        매출의 30% 또는 최소 1억원 중 큰 값
+        매출의 20% 또는 최소 1억원 중 큰 값
         """
         revenue_based_limit = annual_revenue * 0.20
         minimum_limit = 100_000_000  # 1억원
@@ -245,10 +245,10 @@ class PolicyFundRecommendationEngineV2:
         # 기존 사용 상황에 따른 추천 전략
         if current_kibo_general > 0:
             fund_name = '기보_일반보증_증액'
-            note = f'기존 일반보증 {additional_amount//10000000}천만원 증액 가능 (매출 {annual_revenue//100000000}억 기준 30%)'
+            note = f'기존 일반보증 {additional_amount//10000000}천만원 증액 가능 (매출 {annual_revenue//100000000}억 기준 20%)'
         else:
             fund_name = '기보_일반보증'
-            note = f'신규 일반보증 {max_possible//10000000}천만원 가능 (매출 {annual_revenue//100000000}억 기준 30%)'
+            note = f'신규 일반보증 {max_possible//10000000}천만원 가능 (매출 {annual_revenue//100000000}억 기준 20%)'
         
         exclusion_note = '제조업 우선 원칙으로 신보 제외' if industry == '제조업' else None
         
