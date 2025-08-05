@@ -1,6 +1,12 @@
+// 모바일 기기 감지 함수
+function isMobileDevice() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+           (window.innerWidth <= 768);
+}
+
 function bindKanbanSortable() {
   document.querySelectorAll('.board-cards').forEach(function(col){
-      new Sortable(col, {
+      const sortableOptions = {
           group: 'kanban',
           animation: 150,
           onStart: function(evt) {
@@ -102,14 +108,17 @@ function bindKanbanSortable() {
                       evt.item.style.border = '';
                       evt.item.style.background = '';
                   }, 2000);
-                  
-                  // 실패 시 칸반보드 새로고침으로 원래 상태로 복원
-                  setTimeout(() => {
-                      refreshKanban();
-                  }, 1000);
               });
           }
-      });
+      };
+      
+      // 모바일 기기인 경우 1초 지연 설정
+      if (isMobileDevice()) {
+          sortableOptions.delay = 1000;
+          console.log('모바일 기기 감지: 칸반보드 드래그앤드롭에 1초 지연 설정');
+      }
+      
+      new Sortable(col, sortableOptions);
   });
   
   // 칸반 카드 클릭 시 상세 모달

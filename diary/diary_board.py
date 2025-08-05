@@ -56,21 +56,24 @@ def announcement_detail_page(request, announcement_id):
     
     if not user_id:
         return render(request, 'diary/diary_board_detail.html', {
-            'error': '로그인이 필요합니다.'
+            'error': '로그인이 필요합니다.',
+            'is_authenticated': False
         })
     
     try:
         user = User.objects.get(id=user_id)
     except User.DoesNotExist:
         return render(request, 'diary/diary_board_detail.html', {
-            'error': '사용자를 찾을 수 없습니다.'
+            'error': '사용자를 찾을 수 없습니다.',
+            'is_authenticated': False
         })
     
     try:
         alarm = Alarm.objects.get(id=announcement_id)
     except Alarm.DoesNotExist:
         return render(request, 'diary/diary_board_detail.html', {
-            'error': '공고를 찾을 수 없습니다.'
+            'error': '공고를 찾을 수 없습니다.',
+            'is_authenticated': True
         })
     
     # 읽음 상태 업데이트
@@ -88,7 +91,8 @@ def announcement_detail_page(request, announcement_id):
     context = {
         'user': user,
         'announcement': alarm,
-        'error': None
+        'error': None,
+        'is_authenticated': True
     }
     
     return render(request, 'diary/diary_board_detail.html', context)
