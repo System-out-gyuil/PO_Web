@@ -350,56 +350,96 @@ function uploadBlogFile() {
         return;
     }
     
-    // 업로드 버튼 비활성화 및 로딩 표시
-    const uploadBtn = document.getElementById('uploadBtn');
-    const originalText = uploadBtn.textContent;
-    uploadBtn.textContent = '업로드 중...';
-    uploadBtn.disabled = true;
-    
-    // FormData 객체 생성
-    const formData = new FormData();
-    for (let i = 0; i < files.length; i++) {
-        formData.append('files', files[i]); // 파일 여러 개 처리
+    // 알림 권한 요청 (유효성 검사 통과 후)
+    if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission().then(permission => {
+            if (permission === 'granted') {
+                console.log('알림 권한이 허용되었습니다.');
+                proceedWithUpload();
+            } else {
+                console.log('알림 권한이 거부되었지만 업로드를 계속 진행합니다.');
+                proceedWithUpload();
+            }
+        });
+    } else {
+        // 이미 권한이 있거나 알림을 지원하지 않는 경우 바로 업로드 진행
+        proceedWithUpload();
     }
-    formData.append('typo_probability', typoProbability);
-    formData.append('typing_speed', typingSpeed);
-    formData.append('naver_id', naverId);
-    formData.append('naver_password', naverPassword);
     
-    // 모달 닫기 및 백그라운드 작업 알림 표시
-    closeBlogModal();
-    showNotification('백그라운드에서 블로그 작성을 시작합니다. 창을 닫지 말고 기다려주세요', 'info');
-    
-    // 서버로 파일 업로드
-    fetch('/sales/upload_blog_file/', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // 성공 메시지 표시
-            showNotification(data.message, 'success', true);
-            showBrowserNotification(data.message, '블로그 작성 완료');
-            
-            // 파일 정보 콘솔에 출력
-            console.log('업로드된 파일 개수:', data.file_count);
-            console.log('업로드된 파일 정보들:', data.file_infos);
-            if (data.content_preview) {
-                console.log('파일 내용 미리보기:', data.content_preview);
-            }
-            if (data.text_content) {
-                console.log('입력된 텍스트:', data.text_content);
-            }
-        } else {
-            // 오류 메시지 표시
-            showNotification(data.error, 'error');
+    // 실제 업로드 처리 함수
+    function proceedWithUpload() {
+        // 업로드 버튼 비활성화 및 로딩 표시
+        const uploadBtn = document.getElementById('uploadBtn');
+        const originalText = uploadBtn.textContent;
+        uploadBtn.textContent = '업로드 중...';
+        uploadBtn.disabled = true;
+        
+        // FormData 객체 생성
+        const formData = new FormData();
+        for (let i = 0; i < files.length; i++) {
+            formData.append('files', files[i]); // 파일 여러 개 처리
         }
-    })
-    .catch(error => {
-        console.error('업로드 오류:', error);
-        showNotification('파일 업로드 중 오류가 발생했습니다.', 'error');
-    });
+        formData.append('typo_probability', typoProbability);
+        formData.append('typing_speed', typingSpeed);
+        formData.append('naver_id', naverId);
+        formData.append('naver_password', naverPassword);
+        
+        // 모달 닫기 및 백그라운드 작업 알림 표시
+        closeBlogModal();
+        showNotification('백그라운드에서 블로그 작성을 시작합니다. 창을 닫지 말고 기다려주세요', 'info');
+        
+        // 서버로 파일 업로드
+        fetch('/sales/upload_blog_file/', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // 성공 메시지 표시
+                showNotification(data.message, 'success', true);
+                showBrowserNotification(data.message, '블로그 작성 완료');
+                
+                // 파일 정보 콘솔에 출력
+                console.log('업로드된 파일 개수:', data.file_count);
+                console.log('업로드된 파일 정보들:', data.file_infos);
+                if (data.content_preview) {
+                    console.log('파일 내용 미리보기:', data.content_preview);
+                }
+                if (data.text_content) {
+                    console.log('입력된 텍스트:', data.text_content);
+                }
+                
+                // 업로드 버튼 복원
+                const uploadBtn = document.getElementById('uploadBtn');
+                if (uploadBtn) {
+                    uploadBtn.textContent = '업로드';
+                    uploadBtn.disabled = false;
+                }
+            } else {
+                // 오류 메시지 표시
+                showNotification(data.error, 'error');
+                
+                // 오류 시에도 업로드 버튼 복원
+                const uploadBtn = document.getElementById('uploadBtn');
+                if (uploadBtn) {
+                    uploadBtn.textContent = '업로드';
+                    uploadBtn.disabled = false;
+                }
+            }
+        })
+        .catch(error => {
+            console.error('업로드 오류:', error);
+            showNotification('파일 업로드 중 오류가 발생했습니다.', 'error');
+            
+            // 오류 시에도 업로드 버튼 복원
+            const uploadBtn = document.getElementById('uploadBtn');
+            if (uploadBtn) {
+                uploadBtn.textContent = '업로드';
+                uploadBtn.disabled = false;
+            }
+        });
+    }
 }
 
 // 페이지 로드 시 블로그 div에 클릭 이벤트 추가

@@ -112,10 +112,9 @@ function bindKanbanSortable() {
           }
       };
       
-      // 모바일 기기인 경우 1초 지연 설정
+      // 모바일 기기인 경우 0.5초 지연 설정
       if (isMobileDevice()) {
-          sortableOptions.delay = 1000;
-          console.log('모바일 기기 감지: 칸반보드 드래그앤드롭에 1초 지연 설정');
+          sortableOptions.delay = 500;
       }
       
       new Sortable(col, sortableOptions);
@@ -173,7 +172,12 @@ let lastKanbanData = null;
 
 function updateKanbanBoard(attrName) {
   if (!attrName || attrName === 'undefined') {
-      alert('칸반보드 기준 속성을 먼저 설정하세요.');
+      // 기준 속성이 없으면 아무것도 하지 않음 (모달/alert도 X)
+      return;
+  }
+  
+  // 로그아웃 중이면 요청 중단
+  if (window.isLoggingOut) {
       return;
   }
   
@@ -193,10 +197,21 @@ function updateKanbanBoard(attrName) {
   }
   
   fetch('/sales/get_kanban_data/?attr_name=' + encodeURIComponent(attrName))
-      .then(response => response.json())
+      .then(response => {
+          // 로그아웃 중이면 요청 중단
+          if (window.isLoggingOut) {
+              throw new Error('로그아웃 중');
+          }
+          return response.json();
+      })
       .then(data => {
           if (loadingIndicator) {
               loadingIndicator.style.display = 'none';
+          }
+          
+          // 로그아웃 중이면 처리 중단
+          if (window.isLoggingOut) {
+              return;
           }
           
           if (data.success) {
@@ -264,8 +279,12 @@ function updateKanbanBoard(attrName) {
                   // 이벤트 바인딩 재설정
                   bindKanbanSortable();
                   
+                  // 칸반보드 컬럼(속성) 순서 변경 드래그앤드롭 재바인딩
+                  enableKanbanColumnDragDrop();
+                  
                   // 전역 변수 업데이트
                   window.SELECTED_KANBAN_ATTR = attrName;
+                  window.currentKanbanAttribute = attrName;
                   
                   // 마지막 데이터 저장
                   lastKanbanData = data;
@@ -275,7 +294,10 @@ function updateKanbanBoard(attrName) {
                   console.log('칸반보드 데이터가 변경되지 않아 업데이트를 건너뜁니다.');
               }
           } else {
-              alert('칸반보드 데이터를 불러오는데 실패했습니다: ' + (data.error || ''));
+              // 로그아웃 중이 아닐 때만 오류 메시지 표시
+              if (!window.isLoggingOut) {
+                  alert('칸반보드 데이터를 불러오는데 실패했습니다: ' + (data.error || ''));
+              }
           }
       })
       .catch(error => {
@@ -283,7 +305,11 @@ function updateKanbanBoard(attrName) {
               loadingIndicator.style.display = 'none';
           }
           console.error('칸반보드 업데이트 오류:', error);
-          alert('칸반보드 업데이트 중 오류가 발생했습니다: ' + error.message);
+          
+          // 로그아웃 중이 아닐 때만 오류 메시지 표시
+          if (!window.isLoggingOut && error.message !== '로그아웃 중') {
+              alert('칸반보드 업데이트 중 오류가 발생했습니다: ' + error.message);
+          }
       })
       .finally(() => {
           kanbanUpdateInProgress = false;
@@ -544,102 +570,5 @@ function initializeKanbanBoard() {
                 }
             }
             // 설정이 없을 때는 아무것도 하지 않음 (모달 자동 표시 제거)
-        });
-}
-
-// 칸반보드 필터 기능 추가 및 컬럼 드래그앤드롭 재바인딩
-function updateKanbanBoard(attrName) {
-    if (!attrName || attrName === 'undefined') {
-        // 기준 속성이 없으면 아무것도 하지 않음 (모달/alert도 X)
-        return;
-    }
-    
-    // 로그아웃 중이면 요청 중단
-    if (window.isLoggingOut) {
-        return;
-    }
-    
-    const loadingIndicator = document.getElementById('kanbanLoadingIndicator');
-    const boardView = document.getElementById('boardView');
-    
-    // 로딩 표시
-    loadingIndicator.style.display = 'block';
-    
-    fetch('/sales/get_kanban_data/?attr_name=' + encodeURIComponent(attrName))
-        .then(response => {
-            // 로그아웃 중이면 요청 중단
-            if (window.isLoggingOut) {
-                throw new Error('로그아웃 중');
-            }
-            return response.json();
-        })
-        .then(data => {
-            loadingIndicator.style.display = 'none';
-            
-            // 로그아웃 중이면 처리 중단
-            if (window.isLoggingOut) {
-                return;
-            }
-            
-            if (data.success) {
-                // 칸반보드 HTML 생성
-                let boardHTML = '<div class="board-container">';
-                
-                data.board.forEach(function(col) {
-                    boardHTML += '<div class="board-col" data-status-id="' + col.status.id + '" data-attr-name="' + attrName + '" style="background:' + (col.status.color ? hexToRgba(col.status.color, 0.10) : '') + ';">';
-                    boardHTML += '<div class="board-col-title" style="background:' + (col.status.color ? hexToRgba(col.status.color, 0.18) : '') + ';border-left:6px solid ' + (col.status.color || '#007bff') + ';padding-left:10px;">' + col.status.name + '</div>';
-                    boardHTML += '<div class="board-cards">';
-                    
-                    col.entries.forEach(function(entry) {
-                        const entryName = entry.name || '(회사명 없음)';
-                        const entryProgress = entry.progress || entry.now || '';
-                        
-                        // 진행사항 옵션에서 텍스트 찾기
-                        let progressText = '';
-                        if (entryProgress && data.progress_options) {
-                            const progressOption = data.progress_options.find(option => option.id == entryProgress);
-                            if (progressOption) {
-                                progressText = progressOption.option;
-                            }
-                        }
-                        
-                        boardHTML += '<div class="board-card" data-entry-id="' + entry.id + '">';
-                        boardHTML += '<div class="board-card-title">' + entryName + '</div>';
-                        if (progressText) {
-                            boardHTML += '<div class="board-card-progress" style="font-size:11px;color:#666;margin-top:2px;">' + progressText + '</div>';
-                        }
-                        boardHTML += '</div>';
-                    });
-                    
-                    boardHTML += '</div>';
-                    boardHTML += '<button class="add-card-btn" style="display:none;"></button>';
-                    boardHTML += '</div>';
-                });
-                
-                boardHTML += '</div>';
-                boardView.innerHTML = boardHTML;
-                
-                // 칸반보드 드래그앤드롭 재바인딩
-                bindKanbanSortable();
-                
-                // 전역 변수 업데이트
-                window.SELECTED_KANBAN_ATTR = attrName;
-                window.currentKanbanAttribute = attrName;
-                
-            } else {
-                // 로그아웃 중이 아닐 때만 오류 메시지 표시
-                if (!window.isLoggingOut) {
-                    alert('칸반보드 데이터를 불러오는데 실패했습니다: ' + (data.error || ''));
-                }
-            }
-        })
-        .catch(error => {
-            loadingIndicator.style.display = 'none';
-            console.error('칸반보드 업데이트 오류:', error);
-            
-            // 로그아웃 중이 아닐 때만 오류 메시지 표시
-            if (!window.isLoggingOut && error.message !== '로그아웃 중') {
-                alert('칸반보드 업데이트 중 오류가 발생했습니다: ' + error.message);
-            }
         });
 }
