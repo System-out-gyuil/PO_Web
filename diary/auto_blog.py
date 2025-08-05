@@ -167,11 +167,23 @@ def create_driver():
     
     options = webdriver.ChromeOptions()
     
-    # 고유한 임시 디렉토리 사용하여 충돌 방지
-    temp_dir = tempfile.mkdtemp()
-    options.add_argument(f"--user-data-dir={temp_dir}")
+    # 우분투 서버 환경을 위한 설정
+    options.add_argument("--headless")  # GUI 없이 실행
+    options.add_argument("--no-sandbox")  # 샌드박스 비활성화 (우분투 서버에서 필요)
+    options.add_argument("--disable-dev-shm-usage")  # /dev/shm 사용 안함 (메모리 부족 방지)
+    options.add_argument("--disable-gpu")  # GPU 비활성화
+    options.add_argument("--remote-debugging-port=9222")  # 디버깅 포트 설정
     
-    options.add_argument("--start-maximized")
+    # 고유한 임시 디렉토리 사용하여 충돌 방지 (사용자 데이터 디렉토리 완전 제거)
+    # temp_dir = tempfile.mkdtemp()
+    # options.add_argument(f"--user-data-dir={temp_dir}")
+    
+    # 대신 user-data-dir 없이 실행
+    options.add_argument("--no-first-run")
+    options.add_argument("--no-default-browser-check")
+    options.add_argument("--disable-default-apps")
+    
+    options.add_argument("--window-size=1920,1080")  # headless에서 창 크기 설정
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option('useAutomationExtension', False)
