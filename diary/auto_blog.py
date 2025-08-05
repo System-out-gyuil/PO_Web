@@ -162,16 +162,26 @@ def get_blog_files(request):
 
 # ✅ Selenium 설정
 def create_driver():
-
+    import tempfile
+    import os
+    
     options = webdriver.ChromeOptions()
-    options.add_argument("user-data-dir=C:/Users/사용자명/AppData/Local/Google/Chrome/User Data")
-    options.add_argument("profile-directory=Default")  # 또는 "Profile 1" 등
+    
+    # 고유한 임시 디렉토리 사용하여 충돌 방지
+    temp_dir = tempfile.mkdtemp()
+    options.add_argument(f"--user-data-dir={temp_dir}")
+    
     options.add_argument("--start-maximized")
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    options.add_experimental_option('useAutomationExtension', False)
 
     service = Service(executable_path=ChromeDriverManager().install())
-
     driver = webdriver.Chrome(service=service, options=options)
-
+    
+    # 자동화 탐지 방지
+    driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+    
     return driver
 
 def slow_type_with_actionchains(driver, element, text, min_delay=0.05, max_delay=0.1):
