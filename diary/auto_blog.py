@@ -21,22 +21,52 @@ from webdriver_manager.chrome import ChromeDriverManager
 from django.core.cache import cache
 import json
 import os
+import uuid
+import hashlib
+from .session_handlers import cleanup_session_cache, get_active_sessions
 
-def update_status(step, title='', content='', progress=0):
-    """실시간 상태 업데이트 함수 - Redis 캐시 사용"""
+def generate_session_id(request):
+    """사용자별 고유 세션 ID 생성"""
+    # IP 주소와 User-Agent를 조합하여 고유 ID 생성
+    client_ip = request.META.get('REMOTE_ADDR', 'unknown')
+    user_agent = request.META.get('HTTP_USER_AGENT', 'unknown')
+    
+    # 세션 ID가 이미 있으면 재사용
+    session_id = request.session.get('blog_session_id')
+    if not session_id:
+        # 새로운 세션 ID 생성
+        unique_string = f"{client_ip}:{user_agent}:{datetime.now().isoformat()}"
+        session_id = hashlib.md5(unique_string.encode()).hexdigest()[:16]
+        request.session['blog_session_id'] = session_id
+    
+    return session_id
+
+def get_cache_key(session_id, key_name='blog_status'):
+    """세션별 캐시 키 생성"""
+    return f"blog_status_{session_id}_{key_name}"
+
+def update_status(step, title='', content='', progress=0, session_id=None):
+    """실시간 상태 업데이트 함수 - 세션별 Redis 캐시 사용"""
+    if not session_id:
+        print("⚠️ 세션 ID가 없어 기본 키를 사용합니다.")
+        cache_key = 'blog_status'
+    else:
+        cache_key = get_cache_key(session_id, 'blog_status')
+    
     status_data = {
         'step': step,
         'title': title,
         'content': content,
         'progress': progress,
-        'timestamp': datetime.now().isoformat()
+        'timestamp': datetime.now().isoformat(),
+        'session_id': session_id  # 세션 ID도 함께 저장
     }
     
     # Redis 캐시에 상태 저장
-    cache.set('blog_status', status_data, 1800)
+    cache.set(cache_key, status_data, 1800)
     
-    print(f"📊 상태 업데이트: {step} - {title} - {content[:50]}{'...' if len(content) > 50 else ''}")
-    print(f"📊 Redis에 저장된 상태: {status_data}")
+    print(f"📊 상태 업데이트 [{session_id}]: {step} - {title} - {content[:50]}{'...' if len(content) > 50 else ''}")
+    print(f"📊 Redis에 저장된 상태 [{cache_key}]: {status_data}")
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -45,12 +75,16 @@ def upload_blog_file(request):
     블로그 텍스트 파일 업로드 처리 - 파일 저장 없이 내용만 출력
     """
     try:
+        # 사용자별 고유 세션 ID 생성
+        session_id = generate_session_id(request)
+        print(f"📊 새로운 블로그 작성 세션 시작: {session_id}")
+        
         file_contents = []
         text_content = ""
         file_infos = []
         
         # 블로그 작성 시작 시 즉시 상태 업데이트
-        print("📊 블로그 작성 요청 받음 - 상태 초기화 시작")
+        print("�� 블로그 작성 요청 받음 - 상태 초기화 시작")
         initial_status = {
             'step': 'upload_received',
             'title': '파일 업로드 처리 중...',
@@ -58,10 +92,11 @@ def upload_blog_file(request):
             'progress': 5,
             'total_files': 0,
             'current_file': 0,
-            'timestamp': datetime.now().isoformat()
+            'timestamp': datetime.now().isoformat(),
+            'session_id': session_id
         }
-        cache.set('blog_status', initial_status, 1800)
-        print(f"📊 초기 상태 캐시에 저장됨: {initial_status}")
+        cache.set(get_cache_key(session_id, 'blog_status'), initial_status, 1800)
+        print(f"📊 초기 상태 캐시에 저장됨 [{session_id}]: {initial_status}")
         
         # 타이핑 설정 받기
         typo_probability = float(request.POST.get('typo_probability', 0.1))
@@ -73,17 +108,19 @@ def upload_blog_file(request):
         
         # 네이버 로그인 정보 필수 검증
         if not naver_id:
-            update_status('validation_error', '입력 오류', '네이버 아이디를 입력해주세요.')
+            update_status('validation_error', '입력 오류', '네이버 아이디를 입력해주세요.', session_id=session_id)
             return JsonResponse({
                 'success': False,
-                'error': '네이버 아이디를 입력해주세요.'
+                'error': '네이버 아이디를 입력해주세요.',
+                'session_id': session_id
             })
         
         if not naver_password:
-            update_status('validation_error', '입력 오류', '네이버 비밀번호를 입력해주세요.')
+            update_status('validation_error', '입력 오류', '네이버 비밀번호를 입력해주세요.', session_id=session_id)
             return JsonResponse({
                 'success': False,
-                'error': '네이버 비밀번호를 입력해주세요.'
+                'error': '네이버 비밀번호를 입력해주세요.',
+                'session_id': session_id
             })
         
         # 값 범위 검증
@@ -91,6 +128,7 @@ def upload_blog_file(request):
         typing_speed = max(0.0, min(1.0, typing_speed))
         
         print("=" * 50)
+        print(f"세션 ID: {session_id}")
         print(f"타이핑 설정:")
         print(f"오타 확률: {typo_probability}")
         print(f"타자 속도: {typing_speed}")
@@ -99,7 +137,7 @@ def upload_blog_file(request):
         print("=" * 50)
         
         # 파일 처리 상태 업데이트
-        update_status('file_processing', '파일 처리 중', '업로드된 파일을 검증하고 있습니다.', 10)
+        update_status('file_processing', '파일 처리 중', '업로드된 파일을 검증하고 있습니다.', 10, session_id)
         
         # 파일들이 요청에 포함되어 있는지 확인
         if 'files' in request.FILES:
@@ -108,19 +146,21 @@ def upload_blog_file(request):
             for uploaded_file in uploaded_files:
                 # 파일 확장자 검사
                 if not uploaded_file.name.lower().endswith('.txt'):
-                    update_status('validation_error', '파일 오류', f'파일 "{uploaded_file.name}"은(는) 텍스트 파일(.txt)이 아닙니다.')
+                    update_status('validation_error', '파일 오류', f'파일 "{uploaded_file.name}"은(는) 텍스트 파일(.txt)이 아닙니다.', session_id=session_id)
                     return JsonResponse({
                         'success': False,
-                        'error': f'파일 "{uploaded_file.name}"은(는) 텍스트 파일(.txt)이 아닙니다.'
+                        'error': f'파일 "{uploaded_file.name}"은(는) 텍스트 파일(.txt)이 아닙니다.',
+                        'session_id': session_id
                     })
                 
                 # 파일 크기 검사 (10MB 제한)
                 max_size = 10 * 1024 * 1024  # 10MB
                 if uploaded_file.size > max_size:
-                    update_status('validation_error', '파일 크기 오류', f'파일 "{uploaded_file.name}"의 크기가 10MB를 초과합니다.')
+                    update_status('validation_error', '파일 크기 오류', f'파일 "{uploaded_file.name}"의 크기가 10MB를 초과합니다.', session_id=session_id)
                     return JsonResponse({
                         'success': False,
-                        'error': f'파일 "{uploaded_file.name}"의 크기가 10MB를 초과합니다.'
+                        'error': f'파일 "{uploaded_file.name}"의 크기가 10MB를 초과합니다.',
+                        'session_id': session_id
                     })
                 
                 # 파일 내용 읽기
@@ -156,20 +196,21 @@ def upload_blog_file(request):
         
         # 파일과 텍스트 모두 없는 경우
         if not file_contents and not text_content:
-            update_status('validation_error', '내용 없음', '파일 또는 텍스트를 입력해주세요.')
+            update_status('validation_error', '내용 없음', '파일 또는 텍스트를 입력해주세요.', session_id=session_id)
             return JsonResponse({
                 'success': False,
-                'error': '파일 또는 텍스트를 입력해주세요.'
+                'error': '파일 또는 텍스트를 입력해주세요.',
+                'session_id': session_id
             })
         
         # 블로그 작성 시작 상태 업데이트
         total_contents = len(file_contents) + (1 if text_content and text_content.strip() else 0)
-        update_status('blog_start', '블로그 작성 시작', f'총 {total_contents}개 콘텐츠 블로그 작성을 시작합니다.', 15)
+        update_status('blog_start', '블로그 작성 시작', f'총 {total_contents}개 콘텐츠 블로그 작성을 시작합니다.', 15, session_id)
         
         print(f"📊 블로그 작성 함수 호출 직전 - 총 {total_contents}개 콘텐츠")
         
-        # auto_blog_naver 함수 호출 시 타이핑 설정 전달
-        success, message = auto_blog_naver(file_contents, text_content, typo_probability, typing_speed, naver_id, naver_password)
+        # auto_blog_naver 함수 호출 시 세션 ID와 타이핑 설정 전달
+        success, message = auto_blog_naver(file_contents, text_content, typo_probability, typing_speed, naver_id, naver_password, session_id)
         
         # 성공/실패에 따른 응답 데이터 구성
         if success:
@@ -181,7 +222,8 @@ def upload_blog_file(request):
                 'typing_settings': {
                     'typo_probability': typo_probability,
                     'typing_speed': typing_speed
-                }
+                },
+                'session_id': session_id
             }
             
             if file_contents:
@@ -195,22 +237,25 @@ def upload_blog_file(request):
         else:
             response_data = {
                 'success': False,
-                'error': message
+                'error': message,
+                'session_id': session_id
             }
         
         return JsonResponse(response_data)
         
     except UnicodeDecodeError:
-        update_status('encoding_error', '인코딩 오류', '파일 인코딩 오류. UTF-8 인코딩의 텍스트 파일만 지원합니다.')
+        update_status('encoding_error', '인코딩 오류', '파일 인코딩 오류. UTF-8 인코딩의 텍스트 파일만 지원합니다.', session_id=session_id)
         return JsonResponse({
             'success': False,
-            'error': '파일 인코딩 오류. UTF-8 인코딩의 텍스트 파일만 지원합니다.'
+            'error': '파일 인코딩 오류. UTF-8 인코딩의 텍스트 파일만 지원합니다.',
+            'session_id': session_id
         })
     except Exception as e:
-        update_status('upload_error', '업로드 오류', f'처리 중 오류가 발생했습니다: {str(e)}')
+        update_status('upload_error', '업로드 오류', f'처리 중 오류가 발생했습니다: {str(e)}', session_id=session_id)
         return JsonResponse({
             'success': False,
-            'error': f'처리 중 오류가 발생했습니다: {str(e)}'
+            'error': f'처리 중 오류가 발생했습니다: {str(e)}',
+            'session_id': session_id
         })
     
 
@@ -227,9 +272,18 @@ def get_blog_files(request):
     })
 
 # ✅ Selenium 설정
-def create_driver():
+def create_driver(session_id=None):
     import tempfile
     import os
+    import socket
+    
+    def find_free_port():
+        """사용 가능한 포트 찾기"""
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind(('', 0))
+            s.listen(1)
+            port = s.getsockname()[1]
+        return port
     
     options = webdriver.ChromeOptions()
     
@@ -238,7 +292,19 @@ def create_driver():
     options.add_argument("--no-sandbox")  # 샌드박스 비활성화 (우분투 서버에서 필요)
     options.add_argument("--disable-dev-shm-usage")  # /dev/shm 사용 안함 (메모리 부족 방지)
     options.add_argument("--disable-gpu")  # GPU 비활성화
-    options.add_argument("--remote-debugging-port=9222")  # 디버깅 포트 설정
+    
+    # 세션별 고유 포트 할당 (포트 충돌 방지)
+    if session_id:
+        # 세션 ID를 기반으로 포트 범위 설정 (9222~9299)
+        port_offset = int(session_id[:4], 16) % 78  # 0~77 범위
+        debug_port = 9222 + port_offset
+        print(f"🔧 세션 {session_id}에 포트 {debug_port} 할당")
+    else:
+        # 기본 포트 또는 사용 가능한 포트 찾기
+        debug_port = find_free_port()
+        print(f"🔧 동적 포트 할당: {debug_port}")
+    
+    options.add_argument(f"--remote-debugging-port={debug_port}")
     
     # 고유한 임시 디렉토리 사용하여 충돌 방지 (사용자 데이터 디렉토리 완전 제거)
     # temp_dir = tempfile.mkdtemp()
@@ -588,7 +654,7 @@ def write_naver_blog(driver, user_id, title, content, typo_probability, typing_s
         update_status('iframe_failed', 'iframe 진입 실패', str(e))
         return False, f"iframe(mainFrame) 진입 실패: {str(e)}"
 
-def auto_blog_naver(file_texts, text_content, typo_probability, typing_speed, naver_id, naver_password):
+def auto_blog_naver(file_texts, text_content, typo_probability, typing_speed, naver_id, naver_password, session_id):
     driver = None
     try:
         # 전체 작업 상태 초기화
@@ -602,13 +668,14 @@ def auto_blog_naver(file_texts, text_content, typo_probability, typing_speed, na
             'progress': 0,
             'total_files': total_contents,
             'current_file': 0,
-            'timestamp': datetime.now().isoformat()
+            'timestamp': datetime.now().isoformat(),
+            'session_id': session_id
         }
-        cache.set('blog_status', initial_status, 1800)
+        cache.set(get_cache_key(session_id, 'blog_status'), initial_status, 1800)
         
-        update_status('init', '블로그 자동 작성 시작', f'총 {total_contents}개 콘텐츠 처리 예정')
+        update_status('init', '블로그 자동 작성 시작', f'총 {total_contents}개 콘텐츠 처리 예정', session_id=session_id)
         
-        driver = create_driver()
+        driver = create_driver(session_id)
         
         # 로그인 시도
         login_success, login_message = naver_login(driver, naver_id, naver_password)
@@ -627,7 +694,7 @@ def auto_blog_naver(file_texts, text_content, typo_probability, typing_speed, na
             contents_to_process.append(('텍스트', 1, text_content))
 
         if not contents_to_process:
-            update_status('no_content', '처리할 콘텐츠 없음', '업로드된 파일이나 텍스트가 없습니다')
+            update_status('no_content', '처리할 콘텐츠 없음', '업로드된 파일이나 텍스트가 없습니다', session_id=session_id)
             return False, "처리할 콘텐츠가 없습니다."
 
         current_file_index = 0
@@ -637,7 +704,7 @@ def auto_blog_naver(file_texts, text_content, typo_probability, typing_speed, na
                 progress = int((current_file_index / total_contents) * 100)
                 
                 # 현재 파일 정보를 캐시에 업데이트
-                current_status = cache.get('blog_status')
+                current_status = cache.get(get_cache_key(session_id, 'blog_status'))
                 if current_status is None:
                     current_status = {}
                     
@@ -646,10 +713,10 @@ def auto_blog_naver(file_texts, text_content, typo_probability, typing_speed, na
                     'total_files': total_contents,
                     'progress': progress
                 })
-                cache.set('blog_status', current_status, 1800)
+                cache.set(get_cache_key(session_id, 'blog_status'), current_status, 1800)
                 
                 update_status('processing_file', f'{content_type} {content_index} 처리 중', 
-                            f'진행률: {current_file_index}/{total_contents}', progress)
+                            f'진행률: {current_file_index}/{total_contents}', progress, session_id)
                 
                 # 🔁 매 반복마다 작성 페이지 재진입
                 blog_success, driver_or_error, user_id_or_message = naver_blog(driver)
@@ -669,41 +736,58 @@ def auto_blog_naver(file_texts, text_content, typo_probability, typing_speed, na
 
                 print(f"✅ {content_type} {content_index} 게시 완료")
                 update_status('file_complete', f'{content_type} {content_index} 완료', 
-                            f'"{title}" 게시 완료')
+                            f'"{title}" 게시 완료', session_id=session_id)
 
             except Exception as e:
                 print(f"❌ {content_type} {content_index} 처리 실패: {str(e)}")
-                update_status('file_error', f'{content_type} {content_index} 오류', str(e))
+                update_status('file_error', f'{content_type} {content_index} 오류', str(e), session_id=session_id)
                 return False, f"{content_type} {content_index} 처리 실패: {str(e)}"
         
-        update_status('all_complete', '모든 작업 완료', f'총 {total_contents}개 콘텐츠 처리 완료', 100)
+        update_status('all_complete', '모든 작업 완료', f'총 {total_contents}개 콘텐츠 처리 완료', 100, session_id)
         return True, "모든 블로그 글 작성이 완료되었습니다"
         
     except Exception as e:
         print(f"❌ 블로그 작성 중 전체적인 오류 발생: {str(e)}")
-        update_status('global_error', '전체 작업 오류', str(e))
+        update_status('global_error', '전체 작업 오류', str(e), session_id=session_id)
         return False, f"블로그 작성 중 오류 발생: {str(e)}"
     finally:
         if driver:
             try:
                 driver.quit()
                 print("✅ 브라우저 종료 완료")
-                update_status('cleanup', '브라우저 종료', '모든 작업이 완료되었습니다')
+                update_status('cleanup', '브라우저 종료', '모든 작업이 완료되었습니다', session_id=session_id)
             except Exception as e:
                 print(f"⚠️ 브라우저 종료 실패: {str(e)}")
 
 # 상태 조회를 위한 새로운 뷰 함수
-@require_http_methods(["GET"])
+@require_http_methods(["GET", "POST"])
 def get_blog_status(request):
     """실시간 블로그 작성 상태 조회"""
-    status_data = cache.get('blog_status')
+    # 세션 ID 가져오기 (GET 요청에서는 세션에서, POST 요청에서는 헤더에서)
+    session_id = None
+    
+    if request.method == 'POST':
+        # POST 요청에서 세션 ID를 헤더로 받기
+        session_id = request.headers.get('X-Session-Id', '').strip()
+        if not session_id:
+            # 헤더에 없으면 세션에서 가져오기
+            session_id = generate_session_id(request)
+    else:
+        # GET 요청에서는 세션에서 가져오기
+        session_id = generate_session_id(request)
+    
+    print(f"📊 상태 조회 요청 - 세션 ID: {session_id}")
+    
+    # 해당 세션의 상태 데이터 조회
+    status_data = cache.get(get_cache_key(session_id, 'blog_status'))
     
     print(f"📊 상태 조회 요청 - Redis에서 가져온 데이터: {status_data}")
     
     if status_data:
         return JsonResponse({
             'success': True,
-            'status': status_data
+            'status': status_data,
+            'session_id': session_id
         })
     else:
         # 캐시에 데이터가 없는 경우 기본 상태 반환
@@ -714,11 +798,13 @@ def get_blog_status(request):
             'progress': 0,
             'total_files': 0,
             'current_file': 0,
-            'timestamp': datetime.now().isoformat()
+            'timestamp': datetime.now().isoformat(),
+            'session_id': session_id
         }
         print(f"📊 캐시에 데이터 없음 - 기본 상태 반환: {default_status}")
         
         return JsonResponse({
             'success': True,
-            'status': default_status
+            'status': default_status,
+            'session_id': session_id
         })

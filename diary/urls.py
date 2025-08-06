@@ -15,6 +15,7 @@ from .detail_openai import ai_chat, ai_chat_cache_clear, file_cache_management, 
 from .admin_view import admin_dashboard, inquiry_list, inquiry_detail, alarm_list, alarm_create, alarm_edit, alarm_delete, inquiry_delete, admin_api, user_list, user_delete, user_toggle_admin
 from .diary_board import diary_board, get_announcements, get_announcement_detail, mark_as_read, download_announcement_file, announcement_detail_page, create_announcement, upload_announcement_file, get_announcement_file_url, get_announcement_download_url
 from .main_views import CompanyInfoView, PersonalInfoView, TermsOfServiceView
+from .session_handlers import cleanup_session_cache_api, get_active_sessions_api
 
 urlpatterns = [
     path('', DiaryMainView.as_view(), name='diary_main'),
@@ -130,6 +131,8 @@ urlpatterns = [
     path('upload_blog_file/', upload_blog_file, name='upload_blog_file'),
     path('get_blog_files/', get_blog_files, name='get_blog_files'),
     path('get_blog_status/', get_blog_status, name='get_blog_status'),
+    path('cleanup_session_cache/', cleanup_session_cache_api, name='cleanup_session_cache'),
+    path('get_active_sessions/', get_active_sessions_api, name='get_active_sessions'),
     
     # AI 채팅 관련 API
     path('ai_chat/', ai_chat, name='ai_chat'),

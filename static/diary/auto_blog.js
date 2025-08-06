@@ -17,6 +17,8 @@ window.currentTypingMode = window.currentTypingMode || null; // 'title' or 'body
 // 블로그 작성 활성 상태 및 완료 메시지 추가 상태 추적
 window.isBlogWritingActive = window.isBlogWritingActive || false;
 window.completionMessageAdded = window.completionMessageAdded || false;
+// 세션 ID 저장 변수 추가
+window.currentSessionId = window.currentSessionId || null;
 
 // 모달 HTML을 동적으로 생성
 function createBlogModal() {
@@ -433,7 +435,20 @@ function updatePreviewStatus() {
     
     console.log('📊 상태 폴링 시작 - API 호출 중...');
     
-    fetch('/sales/get_blog_status/')
+    // 세션 ID가 있으면 POST 요청으로, 없으면 GET 요청으로
+    const requestOptions = {
+        method: window.currentSessionId ? 'POST' : 'GET',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    };
+    
+    // 세션 ID가 있으면 헤더에 추가
+    if (window.currentSessionId) {
+        requestOptions.headers['X-Session-Id'] = window.currentSessionId;
+    }
+    
+    fetch('/sales/get_blog_status/', requestOptions)
         .then(response => {
             console.log('📊 API 응답 상태:', response.status);
             if (!response.ok) {
@@ -443,6 +458,12 @@ function updatePreviewStatus() {
         })
         .then(data => {
             console.log('📊 받은 데이터:', data);
+            
+            // 세션 ID가 응답에 포함되어 있으면 저장
+            if (data.session_id && !window.currentSessionId) {
+                window.currentSessionId = data.session_id;
+                console.log('📊 응답에서 세션 ID 저장됨:', data.session_id);
+            }
             
             if (data.success && data.status) {
                 const status = data.status;
@@ -708,6 +729,10 @@ function updatePreviewStatus() {
                                 // 3초 후 폴링 완전 중지
                                 setTimeout(() => {
                                     stopStatusPolling();
+                                    // 완료된 세션 캐시 정리
+                                    if (window.currentSessionId) {
+                                        cleanupSessionCache(window.currentSessionId);
+                                    }
                                 }, 3000);
                             }, 3000);
                         }
@@ -730,6 +755,10 @@ function updatePreviewStatus() {
                         setTimeout(() => {
                             closePreviewModal();
                             showNotification(status.content || '오류가 발생했습니다.', 'error');
+                            // 오류 시에도 세션 캐시 정리
+                            if (window.currentSessionId) {
+                                cleanupSessionCache(window.currentSessionId);
+                            }
                         }, 5000);
                         break;
                 }
@@ -974,6 +1003,12 @@ function uploadBlogFile() {
             console.log('📊 업로드 결과:', data);
             
             if (data.success) {
+                // 세션 ID 저장
+                if (data.session_id) {
+                    window.currentSessionId = data.session_id;
+                    console.log('📊 세션 ID 저장됨:', data.session_id);
+                }
+                
                 // 성공 메시지 표시 - 미리보기 모달에서 자동으로 처리됨
                 // showNotification(data.message, 'success', true);
                 showBrowserNotification(data.message, '블로그 작성 완료');
@@ -1037,6 +1072,49 @@ function uploadBlogFile() {
             }
         });
     }
+}
+
+// 세션 캐시 정리 함수
+function cleanupSessionCache(sessionId) {
+    if (!sessionId) return;
+    
+    fetch('/sales/cleanup_session_cache/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            session_id: sessionId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            console.log('🧹 세션 캐시 정리 완료:', sessionId);
+        } else {
+            console.warn('⚠️ 세션 캐시 정리 실패:', data.error);
+        }
+    })
+    .catch(error => {
+        console.error('❌ 세션 캐시 정리 오류:', error);
+    });
+}
+
+// CSRF 토큰 가져오기 함수
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
 }
 
 // 페이지 로드 시 블로그 div에 클릭 이벤트 추가
