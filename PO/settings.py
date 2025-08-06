@@ -168,6 +168,18 @@ ACCOUNT_LOGOUT_ON_GET = True
 
 WSGI_APPLICATION = "PO.wsgi.application"
 
+# 캐시 설정 (Redis 사용 - 멀티프로세스 환경에서 상태 공유)
+CACHES = {
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': 'redis://127.0.0.1:6379/1',
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+        },
+        'TIMEOUT': 1800,  # 30분
+    }
+}
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',

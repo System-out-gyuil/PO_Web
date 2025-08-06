@@ -19,6 +19,24 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from django.core.cache import cache
+import json
+import os
+
+def update_status(step, title='', content='', progress=0):
+    """실시간 상태 업데이트 함수 - Redis 캐시 사용"""
+    status_data = {
+        'step': step,
+        'title': title,
+        'content': content,
+        'progress': progress,
+        'timestamp': datetime.now().isoformat()
+    }
+    
+    # Redis 캐시에 상태 저장
+    cache.set('blog_status', status_data, 1800)
+    
+    print(f"📊 상태 업데이트: {step} - {title} - {content[:50]}{'...' if len(content) > 50 else ''}")
+    print(f"📊 Redis에 저장된 상태: {status_data}")
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -244,28 +262,13 @@ def create_driver():
     
     return driver
 
-def update_status(step, title='', content='', progress=0):
-    """실시간 상태 업데이트 함수 - Django 캐시 사용"""
-    status_data = {
-        'step': step,
-        'title': title,
-        'content': content,
-        'progress': progress,
-        'timestamp': datetime.now().isoformat()
-    }
-    
-    # 캐시에 상태 저장 (30분 만료)
-    cache.set('blog_status', status_data, 1800)
-    
-    print(f"📊 상태 업데이트: {step} - {title} - {content[:50]}{'...' if len(content) > 50 else ''}")
-    print(f"📊 캐시에 저장된 상태: {status_data}")
-
 def slow_type_with_actionchains(driver, element, text, min_delay=0.05, max_delay=0.1):
     actions = ActionChains(driver)
     actions.move_to_element(element).click().perform()
     
     # 실시간 타이핑 상태 업데이트 (전체 진행도는 유지) - 제목 타이핑임을 명시
-    current_progress = cache.get('blog_status', {}).get('progress', 0)
+    current_status = cache.get('blog_status')
+    current_progress = current_status.get('progress', 0) if current_status else 0
     update_status('typing_title', '제목 타이핑 중...', f'"{text[:50]}{"..." if len(text) > 50 else ""}"', current_progress)
     
     for i, char in enumerate(text):
@@ -634,7 +637,10 @@ def auto_blog_naver(file_texts, text_content, typo_probability, typing_speed, na
                 progress = int((current_file_index / total_contents) * 100)
                 
                 # 현재 파일 정보를 캐시에 업데이트
-                current_status = cache.get('blog_status', {})
+                current_status = cache.get('blog_status')
+                if current_status is None:
+                    current_status = {}
+                    
                 current_status.update({
                     'current_file': current_file_index,
                     'total_files': total_contents,
@@ -692,7 +698,7 @@ def get_blog_status(request):
     """실시간 블로그 작성 상태 조회"""
     status_data = cache.get('blog_status')
     
-    print(f"📊 상태 조회 요청 - 캐시에서 가져온 데이터: {status_data}")
+    print(f"📊 상태 조회 요청 - Redis에서 가져온 데이터: {status_data}")
     
     if status_data:
         return JsonResponse({
