@@ -2923,7 +2923,7 @@ function processDropdownOptionsForNewRow(options, type, td, tr) {
     // "선택 없음" 옵션 추가
     html += `
       <div class="dropdown-option-container" style="padding: 6px 10px; border-bottom: 1px solid #f0f0f0;">
-        <div class="dropdown-item" data-option-id="none" 
+        <div class="dropdown-item" data-option-id="" 
              style="cursor: pointer; 
                     background: #f8f9fa; 
                     border-radius: 4px; 
@@ -2974,9 +2974,9 @@ function processDropdownOptionsForNewRow(options, type, td, tr) {
                 const optionId = this.getAttribute('data-option-id');
                 
                 // "선택 없음" 옵션 처리
-                if (optionId === 'none') {
-                    // UI 업데이트
-                    td.innerHTML = `<div class="dropdown-pill" style="background:#f8f9fa; color:#6c757d; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center; border:1px solid #dee2e6;">선택 없음</div>`;
+                if (optionId === '') {
+                    // UI 업데이트 - "선택 없음" pill로 표시
+                    td.innerHTML = `<div class="dropdown-pill dropdown-pill-empty">선택 없음</div>`;
                     td.setAttribute('data-value', '');
                     
                     // 커스텀 이벤트 발생

@@ -2348,7 +2348,7 @@ def call_openai_api_optimized(messages, retry_count=0):
             'model': 'gpt-4.1-mini',  # 더 빠른 모델 사용
             'messages': messages,
             'max_tokens': 2000,  # 1500 -> 2000으로 증가
-            'temperature': 0.3,  # 0.7 -> 0.3으로 감소 (더 정확한 응답)
+            'temperature': 0.1,  # 0.7 -> 0.3으로 감소 (더 정확한 응답)
             'stream': False  # 스트리밍 비활성화로 응답 속도 향상
         }
         

@@ -165,9 +165,9 @@ function createPreviewModal() {
                         <span style="font-size: 12px; color: #6c757d;">제목:</span><br>
                         <span id="previewTitleText">제목이 여기에 표시됩니다...</span>
                     </div>
-                    <div id="previewBody" style="display: flex; flex-direction: column; color: #495057; padding: 8px; background: white; border-radius: 4px; border-left: 4px solid #28a745; height: 200px; white-space: pre-wrap; font-family: monospace; font-size: 13px; line-height: 1.4; overflow-y: auto;">
-                        <span style="font-size: 12px; color: #6c757d; font-family: Arial; flex-shrink: 0;">본문:</span><br>
-                        <span id="previewBodyText" style="flex: 1; overflow-y: auto;">본문이 여기에 실시간으로 표시됩니다...</span>
+                    <div id="previewBody" style="display: flex; flex-direction: column; color: #495057; padding: 8px; background: white; border-radius: 4px; border-left: 4px solid #28a745; min-height: 150px; white-space: pre-wrap; font-family: monospace; font-size: 13px; line-height: 1.4;">
+                        <span style="font-size: 12px; color: #6c757d; font-family: Arial;">본문:</span><br>
+                        <span id="previewBodyText">본문이 여기에 실시간으로 표시됩니다...</span>
                     </div>
                 </div>
                 
@@ -592,8 +592,6 @@ function updatePreviewStatus() {
                                 }
                             }
                             bodyElement.textContent = contentToShow;
-                            // 본문 스크롤을 아래로 이동
-                            bodyElement.scrollTop = bodyElement.scrollHeight;
                             console.log('📊 본문 타이핑:', contentToShow.substring(0, 50) + '...');
                         }
                         break;
@@ -622,8 +620,6 @@ function updatePreviewStatus() {
                                     }
                                 }
                                 bodyElement.textContent = contentToShow;
-                                // 본문 스크롤을 아래로 이동
-                                bodyElement.scrollTop = bodyElement.scrollHeight;
                                 console.log('📊 본문 타이핑 (호환):', contentToShow.substring(0, 50) + '...');
                             }
                         }
@@ -637,8 +633,6 @@ function updatePreviewStatus() {
                             const cleanContent = status.content.replace(/오타 발생.*$/, '').trim();
                             if (cleanContent) {
                                 bodyElement.textContent = cleanContent;
-                                // 본문 스크롤을 아래로 이동
-                                bodyElement.scrollTop = bodyElement.scrollHeight;
                                 console.log('📊 오타 발생:', cleanContent.substring(0, 30) + '...');
                             }
                         }
@@ -651,8 +645,6 @@ function updatePreviewStatus() {
                             const cleanContent = status.content.replace(/오타 수정중.*$/, '').replace(/백스페이스.*$/, '').trim();
                             if (cleanContent) {
                                 bodyElement.textContent = cleanContent;
-                                // 본문 스크롤을 아래로 이동
-                                bodyElement.scrollTop = bodyElement.scrollHeight;
                                 console.log('📊 오타 수정:', cleanContent.substring(0, 30) + '...');
                             }
                         }
@@ -686,8 +678,6 @@ function updatePreviewStatus() {
                             if (status.content.startsWith('FINAL_CONTENT:')) {
                                 const finalContent = status.content.replace('FINAL_CONTENT:', '');
                                 bodyElement.textContent = finalContent;
-                                // 본문 스크롤을 아래로 이동
-                                bodyElement.scrollTop = bodyElement.scrollHeight;
                                 addToPreviewLog(`본문 입력 완료 (${finalContent.length}자)`, 'success');
                                 console.log('📊 본문 입력 완료:', finalContent.length + '자');
                             } else {
@@ -755,7 +745,7 @@ function updatePreviewStatus() {
                 addToPreviewLog('네트워크 연결 확인 중...', 'warning');
             } else {
                 // 기타 심각한 오류 시에만 폴링 중지
-                console.log('�� 심각한 오류 - 폴링 중지');
+                console.log('📊 심각한 오류 - 폴링 중지');
                 window.isBlogWritingActive = false;
                 stopStatusPolling();
             }

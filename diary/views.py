@@ -810,6 +810,15 @@ def update_row_field(request):
             if not row_id or not field_name:
                 return JsonResponse({'success': False, 'error': 'row_id와 field_name이 필요합니다'})
             
+            print(f"=== update_row_field 디버그 ===")
+            print(f"row_id: {row_id}")
+            print(f"field_name: {field_name}")
+            print(f"value: '{value}' (type: {type(value)})")
+            print(f"value length: {len(str(value)) if value else 0}")
+            print(f"value is empty: {value == ''}")
+            print(f"value is None: {value is None}")
+            print(f"========================")
+            
             # 사용자와 행 조회
              
             user_id = request.session.get('diary_member_id')
@@ -849,7 +858,11 @@ def update_row_field(request):
             if attr.attributeType and attr.attributeType.name == 'dropdown':
                 print(f"Dropdown 필드 처리 - {attr.name}: value='{value}', isdigit: {value.isdigit() if value else False}")
                 
-                if value.isdigit():
+                # 빈 값 처리
+                if value == '' or value is None:
+                    print(f"  빈 값 처리 - 빈 문자열로 저장")
+                    value_to_save = ''
+                elif value.isdigit():
                     # 단일 선택
                     print(f"  단일 선택 처리")
                     value_to_save = value
@@ -864,8 +877,8 @@ def update_row_field(request):
                         print(f"  JSON 파싱 실패: {e}")
                         value_to_save = value
                 else:
-                    # 빈 값이거나 다른 형태
-                    print(f"  빈 값 또는 다른 형태: '{value}'")
+                    # 다른 형태
+                    print(f"  다른 형태: '{value}'")
                     value_to_save = value
 
             else:

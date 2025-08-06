@@ -827,6 +827,20 @@ function processModalDropdownOptions(data, rowId, fieldName, btn) {
         `;
     });
     
+    // "선택 없음" 옵션 추가
+    html += `
+      <div class="dropdown-item" data-option-id="" data-option-text="선택 없음" data-color=""
+           style="padding: 8px 12px; 
+                  cursor: pointer; 
+                  border-bottom: 1px solid #f0f0f0;
+                  background: #f8f9fa;
+                  color: #999;
+                  font-style: italic;
+                  transition: background-color 0.2s;">
+        선택 없음
+      </div>
+    `;
+    
     dropdown.innerHTML = html;
     document.body.appendChild(dropdown);
     
@@ -946,9 +960,18 @@ function selectModalDropdownOption(rowId, fieldName, optionId, optionText, btn, 
     }, requestTimeout);
     
     // 버튼 텍스트 즉시 업데이트
-    btn.textContent = optionText;
-    btn.style.background = color ? hexToRgba(color, 0.18) : '#f8f9fa';
-    btn.style.color = '#333';
+    if (optionId === '') {
+        // "선택 없음"이 선택된 경우 "선택 없음"으로 표시
+        btn.textContent = '선택 없음';
+        btn.style.background = '#f8f9fa';
+        btn.style.color = '#999';
+        btn.style.fontStyle = 'italic';
+    } else {
+        btn.textContent = optionText;
+        btn.style.background = color ? hexToRgba(color, 0.18) : '#f8f9fa';
+        btn.style.color = '#333';
+        btn.style.fontStyle = 'normal';
+    }
     
     // 업종이 선택되면 빨간 테두리 제거
     if (fieldName === '업종') {
@@ -1530,7 +1553,7 @@ function selectModalDropdownOption(rowId, fieldName, optionId, optionText, btn, 
     if (type !== 'region' && type !== 'region_detail') {
         html += `
           <div class="dropdown-option-container" style="padding: 6px 10px; border-bottom: 1px solid #f0f0f0;">
-            <div class="dropdown-item" data-option-id="none" 
+            <div class="dropdown-item" data-option-id="" 
                  style="cursor: pointer; 
                         background: #f8f9fa; 
                         border-radius: 4px; 
@@ -1625,7 +1648,23 @@ function selectModalDropdownOption(rowId, fieldName, optionId, optionText, btn, 
             
             const option = options.find(o => String(o.id) === String(optionId));
             // UI 업데이트 - 즉시 실행
-            if (option) {
+            if (optionId === '') {
+                // "선택 없음"이 선택된 경우 "선택 없음" pill로 표시
+                if (td) { 
+                    td.innerHTML = `<div class="dropdown-pill dropdown-pill-empty">선택 없음</div>`; 
+                    td.setAttribute('data-value', ''); 
+                }
+                
+                // 커스텀 이벤트 발생으로 실시간 업데이트 보장
+                const rowId = td.parentElement.getAttribute('data-id');
+                document.dispatchEvent(new CustomEvent('dropdownOptionChanged', {
+                    detail: {
+                        fieldName: type,
+                        newValue: '',
+                        rowId: rowId
+                    }
+                }));
+            } else if (option) {
                 const color = option.color ? hexToRgba(option.color, 0.18) : '#eee';
                 if (td) { 
                     td.innerHTML = `<div class="dropdown-pill" style="background:${color}; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">${option.option}</div>`; 
@@ -1689,6 +1728,11 @@ function selectModalDropdownOption(rowId, fieldName, optionId, optionText, btn, 
                 this.dataset.processing = 'false';
             } else {
                 console.log('update_row_field_modal2');
+                console.log('전송할 값:', {optionId, type, id});
+                console.log('optionId 타입:', typeof optionId);
+                console.log('optionId 길이:', optionId.length);
+                console.log('optionId === "":', optionId === '');
+                
                 fetch('/sales/update_row_field/', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/x-www-form-urlencoded'},
