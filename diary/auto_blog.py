@@ -31,6 +31,20 @@ def upload_blog_file(request):
         text_content = ""
         file_infos = []
         
+        # 블로그 작성 시작 시 즉시 상태 업데이트
+        print("📊 블로그 작성 요청 받음 - 상태 초기화 시작")
+        initial_status = {
+            'step': 'upload_received',
+            'title': '파일 업로드 처리 중...',
+            'content': '업로드된 파일을 처리하고 있습니다.',
+            'progress': 5,
+            'total_files': 0,
+            'current_file': 0,
+            'timestamp': datetime.now().isoformat()
+        }
+        cache.set('blog_status', initial_status, 1800)
+        print(f"📊 초기 상태 캐시에 저장됨: {initial_status}")
+        
         # 타이핑 설정 받기
         typo_probability = float(request.POST.get('typo_probability', 0.1))
         typing_speed = float(request.POST.get('typing_speed', 0.5))
@@ -41,12 +55,14 @@ def upload_blog_file(request):
         
         # 네이버 로그인 정보 필수 검증
         if not naver_id:
+            update_status('validation_error', '입력 오류', '네이버 아이디를 입력해주세요.')
             return JsonResponse({
                 'success': False,
                 'error': '네이버 아이디를 입력해주세요.'
             })
         
         if not naver_password:
+            update_status('validation_error', '입력 오류', '네이버 비밀번호를 입력해주세요.')
             return JsonResponse({
                 'success': False,
                 'error': '네이버 비밀번호를 입력해주세요.'
@@ -64,6 +80,9 @@ def upload_blog_file(request):
         print(f"네이버 비밀번호: {'*' * len(naver_password)}")
         print("=" * 50)
         
+        # 파일 처리 상태 업데이트
+        update_status('file_processing', '파일 처리 중', '업로드된 파일을 검증하고 있습니다.', 10)
+        
         # 파일들이 요청에 포함되어 있는지 확인
         if 'files' in request.FILES:
             uploaded_files = request.FILES.getlist('files')
@@ -71,6 +90,7 @@ def upload_blog_file(request):
             for uploaded_file in uploaded_files:
                 # 파일 확장자 검사
                 if not uploaded_file.name.lower().endswith('.txt'):
+                    update_status('validation_error', '파일 오류', f'파일 "{uploaded_file.name}"은(는) 텍스트 파일(.txt)이 아닙니다.')
                     return JsonResponse({
                         'success': False,
                         'error': f'파일 "{uploaded_file.name}"은(는) 텍스트 파일(.txt)이 아닙니다.'
@@ -79,6 +99,7 @@ def upload_blog_file(request):
                 # 파일 크기 검사 (10MB 제한)
                 max_size = 10 * 1024 * 1024  # 10MB
                 if uploaded_file.size > max_size:
+                    update_status('validation_error', '파일 크기 오류', f'파일 "{uploaded_file.name}"의 크기가 10MB를 초과합니다.')
                     return JsonResponse({
                         'success': False,
                         'error': f'파일 "{uploaded_file.name}"의 크기가 10MB를 초과합니다.'
@@ -117,10 +138,17 @@ def upload_blog_file(request):
         
         # 파일과 텍스트 모두 없는 경우
         if not file_contents and not text_content:
+            update_status('validation_error', '내용 없음', '파일 또는 텍스트를 입력해주세요.')
             return JsonResponse({
                 'success': False,
                 'error': '파일 또는 텍스트를 입력해주세요.'
             })
+        
+        # 블로그 작성 시작 상태 업데이트
+        total_contents = len(file_contents) + (1 if text_content and text_content.strip() else 0)
+        update_status('blog_start', '블로그 작성 시작', f'총 {total_contents}개 콘텐츠 블로그 작성을 시작합니다.', 15)
+        
+        print(f"📊 블로그 작성 함수 호출 직전 - 총 {total_contents}개 콘텐츠")
         
         # auto_blog_naver 함수 호출 시 타이핑 설정 전달
         success, message = auto_blog_naver(file_contents, text_content, typo_probability, typing_speed, naver_id, naver_password)
@@ -155,11 +183,13 @@ def upload_blog_file(request):
         return JsonResponse(response_data)
         
     except UnicodeDecodeError:
+        update_status('encoding_error', '인코딩 오류', '파일 인코딩 오류. UTF-8 인코딩의 텍스트 파일만 지원합니다.')
         return JsonResponse({
             'success': False,
             'error': '파일 인코딩 오류. UTF-8 인코딩의 텍스트 파일만 지원합니다.'
         })
     except Exception as e:
+        update_status('upload_error', '업로드 오류', f'처리 중 오류가 발생했습니다: {str(e)}')
         return JsonResponse({
             'success': False,
             'error': f'처리 중 오류가 발생했습니다: {str(e)}'
