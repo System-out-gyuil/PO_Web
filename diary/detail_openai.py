@@ -208,7 +208,7 @@ def extract_text_from_file_optimized(file_path):
         if file_path.endswith(".pdf"):
             print(f"PDF 파일 처리 시작")
             return extract_pdf_text_optimized(file_path, file_hash)
-        elif file_path.endswith((".jpg", ".jpeg", ".png")):
+        elif file_path.endswith((".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".tif", ".webp")):
             print(f"이미지 파일 처리 시작")
             return extract_image_text_optimized(file_path, file_hash)
         elif file_path.endswith(".hwp"):
@@ -284,24 +284,57 @@ def extract_pdf_text_optimized(file_path, file_hash):
 
 def extract_image_text_optimized(file_path, file_hash):
     """최적화된 이미지 텍스트 추출 (메모리 효율적)"""
+    print(f"이미지 텍스트 추출 시작: {file_path}")
+    
     try:
         # 이미지 크기 체크 및 리사이즈
         with Image.open(file_path) as img:
             width, height = img.size
+            print(f"원본 이미지 크기: {width} x {height}")
+            
             if width * height > 4000 * 3000:  # 너무 큰 이미지는 리사이즈
+                print(f"이미지가 너무 큼 ({width}x{height}), 리사이즈 진행")
                 img.thumbnail((4000, 3000), Image.Resampling.LANCZOS)
                 temp_path = tempfile.mktemp(suffix='.jpg')
                 img.save(temp_path, 'JPEG', optimize=True, quality=85)
+                print(f"리사이즈된 임시 파일 생성: {temp_path}")
                 result = clova_ocr(temp_path, 'jpg')
                 os.remove(temp_path)
+                print(f"임시 파일 삭제 완료")
             else:
-                result = clova_ocr(file_path, 'jpg')
+                print(f"적정 크기 이미지, 직접 처리")
+                # 파일 확장자에 따라 형식 결정
+                file_ext = os.path.splitext(file_path)[1].lower()
+                if file_ext in ['.jpg', '.jpeg']:
+                    fmt = 'jpg'
+                elif file_ext == '.png':
+                    fmt = 'png'
+                elif file_ext == '.gif':
+                    fmt = 'gif'
+                elif file_ext in ['.bmp']:
+                    fmt = 'bmp'
+                elif file_ext in ['.tiff', '.tif']:
+                    fmt = 'tiff'
+                elif file_ext == '.webp':
+                    fmt = 'webp'
+                else:
+                    fmt = 'jpg'  # 기본값
+                
+                print(f"이미지 형식: {fmt}")
+                result = clova_ocr(file_path, fmt)
         
         # 캐시 저장
-        set_cached_file_text(file_hash, result)
+        if result:
+            set_cached_file_text(file_hash, result)
+            print(f"이미지 텍스트 추출 완료: {len(result)} characters")
+            print(f"추출된 텍스트 내용 (처음 500자): {result[:500]}")
+        else:
+            print(f"이미지에서 텍스트를 추출하지 못했습니다")
+        
         return result
         
     except Exception as e:
+        print(f"이미지 텍스트 추출 실패: {e}")
         logger.error(f"이미지 텍스트 추출 실패: {e}")
         return ""
 
@@ -872,50 +905,67 @@ def ai_chat(request):
                     
                     for attr_value in file_attribute_values:
                         attr_name = attr_value.attribute.name
+                        print(f"=== 파일 속성 처리: {attr_name} ===")
                         
                         if attr_value.value:
                             try:
                                 # 파일 데이터 파싱
                                 file_data = json.loads(attr_value.value) if isinstance(attr_value.value, str) else attr_value.value
+                                print(f"파일 데이터 타입: {type(file_data)}")
+                                print(f"파일 데이터 구조: {file_data}")
                                 
                                 # 음성파일 속성인 경우 (data 구조)
                                 if isinstance(file_data, dict) and 'data' in file_data:
+                                    print(f"data 구조 파일 개수: {len(file_data['data'])}")
                                     for file_id, file_info in file_data['data'].items():
-                                        if file_info.get('type') == 'file':
-                                            # 파일 크기 체크 (10MB 제한)
+                                        print(f"파일 ID: {file_id}, 파일 정보: {file_info}")
+                                        if file_info.get('type') in ['file', 'image']:  # 'image' 타입도 추가
+                                            filename = file_info.get('original_filename', '파일')
+                                            print(f"파일 감지 (data 구조): {filename} (속성: {attr_name}) - 타입: {file_info.get('type')}")
+                                            
+                                            # 파일 크기 체크 (30MB 제한)
                                             file_size = file_info.get('file_size', 0)
-                                            if file_size > 10 * 1024 * 1024:  # 10MB
+                                            if file_size > 30 * 1024 * 1024:  # 30MB
                                                 file_texts.append(f"[{attr_name} - {file_info.get('original_filename', '파일')}]: 파일이 너무 커서 텍스트 추출을 건너뜁니다.")
+                                                print(f"파일 크기 초과로 건너뜀: {filename} ({file_size / (1024*1024):.1f}MB)")
                                                 continue
                                             
                                             # 파일 정보에 필드명 추가
                                             file_info['field_name'] = attr_name
                                             all_files.append(file_info)
-                                            
-                                        elif file_info.get('type') == 'text':
-                                            # text 타입은 항상 새로 처리 (캐시 무시)
-                                            print(f'text 타입 파일 새로 처리: {file_info.get("text")}')
-                                            text_content = file_info.get('text', '')
-                                            if text_content:
-                                                file_texts.append(f"[{attr_name} - 텍스트]:\n{text_content}")
-                                                print(f'text 타입 파일 캐시에 저장: {attr_name}')
-                                            
+                                            print(f"파일 처리 대상 추가 (data 구조): {filename}")
+                                elif file_info.get('type') == 'text':
+                                    # text 타입은 항상 새로 처리 (캐시 무시)
+                                    print(f'text 타입 파일 새로 처리: {file_info.get("text")}')
+                                    text_content = file_info.get('text', '')
+                                    if text_content:
+                                        file_texts.append(f"[{attr_name} - 텍스트]:\n{text_content}")
+                                        print(f'text 타입 파일 캐시에 저장: {attr_name}')
+                                
                                 # 일반 파일 속성인 경우 (배열 구조)
                                 elif isinstance(file_data, list):
-                                    for file_info in file_data:
+                                    print(f"배열 구조 파일 개수: {len(file_data)}")
+                                    for i, file_info in enumerate(file_data):
+                                        print(f"파일 {i}: {file_info}")
+                                        filename = file_info.get('original_filename', '파일')
+                                        print(f"파일 감지 (배열 구조): {filename} (속성: {attr_name})")
+                                        
                                         # 파일 크기 체크 (10MB 제한)
                                         file_size = file_info.get('file_size', 0)
                                         if file_size > 10 * 1024 * 1024:  # 10MB
                                             file_texts.append(f"[{attr_name} - {file_info.get('original_filename', '파일')}]: 파일이 너무 커서 텍스트 추출을 건너뜁니다.")
+                                            print(f"파일 크기 초과로 건너뜀: {filename} ({file_size / (1024*1024):.1f}MB)")
                                             continue
                                         
                                         # 파일 정보에 필드명 추가
                                         file_info['field_name'] = attr_name
                                         all_files.append(file_info)
+                                        print(f"파일 처리 대상 추가 (배열 구조): {filename}")
                                 
                                 # 단일 파일 경로인 경우
-                                else:
-                                    file_path = attr_value.value
+                                elif isinstance(file_data, str):
+                                    print(f"단일 파일 경로: {file_data}")
+                                    file_path = file_data
                                     if file_path.startswith('http'):
                                         file_path = download_file_from_url_optimized(file_path)
                                     
@@ -926,14 +976,19 @@ def ai_chat(request):
                                             file_texts.append(f"[{attr_name} 파일 내용]:\n{file_text}")
                                         
                                         # 임시 파일 정리
-                                        if attr_value.value.startswith('http'):
+                                        if file_data.startswith('http'):
                                             try:
                                                 os.remove(file_path)
                                             except:
                                                 pass
-                                                            
+                                else:
+                                    print(f"알 수 없는 파일 데이터 구조: {type(file_data)}")
+                                    
                             except Exception as e:
                                 logger.error(f"파일 텍스트 추출 실패: {e}")
+                                print(f"파일 처리 중 오류: {e}")
+                        else:
+                            print(f"속성 {attr_name}에 값이 없음")
                     
                     # 최적화된 파일 처리 전략 적용
                     if all_files:
@@ -947,6 +1002,16 @@ def ai_chat(request):
                         file_texts.extend(processed_file_texts)
                         
                         print(f"파일 처리 완료: {len(processed_file_texts)}개 파일 텍스트 추출")
+                        
+                        # 추출된 텍스트 내용 로깅 (이미지 파일 포함)
+                        for i, text in enumerate(processed_file_texts):
+                            print(f"파일 텍스트 {i+1}: {text[:200]}...")
+                    
+                    # 전체 파일 텍스트 결과 로깅
+                    print(f"총 파일 텍스트 개수: {len(file_texts)}")
+                    for i, text in enumerate(file_texts):
+                        if "이미지" in text or ".jpg" in text or ".png" in text or ".gif" in text:
+                            print(f"이미지 관련 텍스트 {i+1}: {text[:300]}...")
                     
                 except Row.DoesNotExist:
                     return JsonResponse({'success': False, 'error': '해당 행을 찾을 수 없습니다'})
@@ -1353,8 +1418,16 @@ def extract_file_text(field_name, file_info):
             file_path = download_file_from_url(file_info['download_url'])
         
         if file_path and os.path.exists(file_path):
-            file_text = extract_text_from_file(file_path)
+            print(f"파일 처리 시작: {file_path}")
+            print(f"파일 크기: {os.path.getsize(file_path)} bytes")
+            print(f"파일 확장자: {os.path.splitext(file_path)[1].lower()}")
+            
+            file_text = extract_text_from_file_optimized(file_path)
             file_hash = calculate_file_hash(file_path)
+            
+            print(f"텍스트 추출 결과: {len(file_text) if file_text else 0} characters")
+            if file_text and len(file_text) > 0:
+                print(f"추출된 텍스트 샘플: {file_text[:200]}...")
             
             if file_text:
                 result = f"[{field_name} - {file_info.get('original_filename', '파일')}]:\n{file_text}"
@@ -1570,12 +1643,12 @@ def extract_text_from_file(file_path):
                                 pass
                 return f"[경고] 이 PDF는 텍스트가 거의 없는 이미지 기반 PDF로 판단되어 OCR로 텍스트를 추출했습니다.\n\n" + '\n\n'.join(ocr_texts)
             return result
-        elif file_path.endswith((".jpg", ".jpeg", ".png")):
+        elif file_path.endswith((".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".tif", ".webp")):
             return clova_ocr(file_path, "jpg")
         elif file_path.endswith((".hwp", ".hwpx")):
             pdf_path = convert_hwp_to_pdf(file_path)
             if os.path.exists(pdf_path):
-                extracted_text = extract_text_from_file(pdf_path)
+                extracted_text = extract_text_from_file_optimized(pdf_path)
                 if os.path.exists(pdf_path):
                     os.remove(pdf_path)
                 return extracted_text
@@ -1716,6 +1789,8 @@ def clova_ocr(file_path, fmt):
     """Clova OCR을 사용한 텍스트 추출"""
     from config import NAVER_CLOVA_OCR_API_KEY, NAVER_CLOUD_CLOVA_OCR_API_URL
     
+    print(f"Clova OCR 시작: {file_path}, 형식: {fmt}")
+    
     request_json = {
         'images': [{'format': fmt, 'name': 'demo'}],
         'requestId': str(uuid.uuid4()),
@@ -1723,17 +1798,39 @@ def clova_ocr(file_path, fmt):
         'timestamp': int(time.time() * 1000)
     }
     payload = {'message': json.dumps(request_json).encode('UTF-8')}
-    files = [('file', open(file_path, 'rb'))]
-    headers = {'X-OCR-SECRET': NAVER_CLOVA_OCR_API_KEY}
     
     try:
-        response = requests.post(NAVER_CLOUD_CLOVA_OCR_API_URL, headers=headers, data=payload, files=files)
-        full_text = ""
-        for field in response.json()['images'][0].get('fields', []):
-            full_text += field['inferText'] + " "
-        return full_text.strip()
+        with open(file_path, 'rb') as f:
+            files = [('file', f)]
+            headers = {'X-OCR-SECRET': NAVER_CLOVA_OCR_API_KEY}
+            
+            response = requests.post(NAVER_CLOUD_CLOVA_OCR_API_URL, headers=headers, data=payload, files=files)
+            
+            if response.status_code != 200:
+                print(f"Clova OCR API 응답 오류: {response.status_code}, {response.text}")
+                return ""
+            
+            response_data = response.json()
+            if 'images' not in response_data or not response_data['images']:
+                print(f"Clova OCR 응답에 이미지 데이터가 없음: {response_data}")
+                return ""
+            
+            full_text = ""
+            for field in response_data['images'][0].get('fields', []):
+                full_text += field['inferText'] + " "
+            
+            extracted_text = full_text.strip()
+            print(f"Clova OCR 완료: {len(extracted_text)} characters extracted")
+            return extracted_text
+            
+    except FileNotFoundError:
+        print(f"파일을 찾을 수 없음: {file_path}")
+        return ""
+    except requests.exceptions.RequestException as e:
+        print(f"Clova OCR API 요청 실패: {e}")
+        return ""
     except Exception as e:
-        logger.error(f"Clova OCR 실패: {e}")
+        print(f"Clova OCR 처리 중 예상치 못한 오류: {e}")
         return ""
 
 def check_libreoffice_status():
@@ -2008,7 +2105,7 @@ def extract_text_from_file_optimized(file_path):
     try:
         if file_path.endswith(".pdf"):
             return extract_pdf_text_optimized(file_path, file_hash)
-        elif file_path.endswith((".jpg", ".jpeg", ".png")):
+        elif file_path.endswith((".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".tif", ".webp")):
             return extract_image_text_optimized(file_path, file_hash)
         elif file_path.endswith(".hwp"):
             return extract_hwp_text_optimized(file_path, file_hash)

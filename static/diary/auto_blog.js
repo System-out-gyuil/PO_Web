@@ -1,5 +1,11 @@
 // 블로그 모달 관련 JavaScript
 
+// 모바일 디바이스 감지 함수
+function isMobileDevice() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
+           || window.innerWidth <= 768;
+}
+
 // 실시간 미리보기 모달 관련 변수 (전역 객체에 안전하게 저장)
 window.blogStatusInterval = window.blogStatusInterval || null;
 window.previewModal = window.previewModal || null;
@@ -179,6 +185,12 @@ function createPreviewModal() {
 
 // 블로그 모달 열기
 function openBlogModal() {
+    // 모바일 디바이스 체크
+    if (isMobileDevice()) {
+        showNotification('모바일 환경에서는 블로그 작성 기능을 사용할 수 없습니다.', 'warning');
+        return;
+    }
+    
     createBlogModal();
     const modal = document.getElementById('blogModal');
     modal.style.display = 'flex';
