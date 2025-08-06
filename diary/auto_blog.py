@@ -18,6 +18,7 @@ import random
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
+from django.core.cache import cache
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -213,33 +214,28 @@ def create_driver():
     
     return driver
 
-# 실시간 상태 업데이트를 위한 전역 변수
-current_status = {
-    'step': '',
-    'title': '',
-    'content': '',
-    'progress': 0,
-    'total_files': 0,
-    'current_file': 0
-}
-
 def update_status(step, title='', content='', progress=0):
-    """실시간 상태 업데이트 함수"""
-    global current_status
-    current_status.update({
+    """실시간 상태 업데이트 함수 - Django 캐시 사용"""
+    status_data = {
         'step': step,
         'title': title,
         'content': content,
-        'progress': progress
-    })
-    print(f"📊 상태 업데이트: {step} - {title}")
+        'progress': progress,
+        'timestamp': datetime.now().isoformat()
+    }
+    
+    # 캐시에 상태 저장 (30분 만료)
+    cache.set('blog_status', status_data, 1800)
+    
+    print(f"📊 상태 업데이트: {step} - {title} - {content[:50]}{'...' if len(content) > 50 else ''}")
+    print(f"📊 캐시에 저장된 상태: {status_data}")
 
 def slow_type_with_actionchains(driver, element, text, min_delay=0.05, max_delay=0.1):
     actions = ActionChains(driver)
     actions.move_to_element(element).click().perform()
     
     # 실시간 타이핑 상태 업데이트 (전체 진행도는 유지) - 제목 타이핑임을 명시
-    current_progress = current_status.get('progress', 0)
+    current_progress = cache.get('blog_status', {}).get('progress', 0)
     update_status('typing_title', '제목 타이핑 중...', f'"{text[:50]}{"..." if len(text) > 50 else ""}"', current_progress)
     
     for i, char in enumerate(text):
@@ -564,8 +560,18 @@ def auto_blog_naver(file_texts, text_content, typo_probability, typing_speed, na
     try:
         # 전체 작업 상태 초기화
         total_contents = len(file_texts) + (1 if text_content and text_content.strip() else 0)
-        current_status['total_files'] = total_contents
-        current_status['current_file'] = 0
+        
+        # 초기 상태를 캐시에 저장
+        initial_status = {
+            'step': 'init',
+            'title': '블로그 자동 작성 시작',
+            'content': f'총 {total_contents}개 콘텐츠 처리 예정',
+            'progress': 0,
+            'total_files': total_contents,
+            'current_file': 0,
+            'timestamp': datetime.now().isoformat()
+        }
+        cache.set('blog_status', initial_status, 1800)
         
         update_status('init', '블로그 자동 작성 시작', f'총 {total_contents}개 콘텐츠 처리 예정')
         
@@ -591,13 +597,23 @@ def auto_blog_naver(file_texts, text_content, typo_probability, typing_speed, na
             update_status('no_content', '처리할 콘텐츠 없음', '업로드된 파일이나 텍스트가 없습니다')
             return False, "처리할 콘텐츠가 없습니다."
 
+        current_file_index = 0
         for content_type, content_index, content_text in contents_to_process:
             try:
-                current_status['current_file'] += 1
-                progress = int((current_status['current_file'] / total_contents) * 100)
+                current_file_index += 1
+                progress = int((current_file_index / total_contents) * 100)
+                
+                # 현재 파일 정보를 캐시에 업데이트
+                current_status = cache.get('blog_status', {})
+                current_status.update({
+                    'current_file': current_file_index,
+                    'total_files': total_contents,
+                    'progress': progress
+                })
+                cache.set('blog_status', current_status, 1800)
                 
                 update_status('processing_file', f'{content_type} {content_index} 처리 중', 
-                            f'진행률: {current_status["current_file"]}/{total_contents}', progress)
+                            f'진행률: {current_file_index}/{total_contents}', progress)
                 
                 # 🔁 매 반복마다 작성 페이지 재진입
                 blog_success, driver_or_error, user_id_or_message = naver_blog(driver)
@@ -644,8 +660,29 @@ def auto_blog_naver(file_texts, text_content, typo_probability, typing_speed, na
 @require_http_methods(["GET"])
 def get_blog_status(request):
     """실시간 블로그 작성 상태 조회"""
-    global current_status
-    return JsonResponse({
-        'success': True,
-        'status': current_status
-    })
+    status_data = cache.get('blog_status')
+    
+    print(f"📊 상태 조회 요청 - 캐시에서 가져온 데이터: {status_data}")
+    
+    if status_data:
+        return JsonResponse({
+            'success': True,
+            'status': status_data
+        })
+    else:
+        # 캐시에 데이터가 없는 경우 기본 상태 반환
+        default_status = {
+            'step': 'ready',
+            'title': '준비 중...',
+            'content': '',
+            'progress': 0,
+            'total_files': 0,
+            'current_file': 0,
+            'timestamp': datetime.now().isoformat()
+        }
+        print(f"📊 캐시에 데이터 없음 - 기본 상태 반환: {default_status}")
+        
+        return JsonResponse({
+            'success': True,
+            'status': default_status
+        })
