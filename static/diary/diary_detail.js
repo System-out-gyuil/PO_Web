@@ -518,7 +518,6 @@ function generateDetailModalContent(attributes, rowData, rowId) {
                         <input type="file" 
                                id="file_${attr.name}_${rowId}" 
                                style="display: none;"
-                               multiple
                                onchange="uploadFile('${rowId}', '${attr.name}', this)">
                     </div>
                 `;
@@ -537,7 +536,6 @@ function generateDetailModalContent(attributes, rowData, rowId) {
                         <input type="file" 
                                id="file_${attr.name}_${rowId}" 
                                style="display: none;"
-                               multiple
                                onchange="uploadFile('${rowId}', '${attr.name}', this)">
                     </div>
                 `;
@@ -2478,8 +2476,7 @@ function updateFileFieldInModal(rowId, fieldName, fileInfo) {
                 <input type="file" 
                     id="file_${fieldName}_${rowId}" 
                     style="display: none;"
-                    multiple
-                    onchange="uploadFile('${rowId}', '${fieldName}', this)">
+                    onchange="uploadFile('${rowId}', '${attr.name}', this)">
             </div>
         `;
         
@@ -2632,7 +2629,6 @@ function updateFileFieldInModalAfterDelete(rowId, fieldName) {
                                     <input type="file" 
                                            id="file_${fieldName}_${rowId}" 
                                            style="display: none;"
-                                           multiple
                                            onchange="uploadFile('${rowId}', '${fieldName}', this)">
                                 </div>
                             `;
@@ -2694,7 +2690,6 @@ function updateFileFieldInModalAfterDelete(rowId, fieldName) {
                                         <input type="file" 
                                                id="file_${fieldName}_${rowId}" 
                                                style="display: none;"
-                                               multiple
                                                onchange="uploadFile('${rowId}', '${fieldName}', this)">
                                     </div>
                                 `;
@@ -2717,7 +2712,6 @@ function updateFileFieldInModalAfterDelete(rowId, fieldName) {
                                     <input type="file" 
                                            id="file_${fieldName}_${rowId}" 
                                            style="display: none;"
-                                           multiple
                                            onchange="uploadFile('${rowId}', '${fieldName}', this)">
                                 </div>
                             `;
@@ -2738,7 +2732,6 @@ function updateFileFieldInModalAfterDelete(rowId, fieldName) {
                                 <input type="file" 
                                        id="file_${fieldName}_${rowId}" 
                                        style="display: none;"
-                                       multiple
                                        onchange="uploadFile('${rowId}', '${fieldName}', this)">
                             </div>
                         `;
@@ -3450,7 +3443,6 @@ function updateFileFieldInModalAfterDelete(rowId, fieldName) {
                                     <input type="file" 
                                            id="file_${fieldName}_${rowId}" 
                                            style="display: none;"
-                                           multiple
                                            onchange="uploadFile('${rowId}', '${fieldName}', this)">
                                 </div>
                             `;
@@ -3512,7 +3504,6 @@ function updateFileFieldInModalAfterDelete(rowId, fieldName) {
                                         <input type="file" 
                                                id="file_${fieldName}_${rowId}" 
                                                style="display: none;"
-                                               multiple
                                                onchange="uploadFile('${rowId}', '${fieldName}', this)">
                                     </div>
                                 `;
@@ -3535,7 +3526,6 @@ function updateFileFieldInModalAfterDelete(rowId, fieldName) {
                                     <input type="file" 
                                            id="file_${fieldName}_${rowId}" 
                                            style="display: none;"
-                                           multiple
                                            onchange="uploadFile('${rowId}', '${fieldName}', this)">
                                 </div>
                             `;
@@ -3556,7 +3546,6 @@ function updateFileFieldInModalAfterDelete(rowId, fieldName) {
                                 <input type="file" 
                                        id="file_${fieldName}_${rowId}" 
                                        style="display: none;"
-                                       multiple
                                        onchange="uploadFile('${rowId}', '${fieldName}', this)">
                             </div>
                         `;

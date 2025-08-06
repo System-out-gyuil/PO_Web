@@ -2745,6 +2745,11 @@ function editAttributeName(attributeName) {
     const nameText = editableDiv.querySelector('.attribute-name-text');
     const editBtn = editableDiv.querySelector('.edit-attribute-name-btn');
     
+    // 정렬 버튼들과 속성 삭제 버튼 찾기
+    const headerButtons = editableDiv.closest('.header-content').querySelector('.header-buttons');
+    const sortButtons = headerButtons.querySelectorAll('.sort-btn');
+    const deleteButton = headerButtons.querySelector('.delete-attribute-btn');
+    
     // 기존 텍스트를 입력 필드로 교체
     const input = document.createElement('input');
     input.type = 'text';
@@ -2767,6 +2772,12 @@ function editAttributeName(attributeName) {
     nameText.style.display = 'none';
     editBtn.style.display = 'none';
     
+    // 정렬 버튼들과 속성 삭제 버튼 숨기기
+    sortButtons.forEach(btn => btn.style.display = 'none');
+    if (deleteButton) {
+        deleteButton.style.display = 'none';
+    }
+    
     // 새 요소들 추가
     editableDiv.appendChild(input);
     editableDiv.appendChild(saveBtn);
@@ -2778,20 +2789,20 @@ function editAttributeName(attributeName) {
     
     // 저장 버튼 이벤트
     saveBtn.onclick = function() {
-        saveAttributeName(attributeName, input.value.trim(), editableDiv, nameText, editBtn);
+        saveAttributeName(attributeName, input.value.trim(), editableDiv, nameText, editBtn, sortButtons, deleteButton);
     };
     
     // 취소 버튼 이벤트
     cancelBtn.onclick = function() {
-        cancelAttributeName(editableDiv, nameText, editBtn, input, saveBtn, cancelBtn);
+        cancelAttributeName(editableDiv, nameText, editBtn, input, saveBtn, cancelBtn, sortButtons, deleteButton);
     };
     
     // Enter 키 이벤트
     input.onkeydown = function(e) {
         if (e.key === 'Enter') {
-            saveAttributeName(attributeName, input.value.trim(), editableDiv, nameText, editBtn);
+            saveAttributeName(attributeName, input.value.trim(), editableDiv, nameText, editBtn, sortButtons, deleteButton);
         } else if (e.key === 'Escape') {
-            cancelAttributeName(editableDiv, nameText, editBtn, input, saveBtn, cancelBtn);
+            cancelAttributeName(editableDiv, nameText, editBtn, input, saveBtn, cancelBtn, sortButtons, deleteButton);
         }
     };
     
@@ -2799,7 +2810,7 @@ function editAttributeName(attributeName) {
     setTimeout(() => {
         document.addEventListener('click', function outsideClick(e) {
             if (!editableDiv.contains(e.target)) {
-                cancelAttributeName(editableDiv, nameText, editBtn, input, saveBtn, cancelBtn);
+                cancelAttributeName(editableDiv, nameText, editBtn, input, saveBtn, cancelBtn, sortButtons, deleteButton);
                 document.removeEventListener('click', outsideClick);
             }
         });
@@ -2807,12 +2818,13 @@ function editAttributeName(attributeName) {
 }
 
 // 속성명 저장 함수
-function saveAttributeName(oldName, newName, editableDiv, nameText, editBtn) {
+function saveAttributeName(oldName, newName, editableDiv, nameText, editBtn, sortButtons, deleteButton) {
     if (!newName || newName === oldName) {
         cancelAttributeName(editableDiv, nameText, editBtn, 
             editableDiv.querySelector('.attribute-name-input'),
             editableDiv.querySelector('.attribute-name-save-btn'),
-            editableDiv.querySelector('.attribute-name-cancel-btn'));
+            editableDiv.querySelector('.attribute-name-cancel-btn'),
+            sortButtons, deleteButton);
         return;
     }
     
@@ -2839,7 +2851,8 @@ function saveAttributeName(oldName, newName, editableDiv, nameText, editBtn) {
             cancelAttributeName(editableDiv, nameText, editBtn,
                 editableDiv.querySelector('.attribute-name-input'),
                 editableDiv.querySelector('.attribute-name-save-btn'),
-                editableDiv.querySelector('.attribute-name-cancel-btn'));
+                editableDiv.querySelector('.attribute-name-cancel-btn'),
+                sortButtons, deleteButton);
         }
     })
     .catch(error => {
@@ -2848,12 +2861,13 @@ function saveAttributeName(oldName, newName, editableDiv, nameText, editBtn) {
         cancelAttributeName(editableDiv, nameText, editBtn,
             editableDiv.querySelector('.attribute-name-input'),
             editableDiv.querySelector('.attribute-name-save-btn'),
-            editableDiv.querySelector('.attribute-name-cancel-btn'));
+            editableDiv.querySelector('.attribute-name-cancel-btn'),
+            sortButtons, deleteButton);
     });
 }
 
 // 속성명 편집 취소 함수
-function cancelAttributeName(editableDiv, nameText, editBtn, input, saveBtn, cancelBtn) {
+function cancelAttributeName(editableDiv, nameText, editBtn, input, saveBtn, cancelBtn, sortButtons, deleteButton) {
     // 편집 요소들 제거
     if (input) input.remove();
     if (saveBtn) saveBtn.remove();
@@ -2862,6 +2876,10 @@ function cancelAttributeName(editableDiv, nameText, editBtn, input, saveBtn, can
     // 원래 요소들 복원
     nameText.style.display = '';
     editBtn.style.display = '';
+    sortButtons.forEach(btn => btn.style.display = '');
+    if (deleteButton) {
+        deleteButton.style.display = '';
+    }
 }
 
 // 엑셀 파일 업로드 관련 함수들
