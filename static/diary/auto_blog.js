@@ -3,6 +3,8 @@
 // 실시간 미리보기 모달 관련 변수 (전역 객체에 안전하게 저장)
 window.blogStatusInterval = window.blogStatusInterval || null;
 window.previewModal = window.previewModal || null;
+window.blogCompletionNotified = window.blogCompletionNotified || false;
+window.currentProgress = window.currentProgress || 0;
 
 // 모달 HTML을 동적으로 생성
 function createBlogModal() {
@@ -105,6 +107,7 @@ function createBlogModal() {
                     </div>
                 </div>
                 <div class="blog-modal-footer">
+                    <button class="btn btn-info" onclick="openPreviewModal()" style="margin-right: 10px;">🔍 미리보기</button>
                     <button class="btn btn-secondary" onclick="closeBlogModal()">취소</button>
                     <button class="btn btn-primary" onclick="uploadBlogFile()" id="uploadBtn" disabled>업로드</button>
                 </div>
@@ -135,7 +138,14 @@ function createPreviewModal() {
                     <div style="background: #e9ecef; border-radius: 10px; height: 8px; margin-bottom: 10px;">
                         <div id="previewProgressBar" style="background: #007bff; height: 100%; border-radius: 10px; width: 0%; transition: width 0.3s ease;"></div>
                     </div>
-                    <div id="previewMessage" style="font-size: 14px; color: #6c757d; min-height: 20px;">블로그 작성을 시작합니다...</div>
+                    
+                    <!-- 로그 영역 추가 -->
+                    <div style="margin-bottom: 15px;">
+                        <h5 style="margin: 0 0 8px 0; font-size: 14px; color: #495057;">📋 진행 로그</h5>
+                        <div id="previewLog" style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px; padding: 10px; max-height: 150px; overflow-y: auto; font-size: 12px; line-height: 1.4;">
+                            <div style="color: #6c757d; font-style: italic;">블로그 작성을 시작합니다...</div>
+                        </div>
+                    </div>
                 </div>
                 
                 <div id="previewContent" style="border: 1px solid #dee2e6; border-radius: 6px; padding: 10px; background: #f8f9fa; min-height: 200px;">
@@ -143,7 +153,7 @@ function createPreviewModal() {
                         <span style="font-size: 12px; color: #6c757d;">제목:</span><br>
                         <span id="previewTitleText">제목이 여기에 표시됩니다...</span>
                     </div>
-                    <div id="previewBody" style="color: #495057; padding: 8px; background: white; border-radius: 4px; border-left: 4px solid #28a745; min-height: 150px; white-space: pre-wrap; font-family: monospace; font-size: 13px; line-height: 1.4;">
+                    <div id="previewBody" style="display: flex; flex-direction: column; color: #495057; padding: 8px; background: white; border-radius: 4px; border-left: 4px solid #28a745; min-height: 150px; white-space: pre-wrap; font-family: monospace; font-size: 13px; line-height: 1.4;">
                         <span style="font-size: 12px; color: #6c757d; font-family: Arial;">본문:</span><br>
                         <span id="previewBodyText">본문이 여기에 실시간으로 표시됩니다...</span>
                     </div>
@@ -229,6 +239,13 @@ function openPreviewModal() {
     const modal = document.getElementById('blogPreviewModal');
     modal.style.display = 'block';
     
+    // 진행도와 완료 알림 플래그 초기화
+    window.currentProgress = 0;
+    window.blogCompletionNotified = false;
+    
+    // 로그 초기화
+    clearPreviewLog();
+    
     // 실시간 상태 업데이트 시작
     startStatusPolling();
 }
@@ -253,7 +270,7 @@ function startStatusPolling() {
     updatePreviewStatus();
     
     // 0.5초마다 상태 업데이트
-    window.blogStatusInterval = setInterval(updatePreviewStatus, 500);
+    window.blogStatusInterval = setInterval(updatePreviewStatus, 200);
 }
 
 // 상태 폴링 중지
@@ -261,6 +278,64 @@ function stopStatusPolling() {
     if (window.blogStatusInterval) {
         clearInterval(window.blogStatusInterval);
         window.blogStatusInterval = null;
+    }
+}
+
+// 로그에 메시지 추가하는 함수
+function addToPreviewLog(message, type = 'info') {
+    const logContainer = document.getElementById('previewLog');
+    if (!logContainer) return;
+    
+    const timestamp = new Date().toLocaleTimeString('ko-KR', { 
+        hour12: false, 
+        hour: '2-digit', 
+        minute: '2-digit', 
+        second: '2-digit' 
+    });
+    
+    const logEntry = document.createElement('div');
+    logEntry.style.marginBottom = '4px';
+    logEntry.style.paddingLeft = '8px';
+    logEntry.style.borderLeft = '3px solid';
+    
+    // 타입에 따른 색상 설정
+    switch (type) {
+        case 'success':
+            logEntry.style.borderLeftColor = '#28a745';
+            logEntry.style.color = '#155724';
+            break;
+        case 'error':
+            logEntry.style.borderLeftColor = '#dc3545';
+            logEntry.style.color = '#721c24';
+            break;
+        case 'warning':
+            logEntry.style.borderLeftColor = '#ffc107';
+            logEntry.style.color = '#856404';
+            break;
+        default:
+            logEntry.style.borderLeftColor = '#007bff';
+            logEntry.style.color = '#495057';
+    }
+    
+    logEntry.innerHTML = `<span style="color: #6c757d; font-size: 11px;">[${timestamp}]</span> ${message}`;
+    
+    logContainer.appendChild(logEntry);
+    
+    // 자동 스크롤
+    logContainer.scrollTop = logContainer.scrollHeight;
+    
+    // 로그 항목이 너무 많으면 오래된 것 제거 (최대 50개)
+    const logEntries = logContainer.children;
+    if (logEntries.length > 50) {
+        logContainer.removeChild(logEntries[0]);
+    }
+}
+
+// 로그 초기화 함수
+function clearPreviewLog() {
+    const logContainer = document.getElementById('previewLog');
+    if (logContainer) {
+        logContainer.innerHTML = '<div style="color: #6c757d; font-style: italic;">블로그 작성을 시작합니다...</div>';
     }
 }
 
@@ -272,27 +347,84 @@ function updatePreviewStatus() {
             if (data.success && data.status) {
                 const status = data.status;
                 
-                // 단계 표시 업데이트
+                // 단계 표시 업데이트 (오타 관련 메시지 필터링)
                 const stepElement = document.getElementById('previewStep');
-                const messageElement = document.getElementById('previewMessage');
                 const progressElement = document.getElementById('previewProgress');
                 const progressBarElement = document.getElementById('previewProgressBar');
                 const titleElement = document.getElementById('previewTitleText');
                 const bodyElement = document.getElementById('previewBodyText');
                 const fileInfoElement = document.getElementById('currentFileInfo');
                 
-                if (stepElement) {
-                    stepElement.textContent = status.title || '처리 중...';
+                if (stepElement && status.title) {
+                    // 오타 관련 제목은 표시하지 않음
+                    const isTypoTitle = status.title.includes('오타') || 
+                                       status.title.includes('오타 수정중') || 
+                                       status.title.includes('오타 발생');
+                    
+                    if (!isTypoTitle) {
+                        stepElement.textContent = status.title;
+                    }
+                    // 오타 관련 메시지일 때는 이전 상태 유지 (업데이트하지 않음)
                 }
                 
-                if (messageElement) {
-                    messageElement.textContent = status.content || '';
+                // 로그에 메시지 추가 (중복 방지를 위해 마지막 메시지와 비교)
+                if (status.content) {
+                    const logContainer = document.getElementById('previewLog');
+                    const lastLogEntry = logContainer ? logContainer.lastElementChild : null;
+                    const lastMessage = lastLogEntry ? lastLogEntry.textContent.replace(/^\[\d{2}:\d{2}:\d{2}\]\s/, '') : '';
+                    
+                    const isBodyContent = status.step === 'typing' || 
+                                         status.step === 'typing_with_typos' || 
+                                         status.step === 'typing_typo' || 
+                                         status.step === 'typing_correction';
+                    
+                    const isTypoMessage = status.content.includes('오타 발생') || 
+                                         status.content.includes('오타 수정중') ||
+                                         status.content.includes('백스페이스');
+                    
+                    // 중복 방지 로직 강화: 정확한 메시지 내용과 단계 모두 확인
+                    const isDuplicate = (
+                        status.content === lastMessage || 
+                        (status.step === 'title_input_start' && lastMessage.includes('제목 입력 중')) ||
+                        (status.step === 'content_input_start' && lastMessage.includes('본문 입력 중')) ||
+                        (isBodyContent && (lastMessage === '제목을 입력하고 있습니다...' || lastMessage === '본문을 입력하고 있습니다...'))
+                    );
+                    
+                    // 중복되지 않고 오타 메시지가 아닌 경우만 로그에 추가
+                    if (!isDuplicate && !isTypoMessage) {
+                        if (isBodyContent) {
+                            // 본문 타이핑 중일 때는 일반적인 상태 메시지만 추가
+                            if (status.content.includes('"')) {
+                                if (lastMessage !== '제목을 입력하고 있습니다...') {
+                                    addToPreviewLog('제목을 입력하고 있습니다...');
+                                }
+                            } else {
+                                if (lastMessage !== '본문을 입력하고 있습니다...') {
+                                    addToPreviewLog('본문을 입력하고 있습니다...');
+                                }
+                            }
+                        } else {
+                            // 일반 상태 메시지
+                            let logType = 'info';
+                            if (status.step === 'login_failed' || status.step === 'global_error' || status.step === 'file_error') {
+                                logType = 'error';
+                            } else if (status.step === 'all_complete' || status.step === 'save_complete') {
+                                logType = 'success';
+                            }
+                            addToPreviewLog(status.content, logType);
+                        }
+                    }
                 }
                 
                 if (progressElement && progressBarElement) {
                     const progress = status.progress || 0;
-                    progressElement.textContent = `${progress}%`;
-                    progressBarElement.style.width = `${progress}%`;
+                    
+                    // 진행도가 현재보다 높을 때만 업데이트 (뒤로 가지 않음)
+                    if (progress >= window.currentProgress) {
+                        window.currentProgress = progress;
+                        progressElement.textContent = `${progress}%`;
+                        progressBarElement.style.width = `${progress}%`;
+                    }
                 }
                 
                 // 파일 정보 업데이트
@@ -300,7 +432,7 @@ function updatePreviewStatus() {
                     fileInfoElement.textContent = `${status.current_file}/${status.total_files} 파일 처리 중`;
                 }
                 
-                // 단계별 상태에 따른 내용 업데이트
+                // 단계별 상태에 따른 내용 업데이트 (실시간 타이핑 포함)
                 switch (status.step) {
                     case 'typing':
                     case 'typing_with_typos':
@@ -310,13 +442,32 @@ function updatePreviewStatus() {
                             if (match) {
                                 titleElement.textContent = match[1];
                             }
+                        } else if (bodyElement && status.content && !status.content.includes('"')) {
+                            // 본문 타이핑 중 (오타 관련 메시지가 아닌 경우만)
+                            if (!status.content.includes('오타') && !status.content.includes('백스페이스')) {
+                                bodyElement.textContent = status.content;
+                            }
                         }
                         break;
                         
                     case 'typing_typo':
-                    case 'typing_correction':
+                        // 오타 발생 시에도 현재 텍스트는 표시하되, 오타 메시지는 숨김
                         if (bodyElement && status.content) {
-                            bodyElement.textContent = status.content;
+                            // 실제 타이핑된 텍스트만 추출 (오타 메시지 제외)
+                            const cleanContent = status.content.replace(/오타 발생.*$/, '').trim();
+                            if (cleanContent) {
+                                bodyElement.textContent = cleanContent;
+                            }
+                        }
+                        break;
+                        
+                    case 'typing_correction':
+                        // 오타 수정 중에도 현재 텍스트 표시
+                        if (bodyElement && status.content) {
+                            const cleanContent = status.content.replace(/오타 수정중.*$/, '').replace(/백스페이스.*$/, '').trim();
+                            if (cleanContent) {
+                                bodyElement.textContent = cleanContent;
+                            }
                         }
                         break;
                         
@@ -342,11 +493,13 @@ function updatePreviewStatus() {
                         break;
                         
                     case 'all_complete':
-                        // 모든 작업 완료 시 3초 후 모달 자동 닫기
-                        setTimeout(() => {
-                            closePreviewModal();
-                            showNotification('모든 블로그 글 작성이 완료되었습니다!', 'success');
-                        }, 3000);
+                        // 모든 작업 완료 시 한 번만 알림 표시
+                        if (!window.blogCompletionNotified) {
+                            window.blogCompletionNotified = true;
+                            setTimeout(() => {
+                                showNotification('모든 블로그 글 작성이 완료되었습니다!', 'success');
+                            }, 3000);
+                        }
                         break;
                         
                     case 'login_failed':

@@ -238,18 +238,18 @@ def slow_type_with_actionchains(driver, element, text, min_delay=0.05, max_delay
     actions = ActionChains(driver)
     actions.move_to_element(element).click().perform()
     
-    # 실시간 타이핑 상태 업데이트
-    update_status('typing', '타이핑 중...', f'"{text[:50]}{"..." if len(text) > 50 else ""}"')
+    # 실시간 타이핑 상태 업데이트 (전체 진행도는 유지)
+    current_progress = current_status.get('progress', 0)
+    update_status('typing', '타이핑 중...', f'"{text[:50]}{"..." if len(text) > 50 else ""}"', current_progress)
     
     for i, char in enumerate(text):
         actions = ActionChains(driver)
         actions.send_keys(char).perform()
         time.sleep(random.uniform(min_delay, max_delay))
         
-        # 타이핑 진행률 업데이트 (10글자마다)
+        # 타이핑 중에는 진행도를 변경하지 않고 상태만 업데이트
         if i % 10 == 0:
-            progress = int((i / len(text)) * 100)
-            update_status('typing', '타이핑 중...', text[:i+1], progress)
+            update_status('typing', '타이핑 중...', text[:i+1], current_progress)
 
 def get_typing_delays(typing_speed):
     try:
