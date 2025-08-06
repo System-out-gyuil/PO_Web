@@ -10,7 +10,7 @@ from .kanban_handlers import update_kanban_option_order, get_kanban_data, get_ka
 from .attribute_handlers import delete_attribute_value, toggle_attribute_visibility, update_attribute_visibility, get_dropdown_attributes, add_attribute, delete_attribute
 from .audio_handler import upload_audio_file, get_audio_files_by_date, delete_audio_file, update_audio_file_order
 from .cascade_handlers import toggle_cascade_attribute, get_cascade_attributes_list
-from .auto_blog import upload_blog_file, get_blog_files
+from .auto_blog import upload_blog_file, get_blog_files, get_blog_status
 from .detail_openai import ai_chat, ai_chat_cache_clear, file_cache_management, performance_monitoring
 from .admin_view import admin_dashboard, inquiry_list, inquiry_detail, alarm_list, alarm_create, alarm_edit, alarm_delete, inquiry_delete, admin_api, user_list, user_delete, user_toggle_admin
 from .diary_board import diary_board, get_announcements, get_announcement_detail, mark_as_read, download_announcement_file, announcement_detail_page, create_announcement, upload_announcement_file, get_announcement_file_url, get_announcement_download_url
@@ -129,6 +129,7 @@ urlpatterns = [
     # 블로그 파일 업로드 관련 API
     path('upload_blog_file/', upload_blog_file, name='upload_blog_file'),
     path('get_blog_files/', get_blog_files, name='get_blog_files'),
+    path('get_blog_status/', get_blog_status, name='get_blog_status'),
     
     # AI 채팅 관련 API
     path('ai_chat/', ai_chat, name='ai_chat'),

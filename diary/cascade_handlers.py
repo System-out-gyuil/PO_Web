@@ -114,9 +114,11 @@ def sync_cascade_attributes(request, row_id, attribute_name, new_value):
         traceback.print_exc()
         return 0
 
+
 def get_cascade_attributes():
     """cascade가 true인 속성들의 목록을 반환"""
     return Attribute.objects.filter(cascade=True).values_list('name', flat=True)
+
 
 @csrf_exempt
 def toggle_cascade_attribute(request):

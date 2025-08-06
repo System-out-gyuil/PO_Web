@@ -49,7 +49,8 @@ def add_attribute(request):
                 user=user,
                 attributeType=attribute_type,
                 sort_order=next_sort_order,
-                view_select=view_select_dict
+                view_select=view_select_dict,
+                cascade=False  # 새로 생성하는 속성은 기본적으로 동기화 비활성화
             )
             
             return JsonResponse({

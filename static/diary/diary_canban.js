@@ -112,9 +112,9 @@ function bindKanbanSortable() {
           }
       };
       
-      // 모바일 기기인 경우 0.5초 지연 설정
+      // 모바일 기기인 경우 드래그 기능 완전 비활성화
       if (isMobileDevice()) {
-          sortableOptions.delay = 500;
+          sortableOptions.disabled = true;
       }
       
       new Sortable(col, sortableOptions);

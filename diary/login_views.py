@@ -189,6 +189,12 @@ class SignupView(View):
             '추천자금',
         ]
         
+        # 동기화를 활성화할 속성들 정의
+        cascade_enabled_attributes = {
+            '회사명', '매출', '계약여부', '지역', '상세지역', 
+            '주소', '이메일', '연락처', '미팅', 'TA'
+        }
+        
         # sort_order를 위한 카운터
         sort_order_counter = 1
         
@@ -197,6 +203,8 @@ class SignupView(View):
             # BaseAttribute에서 찾기
             try:
                 base_attr = BaseAttribute.objects.get(name=attr_name)
+                # cascade 값 결정
+                cascade_value = attr_name in cascade_enabled_attributes
                 Attribute.objects.create(
                     name=base_attr.name,
                     user=user,
@@ -205,7 +213,7 @@ class SignupView(View):
                     detail=False,  # BaseAttribute는 detail=0
                     sort_order=sort_order_counter,
                     view_select={"0": True},
-                    cascade=True,  # 기본적으로 True
+                    cascade=cascade_value,  # 특정 속성만 True, 나머지는 False
                     width=150  # 기본값
                 )
                 sort_order_counter += 1
@@ -213,6 +221,8 @@ class SignupView(View):
                 # BaseAttributeDetail에서 찾기
                 try:
                     base_detail_attr = BaseAttributeDetail.objects.get(name=attr_name)
+                    # cascade 값 결정
+                    cascade_value = attr_name in cascade_enabled_attributes
                     Attribute.objects.create(
                         name=base_detail_attr.name,
                         user=user,
@@ -221,7 +231,7 @@ class SignupView(View):
                         detail=True,  # BaseAttributeDetail은 detail=1
                         sort_order=sort_order_counter,
                         view_select={"0": True},
-                        cascade=True,  # 기본적으로 True
+                        cascade=cascade_value,  # 특정 속성만 True, 나머지는 False
                         width=150  # 기본값
                     )
                     sort_order_counter += 1
@@ -233,6 +243,8 @@ class SignupView(View):
         base_attributes = BaseAttribute.objects.all()
         for base_attr in base_attributes:
             if base_attr.name not in desired_order:
+                # cascade 값 결정
+                cascade_value = base_attr.name in cascade_enabled_attributes
                 Attribute.objects.create(
                     name=base_attr.name,
                     user=user,
@@ -241,7 +253,7 @@ class SignupView(View):
                     detail=False,  # BaseAttribute는 detail=0
                     sort_order=sort_order_counter,
                     view_select={"0": True},
-                    cascade=True,  # 기본적으로 True
+                    cascade=cascade_value,  # 특정 속성만 True, 나머지는 False
                     width=150  # 기본값
                 )
                 sort_order_counter += 1
@@ -250,6 +262,8 @@ class SignupView(View):
         base_attribute_details = BaseAttributeDetail.objects.all()
         for base_detail_attr in base_attribute_details:
             if base_detail_attr.name not in desired_order:
+                # cascade 값 결정
+                cascade_value = base_detail_attr.name in cascade_enabled_attributes
                 Attribute.objects.create(
                     name=base_detail_attr.name,
                     user=user,
@@ -258,7 +272,7 @@ class SignupView(View):
                     detail=True,  # BaseAttributeDetail은 detail=1
                     sort_order=sort_order_counter,
                     view_select={"0": True},
-                    cascade=True,  # 기본적으로 True
+                    cascade=cascade_value,  # 특정 속성만 True, 나머지는 False
                     width=150  # 기본값
                 )
                 sort_order_counter += 1

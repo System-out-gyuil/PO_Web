@@ -1,5 +1,9 @@
 // 블로그 모달 관련 JavaScript
 
+// 실시간 미리보기 모달 관련 변수 (전역 객체에 안전하게 저장)
+window.blogStatusInterval = window.blogStatusInterval || null;
+window.previewModal = window.previewModal || null;
+
 // 모달 HTML을 동적으로 생성
 function createBlogModal() {
     const modalHTML = `
@@ -114,16 +118,48 @@ function createBlogModal() {
     }
 }
 
-{/* <div class="text-input-area" style="margin-top: 20px;">
-                        <label for="blogTextInput" style="display: block; margin-bottom: 8px; font-weight: 500; color: #495057;">
-                            추가 텍스트 입력 (선택사항)
-                        </label>
-                        <textarea 
-                            id="blogTextInput" 
-                            placeholder="여기에 추가 텍스트를 입력하세요..."
-                            style="width: 100%; min-height: 100px; padding: 12px; border: 1px solid #dee2e6; border-radius: 6px; resize: vertical; font-family: inherit; font-size: 14px;"
-                        ></textarea>
-                    </div> */}
+// 실시간 미리보기 모달 생성
+function createPreviewModal() {
+    const previewModalHTML = `
+        <div id="blogPreviewModal" class="blog-preview-modal" style="display: none; position: fixed; top: 20px; right: 20px; width: 600px; height: 800px; background: white; border: 2px solid #007bff; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); z-index: 10000; font-family: Arial, sans-serif;">
+            <div class="preview-modal-header" style="background: #007bff; color: white; padding: 15px; border-radius: 8px 8px 0 0; display: flex; justify-content: space-between; align-items: center;">
+                <h4 style="margin: 0; font-size: 16px;">블로그 작성 미리보기</h4>
+                <button onclick="closePreviewModal()" style="background: none; border: none; color: white; font-size: 18px; cursor: pointer;">&times;</button>
+            </div>
+            <div class="preview-modal-body" style="padding: 15px; height: calc(100% - 60px); overflow-y: auto;">
+                <div id="previewStatus" style="margin-bottom: 15px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <span id="previewStep" style="font-weight: bold; color: #495057;">준비 중...</span>
+                        <span id="previewProgress" style="font-size: 12px; color: #6c757d;">0%</span>
+                    </div>
+                    <div style="background: #e9ecef; border-radius: 10px; height: 8px; margin-bottom: 10px;">
+                        <div id="previewProgressBar" style="background: #007bff; height: 100%; border-radius: 10px; width: 0%; transition: width 0.3s ease;"></div>
+                    </div>
+                    <div id="previewMessage" style="font-size: 14px; color: #6c757d; min-height: 20px;">블로그 작성을 시작합니다...</div>
+                </div>
+                
+                <div id="previewContent" style="border: 1px solid #dee2e6; border-radius: 6px; padding: 10px; background: #f8f9fa; min-height: 200px;">
+                    <div id="previewTitle" style="font-weight: bold; color: #495057; margin-bottom: 10px; padding: 8px; background: white; border-radius: 4px; border-left: 4px solid #007bff;">
+                        <span style="font-size: 12px; color: #6c757d;">제목:</span><br>
+                        <span id="previewTitleText">제목이 여기에 표시됩니다...</span>
+                    </div>
+                    <div id="previewBody" style="color: #495057; padding: 8px; background: white; border-radius: 4px; border-left: 4px solid #28a745; min-height: 150px; white-space: pre-wrap; font-family: monospace; font-size: 13px; line-height: 1.4;">
+                        <span style="font-size: 12px; color: #6c757d; font-family: Arial;">본문:</span><br>
+                        <span id="previewBodyText">본문이 여기에 실시간으로 표시됩니다...</span>
+                    </div>
+                </div>
+                
+                <div id="previewFileInfo" style="margin-top: 15px; font-size: 12px; color: #6c757d;">
+                    <div>📁 <span id="currentFileInfo">파일 정보가 여기에 표시됩니다</span></div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    if (!document.getElementById('blogPreviewModal')) {
+        document.body.insertAdjacentHTML('beforeend', previewModalHTML);
+    }
+}
 
 // 블로그 모달 열기
 function openBlogModal() {
@@ -185,6 +221,156 @@ function closeBlogModal() {
         document.getElementById('naverId').value = '';
         document.getElementById('naverPassword').value = '';
     }
+}
+
+// 실시간 미리보기 모달 열기
+function openPreviewModal() {
+    createPreviewModal();
+    const modal = document.getElementById('blogPreviewModal');
+    modal.style.display = 'block';
+    
+    // 실시간 상태 업데이트 시작
+    startStatusPolling();
+}
+
+// 실시간 미리보기 모달 닫기
+function closePreviewModal() {
+    const modal = document.getElementById('blogPreviewModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+    
+    // 상태 폴링 중지
+    stopStatusPolling();
+}
+
+// 상태 폴링 시작
+function startStatusPolling() {
+    // 기존 폴링이 있으면 중지
+    stopStatusPolling();
+    
+    // 즉시 한 번 실행
+    updatePreviewStatus();
+    
+    // 0.5초마다 상태 업데이트
+    window.blogStatusInterval = setInterval(updatePreviewStatus, 500);
+}
+
+// 상태 폴링 중지
+function stopStatusPolling() {
+    if (window.blogStatusInterval) {
+        clearInterval(window.blogStatusInterval);
+        window.blogStatusInterval = null;
+    }
+}
+
+// 미리보기 상태 업데이트
+function updatePreviewStatus() {
+    fetch('/sales/get_blog_status/')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.status) {
+                const status = data.status;
+                
+                // 단계 표시 업데이트
+                const stepElement = document.getElementById('previewStep');
+                const messageElement = document.getElementById('previewMessage');
+                const progressElement = document.getElementById('previewProgress');
+                const progressBarElement = document.getElementById('previewProgressBar');
+                const titleElement = document.getElementById('previewTitleText');
+                const bodyElement = document.getElementById('previewBodyText');
+                const fileInfoElement = document.getElementById('currentFileInfo');
+                
+                if (stepElement) {
+                    stepElement.textContent = status.title || '처리 중...';
+                }
+                
+                if (messageElement) {
+                    messageElement.textContent = status.content || '';
+                }
+                
+                if (progressElement && progressBarElement) {
+                    const progress = status.progress || 0;
+                    progressElement.textContent = `${progress}%`;
+                    progressBarElement.style.width = `${progress}%`;
+                }
+                
+                // 파일 정보 업데이트
+                if (fileInfoElement && status.total_files > 0) {
+                    fileInfoElement.textContent = `${status.current_file}/${status.total_files} 파일 처리 중`;
+                }
+                
+                // 단계별 상태에 따른 내용 업데이트
+                switch (status.step) {
+                    case 'typing':
+                    case 'typing_with_typos':
+                        if (status.content && status.content.includes('"') && titleElement) {
+                            // 제목 타이핑 중
+                            const match = status.content.match(/"([^"]+)"/);
+                            if (match) {
+                                titleElement.textContent = match[1];
+                            }
+                        }
+                        break;
+                        
+                    case 'typing_typo':
+                    case 'typing_correction':
+                        if (bodyElement && status.content) {
+                            bodyElement.textContent = status.content;
+                        }
+                        break;
+                        
+                    case 'title_input_complete':
+                        if (titleElement && status.content) {
+                            titleElement.textContent = status.content;
+                        }
+                        break;
+                        
+                    case 'content_input_complete':
+                        if (bodyElement && status.content) {
+                            const match = status.content.match(/총 (\d+)자 입력 완료/);
+                            if (match) {
+                                bodyElement.textContent = `✅ 본문 입력 완료 (${match[1]}자)`;
+                            }
+                        }
+                        break;
+                        
+                    case 'save_complete':
+                        if (bodyElement) {
+                            bodyElement.textContent += '\n\n✅ 블로그 글이 성공적으로 저장되었습니다!';
+                        }
+                        break;
+                        
+                    case 'all_complete':
+                        // 모든 작업 완료 시 3초 후 모달 자동 닫기
+                        setTimeout(() => {
+                            closePreviewModal();
+                            showNotification('모든 블로그 글 작성이 완료되었습니다!', 'success');
+                        }, 3000);
+                        break;
+                        
+                    case 'login_failed':
+                    case 'global_error':
+                    case 'file_error':
+                        // 오류 발생 시 빨간색으로 표시
+                        if (stepElement) {
+                            stepElement.style.color = '#dc3545';
+                        }
+                        if (progressBarElement) {
+                            progressBarElement.style.background = '#dc3545';
+                        }
+                        // 5초 후 모달 자동 닫기
+                        setTimeout(() => {
+                            closePreviewModal();
+                            showNotification(status.content || '오류가 발생했습니다.', 'error');
+                        }, 5000);
+                        break;
+                }
+            }
+        })
+        .catch(error => {
+            console.error('상태 조회 오류:', error);
+        });
 }
 
 // 파일 선택 처리
@@ -386,7 +572,11 @@ function uploadBlogFile() {
         
         // 모달 닫기 및 백그라운드 작업 알림 표시
         closeBlogModal();
-        showNotification('백그라운드에서 블로그 작성을 시작합니다. 창을 닫지 말고 기다려주세요', 'info');
+        
+        // 실시간 미리보기 모달 열기
+        openPreviewModal();
+        
+        showNotification('백그라운드에서 블로그 작성을 시작합니다. 실시간 미리보기를 확인하세요!', 'info');
         
         // 서버로 파일 업로드
         fetch('/sales/upload_blog_file/', {
@@ -396,8 +586,8 @@ function uploadBlogFile() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // 성공 메시지 표시
-                showNotification(data.message, 'success', true);
+                // 성공 메시지 표시 - 미리보기 모달에서 자동으로 처리됨
+                // showNotification(data.message, 'success', true);
                 showBrowserNotification(data.message, '블로그 작성 완료');
                 
                 // 파일 정보 콘솔에 출력
@@ -420,6 +610,9 @@ function uploadBlogFile() {
                 // 오류 메시지 표시
                 showNotification(data.error, 'error');
                 
+                // 미리보기 모달 닫기
+                closePreviewModal();
+                
                 // 오류 시에도 업로드 버튼 복원
                 const uploadBtn = document.getElementById('uploadBtn');
                 if (uploadBtn) {
@@ -431,6 +624,9 @@ function uploadBlogFile() {
         .catch(error => {
             console.error('업로드 오류:', error);
             showNotification('파일 업로드 중 오류가 발생했습니다.', 'error');
+            
+            // 미리보기 모달 닫기
+            closePreviewModal();
             
             // 오류 시에도 업로드 버튼 복원
             const uploadBtn = document.getElementById('uploadBtn');
@@ -464,5 +660,11 @@ document.addEventListener('click', function(event) {
 document.addEventListener('keydown', function(event) {
     if (event.key === 'Escape') {
         closeBlogModal();
+        closePreviewModal();
     }
+});
+
+// 페이지 언로드 시 정리
+window.addEventListener('beforeunload', function() {
+    stopStatusPolling();
 });

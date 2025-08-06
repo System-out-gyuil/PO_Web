@@ -2404,6 +2404,45 @@ function refreshTable() {
                     }
                 });
                 
+                // === 새로 추가된 행으로 스크롤 처리 ===
+                if (window.scrollTableToBottomAfterRefresh) {
+                    console.log('새로 생성된 행으로 스크롤 이동 시작');
+                    
+                    setTimeout(() => {
+                        // 방법 1: 테이블 컨테이너 스크롤 시도
+                        const tableView = document.getElementById('tableView');
+                        if (tableView) {
+                            tableView.scrollTop = tableView.scrollHeight;
+                            console.log('테이블 컨테이너 스크롤 시도 - scrollTop:', tableView.scrollTop, 'scrollHeight:', tableView.scrollHeight);
+                        }
+                        
+                        // 방법 2: 페이지 전체 스크롤 (더 확실한 방법)
+                        const tableElement = document.getElementById('entryTable');
+                        if (tableElement) {
+                            // 테이블의 마지막 행으로 스크롤
+                            const lastRow = tableElement.querySelector('tbody tr:last-child');
+                            if (lastRow) {
+                                lastRow.scrollIntoView({ 
+                                    behavior: 'smooth', 
+                                    block: 'end',
+                                    inline: 'nearest'
+                                });
+                                console.log('새로 생성된 행으로 스크롤 완료');
+                            } else {
+                                // 마지막 행이 없으면 테이블 전체의 맨 아래로 스크롤
+                                window.scrollTo({
+                                    top: document.body.scrollHeight,
+                                    behavior: 'smooth'
+                                });
+                                console.log('페이지 맨 아래로 스크롤 완료');
+                            }
+                        }
+                    }, 100);
+                    
+                    window.scrollTableToBottomAfterRefresh = false;
+                    console.log('스크롤 플래그 초기화 완료');
+                }
+                
                 console.log('테이블 새로고침 후 모든 이벤트 재초기화 완료');
             }, 100);
 

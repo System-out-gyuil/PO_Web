@@ -1,4 +1,10 @@
 // updateAudioFileOrder 함수 복구
+// 모바일 기기 감지 함수
+function isMobileDevice() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+           (window.innerWidth <= 768);
+}
+
 function updateAudioFileOrder(rowId, fileId, newOrder) {
   const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
   
@@ -189,7 +195,7 @@ function updateAudioFileManagement(audioFileValue) {
           
           // Sortable.js 적용 (드래그 앤 드롭)
           if (typeof Sortable !== 'undefined') {
-              new Sortable(sortableContainer, {
+              const sortableOptions = {
                   animation: 150,
                   ghostClass: 'sortable-ghost',
                   chosenClass: 'sortable-chosen',
@@ -198,7 +204,14 @@ function updateAudioFileManagement(audioFileValue) {
                       console.log('아이템 순서 변경:', evt.oldIndex, '->', evt.newIndex);
                       saveAllOrderToServer(sortableContainer);
                   }
-              });
+              };
+              
+              // 모바일 기기인 경우 드래그 기능 완전 비활성화
+              if (isMobileDevice()) {
+                  sortableOptions.disabled = true;
+              }
+              
+              new Sortable(sortableContainer, sortableOptions);
           }
       } else {
           // 오디오 파일과 텍스트 노트가 모두 없는 경우
