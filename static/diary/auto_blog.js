@@ -1,11 +1,5 @@
 // 블로그 모달 관련 JavaScript
 
-// 모바일 디바이스 감지 함수
-function isMobileDevice() {
-    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
-           || window.innerWidth <= 768;
-}
-
 // 실시간 미리보기 모달 관련 변수 (전역 객체에 안전하게 저장)
 window.blogStatusInterval = window.blogStatusInterval || null;
 window.previewModal = window.previewModal || null;
@@ -185,12 +179,6 @@ function createPreviewModal() {
 
 // 블로그 모달 열기
 function openBlogModal() {
-    // 모바일 디바이스 체크
-    if (isMobileDevice()) {
-        showNotification('모바일 환경에서는 블로그 작성 기능을 사용할 수 없습니다.', 'warning');
-        return;
-    }
-    
     createBlogModal();
     const modal = document.getElementById('blogModal');
     modal.style.display = 'flex';
@@ -397,15 +385,8 @@ function updatePreviewStatus() {
     }
     
     fetch('/sales/get_blog_status/')
-        .then(response => {
-            console.log('🔍 [DEBUG] API 응답 상태:', response.status);
-            if (!response.ok) {
-                throw new Error(`HTTP 오류! 상태: ${response.status}`);
-            }
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
-            console.log('🔍 [DEBUG] API 응답 데이터:', data);
             if (data.success && data.status) {
                 const status = data.status;
                 
@@ -669,8 +650,7 @@ function updatePreviewStatus() {
             }
         })
         .catch(error => {
-            console.error('🔍 [DEBUG] 상태 조회 오류:', error);
-            console.error('🔍 [DEBUG] 오류 상세:', error.message);
+            console.error('상태 조회 오류:', error);
             // 에러 발생 시에도 폴링 중지
             window.isBlogWritingActive = false;
             stopStatusPolling();
@@ -792,8 +772,6 @@ function formatFileSize(bytes) {
 
 // 파일 업로드 처리
 function uploadBlogFile() {
-    console.log('🔍 [DEBUG] uploadBlogFile 함수 시작');
-    
     const fileInput = document.getElementById('blogFileInput');
     const files = fileInput.files;
     const typoProbabilityInput = document.getElementById('typoProbability');
@@ -805,10 +783,6 @@ function uploadBlogFile() {
     const typingSpeed = typingSpeedInput.value;
     const naverId = naverIdInput.value.trim();
     const naverPassword = naverPasswordInput.value.trim();
-    
-    console.log('🔍 [DEBUG] 파일 개수:', files.length);
-    console.log('🔍 [DEBUG] 타이핑 설정:', { typoProbability, typingSpeed });
-    console.log('🔍 [DEBUG] 네이버 ID:', naverId);
     
     // 유효성 검사 초기화
     let isValid = true;
@@ -864,8 +838,6 @@ function uploadBlogFile() {
     
     // 실제 업로드 처리 함수
     function proceedWithUpload() {
-        console.log('🔍 [DEBUG] proceedWithUpload 함수 시작');
-        
         // 업로드 버튼 비활성화 및 로딩 표시
         const uploadBtn = document.getElementById('uploadBtn');
         const originalText = uploadBtn.textContent;
@@ -876,14 +848,11 @@ function uploadBlogFile() {
         const formData = new FormData();
         for (let i = 0; i < files.length; i++) {
             formData.append('files', files[i]); // 파일 여러 개 처리
-            console.log('🔍 [DEBUG] 파일 추가:', files[i].name);
         }
         formData.append('typo_probability', typoProbability);
         formData.append('typing_speed', typingSpeed);
         formData.append('naver_id', naverId);
         formData.append('naver_password', naverPassword);
-        
-        console.log('🔍 [DEBUG] FormData 생성 완료');
         
         // 모달 닫기 및 백그라운드 작업 알림 표시
         closeBlogModal();
@@ -891,26 +860,15 @@ function uploadBlogFile() {
         // 실시간 미리보기 모달 열기
         openPreviewModal(true); // 폴링 시작
         
-        console.log('🔍 [DEBUG] 미리보기 모달 열기 완료, 폴링 시작됨');
-        
         showNotification('백그라운드에서 블로그 작성을 시작합니다. 실시간 미리보기를 확인하세요!', 'info');
-        
-        console.log('🔍 [DEBUG] 서버로 업로드 요청 시작');
         
         // 서버로 파일 업로드
         fetch('/sales/upload_blog_file/', {
             method: 'POST',
             body: formData
         })
-        .then(response => {
-            console.log('🔍 [DEBUG] 업로드 API 응답 상태:', response.status);
-            if (!response.ok) {
-                throw new Error(`HTTP 오류! 상태: ${response.status}`);
-            }
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
-            console.log('🔍 [DEBUG] 업로드 API 응답 데이터:', data);
             if (data.success) {
                 // 성공 메시지 표시 - 미리보기 모달에서 자동으로 처리됨
                 // showNotification(data.message, 'success', true);
