@@ -353,7 +353,7 @@ function startStatusPolling() {
     updatePreviewStatus();
     
     // 0.3초마다 상태 업데이트 (더 자주 체크)
-    window.blogStatusInterval = setInterval(updatePreviewStatus, 300);
+    window.blogStatusInterval = setInterval(updatePreviewStatus, 100);
 }
 
 // 상태 폴링 중지
