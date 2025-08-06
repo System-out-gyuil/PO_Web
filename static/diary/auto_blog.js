@@ -1,5 +1,11 @@
 // 블로그 모달 관련 JavaScript
 
+// 모바일 디바이스 감지 함수
+function isMobileDevice() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
+           || window.innerWidth <= 768;
+}
+
 // 실시간 미리보기 모달 관련 변수 (전역 객체에 안전하게 저장)
 window.blogStatusInterval = window.blogStatusInterval || null;
 window.previewModal = window.previewModal || null;
@@ -179,6 +185,12 @@ function createPreviewModal() {
 
 // 블로그 모달 열기
 function openBlogModal() {
+    // 모바일 디바이스 체크
+    if (isMobileDevice()) {
+        showNotification('모바일 환경에서는 블로그 작성 기능을 사용할 수 없습니다.', 'warning');
+        return;
+    }
+    
     createBlogModal();
     const modal = document.getElementById('blogModal');
     modal.style.display = 'flex';
@@ -245,6 +257,8 @@ function openPreviewModal(startPolling = false) {
     const modal = document.getElementById('blogPreviewModal');
     modal.style.display = 'block';
     
+    console.log('📊 미리보기 모달 열림, 폴링 시작:', startPolling);
+    
     // startPolling이 true일 때만 블로그 작성 활성화 및 폴링 시작
     if (startPolling) {
         // 진행도와 완료 알림 플래그 초기화
@@ -257,14 +271,44 @@ function openPreviewModal(startPolling = false) {
         window.isBlogWritingActive = true;
         window.completionMessageAdded = false;
         
+        console.log('📊 블로그 작성 상태 초기화 완료');
+        
         // 로그 초기화
         clearPreviewLog();
+        
+        // 초기 상태 표시
+        const stepElement = document.getElementById('previewStep');
+        const progressElement = document.getElementById('previewProgress');
+        const progressBarElement = document.getElementById('previewProgressBar');
+        const titleElement = document.getElementById('previewTitleText');
+        const bodyElement = document.getElementById('previewBodyText');
+        
+        if (stepElement) {
+            stepElement.textContent = '블로그 작성 시작...';
+            console.log('📊 초기 단계 설정');
+        }
+        
+        if (progressElement && progressBarElement) {
+            progressElement.textContent = '0%';
+            progressBarElement.style.width = '0%';
+            console.log('📊 초기 진행도 설정');
+        }
+        
+        if (titleElement) {
+            titleElement.textContent = '제목이 여기에 표시됩니다...';
+        }
+        
+        if (bodyElement) {
+            bodyElement.textContent = '본문이 여기에 실시간으로 표시됩니다...';
+        }
         
         // 실시간 상태 업데이트 시작
         startStatusPolling();
     } else {
         // 블로그 작성 중이 아닐 때는 폴링하지 않음
         window.isBlogWritingActive = false;
+        
+        console.log('📊 비폴링 모드로 모달 열림');
         
         // 기본 메시지 표시
         const logContainer = document.getElementById('previewLog');
@@ -303,11 +347,13 @@ function startStatusPolling() {
     // 기존 폴링이 있으면 중지
     stopStatusPolling();
     
+    console.log('📊 상태 폴링 시작됨');
+    
     // 즉시 한 번 실행
     updatePreviewStatus();
     
-    // 0.5초마다 상태 업데이트
-    window.blogStatusInterval = setInterval(updatePreviewStatus, 200);
+    // 0.3초마다 상태 업데이트 (더 자주 체크)
+    window.blogStatusInterval = setInterval(updatePreviewStatus, 300);
 }
 
 // 상태 폴링 중지
@@ -315,6 +361,7 @@ function stopStatusPolling() {
     if (window.blogStatusInterval) {
         clearInterval(window.blogStatusInterval);
         window.blogStatusInterval = null;
+        console.log('📊 상태 폴링 중지됨');
     }
 }
 
@@ -384,11 +431,22 @@ function updatePreviewStatus() {
         return;
     }
     
+    console.log('📊 상태 폴링 시작 - API 호출 중...');
+    
     fetch('/sales/get_blog_status/')
-        .then(response => response.json())
+        .then(response => {
+            console.log('📊 API 응답 상태:', response.status);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
         .then(data => {
+            console.log('📊 받은 데이터:', data);
+            
             if (data.success && data.status) {
                 const status = data.status;
+                console.log('📊 현재 상태:', status);
                 
                 // 단계 표시 업데이트 (오타 관련 메시지 필터링)
                 const stepElement = document.getElementById('previewStep');
@@ -406,6 +464,7 @@ function updatePreviewStatus() {
                     
                     if (!isTypoTitle) {
                         stepElement.textContent = status.title;
+                        console.log('📊 단계 업데이트:', status.title);
                     }
                     // 오타 관련 메시지일 때는 이전 상태 유지 (업데이트하지 않음)
                 }
@@ -437,6 +496,14 @@ function updatePreviewStatus() {
                         (isBodyContent && (lastMessage === '제목을 입력하고 있습니다...' || lastMessage === '본문을 입력하고 있습니다...'))
                     );
                     
+                    console.log('📊 로그 처리:', {
+                        content: status.content,
+                        step: status.step,
+                        isDuplicate,
+                        isTypoMessage,
+                        isBodyContent
+                    });
+                    
                     // 중복되지 않고 오타 메시지가 아닌 경우만 로그에 추가
                     if (!isDuplicate && !isTypoMessage) {
                         if (isBodyContent) {
@@ -459,6 +526,7 @@ function updatePreviewStatus() {
                                 logType = 'success';
                             }
                             addToPreviewLog(status.content, logType);
+                            console.log('📊 로그 추가됨:', status.content);
                         }
                     }
                 }
@@ -471,12 +539,14 @@ function updatePreviewStatus() {
                         window.currentProgress = progress;
                         progressElement.textContent = `${progress}%`;
                         progressBarElement.style.width = `${progress}%`;
+                        console.log('📊 진행도 업데이트:', progress);
                     }
                 }
                 
                 // 파일 정보 업데이트
                 if (fileInfoElement && status.total_files > 0) {
                     fileInfoElement.textContent = `${status.current_file}/${status.total_files} 파일 처리 중`;
+                    console.log('📊 파일 정보 업데이트:', `${status.current_file}/${status.total_files}`);
                 }
                 
                 // 단계별 상태에 따른 내용 업데이트 (실시간 타이핑 포함)
@@ -485,11 +555,13 @@ function updatePreviewStatus() {
                         // 제목 입력 시작 - 타이핑 모드를 제목으로 설정
                         window.currentTypingMode = 'title';
                         window.titleInputCompleted = false;
+                        console.log('📊 제목 입력 시작');
                         break;
                         
                     case 'content_input_start':
                         // 본문 입력 시작 - 타이핑 모드를 본문으로 설정
                         window.currentTypingMode = 'body';
+                        console.log('📊 본문 입력 시작');
                         break;
                         
                     case 'typing_title':
@@ -499,9 +571,11 @@ function updatePreviewStatus() {
                                 const match = status.content.match(/"([^"]+)"/);
                                 if (match) {
                                     titleElement.textContent = match[1];
+                                    console.log('📊 제목 타이핑:', match[1]);
                                 }
                             } else {
                                 titleElement.textContent = status.content;
+                                console.log('📊 제목 타이핑:', status.content);
                             }
                         }
                         break;
@@ -518,6 +592,7 @@ function updatePreviewStatus() {
                                 }
                             }
                             bodyElement.textContent = contentToShow;
+                            console.log('📊 본문 타이핑:', contentToShow.substring(0, 50) + '...');
                         }
                         break;
                         
@@ -530,6 +605,7 @@ function updatePreviewStatus() {
                                 const match = status.content.match(/"([^"]+)"/);
                                 if (match) {
                                     titleElement.textContent = match[1];
+                                    console.log('📊 제목 타이핑 (호환):', match[1]);
                                 }
                             }
                         } else if (window.currentTypingMode === 'body' && bodyElement) {
@@ -544,6 +620,7 @@ function updatePreviewStatus() {
                                     }
                                 }
                                 bodyElement.textContent = contentToShow;
+                                console.log('📊 본문 타이핑 (호환):', contentToShow.substring(0, 50) + '...');
                             }
                         }
                         break;
@@ -556,6 +633,7 @@ function updatePreviewStatus() {
                             const cleanContent = status.content.replace(/오타 발생.*$/, '').trim();
                             if (cleanContent) {
                                 bodyElement.textContent = cleanContent;
+                                console.log('📊 오타 발생:', cleanContent.substring(0, 30) + '...');
                             }
                         }
                         break;
@@ -567,6 +645,7 @@ function updatePreviewStatus() {
                             const cleanContent = status.content.replace(/오타 수정중.*$/, '').replace(/백스페이스.*$/, '').trim();
                             if (cleanContent) {
                                 bodyElement.textContent = cleanContent;
+                                console.log('📊 오타 수정:', cleanContent.substring(0, 30) + '...');
                             }
                         }
                         break;
@@ -581,10 +660,12 @@ function updatePreviewStatus() {
                                 const finalTitle = status.content.replace('FINAL_TITLE:', '');
                                 titleElement.textContent = finalTitle;
                                 addToPreviewLog(`제목 입력 완료: "${finalTitle}"`, 'success');
+                                console.log('📊 제목 입력 완료:', finalTitle);
                             } else {
                                 // 기존 방식 (호환성)
                                 titleElement.textContent = status.content;
                                 addToPreviewLog(`제목 입력 완료: "${status.content}"`, 'success');
+                                console.log('📊 제목 입력 완료 (호환):', status.content);
                             }
                         }
                         break;
@@ -598,11 +679,13 @@ function updatePreviewStatus() {
                                 const finalContent = status.content.replace('FINAL_CONTENT:', '');
                                 bodyElement.textContent = finalContent;
                                 addToPreviewLog(`본문 입력 완료 (${finalContent.length}자)`, 'success');
+                                console.log('📊 본문 입력 완료:', finalContent.length + '자');
                             } else {
                                 // 기존 방식 (호환성)
                                 const match = status.content.match(/총 (\d+)자 입력 완료/);
                                 if (match) {
                                     addToPreviewLog(`본문 입력 완료 (${match[1]}자)`, 'success');
+                                    console.log('📊 본문 입력 완료 (호환):', match[1] + '자');
                                 }
                             }
                         }
@@ -610,11 +693,13 @@ function updatePreviewStatus() {
                         
                     case 'save_complete':
                         // 저장 완료 메시지도 본문 영역에 추가하지 않음 (로그에만 표시)
+                        console.log('📊 저장 완료');
                         break;
                         
                     case 'all_complete':
                         // 모든 작업 완료 시
                         window.isBlogWritingActive = false; // 작업 완료로 설정하여 폴링 중지
+                        console.log('📊 모든 작업 완료');
                         
                         if (!window.blogCompletionNotified) {
                             window.blogCompletionNotified = true;
@@ -633,6 +718,7 @@ function updatePreviewStatus() {
                     case 'file_error':
                         // 오류 발생 시
                         window.isBlogWritingActive = false; // 오류 시에도 폴링 중지
+                        console.log('📊 오류 발생:', status.step);
                         
                         if (stepElement) {
                             stepElement.style.color = '#dc3545';
@@ -650,10 +736,19 @@ function updatePreviewStatus() {
             }
         })
         .catch(error => {
-            console.error('상태 조회 오류:', error);
-            // 에러 발생 시에도 폴링 중지
-            window.isBlogWritingActive = false;
-            stopStatusPolling();
+            console.error('📊 상태 조회 오류:', error);
+            // 네트워크 오류나 기타 문제가 지속적으로 발생하는 경우에만 폴링 중지
+            // 일시적인 오류일 수 있으므로 바로 중지하지 않음
+            if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+                console.log('📊 네트워크 오류 - 폴링 계속 진행');
+                // 네트워크 오류 시에는 폴링을 계속하되, 사용자에게 알림
+                addToPreviewLog('네트워크 연결 확인 중...', 'warning');
+            } else {
+                // 기타 심각한 오류 시에만 폴링 중지
+                console.log('📊 심각한 오류 - 폴링 중지');
+                window.isBlogWritingActive = false;
+                stopStatusPolling();
+            }
         });
 }
 
@@ -857,22 +952,33 @@ function uploadBlogFile() {
         // 모달 닫기 및 백그라운드 작업 알림 표시
         closeBlogModal();
         
+        console.log('📊 파일 업로드 시작 - 미리보기 모달 열기');
+        
         // 실시간 미리보기 모달 열기
         openPreviewModal(true); // 폴링 시작
         
         showNotification('백그라운드에서 블로그 작성을 시작합니다. 실시간 미리보기를 확인하세요!', 'info');
+        
+        console.log('📊 서버로 파일 업로드 요청 전송');
         
         // 서버로 파일 업로드
         fetch('/sales/upload_blog_file/', {
             method: 'POST',
             body: formData
         })
-        .then(response => response.json())
+        .then(response => {
+            console.log('📊 업로드 응답 받음:', response.status);
+            return response.json();
+        })
         .then(data => {
+            console.log('📊 업로드 결과:', data);
+            
             if (data.success) {
                 // 성공 메시지 표시 - 미리보기 모달에서 자동으로 처리됨
                 // showNotification(data.message, 'success', true);
                 showBrowserNotification(data.message, '블로그 작성 완료');
+                
+                console.log('📊 업로드 성공 - 작업 완료 상태로 설정');
                 
                 // 작업 완료 상태로 설정
                 window.isBlogWritingActive = false;
@@ -894,6 +1000,8 @@ function uploadBlogFile() {
                     uploadBtn.disabled = false;
                 }
             } else {
+                console.log('📊 업로드 실패:', data.error);
+                
                 // 오류 메시지 표시
                 showNotification(data.error, 'error');
                 
@@ -912,7 +1020,7 @@ function uploadBlogFile() {
             }
         })
         .catch(error => {
-            console.error('업로드 오류:', error);
+            console.error('📊 업로드 오류:', error);
             showNotification('파일 업로드 중 오류가 발생했습니다.', 'error');
             
             // 오류 시에도 작업 비활성화
