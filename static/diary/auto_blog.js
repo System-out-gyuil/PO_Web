@@ -5,6 +5,12 @@ window.blogStatusInterval = window.blogStatusInterval || null;
 window.previewModal = window.previewModal || null;
 window.blogCompletionNotified = window.blogCompletionNotified || false;
 window.currentProgress = window.currentProgress || 0;
+// 제목 입력 완료 상태 추적을 위한 변수 추가
+window.titleInputCompleted = window.titleInputCompleted || false;
+window.currentTypingMode = window.currentTypingMode || null; // 'title' or 'body'
+// 블로그 작성 활성 상태 및 완료 메시지 추가 상태 추적
+window.isBlogWritingActive = window.isBlogWritingActive || false;
+window.completionMessageAdded = window.completionMessageAdded || false;
 
 // 모달 HTML을 동적으로 생성
 function createBlogModal() {
@@ -107,7 +113,7 @@ function createBlogModal() {
                     </div>
                 </div>
                 <div class="blog-modal-footer">
-                    <button class="btn btn-info" onclick="openPreviewModal()" style="margin-right: 10px;">🔍 미리보기</button>
+                    <button class="btn btn-info" onclick="openPreviewModal()" style="margin-right: 10px;">🔍 미리보기 창 열기</button>
                     <button class="btn btn-secondary" onclick="closeBlogModal()">취소</button>
                     <button class="btn btn-primary" onclick="uploadBlogFile()" id="uploadBtn" disabled>업로드</button>
                 </div>
@@ -234,20 +240,50 @@ function closeBlogModal() {
 }
 
 // 실시간 미리보기 모달 열기
-function openPreviewModal() {
+function openPreviewModal(startPolling = false) {
     createPreviewModal();
     const modal = document.getElementById('blogPreviewModal');
     modal.style.display = 'block';
     
-    // 진행도와 완료 알림 플래그 초기화
-    window.currentProgress = 0;
-    window.blogCompletionNotified = false;
-    
-    // 로그 초기화
-    clearPreviewLog();
-    
-    // 실시간 상태 업데이트 시작
-    startStatusPolling();
+    // startPolling이 true일 때만 블로그 작성 활성화 및 폴링 시작
+    if (startPolling) {
+        // 진행도와 완료 알림 플래그 초기화
+        window.currentProgress = 0;
+        window.blogCompletionNotified = false;
+        // 제목 입력 완료 상태 초기화
+        window.titleInputCompleted = false;
+        window.currentTypingMode = null;
+        // 블로그 작성 상태 초기화
+        window.isBlogWritingActive = true;
+        window.completionMessageAdded = false;
+        
+        // 로그 초기화
+        clearPreviewLog();
+        
+        // 실시간 상태 업데이트 시작
+        startStatusPolling();
+    } else {
+        // 블로그 작성 중이 아닐 때는 폴링하지 않음
+        window.isBlogWritingActive = false;
+        
+        // 기본 메시지 표시
+        const logContainer = document.getElementById('previewLog');
+        if (logContainer) {
+            logContainer.innerHTML = '<div style="color: #6c757d; font-style: italic;">현재 블로그 작성 중이 아닙니다. 블로그 업로드를 시작하면 실시간 진행상황이 여기에 표시됩니다.</div>';
+        }
+        
+        const stepElement = document.getElementById('previewStep');
+        if (stepElement) {
+            stepElement.textContent = '대기 중...';
+        }
+        
+        const progressElement = document.getElementById('previewProgress');
+        const progressBarElement = document.getElementById('previewProgressBar');
+        if (progressElement && progressBarElement) {
+            progressElement.textContent = '0%';
+            progressBarElement.style.width = '0%';
+        }
+    }
 }
 
 // 실시간 미리보기 모달 닫기
@@ -257,7 +293,8 @@ function closePreviewModal() {
         modal.style.display = 'none';
     }
     
-    // 상태 폴링 중지
+    // 상태 폴링 중지 및 작업 상태 비활성화
+    window.isBlogWritingActive = false;
     stopStatusPolling();
 }
 
@@ -341,6 +378,12 @@ function clearPreviewLog() {
 
 // 미리보기 상태 업데이트
 function updatePreviewStatus() {
+    // 블로그 작성이 비활성 상태면 폴링 중지
+    if (!window.isBlogWritingActive) {
+        stopStatusPolling();
+        return;
+    }
+    
     fetch('/sales/get_blog_status/')
         .then(response => response.json())
         .then(data => {
@@ -375,8 +418,12 @@ function updatePreviewStatus() {
                     
                     const isBodyContent = status.step === 'typing' || 
                                          status.step === 'typing_with_typos' || 
+                                         status.step === 'typing_title' ||
+                                         status.step === 'typing_body' ||
                                          status.step === 'typing_typo' || 
-                                         status.step === 'typing_correction';
+                                         status.step === 'typing_body_typo' ||
+                                         status.step === 'typing_correction' ||
+                                         status.step === 'typing_body_correction';
                     
                     const isTypoMessage = status.content.includes('오타 발생') || 
                                          status.content.includes('오타 수정중') ||
@@ -434,24 +481,76 @@ function updatePreviewStatus() {
                 
                 // 단계별 상태에 따른 내용 업데이트 (실시간 타이핑 포함)
                 switch (status.step) {
-                    case 'typing':
-                    case 'typing_with_typos':
-                        if (status.content && status.content.includes('"') && titleElement) {
-                            // 제목 타이핑 중
-                            const match = status.content.match(/"([^"]+)"/);
-                            if (match) {
-                                titleElement.textContent = match[1];
-                            }
-                        } else if (bodyElement && status.content && !status.content.includes('"')) {
-                            // 본문 타이핑 중 (오타 관련 메시지가 아닌 경우만)
-                            if (!status.content.includes('오타') && !status.content.includes('백스페이스')) {
-                                bodyElement.textContent = status.content;
+                    case 'title_input_start':
+                        // 제목 입력 시작 - 타이핑 모드를 제목으로 설정
+                        window.currentTypingMode = 'title';
+                        window.titleInputCompleted = false;
+                        break;
+                        
+                    case 'content_input_start':
+                        // 본문 입력 시작 - 타이핑 모드를 본문으로 설정
+                        window.currentTypingMode = 'body';
+                        break;
+                        
+                    case 'typing_title':
+                        // 제목 타이핑 중
+                        if (!window.titleInputCompleted && titleElement && status.content) {
+                            if (status.content.includes('"')) {
+                                const match = status.content.match(/"([^"]+)"/);
+                                if (match) {
+                                    titleElement.textContent = match[1];
+                                }
+                            } else {
+                                titleElement.textContent = status.content;
                             }
                         }
                         break;
                         
+                    case 'typing_body':
+                        // 본문 타이핑 중
+                        if (bodyElement && status.content) {
+                            // 따옴표로 감싸인 내용이면 추출, 아니면 그대로 사용
+                            let contentToShow = status.content;
+                            if (contentToShow.includes('"')) {
+                                const match = contentToShow.match(/"([^"]+)"/);
+                                if (match) {
+                                    contentToShow = match[1];
+                                }
+                            }
+                            bodyElement.textContent = contentToShow;
+                        }
+                        break;
+                        
+                    case 'typing':
+                    case 'typing_with_typos':
+                        // 기존 호환성을 위한 fallback (현재 타이핑 모드에 따라 제목 또는 본문 업데이트)
+                        if (window.currentTypingMode === 'title' && !window.titleInputCompleted && titleElement) {
+                            // 제목 타이핑 중
+                            if (status.content && status.content.includes('"')) {
+                                const match = status.content.match(/"([^"]+)"/);
+                                if (match) {
+                                    titleElement.textContent = match[1];
+                                }
+                            }
+                        } else if (window.currentTypingMode === 'body' && bodyElement) {
+                            // 본문 타이핑 중 (오타 관련 메시지가 아닌 경우만)
+                            if (status.content && !status.content.includes('오타') && !status.content.includes('백스페이스')) {
+                                // 따옴표로 감싸인 내용이면 추출, 아니면 그대로 사용
+                                let contentToShow = status.content;
+                                if (contentToShow.includes('"')) {
+                                    const match = contentToShow.match(/"([^"]+)"/);
+                                    if (match) {
+                                        contentToShow = match[1];
+                                    }
+                                }
+                                bodyElement.textContent = contentToShow;
+                            }
+                        }
+                        break;
+                        
+                    case 'typing_body_typo':
                     case 'typing_typo':
-                        // 오타 발생 시에도 현재 텍스트는 표시하되, 오타 메시지는 숨김
+                        // 본문 오타 발생 시
                         if (bodyElement && status.content) {
                             // 실제 타이핑된 텍스트만 추출 (오타 메시지 제외)
                             const cleanContent = status.content.replace(/오타 발생.*$/, '').trim();
@@ -461,8 +560,9 @@ function updatePreviewStatus() {
                         }
                         break;
                         
+                    case 'typing_body_correction':
                     case 'typing_correction':
-                        // 오타 수정 중에도 현재 텍스트 표시
+                        // 본문 오타 수정 중
                         if (bodyElement && status.content) {
                             const cleanContent = status.content.replace(/오타 수정중.*$/, '').replace(/백스페이스.*$/, '').trim();
                             if (cleanContent) {
@@ -472,32 +572,58 @@ function updatePreviewStatus() {
                         break;
                         
                     case 'title_input_complete':
+                        // 제목 입력 완료 - 제목 완료 상태로 변경
+                        window.titleInputCompleted = true;
+                        window.currentTypingMode = null;
                         if (titleElement && status.content) {
-                            titleElement.textContent = status.content;
+                            // FINAL_TITLE: 접두사가 있으면 최종 제목 내용을 표시
+                            if (status.content.startsWith('FINAL_TITLE:')) {
+                                const finalTitle = status.content.replace('FINAL_TITLE:', '');
+                                titleElement.textContent = finalTitle;
+                                addToPreviewLog(`제목 입력 완료: "${finalTitle}"`, 'success');
+                            } else {
+                                // 기존 방식 (호환성)
+                                titleElement.textContent = status.content;
+                                addToPreviewLog(`제목 입력 완료: "${status.content}"`, 'success');
+                            }
                         }
                         break;
                         
                     case 'content_input_complete':
+                        // 본문 입력 완료 - 최종 내용이 있으면 본문에 표시, 없으면 로그에만 추가
+                        window.currentTypingMode = null;
                         if (bodyElement && status.content) {
-                            const match = status.content.match(/총 (\d+)자 입력 완료/);
-                            if (match) {
-                                bodyElement.textContent = `✅ 본문 입력 완료 (${match[1]}자)`;
+                            // FINAL_CONTENT: 접두사가 있으면 최종 본문 내용을 표시
+                            if (status.content.startsWith('FINAL_CONTENT:')) {
+                                const finalContent = status.content.replace('FINAL_CONTENT:', '');
+                                bodyElement.textContent = finalContent;
+                                addToPreviewLog(`본문 입력 완료 (${finalContent.length}자)`, 'success');
+                            } else {
+                                // 기존 방식 (호환성)
+                                const match = status.content.match(/총 (\d+)자 입력 완료/);
+                                if (match) {
+                                    addToPreviewLog(`본문 입력 완료 (${match[1]}자)`, 'success');
+                                }
                             }
                         }
                         break;
                         
                     case 'save_complete':
-                        if (bodyElement) {
-                            bodyElement.textContent += '\n\n✅ 블로그 글이 성공적으로 저장되었습니다!';
-                        }
+                        // 저장 완료 메시지도 본문 영역에 추가하지 않음 (로그에만 표시)
                         break;
                         
                     case 'all_complete':
-                        // 모든 작업 완료 시 한 번만 알림 표시
+                        // 모든 작업 완료 시
+                        window.isBlogWritingActive = false; // 작업 완료로 설정하여 폴링 중지
+                        
                         if (!window.blogCompletionNotified) {
                             window.blogCompletionNotified = true;
                             setTimeout(() => {
                                 showNotification('모든 블로그 글 작성이 완료되었습니다!', 'success');
+                                // 3초 후 폴링 완전 중지
+                                setTimeout(() => {
+                                    stopStatusPolling();
+                                }, 3000);
                             }, 3000);
                         }
                         break;
@@ -505,7 +631,9 @@ function updatePreviewStatus() {
                     case 'login_failed':
                     case 'global_error':
                     case 'file_error':
-                        // 오류 발생 시 빨간색으로 표시
+                        // 오류 발생 시
+                        window.isBlogWritingActive = false; // 오류 시에도 폴링 중지
+                        
                         if (stepElement) {
                             stepElement.style.color = '#dc3545';
                         }
@@ -523,6 +651,9 @@ function updatePreviewStatus() {
         })
         .catch(error => {
             console.error('상태 조회 오류:', error);
+            // 에러 발생 시에도 폴링 중지
+            window.isBlogWritingActive = false;
+            stopStatusPolling();
         });
 }
 
@@ -727,7 +858,7 @@ function uploadBlogFile() {
         closeBlogModal();
         
         // 실시간 미리보기 모달 열기
-        openPreviewModal();
+        openPreviewModal(true); // 폴링 시작
         
         showNotification('백그라운드에서 블로그 작성을 시작합니다. 실시간 미리보기를 확인하세요!', 'info');
         
@@ -742,6 +873,9 @@ function uploadBlogFile() {
                 // 성공 메시지 표시 - 미리보기 모달에서 자동으로 처리됨
                 // showNotification(data.message, 'success', true);
                 showBrowserNotification(data.message, '블로그 작성 완료');
+                
+                // 작업 완료 상태로 설정
+                window.isBlogWritingActive = false;
                 
                 // 파일 정보 콘솔에 출력
                 console.log('업로드된 파일 개수:', data.file_count);
@@ -763,6 +897,9 @@ function uploadBlogFile() {
                 // 오류 메시지 표시
                 showNotification(data.error, 'error');
                 
+                // 오류 시에도 작업 비활성화
+                window.isBlogWritingActive = false;
+                
                 // 미리보기 모달 닫기
                 closePreviewModal();
                 
@@ -777,6 +914,9 @@ function uploadBlogFile() {
         .catch(error => {
             console.error('업로드 오류:', error);
             showNotification('파일 업로드 중 오류가 발생했습니다.', 'error');
+            
+            // 오류 시에도 작업 비활성화
+            window.isBlogWritingActive = false;
             
             // 미리보기 모달 닫기
             closePreviewModal();

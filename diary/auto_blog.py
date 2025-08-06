@@ -238,9 +238,9 @@ def slow_type_with_actionchains(driver, element, text, min_delay=0.05, max_delay
     actions = ActionChains(driver)
     actions.move_to_element(element).click().perform()
     
-    # 실시간 타이핑 상태 업데이트 (전체 진행도는 유지)
+    # 실시간 타이핑 상태 업데이트 (전체 진행도는 유지) - 제목 타이핑임을 명시
     current_progress = current_status.get('progress', 0)
-    update_status('typing', '타이핑 중...', f'"{text[:50]}{"..." if len(text) > 50 else ""}"', current_progress)
+    update_status('typing_title', '제목 타이핑 중...', f'"{text[:50]}{"..." if len(text) > 50 else ""}"', current_progress)
     
     for i, char in enumerate(text):
         actions = ActionChains(driver)
@@ -249,7 +249,7 @@ def slow_type_with_actionchains(driver, element, text, min_delay=0.05, max_delay
         
         # 타이핑 중에는 진행도를 변경하지 않고 상태만 업데이트
         if i % 10 == 0:
-            update_status('typing', '타이핑 중...', text[:i+1], current_progress)
+            update_status('typing_title', '제목 타이핑 중...', text[:i+1], current_progress)
 
 def get_typing_delays(typing_speed):
     try:
@@ -271,8 +271,8 @@ def slow_type_with_typos(driver, element, text, min_delay=0.05, max_delay=0.1, t
     actions = ActionChains(driver)
     actions.move_to_element(element).click().perform()
 
-    # 실시간 타이핑 상태 업데이트
-    update_status('typing_with_typos', '오타 포함 타이핑 중...', f'"{text[:50]}{"..." if len(text) > 50 else ""}"')
+    # 실시간 타이핑 상태 업데이트 - 본문 타이핑임을 명시
+    update_status('typing_body', '본문 타이핑 중...', f'"{text[:50]}{"..." if len(text) > 50 else ""}"')
     
     typed_text = ""
     
@@ -286,7 +286,7 @@ def slow_type_with_typos(driver, element, text, min_delay=0.05, max_delay=0.1, t
             actions = ActionChains(driver)
             actions.send_keys(fake_chars).perform()
             typed_text += fake_chars
-            update_status('typing_typo', '오타 발생!', typed_text)
+            update_status('typing_body_typo', '본문 오타 발생!', typed_text)
             time.sleep(random.uniform(min_delay, max_delay))
 
             # 오타 지우기 (Backspace 여러 번)
@@ -294,7 +294,7 @@ def slow_type_with_typos(driver, element, text, min_delay=0.05, max_delay=0.1, t
                 actions = ActionChains(driver)
                 actions.send_keys(Keys.BACKSPACE).perform()
                 typed_text = typed_text[:-1] if typed_text else ""
-                update_status('typing_correction', '오타 수정 중...', typed_text)
+                update_status('typing_body_correction', '본문 오타 수정 중...', typed_text)
                 time.sleep(random.uniform(min_delay, max_delay))
 
         # 정상 글자 입력
@@ -306,7 +306,7 @@ def slow_type_with_typos(driver, element, text, min_delay=0.05, max_delay=0.1, t
         # 타이핑 진행률 업데이트 (5글자마다)
         if i % 5 == 0:
             progress = int((i / len(text)) * 100)
-            update_status('typing_with_typos', '오타 포함 타이핑 중...', typed_text, progress)
+            update_status('typing_body', '본문 타이핑 중...', typed_text, progress)
 
 # ✅ 네이버 로그인 (자동 로그인)
 def naver_login(driver, naver_id, naver_password):
@@ -492,7 +492,8 @@ def write_naver_blog(driver, user_id, title, content, typo_probability, typing_s
             )
             slow_type_with_actionchains(driver, title_container, title, min_delay=min_d, max_delay=max_d)
             print("✅ 제목 입력 완료")
-            update_status('title_input_complete', '제목 입력 완료', title)
+            # 제목 입력 완료 시 전체 제목을 함께 전달
+            update_status('title_input_complete', '제목 입력 완료', f'FINAL_TITLE:{title}')
             time.sleep(1)
 
         except Exception as e:
@@ -515,7 +516,8 @@ def write_naver_blog(driver, user_id, title, content, typo_probability, typing_s
             slow_type_with_typos(driver, body_paragraph, content, min_delay=min_d, max_delay=max_d, typo_chance=typo_chance)
 
             print("✅ 본문 입력 완료")
-            update_status('content_input_complete', '본문 입력 완료', f'총 {len(content)}자 입력 완료')
+            # 본문 입력 완료 시 전체 내용을 함께 전달
+            update_status('content_input_complete', '본문 입력 완료', f'FINAL_CONTENT:{content}')
             time.sleep(1)
 
         except Exception as e:
