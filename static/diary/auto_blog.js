@@ -435,20 +435,22 @@ function updatePreviewStatus() {
     
     console.log('📊 상태 폴링 시작 - API 호출 중...');
     
-    // 세션 ID가 있으면 POST 요청으로, 없으면 GET 요청으로
+    // GET 요청으로 변경하고 CSRF 토큰 추가
     const requestOptions = {
-        method: window.currentSessionId ? 'POST' : 'GET',
+        method: 'GET',
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken') // CSRF 토큰 추가
         }
     };
     
-    // 세션 ID가 있으면 헤더에 추가
+    // 세션 ID가 있으면 URL 파라미터로 추가
+    let url = '/sales/get_blog_status/';
     if (window.currentSessionId) {
-        requestOptions.headers['X-Session-Id'] = window.currentSessionId;
+        url += `?session_id=${window.currentSessionId}`;
     }
     
-    fetch('/sales/get_blog_status/', requestOptions)
+    fetch(url, requestOptions)
         .then(response => {
             console.log('📊 API 응답 상태:', response.status);
             if (!response.ok) {

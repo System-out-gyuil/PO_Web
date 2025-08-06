@@ -790,20 +790,16 @@ def auto_blog_naver(file_texts, text_content, typo_probability, typing_speed, na
         set_current_session_id(None)
 
 # 상태 조회를 위한 새로운 뷰 함수
-@require_http_methods(["GET", "POST"])
+@require_http_methods(["GET"])
 def get_blog_status(request):
     """실시간 블로그 작성 상태 조회"""
-    # 세션 ID 가져오기 (GET 요청에서는 세션에서, POST 요청에서는 헤더에서)
+    # 세션 ID 가져오기 (URL 파라미터 또는 세션에서)
     session_id = None
     
-    if request.method == 'POST':
-        # POST 요청에서 세션 ID를 헤더로 받기
-        session_id = request.headers.get('X-Session-Id', '').strip()
-        if not session_id:
-            # 헤더에 없으면 세션에서 가져오기
-            session_id = generate_session_id(request)
-    else:
-        # GET 요청에서는 세션에서 가져오기
+    # URL 파라미터에서 세션 ID 확인
+    session_id = request.GET.get('session_id', '').strip()
+    if not session_id:
+        # URL 파라미터에 없으면 세션에서 가져오기
         session_id = generate_session_id(request)
     
     print(f"📊 상태 조회 요청 - 세션 ID: {session_id}")
