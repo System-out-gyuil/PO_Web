@@ -792,6 +792,8 @@ function formatFileSize(bytes) {
 
 // 파일 업로드 처리
 function uploadBlogFile() {
+    console.log('🔍 [DEBUG] uploadBlogFile 함수 시작');
+    
     const fileInput = document.getElementById('blogFileInput');
     const files = fileInput.files;
     const typoProbabilityInput = document.getElementById('typoProbability');
@@ -803,6 +805,10 @@ function uploadBlogFile() {
     const typingSpeed = typingSpeedInput.value;
     const naverId = naverIdInput.value.trim();
     const naverPassword = naverPasswordInput.value.trim();
+    
+    console.log('🔍 [DEBUG] 파일 개수:', files.length);
+    console.log('🔍 [DEBUG] 타이핑 설정:', { typoProbability, typingSpeed });
+    console.log('🔍 [DEBUG] 네이버 ID:', naverId);
     
     // 유효성 검사 초기화
     let isValid = true;
@@ -858,6 +864,8 @@ function uploadBlogFile() {
     
     // 실제 업로드 처리 함수
     function proceedWithUpload() {
+        console.log('🔍 [DEBUG] proceedWithUpload 함수 시작');
+        
         // 업로드 버튼 비활성화 및 로딩 표시
         const uploadBtn = document.getElementById('uploadBtn');
         const originalText = uploadBtn.textContent;
@@ -868,11 +876,14 @@ function uploadBlogFile() {
         const formData = new FormData();
         for (let i = 0; i < files.length; i++) {
             formData.append('files', files[i]); // 파일 여러 개 처리
+            console.log('🔍 [DEBUG] 파일 추가:', files[i].name);
         }
         formData.append('typo_probability', typoProbability);
         formData.append('typing_speed', typingSpeed);
         formData.append('naver_id', naverId);
         formData.append('naver_password', naverPassword);
+        
+        console.log('🔍 [DEBUG] FormData 생성 완료');
         
         // 모달 닫기 및 백그라운드 작업 알림 표시
         closeBlogModal();
@@ -880,7 +891,11 @@ function uploadBlogFile() {
         // 실시간 미리보기 모달 열기
         openPreviewModal(true); // 폴링 시작
         
+        console.log('🔍 [DEBUG] 미리보기 모달 열기 완료, 폴링 시작됨');
+        
         showNotification('백그라운드에서 블로그 작성을 시작합니다. 실시간 미리보기를 확인하세요!', 'info');
+        
+        console.log('🔍 [DEBUG] 서버로 업로드 요청 시작');
         
         // 서버로 파일 업로드
         fetch('/sales/upload_blog_file/', {

@@ -134,39 +134,46 @@ def upload_blog_file(request):
                 'error': '파일 또는 텍스트를 입력해주세요.'
             })
         
-        print(f"🔍 [DEBUG] auto_blog_naver 함수 호출 시작 - 세션 ID: {session_id}")
+        print(f"🔍 [DEBUG] 백그라운드 스레드에서 auto_blog_naver 함수 실행 시작")
         
-        # auto_blog_naver 함수 호출 시 타이핑 설정과 세션 ID 전달
-        success, message = auto_blog_naver(file_contents, text_content, typo_probability, typing_speed, naver_id, naver_password, session_id)
+        # 백그라운드에서 실행할 함수
+        def run_blog_automation():
+            try:
+                print(f"🔍 [DEBUG] 백그라운드 스레드 시작 - 세션 ID: {session_id}")
+                success, message = auto_blog_naver(file_contents, text_content, typo_probability, typing_speed, naver_id, naver_password, session_id)
+                print(f"🔍 [DEBUG] 백그라운드 스레드 완료 - 성공: {success}, 메시지: {message}")
+            except Exception as e:
+                print(f"❌ [ERROR] 백그라운드 스레드 오류: {str(e)}")
+                import traceback
+                print(f"❌ [ERROR] 스택 트레이스: {traceback.format_exc()}")
+                update_status('global_error', '백그라운드 작업 오류', str(e), session_id=session_id)
         
-        print(f"🔍 [DEBUG] auto_blog_naver 함수 완료 - 성공: {success}, 메시지: {message}")
+        # 백그라운드 스레드로 실행
+        thread = threading.Thread(target=run_blog_automation)
+        thread.daemon = True  # 메인 프로세스 종료 시 함께 종료
+        thread.start()
         
-        # 성공/실패에 따른 응답 데이터 구성
-        if success:
-            response_data = {
-                'success': True,
-                'message': message,
-                'file_count': len(file_contents),
-                'file_infos': file_infos,
-                'typing_settings': {
-                    'typo_probability': typo_probability,
-                    'typing_speed': typing_speed
-                }
+        print(f"🔍 [DEBUG] 백그라운드 스레드 시작됨, 즉시 응답 반환")
+        
+        # 즉시 성공 응답 반환 (백그라운드 작업은 계속 진행)
+        response_data = {
+            'success': True,
+            'message': '블로그 작성 작업이 백그라운드에서 시작되었습니다.',
+            'file_count': len(file_contents),
+            'file_infos': file_infos,
+            'typing_settings': {
+                'typo_probability': typo_probability,
+                'typing_speed': typing_speed
             }
-            
-            if file_contents:
-                # 모든 파일의 내용을 하나로 합치거나 개별적으로 처리
-                combined_content = "\n\n".join([f"=== {info['original_name']} ===\n{content}" for info, content in zip(file_infos, file_contents)])
-                response_data['content_preview'] = combined_content[:1000] + '...' if len(combined_content) > 1000 else combined_content
-            
-            if text_content:
-                response_data['text_content'] = text_content
-                
-        else:
-            response_data = {
-                'success': False,
-                'error': message
-            }
+        }
+        
+        if file_contents:
+            # 모든 파일의 내용을 하나로 합치거나 개별적으로 처리
+            combined_content = "\n\n".join([f"=== {info['original_name']} ===\n{content}" for info, content in zip(file_infos, file_contents)])
+            response_data['content_preview'] = combined_content[:1000] + '...' if len(combined_content) > 1000 else combined_content
+        
+        if text_content:
+            response_data['text_content'] = text_content
         
         return JsonResponse(response_data)
         
@@ -231,6 +238,21 @@ def create_driver():
     # 메모리 최적화
     options.add_argument("--memory-pressure-off")
     options.add_argument("--max_old_space_size=4096")
+    
+    # Ubuntu 서버 환경을 위한 추가 옵션
+    options.add_argument("--disable-web-security")
+    options.add_argument("--allow-running-insecure-content")
+    options.add_argument("--disable-features=VizDisplayCompositor")
+    options.add_argument("--disable-logging")
+    options.add_argument("--disable-login-animations")
+    options.add_argument("--disable-notifications")
+    options.add_argument("--disable-default-apps")
+    options.add_argument("--disable-sync")
+    
+    # 권한 관련 설정
+    options.add_argument("--disable-permissions-api")
+    options.add_argument("--disable-web-security")
+    options.add_argument("--allow-running-insecure-content")
     
     # 고유한 임시 디렉토리 사용하여 충돌 방지 (사용자 데이터 디렉토리 완전 제거)
     # temp_dir = tempfile.mkdtemp()
