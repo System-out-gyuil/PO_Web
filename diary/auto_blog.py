@@ -27,11 +27,15 @@ def upload_blog_file(request):
     블로그 텍스트 파일 업로드 처리 - 파일 저장 없이 내용만 출력
     """
     try:
+        print(f"🔍 [DEBUG] upload_blog_file 호출됨")
+        
         # 세션 ID 가져오기
         session_id = request.session.session_key
         if not session_id:
             request.session.create()
             session_id = request.session.session_key
+        
+        print(f"🔍 [DEBUG] 세션 ID: {session_id}")
         
         file_contents = []
         text_content = ""
@@ -74,6 +78,7 @@ def upload_blog_file(request):
         # 파일들이 요청에 포함되어 있는지 확인
         if 'files' in request.FILES:
             uploaded_files = request.FILES.getlist('files')
+            print(f"🔍 [DEBUG] 업로드된 파일 개수: {len(uploaded_files)}")
             
             for uploaded_file in uploaded_files:
                 # 파일 확장자 검사
@@ -129,8 +134,12 @@ def upload_blog_file(request):
                 'error': '파일 또는 텍스트를 입력해주세요.'
             })
         
+        print(f"🔍 [DEBUG] auto_blog_naver 함수 호출 시작 - 세션 ID: {session_id}")
+        
         # auto_blog_naver 함수 호출 시 타이핑 설정과 세션 ID 전달
         success, message = auto_blog_naver(file_contents, text_content, typo_probability, typing_speed, naver_id, naver_password, session_id)
+        
+        print(f"🔍 [DEBUG] auto_blog_naver 함수 완료 - 성공: {success}, 메시지: {message}")
         
         # 성공/실패에 따른 응답 데이터 구성
         if success:
@@ -162,11 +171,15 @@ def upload_blog_file(request):
         return JsonResponse(response_data)
         
     except UnicodeDecodeError:
+        print(f"❌ [ERROR] 파일 인코딩 오류")
         return JsonResponse({
             'success': False,
             'error': '파일 인코딩 오류. UTF-8 인코딩의 텍스트 파일만 지원합니다.'
         })
     except Exception as e:
+        print(f"❌ [ERROR] upload_blog_file 오류: {str(e)}")
+        import traceback
+        print(f"❌ [ERROR] 스택 트레이스: {traceback.format_exc()}")
         return JsonResponse({
             'success': False,
             'error': f'처리 중 오류가 발생했습니다: {str(e)}'
@@ -190,6 +203,8 @@ def create_driver():
     import tempfile
     import os
     
+    print(f"🔍 [DEBUG] create_driver 함수 시작")
+    
     options = webdriver.ChromeOptions()
     
     # 우분투 서버 환경을 위한 설정
@@ -198,6 +213,24 @@ def create_driver():
     options.add_argument("--disable-dev-shm-usage")  # /dev/shm 사용 안함 (메모리 부족 방지)
     options.add_argument("--disable-gpu")  # GPU 비활성화
     options.add_argument("--remote-debugging-port=9222")  # 디버깅 포트 설정
+    
+    # 추가 안정성을 위한 옵션들
+    options.add_argument("--disable-extensions")
+    options.add_argument("--disable-plugins")
+    options.add_argument("--disable-images")
+    # options.add_argument("--disable-javascript")  # 네이버 블로그에서 필요하므로 제거
+    options.add_argument("--disable-plugins-discovery")
+    options.add_argument("--disable-preconnect")
+    options.add_argument("--disable-translate")
+    options.add_argument("--disable-background-timer-throttling")
+    options.add_argument("--disable-backgrounding-occluded-windows")
+    options.add_argument("--disable-renderer-backgrounding")
+    options.add_argument("--disable-features=TranslateUI")
+    options.add_argument("--disable-ipc-flooding-protection")
+    
+    # 메모리 최적화
+    options.add_argument("--memory-pressure-off")
+    options.add_argument("--max_old_space_size=4096")
     
     # 고유한 임시 디렉토리 사용하여 충돌 방지 (사용자 데이터 디렉토리 완전 제거)
     # temp_dir = tempfile.mkdtemp()
@@ -213,13 +246,26 @@ def create_driver():
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option('useAutomationExtension', False)
 
-    service = Service(executable_path=ChromeDriverManager().install())
-    driver = webdriver.Chrome(service=service, options=options)
-    
-    # 자동화 탐지 방지
-    driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
-    
-    return driver
+    try:
+        print(f"🔍 [DEBUG] ChromeDriver 설치 시도")
+        service = Service(executable_path=ChromeDriverManager().install())
+        print(f"🔍 [DEBUG] ChromeDriver 설치 완료")
+        
+        print(f"🔍 [DEBUG] Chrome 브라우저 시작 시도")
+        driver = webdriver.Chrome(service=service, options=options)
+        print(f"🔍 [DEBUG] Chrome 브라우저 시작 완료")
+        
+        # 자동화 탐지 방지
+        driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+        
+        print(f"🔍 [DEBUG] create_driver 함수 완료")
+        return driver
+        
+    except Exception as e:
+        print(f"❌ [ERROR] create_driver 오류: {str(e)}")
+        import traceback
+        print(f"❌ [ERROR] 스택 트레이스: {traceback.format_exc()}")
+        raise e
 
 # 사용자별 상태 저장소 (세션 ID를 키로 사용)
 _user_statuses = {}
@@ -702,12 +748,32 @@ def auto_blog_naver(file_texts, text_content, typo_probability, typing_speed, na
 @require_http_methods(["GET"])
 def get_blog_status(request):
     """실시간 블로그 작성 상태 조회"""
-    session_id = request.session.session_key
-    if not session_id:
-        session_id = 'default'
-    
-    current_status = get_status(session_id)
-    return JsonResponse({
-        'success': True,
-        'status': current_status
-    })
+    try:
+        session_id = request.session.session_key
+        if not session_id:
+            session_id = 'default'
+        
+        print(f"🔍 [DEBUG] get_blog_status 호출됨 - 세션 ID: {session_id}")
+        
+        current_status = get_status(session_id)
+        print(f"🔍 [DEBUG] 현재 상태: {current_status}")
+        
+        response_data = {
+            'success': True,
+            'status': current_status
+        }
+        
+        print(f"🔍 [DEBUG] 응답 데이터: {response_data}")
+        
+        return JsonResponse(response_data)
+        
+    except Exception as e:
+        print(f"❌ [ERROR] get_blog_status 오류: {str(e)}")
+        import traceback
+        print(f"❌ [ERROR] 스택 트레이스: {traceback.format_exc()}")
+        
+        return JsonResponse({
+            'success': False,
+            'error': str(e),
+            'status': get_default_status()
+        })

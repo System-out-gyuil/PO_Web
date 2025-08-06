@@ -397,8 +397,15 @@ function updatePreviewStatus() {
     }
     
     fetch('/sales/get_blog_status/')
-        .then(response => response.json())
+        .then(response => {
+            console.log('🔍 [DEBUG] API 응답 상태:', response.status);
+            if (!response.ok) {
+                throw new Error(`HTTP 오류! 상태: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
+            console.log('🔍 [DEBUG] API 응답 데이터:', data);
             if (data.success && data.status) {
                 const status = data.status;
                 
@@ -662,7 +669,8 @@ function updatePreviewStatus() {
             }
         })
         .catch(error => {
-            console.error('상태 조회 오류:', error);
+            console.error('🔍 [DEBUG] 상태 조회 오류:', error);
+            console.error('🔍 [DEBUG] 오류 상세:', error.message);
             // 에러 발생 시에도 폴링 중지
             window.isBlogWritingActive = false;
             stopStatusPolling();
@@ -879,8 +887,15 @@ function uploadBlogFile() {
             method: 'POST',
             body: formData
         })
-        .then(response => response.json())
+        .then(response => {
+            console.log('🔍 [DEBUG] 업로드 API 응답 상태:', response.status);
+            if (!response.ok) {
+                throw new Error(`HTTP 오류! 상태: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
+            console.log('🔍 [DEBUG] 업로드 API 응답 데이터:', data);
             if (data.success) {
                 // 성공 메시지 표시 - 미리보기 모달에서 자동으로 처리됨
                 // showNotification(data.message, 'success', true);
