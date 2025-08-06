@@ -25,6 +25,20 @@ import uuid
 import hashlib
 from .session_handlers import cleanup_session_cache, get_active_sessions
 
+# 전역 변수로 현재 세션 ID 관리
+current_session_id = None
+
+def set_current_session_id(session_id):
+    """현재 세션 ID 설정"""
+    global current_session_id
+    current_session_id = session_id
+    print(f"🔧 현재 세션 ID 설정: {session_id}")
+
+def get_current_session_id():
+    """현재 세션 ID 반환"""
+    global current_session_id
+    return current_session_id
+
 def generate_session_id(request):
     """사용자별 고유 세션 ID 생성"""
     # IP 주소와 User-Agent를 조합하여 고유 ID 생성
@@ -39,6 +53,9 @@ def generate_session_id(request):
         session_id = hashlib.md5(unique_string.encode()).hexdigest()[:16]
         request.session['blog_session_id'] = session_id
     
+    # 전역 변수에도 설정
+    set_current_session_id(session_id)
+    
     return session_id
 
 def get_cache_key(session_id, key_name='blog_status'):
@@ -47,6 +64,10 @@ def get_cache_key(session_id, key_name='blog_status'):
 
 def update_status(step, title='', content='', progress=0, session_id=None):
     """실시간 상태 업데이트 함수 - 세션별 Redis 캐시 사용"""
+    # 세션 ID가 없으면 전역 변수에서 가져오기
+    if not session_id:
+        session_id = get_current_session_id()
+    
     if not session_id:
         print("⚠️ 세션 ID가 없어 기본 키를 사용합니다.")
         cache_key = 'blog_status'
@@ -78,13 +99,14 @@ def upload_blog_file(request):
         # 사용자별 고유 세션 ID 생성
         session_id = generate_session_id(request)
         print(f"📊 새로운 블로그 작성 세션 시작: {session_id}")
+        print(f"📊 세션 ID 타입: {type(session_id)}, 값: '{session_id}'")
         
         file_contents = []
         text_content = ""
         file_infos = []
         
         # 블로그 작성 시작 시 즉시 상태 업데이트
-        print("�� 블로그 작성 요청 받음 - 상태 초기화 시작")
+        print("📊 블로그 작성 요청 받음 - 상태 초기화 시작")
         initial_status = {
             'step': 'upload_received',
             'title': '파일 업로드 처리 중...',
@@ -208,6 +230,7 @@ def upload_blog_file(request):
         update_status('blog_start', '블로그 작성 시작', f'총 {total_contents}개 콘텐츠 블로그 작성을 시작합니다.', 15, session_id)
         
         print(f"📊 블로그 작성 함수 호출 직전 - 총 {total_contents}개 콘텐츠")
+        print(f"📊 auto_blog_naver 호출 시 세션 ID: {session_id}")
         
         # auto_blog_naver 함수 호출 시 세션 ID와 타이핑 설정 전달
         success, message = auto_blog_naver(file_contents, text_content, typo_probability, typing_speed, naver_id, naver_password, session_id)
@@ -328,14 +351,14 @@ def create_driver(session_id=None):
     
     return driver
 
-def slow_type_with_actionchains(driver, element, text, min_delay=0.05, max_delay=0.1):
+def slow_type_with_actionchains(driver, element, text, min_delay=0.05, max_delay=0.1, session_id=None):
     actions = ActionChains(driver)
     actions.move_to_element(element).click().perform()
     
     # 실시간 타이핑 상태 업데이트 (전체 진행도는 유지) - 제목 타이핑임을 명시
-    current_status = cache.get('blog_status')
+    current_status = cache.get(get_cache_key(session_id, 'blog_status') if session_id else 'blog_status')
     current_progress = current_status.get('progress', 0) if current_status else 0
-    update_status('typing_title', '제목 타이핑 중...', f'"{text[:50]}{"..." if len(text) > 50 else ""}"', current_progress)
+    update_status('typing_title', '제목 타이핑 중...', f'"{text[:50]}{"..." if len(text) > 50 else ""}"', current_progress, session_id)
     
     for i, char in enumerate(text):
         actions = ActionChains(driver)
@@ -344,7 +367,7 @@ def slow_type_with_actionchains(driver, element, text, min_delay=0.05, max_delay
         
         # 타이핑 중에는 진행도를 변경하지 않고 상태만 업데이트
         if i % 10 == 0:
-            update_status('typing_title', '제목 타이핑 중...', text[:i+1], current_progress)
+            update_status('typing_title', '제목 타이핑 중...', text[:i+1], current_progress, session_id)
 
 def get_typing_delays(typing_speed):
     try:
@@ -362,12 +385,12 @@ def get_typo_chance(typo_probability):
     except ValueError:
         return 0.1  # 기본값
 
-def slow_type_with_typos(driver, element, text, min_delay=0.05, max_delay=0.1, typo_chance=0.1):
+def slow_type_with_typos(driver, element, text, min_delay=0.05, max_delay=0.1, typo_chance=0.1, session_id=None):
     actions = ActionChains(driver)
     actions.move_to_element(element).click().perform()
 
     # 실시간 타이핑 상태 업데이트 - 본문 타이핑임을 명시
-    update_status('typing_body', '본문 타이핑 중...', f'"{text[:50]}{"..." if len(text) > 50 else ""}"')
+    update_status('typing_body', '본문 타이핑 중...', f'"{text[:50]}{"..." if len(text) > 50 else ""}"', session_id=session_id)
     
     typed_text = ""
     
@@ -381,7 +404,7 @@ def slow_type_with_typos(driver, element, text, min_delay=0.05, max_delay=0.1, t
             actions = ActionChains(driver)
             actions.send_keys(fake_chars).perform()
             typed_text += fake_chars
-            update_status('typing_body_typo', '본문 오타 발생!', typed_text)
+            update_status('typing_body_typo', '본문 오타 발생!', typed_text, session_id=session_id)
             time.sleep(random.uniform(min_delay, max_delay))
 
             # 오타 지우기 (Backspace 여러 번)
@@ -389,7 +412,7 @@ def slow_type_with_typos(driver, element, text, min_delay=0.05, max_delay=0.1, t
                 actions = ActionChains(driver)
                 actions.send_keys(Keys.BACKSPACE).perform()
                 typed_text = typed_text[:-1] if typed_text else ""
-                update_status('typing_body_correction', '본문 오타 수정 중...', typed_text)
+                update_status('typing_body_correction', '본문 오타 수정 중...', typed_text, session_id=session_id)
                 time.sleep(random.uniform(min_delay, max_delay))
 
         # 정상 글자 입력
@@ -401,17 +424,17 @@ def slow_type_with_typos(driver, element, text, min_delay=0.05, max_delay=0.1, t
         # 타이핑 진행률 업데이트 (5글자마다)
         if i % 5 == 0:
             progress = int((i / len(text)) * 100)
-            update_status('typing_body', '본문 타이핑 중...', typed_text, progress)
+            update_status('typing_body', '본문 타이핑 중...', typed_text, progress, session_id)
 
 # ✅ 네이버 로그인 (자동 로그인)
-def naver_login(driver, naver_id, naver_password):
+def naver_login(driver, naver_id, naver_password, session_id=None):
     try:
-        update_status('login_start', '네이버 로그인 시작', f'아이디: {naver_id}')
+        update_status('login_start', '네이버 로그인 시작', f'아이디: {naver_id}', session_id=session_id)
         
         driver.get("https://nid.naver.com/nidlogin.login")
         time.sleep(2)
 
-        update_status('login_input', '로그인 정보 입력 중', '아이디와 비밀번호 입력')
+        update_status('login_input', '로그인 정보 입력 중', '아이디와 비밀번호 입력', session_id=session_id)
         
         # 자동 로그인
         # 아이디 입력 (JavaScript로 직접 값 설정)
@@ -434,7 +457,7 @@ def naver_login(driver, naver_id, naver_password):
         driver.execute_script("arguments[0].dispatchEvent(new Event('input', { bubbles: true }));", pw_input)
         time.sleep(1)
 
-        update_status('login_submit', '로그인 버튼 클릭', '로그인 처리 중...')
+        update_status('login_submit', '로그인 버튼 클릭', '로그인 처리 중...', session_id=session_id)
         
         # 로그인 버튼 클릭
         login_btn = WebDriverWait(driver, 5).until(
@@ -450,7 +473,7 @@ def naver_login(driver, naver_id, naver_password):
             if error_element and error_element.is_displayed():
                 error_text = error_element.text
                 print(f"❌ 네이버 로그인 실패: {error_text}")
-                update_status('login_failed', '로그인 실패', error_text)
+                update_status('login_failed', '로그인 실패', error_text, session_id=session_id)
                 return False, f"네이버 로그인 실패: {error_text}"
         except:
             pass
@@ -459,22 +482,22 @@ def naver_login(driver, naver_id, naver_password):
         current_url = driver.current_url
         if "nid.naver.com" in current_url:
             print("❌ 네이버 로그인 실패: 로그인 페이지에 머물러 있음")
-            update_status('login_failed', '로그인 실패', '아이디 또는 비밀번호를 확인해주세요')
+            update_status('login_failed', '로그인 실패', '아이디 또는 비밀번호를 확인해주세요', session_id=session_id)
             return False, "네이버 로그인 실패: 아이디 또는 비밀번호를 확인해주세요"
         
         print("✅ 자동 로그인 완료")
-        update_status('login_success', '로그인 성공', '네이버 메인페이지로 이동 완료')
+        update_status('login_success', '로그인 성공', '네이버 메인페이지로 이동 완료', session_id=session_id)
         return True, "네이버 로그인 성공"
         
     except Exception as e:
         print(f"❌ 네이버 로그인 중 오류 발생: {str(e)}")
-        update_status('login_error', '로그인 오류', str(e))
+        update_status('login_error', '로그인 오류', str(e), session_id=session_id)
         return False, f"네이버 로그인 중 오류 발생: {str(e)}"
 
 # ✅ 블로그 글 작성페이지로 들어가기
-def naver_blog(driver):
+def naver_blog(driver, session_id=None):
     try:
-        update_status('blog_nav_start', '블로그 페이지 이동', '블로그 탭 찾는 중...')
+        update_status('blog_nav_start', '블로그 페이지 이동', '블로그 탭 찾는 중...', session_id=session_id)
         
         blog_tab = WebDriverWait(driver, 600).until(
             EC.element_to_be_clickable((
@@ -484,7 +507,7 @@ def naver_blog(driver):
         )
         blog_tab.click()
         print("✅ '블로그' 탭 클릭 완료")
-        update_status('blog_tab_clicked', '블로그 탭 클릭 완료', '내 블로그 버튼 찾는 중...')
+        update_status('blog_tab_clicked', '블로그 탭 클릭 완료', '내 블로그 버튼 찾는 중...', session_id=session_id)
 
         try:
             blog_link = WebDriverWait(driver, 10).until(
@@ -495,7 +518,7 @@ def naver_blog(driver):
             )
             blog_link.click()
             print("✅ 내 블로그 버튼 클릭 완료")
-            update_status('blog_link_clicked', '내 블로그 버튼 클릭 완료', '새 창으로 전환 중...')
+            update_status('blog_link_clicked', '내 블로그 버튼 클릭 완료', '새 창으로 전환 중...', session_id=session_id)
 
             original_window = driver.current_window_handle
             time.sleep(2)
@@ -505,7 +528,7 @@ def naver_blog(driver):
                 if handle != original_window:
                     driver.switch_to.window(handle)
                     print("✅ 새 창으로 전환 완료")
-                    update_status('window_switched', '새 창 전환 완료', '블로그 사용자 ID 추출 중...')
+                    update_status('window_switched', '새 창 전환 완료', '블로그 사용자 ID 추출 중...', session_id=session_id)
                     break
 
             # ✅ 사용자 블로그 ID 추출
@@ -513,42 +536,42 @@ def naver_blog(driver):
                 current_url = driver.current_url  # 예: https://blog.naver.com/rbdlfdlsp2
                 user_id = current_url.rstrip("/").split("/")[-1]
                 print(f"✅ 블로그 사용자 ID 추출 완료: {user_id}")
-                update_status('user_id_extracted', 'ID 추출 완료', f'블로그 ID: {user_id}')
+                update_status('user_id_extracted', 'ID 추출 완료', f'블로그 ID: {user_id}', session_id=session_id)
 
                 return True, driver, user_id
             
             except Exception as e:
                 print(f"❌ 블로그 사용자 ID 추출 실패: {str(e)}")
-                update_status('user_id_failed', 'ID 추출 실패', str(e))
+                update_status('user_id_failed', 'ID 추출 실패', str(e), session_id=session_id)
                 return False, None, f"블로그 사용자 ID 추출 실패: {str(e)}"
 
         except Exception as e:
             print(f"❌ 내 블로그 버튼 클릭 실패: {str(e)}")
-            update_status('blog_link_failed', '내 블로그 버튼 클릭 실패', str(e))
+            update_status('blog_link_failed', '내 블로그 버튼 클릭 실패', str(e), session_id=session_id)
             return False, None, f"내 블로그 버튼 클릭 실패: {str(e)}"
 
     except Exception as e:
         print(f"❌ 블로그 탭 클릭 실패: {str(e)}")
-        update_status('blog_tab_failed', '블로그 탭 클릭 실패', str(e))
+        update_status('blog_tab_failed', '블로그 탭 클릭 실패', str(e), session_id=session_id)
         return False, None, f"블로그 탭 클릭 실패: {str(e)}"
 
-def write_naver_blog(driver, user_id, title, content, typo_probability, typing_speed):
+def write_naver_blog(driver, user_id, title, content, typo_probability, typing_speed, session_id=None):
     min_d, max_d = get_typing_delays(typing_speed)
     time.sleep(3)
 
     try:
-        update_status('write_page_nav', '글 작성 페이지 이동', f'제목: {title[:30]}{"..." if len(title) > 30 else ""}')
+        update_status('write_page_nav', '글 작성 페이지 이동', f'제목: {title[:30]}{"..." if len(title) > 30 else ""}', session_id=session_id)
         
         driver.get(f"https://blog.naver.com/{user_id}?Redirect=Write&")
         print("✅ 블로그 글 작성 페이지로 이동 완료")
 
     except Exception as e:
         print(f"❌ 블로그 글 작성 페이지로 이동 실패: {str(e)}")
-        update_status('write_page_failed', '작성 페이지 이동 실패', str(e))
+        update_status('write_page_failed', '작성 페이지 이동 실패', str(e), session_id=session_id)
         return False, f"블로그 글 작성 페이지로 이동 실패: {str(e)}"
     
     try:
-        update_status('iframe_enter', 'iframe 진입 중', '에디터 로딩 중...')
+        update_status('iframe_enter', 'iframe 진입 중', '에디터 로딩 중...', session_id=session_id)
         
         WebDriverWait(driver, 10).until(
             EC.frame_to_be_available_and_switch_to_it((By.ID, "mainFrame"))
@@ -561,7 +584,7 @@ def write_naver_blog(driver, user_id, title, content, typo_probability, typing_s
             )
             load_write.click()
             print("✅ 글 이어쓰기 취소 완료")
-            update_status('popup_closed', '팝업 닫기 완료', '에디터 준비 중...')
+            update_status('popup_closed', '팝업 닫기 완료', '에디터 준비 중...', session_id=session_id)
             time.sleep(1)
 
         except Exception:
@@ -580,25 +603,25 @@ def write_naver_blog(driver, user_id, title, content, typo_probability, typing_s
 
         # ✅ 제목 입력
         try:
-            update_status('title_input_start', '제목 입력 시작', f'제목: {title}')
+            update_status('title_input_start', '제목 입력 시작', f'제목: {title}', session_id=session_id)
             
             title_container = WebDriverWait(driver, 10).until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, "div.se-title-text"))
             )
-            slow_type_with_actionchains(driver, title_container, title, min_delay=min_d, max_delay=max_d)
+            slow_type_with_actionchains(driver, title_container, title, min_delay=min_d, max_delay=max_d, session_id=session_id)
             print("✅ 제목 입력 완료")
             # 제목 입력 완료 시 전체 제목을 함께 전달
-            update_status('title_input_complete', '제목 입력 완료', f'FINAL_TITLE:{title}')
+            update_status('title_input_complete', '제목 입력 완료', f'FINAL_TITLE:{title}', session_id=session_id)
             time.sleep(1)
 
         except Exception as e:
             print(f"❌ 제목 입력 실패: {str(e)}")
-            update_status('title_input_failed', '제목 입력 실패', str(e))
+            update_status('title_input_failed', '제목 입력 실패', str(e), session_id=session_id)
             return False, f"제목 입력 실패: {str(e)}"
 
         # ✅ 본문 입력
         try:
-            update_status('content_input_start', '본문 입력 시작', f'본문 길이: {len(content)}자')
+            update_status('content_input_start', '본문 입력 시작', f'본문 길이: {len(content)}자', session_id=session_id)
             
             body_paragraph = WebDriverWait(driver, 10).until(
                 EC.presence_of_element_located((
@@ -608,27 +631,27 @@ def write_naver_blog(driver, user_id, title, content, typo_probability, typing_s
             )
 
             typo_chance = get_typo_chance(typo_probability)
-            slow_type_with_typos(driver, body_paragraph, content, min_delay=min_d, max_delay=max_d, typo_chance=typo_chance)
+            slow_type_with_typos(driver, body_paragraph, content, min_delay=min_d, max_delay=max_d, typo_chance=typo_chance, session_id=session_id)
 
             print("✅ 본문 입력 완료")
             # 본문 입력 완료 시 전체 내용을 함께 전달
-            update_status('content_input_complete', '본문 입력 완료', f'FINAL_CONTENT:{content}')
+            update_status('content_input_complete', '본문 입력 완료', f'FINAL_CONTENT:{content}', session_id=session_id)
             time.sleep(1)
 
         except Exception as e:
             print(f"❌ 본문 입력 실패: {str(e)}")
-            update_status('content_input_failed', '본문 입력 실패', str(e))
+            update_status('content_input_failed', '본문 입력 실패', str(e), session_id=session_id)
             return False, f"본문 입력 실패: {str(e)}"
 
         try:
-            update_status('save_start', '저장 시작', '저장 버튼 클릭 중...')
+            update_status('save_start', '저장 시작', '저장 버튼 클릭 중...', session_id=session_id)
             
             publish_button = WebDriverWait(driver, 10).until(
                 EC.element_to_be_clickable((By.XPATH, "//button[.//span[text()='저장']]"))
             )
             publish_button.click()
             print("✅ 저장 버튼 클릭 완료")
-            update_status('save_complete', '저장 완료', '블로그 글이 성공적으로 저장되었습니다')
+            update_status('save_complete', '저장 완료', '블로그 글이 성공적으로 저장되었습니다', session_id=session_id)
             time.sleep(1)
 
             # ✅ 저장 후: 현재 창 닫고 원래 창으로 복귀
@@ -639,24 +662,28 @@ def write_naver_blog(driver, user_id, title, content, typo_probability, typing_s
             # ✅ 네이버 메인으로 이동
             driver.get("https://www.naver.com")
             print("✅ 네이버 메인으로 이동 완료")
-            update_status('post_complete', '글 작성 완료', '다음 글 준비 중...')
+            update_status('post_complete', '글 작성 완료', '다음 글 준비 중...', session_id=session_id)
             time.sleep(1)
 
             return True, "블로그 글 작성 완료"
             
         except Exception as e:
             print(f"❌ 저장 버튼 클릭 실패: {str(e)}")
-            update_status('save_failed', '저장 실패', str(e))
+            update_status('save_failed', '저장 실패', str(e), session_id=session_id)
             return False, f"저장 버튼 클릭 실패: {str(e)}"
 
     except Exception as e:
         print(f"❌ iframe(mainFrame) 진입 실패: {str(e)}")
-        update_status('iframe_failed', 'iframe 진입 실패', str(e))
+        update_status('iframe_failed', 'iframe 진입 실패', str(e), session_id=session_id)
         return False, f"iframe(mainFrame) 진입 실패: {str(e)}"
 
 def auto_blog_naver(file_texts, text_content, typo_probability, typing_speed, naver_id, naver_password, session_id):
     driver = None
     try:
+        # 전역 변수에 세션 ID 설정
+        set_current_session_id(session_id)
+        print(f"🔧 auto_blog_naver에서 세션 ID 설정: {session_id}")
+        
         # 전체 작업 상태 초기화
         total_contents = len(file_texts) + (1 if text_content and text_content.strip() else 0)
         
@@ -678,7 +705,7 @@ def auto_blog_naver(file_texts, text_content, typo_probability, typing_speed, na
         driver = create_driver(session_id)
         
         # 로그인 시도
-        login_success, login_message = naver_login(driver, naver_id, naver_password)
+        login_success, login_message = naver_login(driver, naver_id, naver_password, session_id)
         if not login_success:
             return False, login_message
 
@@ -719,7 +746,7 @@ def auto_blog_naver(file_texts, text_content, typo_probability, typing_speed, na
                             f'진행률: {current_file_index}/{total_contents}', progress, session_id)
                 
                 # 🔁 매 반복마다 작성 페이지 재진입
-                blog_success, driver_or_error, user_id_or_message = naver_blog(driver)
+                blog_success, driver_or_error, user_id_or_message = naver_blog(driver, session_id)
                 if not blog_success:
                     return False, user_id_or_message
 
@@ -730,7 +757,7 @@ def auto_blog_naver(file_texts, text_content, typo_probability, typing_speed, na
                 title = lines[0] if lines else f"{content_type} {content_index}"
                 body = "\n".join(lines[1:]) if len(lines) > 1 else content_text
 
-                write_success, write_message = write_naver_blog(driver, user_id, title, body, typo_probability, typing_speed)
+                write_success, write_message = write_naver_blog(driver, user_id, title, body, typo_probability, typing_speed, session_id)
                 if not write_success:
                     return False, f"{content_type} {content_index} 작성 실패: {write_message}"
 
@@ -758,6 +785,9 @@ def auto_blog_naver(file_texts, text_content, typo_probability, typing_speed, na
                 update_status('cleanup', '브라우저 종료', '모든 작업이 완료되었습니다', session_id=session_id)
             except Exception as e:
                 print(f"⚠️ 브라우저 종료 실패: {str(e)}")
+        
+        # 작업 완료 후 전역 변수 정리
+        set_current_session_id(None)
 
 # 상태 조회를 위한 새로운 뷰 함수
 @require_http_methods(["GET", "POST"])
