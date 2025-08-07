@@ -139,8 +139,8 @@ function createBlogModal() {
 function createPreviewModal() {
     const previewModalHTML = `
         <div id="blogPreviewModal" class="blog-preview-modal" style="display: none; position: fixed; top: 20px; right: 20px; width: 600px; height: 800px; background: white; border: 2px solid #007bff; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); z-index: 10000; font-family: Arial, sans-serif;">
-            <div class="preview-modal-header" style="background: #007bff; color: white; padding: 15px; border-radius: 8px 8px 0 0; display: flex; justify-content: space-between; align-items: center;">
-                <h4 style="margin: 0; font-size: 16px;">블로그 작성 미리보기</h4>
+            <div class="preview-modal-header" style="background: #007bff; color: white; padding: 15px; border-radius: 8px 8px 0 0; display: flex; justify-content: space-between; align-items: center; cursor: move; user-select: none;">
+                <h4 style="margin: 0; font-size: 16px;">📝 블로그 작성 미리보기</h4>
                 <button onclick="closePreviewModal()" style="background: none; border: none; color: white; font-size: 18px; cursor: pointer;">&times;</button>
             </div>
             <div class="preview-modal-body" style="padding: 15px; height: calc(100% - 60px); overflow-y: auto;">
@@ -182,7 +182,135 @@ function createPreviewModal() {
     
     if (!document.getElementById('blogPreviewModal')) {
         document.body.insertAdjacentHTML('beforeend', previewModalHTML);
+        
+        // 드래그 기능 초기화
+        initModalDrag();
     }
+}
+
+// 모달 드래그 기능 초기화
+function initModalDrag() {
+    const modal = document.getElementById('blogPreviewModal');
+    const header = modal.querySelector('.preview-modal-header');
+    
+    let isDragging = false;
+    let startX, startY, initialX, initialY;
+    
+    // 마우스 다운 이벤트
+    header.addEventListener('mousedown', function(e) {
+        // 닫기 버튼 클릭 시에는 드래그 시작하지 않음
+        if (e.target.tagName === 'BUTTON') {
+            return;
+        }
+        
+        isDragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        
+        // 현재 모달의 위치 가져오기
+        const rect = modal.getBoundingClientRect();
+        initialX = rect.left;
+        initialY = rect.top;
+        
+        // 드래그 중 스타일 변경
+        header.style.cursor = 'grabbing';
+        modal.style.transition = 'none'; // 드래그 중에는 transition 제거
+        
+        // 전역 이벤트 리스너 추가
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+        
+        // 텍스트 선택 방지
+        e.preventDefault();
+    });
+    
+    // 마우스 이동 이벤트
+    function handleMouseMove(e) {
+        if (!isDragging) return;
+        
+        const deltaX = e.clientX - startX;
+        const deltaY = e.clientY - startY;
+        
+        let newX = initialX + deltaX;
+        let newY = initialY + deltaY;
+        
+        // 화면 경계 체크
+        const maxX = window.innerWidth - modal.offsetWidth;
+        const maxY = window.innerHeight - modal.offsetHeight;
+        
+        newX = Math.max(0, Math.min(newX, maxX));
+        newY = Math.max(0, Math.min(newY, maxY));
+        
+        // 모달 위치 업데이트
+        modal.style.left = newX + 'px';
+        modal.style.top = newY + 'px';
+        modal.style.right = 'auto'; // right 속성 제거
+    }
+    
+    // 마우스 업 이벤트
+    function handleMouseUp() {
+        if (!isDragging) return;
+        
+        isDragging = false;
+        header.style.cursor = 'move';
+        modal.style.transition = ''; // transition 복원
+        
+        // 전역 이벤트 리스너 제거
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+    }
+    
+    // 터치 이벤트 지원 (모바일)
+    header.addEventListener('touchstart', function(e) {
+        if (e.target.tagName === 'BUTTON') {
+            return;
+        }
+        
+        const touch = e.touches[0];
+        isDragging = true;
+        startX = touch.clientX;
+        startY = touch.clientY;
+        
+        const rect = modal.getBoundingClientRect();
+        initialX = rect.left;
+        initialY = rect.top;
+        
+        header.style.cursor = 'grabbing';
+        modal.style.transition = 'none';
+        
+        e.preventDefault();
+    });
+    
+    header.addEventListener('touchmove', function(e) {
+        if (!isDragging) return;
+        
+        const touch = e.touches[0];
+        const deltaX = touch.clientX - startX;
+        const deltaY = touch.clientY - startY;
+        
+        let newX = initialX + deltaX;
+        let newY = initialY + deltaY;
+        
+        const maxX = window.innerWidth - modal.offsetWidth;
+        const maxY = window.innerHeight - modal.offsetHeight;
+        
+        newX = Math.max(0, Math.min(newX, maxX));
+        newY = Math.max(0, Math.min(newY, maxY));
+        
+        modal.style.left = newX + 'px';
+        modal.style.top = newY + 'px';
+        modal.style.right = 'auto';
+        
+        e.preventDefault();
+    });
+    
+    header.addEventListener('touchend', function() {
+        if (!isDragging) return;
+        
+        isDragging = false;
+        header.style.cursor = 'move';
+        modal.style.transition = '';
+    });
 }
 
 // 블로그 모달 열기
