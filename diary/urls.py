@@ -48,6 +48,7 @@ urlpatterns = [
     path('board/', views.board_view, name='board_view'),
     path('update/', views.update_entry, name='update_entry'),
     path('create_new_row/', views.create_new_row, name='create_new_row'),
+    path('add_sample_row/', views.add_sample_row, name='add_sample_row'),
     path('update_row_field/', views.update_row_field, name='update_row_field'),
     path('get_dependent_rows/', views.get_dependent_rows, name='get_dependent_rows'),
     path('update_sales_field/', views.update_sales_field, name='update_sales_field'),

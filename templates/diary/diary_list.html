@@ -332,6 +332,7 @@
         <div class="button-container-flex">
             <button id="addRowBtn" class="add-btn add-row-btn" onclick="addNewRow()">+ 새로 만들기</button>
             <button id="addExcelBtn" class="add-btn add-excel-btn" onclick="addNewRow()">📊 엑셀 추가</button>
+            <button id="addSampleBtn" class="add-btn add-sample-btn" onclick="addSampleData()">🎯 샘플 추가하기</button>
         </div>
     </div>
 
@@ -3597,6 +3598,151 @@ document.addEventListener('DOMContentLoaded', function() {
         console.error('게시판 버튼을 찾을 수 없습니다');
     }
 });
+
+// 샘플 데이터 5개 미리 정의
+const sampleData = [
+    {
+        '회사명': '(주)회사명1',
+        '매출': '250000000',
+        'F/U일정': '2025-08-15',
+        '상태': '진행중',
+        '기관': '기술보증기금',
+        '진행사항': '서류 검토 중',
+        '계약여부': '검토중',
+        '메모': '다음주 추가 서류 제출 예정',
+        '지역': '서울',
+        '상세지역': '강남구',
+        '주소': '테헤란로',
+        '이메일': 'contact@company.co.kr',
+        '연락처': '02-1234-5678',
+        '담당자': '홍길동 팀장',
+        '미팅': '2025-08-10',
+        'TA': '2025-08-10'
+    },
+    {
+        '회사명': '회사명2',
+        '매출': '180000000',
+        'F/U일정': '2025-08-20',
+        '상태': '상담완료',
+        '기관': '신용보증기금',
+        '진행사항': '계약서 작성 중',
+        '계약여부': '진행중',
+        '메모': '금리 협상 필요',
+        '지역': '경기도',
+        '상세지역': '성남시',
+        '주소': '경기도 성남시 분당구',
+        '이메일': 'info@company.com',
+        '연락처': '031-9876-5432',
+        '담당자': '김민아 대리',
+        '미팅': '2025-08-12',
+        'TA': '2025-08-10'
+    },
+    {
+        '회사명': '회사명3',
+        '매출': '320000000',
+        'F/U일정': '2025-08-25',
+        '상태': '신청완료',
+        '기관': '중진공',
+        '진행사항': '심사 대기중',
+        '계약여부': '대기',
+        '메모': '친환경 인증서 준비 중',
+        '지역': '부산',
+        '상세지역': '해운대구',
+        '주소': '센텀로',
+        '이메일': 'green@company.co.kr',
+        '연락처': '051-5555-1234',
+        '담당자': '홍길동 과장',
+        '미팅': '2025-08-14',
+        'TA': '2025-08-12'
+    },
+    {
+        '회사명': '회사명4',
+        '매출': '420000000',
+        'F/U일정': '2025-03-01',
+        '상태': '계약완료',
+        '기관': '소진공-혁신성장',
+        '진행사항': '계약 체결 완료',
+        '계약여부': '완료',
+        '메모': '성공 사례로 활용 가능',
+        '지역': '대구',
+        '상세지역': '수성구',
+        '주소': '범어로',
+        '이메일': 'digital@company.kr',
+        '연락처': '053-7777-8888',
+        '담당자': '홍길동 부장',
+        '미팅': '2025-08-08',
+        'TA': '2025-08-06'
+    },
+    {
+        '회사명': '회사명5',
+        '매출': '290000000',
+        'F/U일정': '2025-08-18',
+        '상태': '검토중',
+        '기관': '신용보증재단',
+        '진행사항': '추가 자료 요청',
+        '계약여부': '보류',
+        '메모': '임상시험 결과 대기중',
+        '지역': '인천',
+        '상세지역': '연수구',
+        '주소': '컨벤시아대로',
+        '이메일': 'bio@company.com',
+        '연락처': '032-3333-9999',
+        '담당자': '홍길동 센터장',
+        '미팅': '2025-08-16',
+        'TA': '2025-08-14'
+    }
+];
+
+// 샘플 데이터 추가 함수
+function addSampleData() {
+    // 5개 중 랜덤으로 하나 선택
+    const randomIndex = Math.floor(Math.random() * sampleData.length);
+    const selectedSample = sampleData[randomIndex];
+    
+    console.log('선택된 샘플 데이터:', selectedSample);
+    
+    // 서버에 샘플 데이터 추가 요청
+    fetch('/sales/add_sample_row/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify({
+            sample_data: selectedSample
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('샘플 데이터가 성공적으로 추가되었습니다! (' + selectedSample['회사명'] + ')', 'success');
+            
+            // 테이블 새로고침
+            refreshTable();
+            
+            // 칸반보드 새로고침 (필요한 경우)
+            if (window.kanbanAttribute) {
+                refreshKanban();
+            }
+            
+            // 캘린더 새로고침
+            refreshCalendar();
+            
+            // 상태 탭이 활성화된 경우 필터 재적용
+            if (window.currentStatusTab !== null && typeof applyStatusFilter === 'function') {
+                setTimeout(() => {
+                    applyStatusFilter();
+                }, 100);
+            }
+        } else {
+            showNotification('샘플 데이터 추가 실패: ' + (data.error || '알 수 없는 오류'), 'error');
+        }
+    })
+    .catch(error => {
+        console.error('샘플 데이터 추가 오류:', error);
+        showNotification('샘플 데이터 추가 중 오류가 발생했습니다.', 'error');
+    });
+}
 </script>
 
 <script src="{% static 'diary/auto_blog.js' %}"></script>

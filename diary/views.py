@@ -5056,4 +5056,125 @@ def convert_hwp_to_pdf_board(request):
         return JsonResponse({'success': False, 'error': f'오류가 발생했습니다: {str(e)}'})
 
 
+@csrf_exempt
+def add_sample_row(request):
+    """샘플 데이터를 추가하는 엔드포인트"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            sample_data = data.get('sample_data', {})
+            
+            print(f"=== 샘플 데이터 추가 요청 ===")
+            print(f"sample_data: {sample_data}")
+            
+            user_id = request.session.get('diary_member_id')
+            if not user_id:
+                return JsonResponse({'success': False, 'error': '로그인이 필요합니다.'})
+            
+            user = User.objects.get(id=user_id)
+            
+            # 사용자의 기존 드롭다운 속성들과 옵션들을 가져와서 샘플 데이터를 동적으로 생성
+            dropdown_data = {}
+            dropdown_attributes = Attribute.objects.filter(user=user, attributeType__name='dropdown')
+            
+            for attr in dropdown_attributes:
+                options = list(DropdownAttribute.objects.filter(attribute=attr).values_list('option', flat=True))
+                if options:
+                    dropdown_data[attr.name] = options
+            
+            print(f"사용자의 드롭다운 속성들: {dropdown_data}")
+            
+            # 샘플 데이터에서 드롭다운 필드들을 사용자의 기존 옵션으로 교체
+            final_sample_data = {}
+            for field_name, field_value in sample_data.items():
+                if field_name in dropdown_data and dropdown_data[field_name]:
+                    # 드롭다운 필드인 경우 기존 옵션 중에서 랜덤 선택
+                    final_sample_data[field_name] = random.choice(dropdown_data[field_name])
+                    print(f"드롭다운 필드 {field_name}: 기존 옵션 중 선택 - {final_sample_data[field_name]}")
+                else:
+                    # 일반 필드인 경우 원래 값 사용
+                    final_sample_data[field_name] = field_value
+            
+            # 새 Row 생성 (가장 위에 추가)
+            # 기존 모든 행들의 order를 1씩 증가
+            Row.objects.filter(user=user).update(order=models.F('order') + 1)
+            
+            # 새 행은 order=0으로 가장 위에 추가
+            new_row = Row.objects.create(order=0, user=user)
+            print(f"새 샘플 행 생성됨: row_id={new_row.id}, order=0 (가장 위에 추가)")
+            
+            # 각 필드별로 AttributeValue 생성
+            for field_name, field_value in final_sample_data.items():
+                if not field_value:  # 빈 값은 건너뜀
+                    continue
+                    
+                try:
+                    # 속성 찾기 또는 생성
+                    attr, created = Attribute.objects.get_or_create(
+                        name=field_name,
+                        user=user,
+                        defaults={
+                            'attributeType': AttributeType.objects.get_or_create(name='text')[0],
+                            'assential': False,
+                            'view_select': True,
+                            'order': Attribute.objects.filter(user=user).count() + 1
+                        }
+                    )
+                    
+                    if created:
+                        print(f"새 속성 생성됨: {field_name}")
+                    
+                    attr_type = attr.attributeType.name if attr.attributeType else 'text'
+                    value_to_save = field_value
+                    
+                    # Dropdown 속성인 경우 처리
+                    if attr_type == 'dropdown':
+                        # 드롭다운 옵션 찾기 또는 생성
+                        dropdown_option, created = DropdownAttribute.objects.get_or_create(
+                            attribute=attr,
+                            option=field_value,
+                            defaults={
+                                'color': f"#{random.randint(0, 0xFFFFFF):06x}",  # 랜덤 색상
+                                'order': DropdownAttribute.objects.filter(attribute=attr).count() + 1
+                            }
+                        )
+                        
+                        if created:
+                            print(f"새 드롭다운 옵션 생성됨: {field_name} = {field_value}")
+                        else:
+                            print(f"기존 드롭다운 옵션 사용: {field_name} = {field_value}")
+                        
+                        value_to_save = str(dropdown_option.id)
+                    
+                    # AttributeValue 생성
+                    AttributeValue.objects.create(
+                        row=new_row,
+                        attribute=attr,
+                        value=value_to_save
+                    )
+                    print(f"샘플 데이터 필드 설정: {field_name}={field_value}")
+                    
+                except Exception as e:
+                    print(f"필드 {field_name} 처리 중 오류: {e}")
+                    continue
+            
+            print(f"=== 샘플 데이터 추가 완료: row_id={new_row.id} ===")
+            return JsonResponse({
+                'success': True, 
+                'id': new_row.id,
+                'company_name': final_sample_data.get('회사명', '샘플 회사')
+            })
+            
+        except json.JSONDecodeError as e:
+            print(f"JSON 파싱 오류: {e}")
+            return JsonResponse({'success': False, 'error': 'JSON 파싱 오류'})
+        except User.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '유효하지 않은 사용자'})
+        except Exception as e:
+            print(f"샘플 데이터 추가 중 오류: {e}")
+            return JsonResponse({'success': False, 'error': f'오류가 발생했습니다: {str(e)}'})
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+
 

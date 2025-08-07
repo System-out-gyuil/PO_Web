@@ -210,6 +210,8 @@ input, select {
 } */
 .add-btn { background: #007bff; color: #fff; border: none; padding: 7px 15px; border-radius: 5px; cursor: pointer; }
 .add-btn:hover { background: #0056b3; }
+.add-sample-btn { background: #28a745 !important; }
+.add-sample-btn:hover { background: #1e7e34 !important; }
 .dropdown-edit { position: absolute; background: #fff; border: 1px solid #ccc; z-index: 4000; min-width: 180px; box-shadow: 0 2px 8px #ddd; padding: 10px; border-radius: 6px; }
 .dropdown-edit input[type=text] { width: 70%; margin-bottom: 5px; }
 .dropdown-edit ul { list-style: none; padding: 0; margin: 0; max-height: 180px; overflow-y: auto; }
