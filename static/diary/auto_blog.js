@@ -19,6 +19,9 @@ window.isBlogWritingActive = window.isBlogWritingActive || false;
 window.completionMessageAdded = window.completionMessageAdded || false;
 // 세션 ID 저장 변수 추가
 window.currentSessionId = window.currentSessionId || null;
+// 로그 중복 방지를 위한 해시 추적 변수 추가
+window.logMessageHistory = window.logMessageHistory || new Set();
+window.lastLogTimestamp = window.lastLogTimestamp || 0;
 
 // 모달 HTML을 동적으로 생성
 function createBlogModal() {
@@ -406,6 +409,10 @@ function openPreviewModal(startPolling = false) {
         // 로그 초기화
         clearPreviewLog();
         
+        // 로그 해시 히스토리 초기화
+        window.logMessageHistory = new Set();
+        window.lastLogTimestamp = 0;
+        
         // 초기 상태 표시
         const stepElement = document.getElementById('previewStep');
         const progressElement = document.getElementById('previewProgress');
@@ -470,6 +477,12 @@ function closePreviewModal() {
     // 상태 폴링 중지 및 작업 상태 비활성화
     window.isBlogWritingActive = false;
     stopStatusPolling();
+    
+    // 로그 해시 히스토리 정리
+    window.logMessageHistory = new Set();
+    window.lastLogTimestamp = 0;
+    
+    console.log('📊 미리보기 모달 닫기 및 히스토리 정리 완료');
 }
 
 // 상태 폴링 시작
@@ -500,6 +513,22 @@ function addToPreviewLog(message, type = 'info') {
     const logContainer = document.getElementById('previewLog');
     if (!logContainer) return;
     
+    // 메시지 해시 생성 (중복 방지용)
+    const messageHash = btoa(encodeURIComponent(message + type)).replace(/[+=]/g, '');
+    
+    // 중복 메시지 체크 (최근 10개 메시지 기록 유지)
+    if (window.logMessageHistory.has(messageHash)) {
+        console.log('📊 중복 로그 메시지 스킵:', message);
+        return;
+    }
+    
+    // 해시 히스토리 관리 (최대 20개까지만 유지)
+    if (window.logMessageHistory.size >= 20) {
+        const firstItem = window.logMessageHistory.values().next().value;
+        window.logMessageHistory.delete(firstItem);
+    }
+    window.logMessageHistory.add(messageHash);
+    
     const timestamp = new Date().toLocaleTimeString('ko-KR', { 
         hour12: false, 
         hour: '2-digit', 
@@ -511,6 +540,7 @@ function addToPreviewLog(message, type = 'info') {
     logEntry.style.marginBottom = '4px';
     logEntry.style.paddingLeft = '8px';
     logEntry.style.borderLeft = '3px solid';
+    logEntry.setAttribute('data-message-hash', messageHash); // 해시 저장
     
     // 타입에 따른 색상 설정
     switch (type) {
@@ -541,8 +571,15 @@ function addToPreviewLog(message, type = 'info') {
     // 로그 항목이 너무 많으면 오래된 것 제거 (최대 50개)
     const logEntries = logContainer.children;
     if (logEntries.length > 50) {
-        logContainer.removeChild(logEntries[0]);
+        const removedEntry = logEntries[0];
+        const removedHash = removedEntry.getAttribute('data-message-hash');
+        if (removedHash) {
+            window.logMessageHistory.delete(removedHash);
+        }
+        logContainer.removeChild(removedEntry);
     }
+    
+    console.log('📊 로그 추가됨:', message);
 }
 
 // 로그 초기화 함수
@@ -551,6 +588,12 @@ function clearPreviewLog() {
     if (logContainer) {
         logContainer.innerHTML = '<div style="color: #6c757d; font-style: italic;">블로그 작성을 시작합니다...</div>';
     }
+    
+    // 로그 해시 히스토리도 초기화
+    window.logMessageHistory = new Set();
+    window.lastLogTimestamp = 0;
+    
+    console.log('📊 로그 및 히스토리 초기화 완료');
 }
 
 // 미리보기 상태 업데이트
@@ -622,10 +665,6 @@ function updatePreviewStatus() {
                 
                 // 로그에 메시지 추가 (중복 방지를 위해 마지막 메시지와 비교)
                 if (status.content) {
-                    const logContainer = document.getElementById('previewLog');
-                    const lastLogEntry = logContainer ? logContainer.lastElementChild : null;
-                    const lastMessage = lastLogEntry ? lastLogEntry.textContent.replace(/^\[\d{2}:\d{2}:\d{2}\]\s/, '') : '';
-                    
                     const isBodyContent = status.step === 'typing' || 
                                          status.step === 'typing_with_typos' || 
                                          status.step === 'typing_title' ||
@@ -639,35 +678,21 @@ function updatePreviewStatus() {
                                          status.content.includes('오타 수정중') ||
                                          status.content.includes('백스페이스');
                     
-                    // 중복 방지 로직 강화: 정확한 메시지 내용과 단계 모두 확인
-                    const isDuplicate = (
-                        status.content === lastMessage || 
-                        (status.step === 'title_input_start' && lastMessage.includes('제목 입력 중')) ||
-                        (status.step === 'content_input_start' && lastMessage.includes('본문 입력 중')) ||
-                        (isBodyContent && (lastMessage === '제목을 입력하고 있습니다...' || lastMessage === '본문을 입력하고 있습니다...'))
-                    );
+                    // 타이핑 관련 반복 메시지는 덜 자주 로그에 추가 (타임스탬프 기반 제한)
+                    const currentTime = Date.now();
+                    const shouldSkipTypingMessage = isBodyContent && 
+                        (currentTime - window.lastLogTimestamp < 2000); // 2초 간격으로 제한
                     
-                    console.log('📊 로그 처리:', {
-                        content: status.content,
-                        step: status.step,
-                        isDuplicate,
-                        isTypoMessage,
-                        isBodyContent
-                    });
-                    
-                    // 중복되지 않고 오타 메시지가 아닌 경우만 로그에 추가
-                    if (!isDuplicate && !isTypoMessage) {
+                    // 오타 메시지는 로그에 추가하지 않음
+                    if (!isTypoMessage && !shouldSkipTypingMessage) {
                         if (isBodyContent) {
-                            // 본문 타이핑 중일 때는 일반적인 상태 메시지만 추가
+                            // 타이핑 중일 때는 일반적인 상태 메시지만 추가
                             if (status.content.includes('"')) {
-                                if (lastMessage !== '제목을 입력하고 있습니다...') {
-                                    addToPreviewLog('제목을 입력하고 있습니다...');
-                                }
+                                addToPreviewLog('제목을 입력하고 있습니다...');
                             } else {
-                                if (lastMessage !== '본문을 입력하고 있습니다...') {
-                                    addToPreviewLog('본문을 입력하고 있습니다...');
-                                }
+                                addToPreviewLog('본문을 입력하고 있습니다...');
                             }
+                            window.lastLogTimestamp = currentTime;
                         } else {
                             // 일반 상태 메시지
                             let logType = 'info';
@@ -677,7 +702,6 @@ function updatePreviewStatus() {
                                 logType = 'success';
                             }
                             addToPreviewLog(status.content, logType);
-                            console.log('📊 로그 추가됨:', status.content);
                         }
                     }
                 }
