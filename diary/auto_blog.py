@@ -28,6 +28,47 @@ from .session_handlers import cleanup_session_cache, get_active_sessions
 # 전역 변수로 현재 세션 ID 관리
 current_session_id = None
 
+# Redis 연결 디버깅을 위한 함수들
+def check_redis_connection():
+    """Redis 연결 상태 확인"""
+    try:
+        from django_redis import get_redis_connection
+        redis_client = get_redis_connection("default")
+        redis_client.ping()
+        print("✅ Redis 연결 정상")
+        return True
+    except Exception as e:
+        print(f"❌ Redis 연결 실패: {str(e)}")
+        return False
+
+def debug_cache_keys(session_id=None):
+    """캐시 키 디버깅"""
+    try:
+        from django_redis import get_redis_connection
+        redis_client = get_redis_connection("default")
+        
+        if session_id:
+            # 특정 세션 관련 키 검색
+            pattern = f"*{session_id}*"
+        else:
+            # 모든 blog_status 키 검색
+            pattern = "*blog_status*"
+        
+        keys = redis_client.keys(pattern)
+        print(f"📊 Redis 키 검색 결과 (패턴: {pattern}):")
+        for key in keys:
+            key_str = key.decode('utf-8') if isinstance(key, bytes) else key
+            try:
+                value = cache.get(key_str)
+                print(f"  - {key_str}: {value}")
+            except Exception as e:
+                print(f"  - {key_str}: 조회 실패 ({str(e)})")
+        
+        return [key.decode('utf-8') if isinstance(key, bytes) else key for key in keys]
+    except Exception as e:
+        print(f"❌ 캐시 키 디버깅 실패: {str(e)}")
+        return []
+
 def set_current_session_id(session_id):
     """현재 세션 ID 설정"""
     global current_session_id
@@ -83,11 +124,36 @@ def update_status(step, title='', content='', progress=0, session_id=None):
         'session_id': session_id  # 세션 ID도 함께 저장
     }
     
-    # Redis 캐시에 상태 저장
-    cache.set(cache_key, status_data, 1800)
+    # Redis 캐시에 상태 저장 (예외 처리 강화)
+    try:
+        cache.set(cache_key, status_data, 1800)
+        print(f"📊 상태 업데이트 [{session_id}]: {step} - {title} - {content[:50]}{'...' if len(content) > 50 else ''}")
+        print(f"📊 Redis에 저장된 상태 [{cache_key}]: {status_data}")
+    except Exception as e:
+        print(f"⚠️ Redis 캐시 저장 실패 [{cache_key}]: {str(e)}")
+        # Redis 실패 시 로컬 변수에 임시 저장
+        global _local_cache
+        if '_local_cache' not in globals():
+            _local_cache = {}
+        _local_cache[cache_key] = status_data
+        print(f"📊 로컬 캐시에 임시 저장: {cache_key}")
+
+def get_status_safe(cache_key, session_id=None):
+    """안전한 상태 조회 함수 - Redis 실패 시 로컬 캐시 사용"""
+    try:
+        status_data = cache.get(cache_key)
+        if status_data:
+            return status_data
+    except Exception as e:
+        print(f"⚠️ Redis 캐시 조회 실패 [{cache_key}]: {str(e)}")
     
-    print(f"📊 상태 업데이트 [{session_id}]: {step} - {title} - {content[:50]}{'...' if len(content) > 50 else ''}")
-    print(f"📊 Redis에 저장된 상태 [{cache_key}]: {status_data}")
+    # Redis 실패 시 로컬 캐시 확인
+    global _local_cache
+    if '_local_cache' in globals() and cache_key in _local_cache:
+        print(f"📊 로컬 캐시에서 조회: {cache_key}")
+        return _local_cache[cache_key]
+    
+    return None
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -96,10 +162,18 @@ def upload_blog_file(request):
     블로그 텍스트 파일 업로드 처리 - 파일 저장 없이 내용만 출력
     """
     try:
+        # Redis 연결 상태 먼저 확인
+        redis_connected = check_redis_connection()
+        print(f"📊 블로그 업로드 시작 - Redis 연결: {'정상' if redis_connected else '실패'}")
+        
         # 사용자별 고유 세션 ID 생성
         session_id = generate_session_id(request)
         print(f"📊 새로운 블로그 작성 세션 시작: {session_id}")
         print(f"📊 세션 ID 타입: {type(session_id)}, 값: '{session_id}'")
+        
+        # 캐시 키 디버깅
+        if redis_connected:
+            debug_cache_keys(session_id)
         
         file_contents = []
         text_content = ""
@@ -117,8 +191,20 @@ def upload_blog_file(request):
             'timestamp': datetime.now().isoformat(),
             'session_id': session_id
         }
-        cache.set(get_cache_key(session_id, 'blog_status'), initial_status, 1800)
-        print(f"📊 초기 상태 캐시에 저장됨 [{session_id}]: {initial_status}")
+        
+        # 초기 상태 저장 시도
+        cache_key = get_cache_key(session_id, 'blog_status')
+        try:
+            cache.set(cache_key, initial_status, 1800)
+            print(f"📊 초기 상태 캐시에 저장됨 [{session_id}]: {initial_status}")
+        except Exception as e:
+            print(f"⚠️ 초기 상태 캐시 저장 실패: {str(e)}")
+            # 로컬 캐시에 저장
+            global _local_cache
+            if '_local_cache' not in globals():
+                _local_cache = {}
+            _local_cache[cache_key] = initial_status
+            print(f"📊 로컬 캐시에 초기 상태 저장: {cache_key}")
         
         # 타이핑 설정 받기
         typo_probability = float(request.POST.get('typo_probability', 0.1))
@@ -789,10 +875,64 @@ def auto_blog_naver(file_texts, text_content, typo_probability, typing_speed, na
         # 작업 완료 후 전역 변수 정리
         set_current_session_id(None)
 
+# Redis 디버깅을 위한 추가 뷰
+@require_http_methods(["GET"])
+def debug_redis_status(request):
+    """Redis 상태 및 캐시 키 디버깅"""
+    try:
+        # Redis 연결 확인
+        redis_connected = check_redis_connection()
+        
+        # 모든 blog_status 관련 키 조회
+        all_keys = debug_cache_keys()
+        
+        # 세션 관련 정보
+        session_id = request.GET.get('session_id', '')
+        if not session_id:
+            session_id = generate_session_id(request)
+        
+        # 현재 세션의 캐시 키
+        current_cache_key = get_cache_key(session_id, 'blog_status')
+        current_status = get_status_safe(current_cache_key, session_id)
+        
+        debug_info = {
+            'redis_connected': redis_connected,
+            'session_id': session_id,
+            'current_cache_key': current_cache_key,
+            'current_status': current_status,
+            'all_cache_keys': all_keys,
+            'cache_key_count': len(all_keys),
+            'timestamp': datetime.now().isoformat()
+        }
+        
+        # 로컬 캐시 정보도 포함
+        global _local_cache
+        if '_local_cache' in globals():
+            debug_info['local_cache_keys'] = list(_local_cache.keys())
+            debug_info['local_cache_count'] = len(_local_cache)
+        else:
+            debug_info['local_cache_keys'] = []
+            debug_info['local_cache_count'] = 0
+        
+        return JsonResponse({
+            'success': True,
+            'debug_info': debug_info
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e),
+            'timestamp': datetime.now().isoformat()
+        })
+
 # 상태 조회를 위한 새로운 뷰 함수
 @require_http_methods(["GET"])
 def get_blog_status(request):
     """실시간 블로그 작성 상태 조회"""
+    # Redis 연결 상태 확인
+    redis_connected = check_redis_connection()
+    
     # 세션 ID 가져오기 (URL 파라미터 또는 세션에서)
     session_id = None
     
@@ -802,18 +942,40 @@ def get_blog_status(request):
         # URL 파라미터에 없으면 세션에서 가져오기
         session_id = generate_session_id(request)
     
+    # 세션 ID 유효성 검증 (16자리 해시 형태인지 확인)
+    if session_id and (len(session_id) != 16 or not all(c in '0123456789abcdef' for c in session_id.lower())):
+        print(f"⚠️ 유효하지 않은 세션 ID 형식: {session_id}")
+        return JsonResponse({
+            'success': False,
+            'error': 'Invalid session ID format',
+            'session_id': session_id
+        })
+    
     print(f"📊 상태 조회 요청 - 세션 ID: {session_id}")
+    print(f"📊 Redis 연결 상태: {'정상' if redis_connected else '실패'}")
     
-    # 해당 세션의 상태 데이터 조회
-    status_data = cache.get(get_cache_key(session_id, 'blog_status'))
+    # 캐시 키 디버깅 (세션 ID 관련 키들 확인)
+    if redis_connected:
+        debug_cache_keys(session_id)
     
-    print(f"📊 상태 조회 요청 - Redis에서 가져온 데이터: {status_data}")
+    # 해당 세션의 상태 데이터 조회 (안전한 조회 함수 사용)
+    cache_key = get_cache_key(session_id, 'blog_status')
+    status_data = get_status_safe(cache_key, session_id)
+    
+    print(f"📊 상태 조회 요청 - 캐시 키: {cache_key}")
+    print(f"📊 상태 조회 요청 - 조회 결과: {status_data}")
     
     if status_data:
+        # 세션 ID 일치 여부 확인
+        stored_session_id = status_data.get('session_id')
+        if stored_session_id and stored_session_id != session_id:
+            print(f"⚠️ 세션 ID 불일치: 요청={session_id}, 저장됨={stored_session_id}")
+        
         return JsonResponse({
             'success': True,
             'status': status_data,
-            'session_id': session_id
+            'session_id': session_id,
+            'redis_connected': redis_connected
         })
     else:
         # 캐시에 데이터가 없는 경우 기본 상태 반환
@@ -829,8 +991,16 @@ def get_blog_status(request):
         }
         print(f"📊 캐시에 데이터 없음 - 기본 상태 반환: {default_status}")
         
+        # 기본 상태를 캐시에 저장 시도
+        try:
+            cache.set(cache_key, default_status, 1800)
+            print(f"📊 기본 상태를 캐시에 저장: {cache_key}")
+        except Exception as e:
+            print(f"⚠️ 기본 상태 캐시 저장 실패: {str(e)}")
+        
         return JsonResponse({
             'success': True,
             'status': default_status,
-            'session_id': session_id
+            'session_id': session_id,
+            'redis_connected': redis_connected
         })
