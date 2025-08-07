@@ -2969,6 +2969,11 @@ function processDropdownOptionsForNewRow(options, type, td, tr) {
         
         // 단일선택: 옵션 클릭 시 바로 선택
         window.dropdown.querySelectorAll('.dropdown-item[data-option-id]').forEach(function(item) {
+            // mousedown 이벤트 추가 - 글로벌 핸들러보다 먼저 실행되도록
+            item.addEventListener('mousedown', function(e) {
+                e.stopPropagation();
+            });
+            
             item.addEventListener('click', function(e) {
                 e.stopPropagation();
                 const optionId = this.getAttribute('data-option-id');

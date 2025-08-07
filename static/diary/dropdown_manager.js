@@ -1606,6 +1606,12 @@ function selectModalDropdownOption(rowId, fieldName, optionId, optionText, btn, 
                 }
             };
             
+            // mousedown 이벤트 추가 - 글로벌 핸들러보다 먼저 실행되도록
+            addBtn.addEventListener('mousedown', function(e) {
+                e.stopPropagation();
+                e.preventDefault();
+            });
+            
             addBtn.addEventListener('click', function(e) {
                 e.stopPropagation();
                 e.preventDefault();
@@ -1622,6 +1628,11 @@ function selectModalDropdownOption(rowId, fieldName, optionId, optionText, btn, 
             
             // 입력 필드 클릭 시 드롭다운이 닫히지 않도록
             inputField.addEventListener('click', function(e) {
+                e.stopPropagation();
+            });
+            
+            // 입력 필드 mousedown 이벤트도 추가
+            inputField.addEventListener('mousedown', function(e) {
                 e.stopPropagation();
             });
         }
@@ -1838,6 +1849,12 @@ function selectModalDropdownOption(rowId, fieldName, optionId, optionText, btn, 
         
         // 수정 버튼 이벤트
         currentDropdown.querySelectorAll('button[data-edit]').forEach(function(editBtn) {
+            // mousedown 이벤트 추가 - 글로벌 핸들러보다 먼저 실행되도록
+            editBtn.addEventListener('mousedown', function(e) {
+                e.stopPropagation();
+                e.preventDefault();
+            });
+            
             editBtn.addEventListener('click', function(e) {
                 e.stopPropagation();
                 e.preventDefault();
@@ -1851,6 +1868,12 @@ function selectModalDropdownOption(rowId, fieldName, optionId, optionText, btn, 
         
         // 삭제 버튼 이벤트
         currentDropdown.querySelectorAll('button[data-del]').forEach(function(delBtn) {
+            // mousedown 이벤트 추가 - 글로벌 핸들러보다 먼저 실행되도록
+            delBtn.addEventListener('mousedown', function(e) {
+                e.stopPropagation();
+                e.preventDefault();
+            });
+            
             delBtn.addEventListener('click', function(e) {
                 e.stopPropagation();
                 e.preventDefault();
