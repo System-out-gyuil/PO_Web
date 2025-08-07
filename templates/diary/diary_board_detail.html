@@ -379,36 +379,11 @@
             box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
         }
     </style>
+    <link rel="stylesheet" href="{% static 'diary/base/base.css' %}">
 </head>
 <body>
     <!-- Header -->
-    <header class="header">
-        <div class="header-content">
-            <div class="logo header-title" onclick="window.location.href='/sales/'" style="cursor: pointer;">
-                <span>💎</span>
-                <span>자금왕</span>
-                <span style="font-size: 0.9rem; color: #6c757d; margin-left: 0.5rem;" class="header-sub-title">정책자금 전용 CRM</span>
-            </div>
-            <div class="diary-btn-container nav-buttons">
-              <a href="/sales/diary/">
-                <button class="diary-btn bg-green-500 hover:bg-green-600 text-white px-6 py-2 transition font-medium" style="border-radius: 6px;">
-                    다이어리
-                </button>
-            </a>
-                {% if is_authenticated %}
-                <button class="header-btn logout-btn" onclick="logout()">
-                  로그아웃
-              </button>
-                {% else %}
-                <a href="/sales/login/">
-                  <button class="header-btn login-btn">
-                    로그인
-                  </button>
-                </a>
-                {% endif %}
-            </div>
-        </div>
-    </header>
+    {% include 'diary/header.html' %}
 
     <!-- Main Content -->
     <main class="container">
@@ -492,6 +467,7 @@
 
     <!-- Custom JS -->
     <script src="{% static 'diary/diary_board.js' %}"></script>
+    <script src="{% static 'diary/base/base.js' %}"></script>
     <script>
         // CSRF 토큰 가져오기
         function getCsrfToken() {
