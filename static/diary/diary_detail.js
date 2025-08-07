@@ -85,7 +85,7 @@ function generateDetailModalContent(attributes, rowData, rowId) {
             // 지역과 상세지역을 한 줄로 표시
             if (!regionProcessed) {
                 html += `
-                    <div class="attribute-row" draggable="true" data-attribute-id="${attr.id}" data-attribute-name="지역" style="display:flex;align-items:center;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #eee;cursor:move;position:relative;">
+                    <div class="attribute-row" data-attribute-id="${attr.id}" data-attribute-name="지역" style="display:flex;align-items:center;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #eee;position:relative;">
                         <div class="drag-handle" style="position:absolute;left:-15px;top:50%;transform:translateY(-50%);color:#ccc;cursor:move;">⋮⋮</div>
                         <label class="attribute-label" style="width:120px;font-weight:bold;color:#007bff;cursor:move;user-select:none;">지역:</label>
                         <div style="flex:1;display:flex;align-items:center;gap:10px;">
@@ -674,7 +674,7 @@ function generateDetailModalContent(attributes, rowData, rowId) {
             }
             
             html += `
-                <div class="attribute-row" draggable="true" data-attribute-id="${attr.id}" data-attribute-name="${attr.name}" style="display:flex;align-items:center;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #eee;cursor:move;position:relative;">
+                <div class="attribute-row" data-attribute-id="${attr.id}" data-attribute-name="${attr.name}" style="display:flex;align-items:center;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #eee;position:relative;">
                     <div class="drag-handle" style="position:absolute;left:-15px;top:50%;transform:translateY(-50%);color:#ccc;cursor:move;">⋮⋮</div>
                     <label class="attribute-label" style="width:120px;font-weight:bold;color:${labelColor};cursor:move;user-select:none;">${attr.name}:</label>
                     <div style="flex:1;">${inputHtml}</div>
@@ -760,11 +760,33 @@ function initializeDetailModalDragAndDrop() {
     const attributeRows = container.querySelectorAll('.attribute-row');
     
     attributeRows.forEach(row => {
-        row.addEventListener('dragstart', function(e) {
-            draggedElement = this;
-            this.style.opacity = '0.5';
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/html', this.outerHTML);
+        // attribute-row의 draggable 속성을 false로 설정
+        row.draggable = false;
+        
+        // 라벨 요소를 찾아서 드래그 가능하게 설정
+        const label = row.querySelector('.attribute-label');
+        const dragHandle = row.querySelector('.drag-handle');
+        
+        if (label) {
+            label.draggable = true;
+            label.style.cursor = 'move';
+        }
+        
+        if (dragHandle) {
+            dragHandle.draggable = true;
+            dragHandle.style.cursor = 'move';
+        }
+        
+        // 라벨과 드래그 핸들에만 드래그 시작 이벤트 추가
+        [label, dragHandle].forEach(element => {
+            if (element) {
+                element.addEventListener('dragstart', function(e) {
+                    draggedElement = row; // 실제로는 row 전체를 드래그 대상으로 설정
+                    row.style.opacity = '0.5';
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/html', row.outerHTML);
+                });
+            }
         });
         
         row.addEventListener('dragend', function(e) {

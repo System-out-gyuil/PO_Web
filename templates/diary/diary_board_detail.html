@@ -758,10 +758,11 @@
                     </div>
                 `;
             }
-            // 오피스 문서 파일들 (Google Docs Viewer 사용)
+            // 오피스 문서 파일들 (Google Docs Viewer 사용) - xlsx 제외
             else if (
-                ['docx','doc','pptx','ppt','xlsx','xls'].includes(fileExt) ||
-                contentType.includes('wordprocessingml') || contentType.includes('presentationml') || contentType.includes('spreadsheetml') || contentType.includes('msword')
+                ['docx','doc','pptx','ppt','xls'].includes(fileExt) ||
+                (contentType.includes('wordprocessingml') || contentType.includes('presentationml') || contentType.includes('msword')) &&
+                !contentType.includes('spreadsheetml')
             ) {
                 const encodedUrl = encodeURIComponent(fileUrl);
                 previewContent = `
@@ -778,6 +779,24 @@
                                 다운로드
                             </button>
                         </div>
+                    </div>
+                `;
+            }
+            // Excel 파일 (xlsx) - 미리보기 불가능
+            else if (fileExt === 'xlsx' || contentType.includes('spreadsheetml')) {
+                previewContent = `
+                    <div style="text-align: center; background: #f8f9fa; padding: 40px; border-radius: 8px;">
+                        <div style="font-size: 48px; margin-bottom: 20px;">📊</div>
+                        <div style="font-size: 18px; margin-bottom: 20px; color: #333;">${fileName}</div>
+                        <div style="font-size: 14px; color: #666; margin-bottom: 20px;">
+                            엑셀 파일은 미리보기가 불가능 합니다.
+                        </div>
+                        
+                        <button data-saved-name="${file.saved_name}" data-original-name="${fileName}"
+                                onclick="downloadFileFromButton(this)" 
+                                style="padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 4px; font-weight: 500; cursor: pointer;">
+                            다운로드
+                        </button>
                     </div>
                 `;
             }

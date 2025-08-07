@@ -646,6 +646,14 @@
           <input type="file" id="excelFileInput" accept=".xlsx" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;">
         </div>
         
+        <!-- 양식 다운받기 버튼 추가 -->
+        <div style="margin-bottom:20px;text-align:center;">
+          <button onclick="downloadExcelTemplate()" style="padding:10px 20px;background:#17a2b8;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:14px;">
+            📋 양식 다운받기
+          </button>
+          <p style="color:#6c757d;font-size:12px;margin:5px 0 0 0;">샘플 데이터가 포함된 엑셀 양식을 다운로드할 수 있습니다.</p>
+        </div>
+        
         <div id="excelPreview" style="margin-bottom:20px;display:none;">
           <h4 style="margin-bottom:10px;">파일 미리보기</h4>
           <div id="excelPreviewContent" style="max-height:300px;overflow-y:auto;border:1px solid #ddd;border-radius:4px;padding:10px;background:#f8f9fa;">
@@ -3742,6 +3750,19 @@ function addSampleData() {
         console.error('샘플 데이터 추가 오류:', error);
         showNotification('샘플 데이터 추가 중 오류가 발생했습니다.', 'error');
     });
+}
+
+// closeDropdown 함수가 전역적으로 사용될 수 있도록 수정
+function closeDropdown() {
+    if (window.dropdown) {
+        window.dropdown.remove();
+        window.dropdown = null;
+    }
+}
+
+// 엑셀 양식 다운로드 함수
+function downloadExcelTemplate() {
+    window.location.href = '/sales/download_excel_template/';
 }
 </script>
 

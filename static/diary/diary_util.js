@@ -161,10 +161,10 @@ function showFilePreviewModal(fileInfo) {
         ) {
             viewerHtml = `
                 <div style="text-align:center; color:#888; padding:40px;">
-                    이 파일 형식은 미리보기를 지원하지 않습니다.<br>
-                    아래 버튼을 눌러 파일을 다운로드하세요.<br><br>
+                    <div style="font-size: 48px; margin-bottom: 20px;">📊</div>
+                    <div style="font-size: 18px; margin-bottom: 20px; color: #333;">엑셀 파일은 미리보기가 불가능 합니다.</div>
                     <button onclick="window.open('${fileInfo.download_url || previewUrl}', '_blank')"
-                            style="padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                            style="padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;">
                         파일 다운로드
                     </button>
                 </div>

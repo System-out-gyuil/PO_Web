@@ -5,7 +5,7 @@ from .login_views import LoginView, LogoutView, SignupView, ChangePasswordView, 
 from .main_views import DiaryMainView
 from .file_handler import upload_file, delete_file, download_file, download_file_note
 from .calendar_handlers import get_datetime_attributes, get_calendar_settings, save_calendar_settings, calendar_events
-from .excel_handlers import preview_excel, upload_excel
+from .excel_handlers import preview_excel, upload_excel, download_excel_template
 from .kanban_handlers import update_kanban_option_order, get_kanban_data, get_kanban_settings, save_kanban_settings, get_dropdown_attributes_for_kanban
 from .attribute_handlers import delete_attribute_value, toggle_attribute_visibility, update_attribute_visibility, get_dropdown_attributes, add_attribute, delete_attribute
 from .audio_handler import upload_audio_file, get_audio_files_by_date, delete_audio_file, update_audio_file_order
@@ -113,6 +113,7 @@ urlpatterns = [
     # 엑셀 파일 처리 관련 API
     path('preview_excel/', preview_excel, name='preview_excel'),
     path('upload_excel/', upload_excel, name='upload_excel'),
+    path('download_excel_template/', download_excel_template, name='download_excel_template'),
 
     # 칸반보드 관련 처리
     path('update_kanban_option_order/', update_kanban_option_order, name='update_kanban_option_order'),

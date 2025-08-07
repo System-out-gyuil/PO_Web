@@ -11,6 +11,7 @@ import uuid
 import os
 from botocore.exceptions import ClientError
 from datetime import datetime
+from django.http import HttpResponse
 
 @csrf_exempt
 def preview_excel(request):
@@ -284,4 +285,124 @@ def upload_excel(request):
                 'error': str(e)
             })
     
-    return JsonResponse({'error': 'Invalid method'}, status=405) 
+    return JsonResponse({'error': 'Invalid method'}, status=405)
+
+@require_GET
+def download_excel_template(request):
+    """엑셀 양식 다운로드 API"""
+    try:
+        # S3 클라이언트 생성
+        s3_client = boto3.client(
+            's3',
+            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+            region_name=settings.AWS_S3_REGION_NAME
+        )
+        
+        # S3에 업로드된 엑셀 양식 파일 정보
+        bucket_name = settings.AWS_STORAGE_BUCKET_NAME
+        s3_key = 'excel_sample/엑셀양식.xlsx'
+        
+        # 서명된 URL 생성 (1시간 유효)
+        signed_url = s3_client.generate_presigned_url(
+            'get_object',
+            Params={'Bucket': bucket_name, 'Key': s3_key},
+            ExpiresIn=3600  # 1시간
+        )
+        
+        # 서명된 URL로 리다이렉트
+        from django.shortcuts import redirect
+        return redirect(signed_url)
+            
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'양식 다운로드 실패: {str(e)}'
+        })
+
+def create_sample_excel_template(request):
+    """샘플 데이터가 포함된 엑셀 양식 생성"""
+    try:
+        user_id = request.session.get('diary_member_id')
+        if not user_id:
+            return JsonResponse({
+                'success': False,
+                'error': '로그인이 필요합니다.'
+            })
+        
+        user = User.objects.get(id=user_id)
+        
+        # 사용자의 모든 속성 가져오기
+        attributes = Attribute.objects.filter(user=user).order_by('order')
+        
+        # 샘플 데이터 생성
+        sample_data = {}
+        
+        for attr in attributes:
+            attr_name = attr.name
+            
+            if attr.attributeType and attr.attributeType.name == 'dropdown':
+                # 드롭다운 타입인 경우 첫 번째 옵션 사용
+                dropdown_options = DropdownAttribute.objects.filter(attribute=attr).first()
+                if dropdown_options:
+                    sample_data[attr_name] = dropdown_options.option
+                else:
+                    sample_data[attr_name] = "옵션1"
+            elif attr.attributeType and attr.attributeType.name == 'datetime':
+                # 날짜 타입인 경우
+                sample_data[attr_name] = "2024-01-01"
+            else:
+                # 텍스트 타입인 경우
+                if '회사명' in attr_name or '업체명' in attr_name:
+                    sample_data[attr_name] = "샘플회사"
+                elif '매출' in attr_name or '금액' in attr_name:
+                    sample_data[attr_name] = "1000"
+                elif '담당자' in attr_name:
+                    sample_data[attr_name] = "홍길동"
+                elif '연락처' in attr_name or '전화' in attr_name:
+                    sample_data[attr_name] = "010-1234-5678"
+                elif '주소' in attr_name:
+                    sample_data[attr_name] = "서울시 강남구"
+                elif '메모' in attr_name:
+                    sample_data[attr_name] = "샘플 메모입니다"
+                else:
+                    sample_data[attr_name] = f"샘플_{attr_name}"
+        
+        # 여러 행의 샘플 데이터 생성 (3개 행)
+        sample_rows = []
+        for i in range(3):
+            row_data = {}
+            for attr_name, value in sample_data.items():
+                if '회사명' in attr_name or '업체명' in attr_name:
+                    row_data[attr_name] = f"샘플회사{i+1}"
+                elif '매출' in attr_name or '금액' in attr_name:
+                    row_data[attr_name] = str((i+1) * 1000)
+                else:
+                    row_data[attr_name] = value
+            sample_rows.append(row_data)
+        
+        # 데이터프레임 생성
+        df = pd.DataFrame(sample_rows)
+        
+        # 메모리 내에서 엑셀 파일 생성
+        from io import BytesIO
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='샘플데이터')
+        
+        output.seek(0)
+        
+        # HTTP 응답 생성
+        response = HttpResponse(
+            output.getvalue(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = 'attachment; filename="양식_샘플.xlsx"'
+        
+        return response
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'양식 생성 실패: {str(e)}'
+        }) 

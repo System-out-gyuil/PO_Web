@@ -193,12 +193,31 @@ function showFilePreview(fileId, fileInfo, rowId, fieldName) {
                         </audio>
                     </div>
                 `;
-            } else if (['docx', 'doc', 'pptx', 'ppt', 'xlsx', 'xls'].includes(fileExt) || 
+            } else if (['xlsx', 'xls'].includes(fileExt) || 
+                       contentType.includes('spreadsheetml')) {
+                // Excel 파일 - 미리보기 불가능
+                previewContent = `
+                    <div style="text-align: center; background: #f8f9fa; padding: 40px; border-radius: 8px;">
+                        <div style="font-size: 48px; margin-bottom: 20px;">📊</div>
+                        <div style="font-size: 18px; margin-bottom: 20px; color: #333;">${fileName}</div>
+                        <div style="font-size: 14px; color: #666; margin-bottom: 20px;">
+                            엑셀 파일은 미리보기가 불가능 합니다.
+                        </div>
+                        <button onclick="window.open('${fileUrl}', '_blank')" 
+                                style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; font-weight: 500; margin-right: 10px; cursor: pointer;">
+                            새 창에서 열기
+                        </button>
+                        <button onclick="downloadFile('${rowId}', '${fieldName}', '${fileId}')" 
+                                style="padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 4px; font-weight: 500; cursor: pointer;">
+                            다운로드
+                        </button>
+                    </div>
+                `;
+            } else if (['docx', 'doc', 'pptx', 'ppt'].includes(fileExt) || 
                        contentType.includes('wordprocessingml') || 
-                       contentType.includes('presentationml') || 
-                       contentType.includes('spreadsheetml') ||
+                       contentType.includes('presentationml') ||
                        contentType.includes('msword')) {
-                // Office 문서 파일들 - Google Docs Viewer 사용
+                // 다른 Office 문서 파일들 - Google Docs Viewer 사용 (Excel 제외)
                 const encodedUrl = encodeURIComponent(fileUrl);
                 previewContent = `
                     <div style="width: 100%; height: 100%; display: flex; flex-direction: column;">
