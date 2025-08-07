@@ -8,6 +8,7 @@
     <title>관리자 페이지</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
     <style>
         .sidebar {
             min-height: 100vh;
@@ -135,29 +136,7 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
         
-        /* 메인페이지 버튼 스타일 */
-        .main-btn {
-            background: #007bff;
-            color: white;
-            border-color: #007bff;
-        }
         
-        .main-btn:hover {
-            background: #0056b3;
-            border-color: #0056b3;
-        }
-        
-        /* 다이어리페이지 버튼 스타일 */
-        .diary-btn {
-            background: #28a745;
-            color: white;
-            border-color: #28a745;
-        }
-        
-        .diary-btn:hover {
-            background: #1e7e34;
-            border-color: #1e7e34;
-        }
         
         /* 관리자 권한 토글 버튼 스타일 */
         .admin-toggle-btn {
@@ -216,27 +195,12 @@
             line-height: 1.5;
         }
     </style>
+    <link rel="stylesheet" href="{% static 'diary/base/base.css' %}">
+
 </head>
 <body>
     <!-- 헤더 -->
-    <header class="main-header">
-        <div class="header-container">
-            <div class="header-left">
-                <h1 class="header-title">관리자 페이지</h1>
-            </div>
-            <div class="header-right">
-                <!-- 메인페이지 버튼 -->
-                <a href="/sales/" class="header-btn main-btn">
-                    메인
-                </a>
-                
-                <!-- 다이어리페이지 버튼 -->
-                <a href="/sales/diary/" class="header-btn diary-btn">
-                    다이어리
-                </a>
-            </div>
-        </div>
-    </header>
+    {% include 'diary/header.html' %}
 
     <div class="container-fluid">
         <div class="row">
@@ -670,5 +634,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{% static 'diary/diary_admin.js' %}"></script>
+    <script src="{% static 'diary/base/base.js' %}"></script>
 </body>
 </html>

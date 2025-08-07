@@ -1,0 +1,601 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>게시판 - 자금왕</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Base CSS and Custom CSS -->
+    <link rel="stylesheet" href="{% static 'diary/diary_board.css' %}">
+    <link rel="stylesheet" href="{% static 'diary/board/board.css' %}">
+    <link rel="stylesheet" href="{% static 'diary/base/base.css' %}">
+    
+</head>
+<body>
+    <!-- Header -->
+    {% include 'diary/header.html' %}
+
+    <!-- Main Content -->
+    <main class="container">
+        <div class="board-container">
+            <!-- 헤더 -->
+            <div class="board-header">
+                <h1><i class="fas fa-clipboard-list"></i> 게시판</h1>
+                <p class="text-muted">자유롭게 소통하는 게시판입니다</p>
+            </div>
+
+            <!-- 게시판 탭 -->
+            <div class="tab-content active" id="board-tab">
+                <!-- 검색 및 필터 -->
+                <div class="search-controls">
+                    <div class="search-box" style="max-width: 420px; width: 100%;">
+                        <div style="position: relative; width: 100%;">
+                            <input type="text" id="board-search" placeholder="게시글 검색..." onkeyup="searchBoards()"
+                                class="search-input bg-white border border-gray-200 rounded-full pl-5 pr-12 py-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition w-full text-gray-800 placeholder-gray-400" />
+                            <button onclick="searchBoards()" type="button"
+                                style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: #667eea; border: none; border-radius: 50%; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(102,126,234,0.08);"
+                                class="hover:bg-indigo-700 transition">
+                                <i class="fas fa-search" style="color: white; font-size: 1.1rem;"></i>
+                            </button>
+                        </div>
+                    </div>
+                    {% if is_authenticated %}
+                    <div class="button-group" id="user-buttons">
+                        <button class="write-button" onclick="showWriteBoardModal()">
+                            <i class="fas fa-pen"></i> 게시글 작성
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <!-- 게시글 목록 -->
+                <div class="announcement-list" id="board-list">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+                
+                <!-- 페이지네이션 -->
+                <div class="pagination" id="board-pagination" style="display: none;">
+                </div>
+            </div>
+
+            <!-- 모달 -->
+            <div class="modal" id="writeBoardModal" style="display: none;">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>게시글 작성</h3>
+                        <button class="close" onclick="closeWriteBoardModal()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label class="form-label">제목</label>
+                            <input type="text" id="board-title-input" class="form-input" placeholder="제목을 입력하세요">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">내용</label>
+                            <textarea id="board-content-input" class="form-textarea" placeholder="내용을 입력하세요"></textarea>
+                        </div>
+                        <div class="file-upload-section">
+                            <div class="file-upload-area" onclick="document.getElementById('board-file-input').click()">
+                                <div class="file-upload-icon">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                </div>
+                                <div class="file-upload-text">
+                                    파일을 드래그하거나 클릭하여 업로드하세요
+                                </div>
+                            </div>
+                            <input type="file" id="board-file-input" class="file-input" multiple>
+                            <div class="file-list" id="boardFileList"></div>
+                            <div class="upload-progress" id="boardUploadProgress" style="display: none;">
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="boardProgressBar"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn-cancel" onclick="closeWriteBoardModal()">취소</button>
+                        <button class="btn-submit" onclick="submitBoard()">작성</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // 게시글 검색
+        function searchBoards() {
+            const searchInput = document.getElementById('board-search');
+            const searchTerm = searchInput ? searchInput.value.trim() : '';
+            loadBoards(1, searchTerm);
+        }
+        
+        // 게시글 목록 로드
+        async function loadBoards(page = 1, search = '') {
+            try {
+                const params = new URLSearchParams({
+                    page: page,
+                    search: search
+                });
+                
+                const response = await fetch(`/sales/board/api/?${params}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    renderBoards(data.boards);
+                    renderPagination(data.pagination);
+                } else {
+                    showError('게시글을 불러오는데 실패했습니다: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error loading boards:', error);
+                showError('게시글을 불러오는데 실패했습니다.');
+            }
+        }
+        
+        // 게시글 목록 렌더링
+        function renderBoards(boards) {
+            const boardList = document.getElementById('board-list');
+            
+            if (!boardList) return;
+            
+            if (boards.length === 0) {
+                boardList.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-clipboard-list"></i>
+                        <h5>게시글이 없습니다</h5>
+                        <p>첫 번째 게시글을 작성해보세요.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '';
+            boards.forEach(board => {
+                const createdDate = new Date(board.created_at).toLocaleDateString('ko-KR');
+                const contentPreview = board.content.length > 300 ? 
+                    board.content.substring(0, 300) + '...' : board.content;
+                
+                html += `
+                    <div class="announcement-item" onclick="viewBoardDetail(${board.id})">
+                        <div class="announcement-header">
+                            <h3 class="announcement-title">${escapeHtml(board.title)}</h3>
+                            <div class="announcement-meta">
+                                <span class="announcement-author">
+                                    <i class="fas fa-user"></i> ${escapeHtml(board.author_name)}
+                                </span>
+                                <span class="announcement-date">
+                                    <i class="fas fa-calendar-alt"></i> ${createdDate}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="announcement-content">
+                            <p>${escapeHtml(contentPreview)}</p>
+                        </div>
+                        ${board.files && board.files.length > 0 ? `
+                            <div class="announcement-files">
+                                <i class="fas fa-paperclip"></i> 첨부파일 ${board.files.length}개
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            });
+            
+            boardList.innerHTML = html;
+        }
+        
+        // 페이지네이션 렌더링
+        function renderPagination(pagination) {
+            const paginationContainer = document.getElementById('board-pagination');
+            
+            if (!paginationContainer) return;
+            
+            if (pagination.num_pages <= 1) {
+                paginationContainer.innerHTML = '';
+                paginationContainer.style.display = 'none';
+                return;
+            }
+            
+            paginationContainer.style.display = 'flex';
+            
+            let html = '';
+            
+            // 이전 페이지
+            if (pagination.has_previous) {
+                html += `<a href="#" class="page-button" onclick="loadBoards(${pagination.previous_page_number})">
+                    <i class="fas fa-chevron-left"></i>
+                </a>`;
+            }
+            
+            // 페이지 번호
+            const startPage = Math.max(1, pagination.number - 2);
+            const endPage = Math.min(pagination.num_pages, pagination.number + 2);
+            
+            for (let i = startPage; i <= endPage; i++) {
+                const activeClass = i === pagination.number ? 'active' : '';
+                html += `<a href="#" class="page-button ${activeClass}" onclick="loadBoards(${i})">${i}</a>`;
+            }
+            
+            // 다음 페이지
+            if (pagination.has_next) {
+                html += `<a href="#" class="page-button" onclick="loadBoards(${pagination.next_page_number})">
+                    <i class="fas fa-chevron-right"></i>
+                </a>`;
+            }
+            
+            paginationContainer.innerHTML = html;
+        }
+        
+        // 게시글 상세보기
+        function viewBoardDetail(boardId) {
+            window.location.href = `/sales/board/${boardId}/`;
+        }
+        
+        // 에러 표시
+        function showError(message) {
+            const boardList = document.getElementById('board-list');
+            if (boardList) {
+                boardList.innerHTML = `
+                    <div class="error-message">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        ${escapeHtml(message)}
+                    </div>
+                `;
+            }
+        }
+        
+        // HTML 이스케이프 함수
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // 게시글 작성 모달 표시
+        function showWriteBoardModal() {
+            const modal = document.getElementById('writeBoardModal');
+            modal.style.display = 'block';
+            
+            // 폼 초기화
+            document.getElementById('board-title-input').value = '';
+            document.getElementById('board-content-input').value = '';
+            document.getElementById('boardFileList').innerHTML = '';
+            document.getElementById('boardUploadProgress').style.display = 'none';
+            
+            // 제목 입력 필드에 포커스
+            document.getElementById('board-title-input').focus();
+            
+            // 파일 입력 이벤트 리스너 추가
+            setupFileUpload();
+        }
+        
+        // 게시글 작성 모달 닫기
+        function closeWriteBoardModal() {
+            const modal = document.getElementById('writeBoardModal');
+            modal.style.display = 'none';
+        }
+        
+        // 파일 업로드 설정
+        function setupFileUpload() {
+            const fileInput = document.getElementById('board-file-input');
+            const fileList = document.getElementById('boardFileList');
+            
+            // 파일 선택 이벤트
+            fileInput.addEventListener('change', handleFileSelect);
+            
+            // 드래그 앤 드롭 이벤트
+            const uploadSection = document.querySelector('.file-upload-section');
+            
+            uploadSection.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadSection.style.borderColor = '#667eea';
+            });
+            
+            uploadSection.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                uploadSection.style.borderColor = '#dee2e6';
+            });
+            
+            uploadSection.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadSection.style.borderColor = '#dee2e6';
+                
+                const files = e.dataTransfer.files;
+                handleFiles(files);
+            });
+        }
+        
+        // 파일 선택 처리
+        function handleFileSelect(event) {
+            const files = event.target.files;
+            handleFiles(files);
+        }
+        
+        // 파일 처리
+        function handleFiles(files) {
+            const fileList = document.getElementById('boardFileList');
+            
+            Array.from(files).forEach(file => {
+                // 파일 크기 제한 (10MB)
+                if (file.size > 10 * 1024 * 1024) {
+                    alert(`파일 크기가 너무 큽니다: ${file.name}`);
+                    return;
+                }
+                
+                // 파일 아이템 생성
+                const fileItem = createFileItem(file);
+                fileList.appendChild(fileItem);
+            });
+        }
+        
+        // 파일 아이템 생성
+        function createFileItem(file) {
+            const fileItem = document.createElement('div');
+            fileItem.className = 'file-item';
+            fileItem.dataset.fileName = file.name;
+            fileItem.dataset.fileSize = file.size;
+            
+            const fileIcon = getFileIcon(file.name);
+            const fileSize = formatFileSize(file.size);
+            
+            fileItem.innerHTML = `
+                <div class="file-info">
+                    <div class="file-icon">
+                        ${fileIcon}
+                    </div>
+                    <div>
+                        <div class="file-name">${escapeHtml(file.name)}</div>
+                        <div class="file-size">${fileSize}</div>
+                    </div>
+                </div>
+                <button class="file-remove" onclick="removeFile(this)">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            
+            return fileItem;
+        }
+        
+        // 파일 제거
+        function removeFile(button) {
+            const fileItem = button.parentElement;
+            fileItem.remove();
+        }
+        
+        // 파일 아이콘 반환
+        function getFileIcon(fileName) {
+            const fileExt = fileName.split('.').pop()?.toLowerCase() || '';
+            
+            const iconMap = {
+                // 이미지 파일
+                'jpg': '🖼️', 'jpeg': '🖼️', 'png': '🖼️', 'gif': '🖼️', 'bmp': '🖼️', 'svg': '🖼️', 'webp': '🖼️',
+                // 문서 파일
+                'pdf': '📄', 'doc': '📝', 'docx': '📝', 'txt': '📄', 'rtf': '📝',
+                // 스프레드시트
+                'xls': '📊', 'xlsx': '📊', 'csv': '📊',
+                // 프레젠테이션
+                'ppt': '📋', 'pptx': '📋',
+                // 압축 파일
+                'zip': '📦', 'rar': '📦', '7z': '📦', 'tar': '📦', 'gz': '📦',
+                // 오디오 파일
+                'mp3': '🎵', 'wav': '🎵', 'flac': '🎵', 'aac': '🎵', 'ogg': '🎵',
+                // 비디오 파일
+                'mp4': '🎬', 'avi': '🎬', 'mov': '🎬', 'wmv': '🎬', 'flv': '🎬', 'mkv': '🎬',
+                // 코드 파일
+                'html': '🌐', 'css': '🎨', 'js': '⚙️', 'py': '🐍', 'java': '☕', 'cpp': '⚙️', 'c': '⚙️',
+                // 기타
+                'json': '📋', 'xml': '📋', 'sql': '🗄️', 'md': '📄'
+            };
+            
+            return iconMap[fileExt] || '📄';
+        }
+        
+        // 파일 크기 포맷팅
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        // 게시글 작성 제출
+        async function submitBoard() {
+            const title = document.getElementById('board-title-input').value.trim();
+            const content = document.getElementById('board-content-input').value.trim();
+            
+            // 유효성 검사
+            if (!title) {
+                alert('제목을 입력해주세요.');
+                document.getElementById('board-title-input').focus();
+                return;
+            }
+            
+            if (!content) {
+                alert('내용을 입력해주세요.');
+                document.getElementById('board-content-input').focus();
+                return;
+            }
+            
+            // 제출 버튼 비활성화
+            const submitBtn = document.querySelector('.btn-submit');
+            const originalText = submitBtn.textContent;
+            submitBtn.disabled = true;
+            submitBtn.textContent = '작성 중...';
+            
+            try {
+                // 파일 업로드 처리
+                const fileItems = document.querySelectorAll('#boardFileList .file-item');
+                let uploadedFiles = [];
+                
+                if (fileItems.length > 0) {
+                    // 업로드 진행률 표시
+                    document.getElementById('boardUploadProgress').style.display = 'block';
+                    const progressBar = document.getElementById('boardProgressBar');
+                    
+                    for (let i = 0; i < fileItems.length; i++) {
+                        const fileItem = fileItems[i];
+                        const fileName = fileItem.dataset.fileName;
+                        const fileSize = fileItem.dataset.fileSize;
+                        
+                        // 파일 객체 찾기
+                        const fileInput = document.getElementById('board-file-input');
+                        const file = Array.from(fileInput.files).find(f => f.name === fileName);
+                        
+                        if (file) {
+                            // 진행률 업데이트
+                            const progress = ((i + 1) / fileItems.length) * 100;
+                            progressBar.style.width = progress + '%';
+                            
+                            // 파일 업로드
+                            const formData = new FormData();
+                            formData.append('file', file);
+                            
+                            const uploadResponse = await fetch('/sales/board/upload-file/', {
+                                method: 'POST',
+                                headers: {
+                                    'X-CSRFToken': getCookie('csrftoken')
+                                },
+                                body: formData
+                            });
+                            
+                            const uploadData = await uploadResponse.json();
+                            
+                            if (uploadData.success) {
+                                uploadedFiles.push(uploadData.file);
+                            } else {
+                                alert(`파일 업로드 실패: ${fileName}`);
+                            }
+                        }
+                    }
+                }
+                
+                // 게시글 작성
+                const response = await fetch('/sales/board/create/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        title: title,
+                        content: content,
+                        files: uploadedFiles
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('게시글이 작성되었습니다.');
+                    closeWriteBoardModal();
+                    // 게시글 목록 새로고침
+                    loadBoards();
+                } else {
+                    alert('게시글 작성에 실패했습니다: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error submitting board:', error);
+                alert('게시글 작성 중 오류가 발생했습니다.');
+            } finally {
+                // 제출 버튼 다시 활성화
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
+                document.getElementById('boardUploadProgress').style.display = 'none';
+            }
+        }
+        
+        // CSRF 토큰 가져오기
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        
+        // 로그아웃 함수
+        function logout() {
+            if (confirm('로그아웃하시겠습니까?')) {
+                // 서버에 로그아웃 요청
+                fetch('/sales/logout/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                })
+                .then(response => {
+                    // 로그아웃은 항상 성공으로 처리 (리다이렉트 응답이므로)
+                    console.log('로그아웃 응답:', response.status);
+                    
+                    // 브라우저 캐시 정리
+                    if ('caches' in window) {
+                        caches.keys().then(function(names) {
+                            for (let name of names) {
+                                caches.delete(name);
+                            }
+                        });
+                    }
+                    
+                    // 세션 스토리지 정리
+                    sessionStorage.clear();
+                    
+                    // 로그인 페이지로 리다이렉트
+                    window.location.href = '/sales/login/';
+                })
+                .catch(error => {
+                    console.error('로그아웃 오류:', error);
+                    // 오류가 발생해도 로그인 페이지로 이동
+                    window.location.href = '/sales/login/';
+                });
+            }
+        }
+        
+        // 모달 외부 클릭 시 닫기
+        window.onclick = function(event) {
+            const modal = document.getElementById('writeBoardModal');
+            if (event.target === modal) {
+                closeWriteBoardModal();
+            }
+        }
+        
+        // Enter 키로 제출
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter' && event.ctrlKey) {
+                event.preventDefault();
+                submitBoard();
+            }
+        });
+        
+        // 페이지 로드 시 초기 데이터 로드
+        document.addEventListener('DOMContentLoaded', function() {
+            loadBoards();
+        });
+    </script>
+    
+    <!-- Base JavaScript -->
+    <script src="{% static 'diary/base/base.js' %}"></script>
+</body>
+</html> 

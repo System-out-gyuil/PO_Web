@@ -344,7 +344,11 @@ class SignupView(View):
                     CalendarSettings.objects.create(user=user, settings=sample_calendar.settings)
                 sample_kanban = KanbanSettings.objects.filter(user=sample_user).first()
                 if sample_kanban:
-                    KanbanSettings.objects.create(user=user, settings=sample_kanban.settings)
+                    # 칸반보드 설정의 DropdownAttribute ID 매핑
+                    updated_kanban_settings = self._map_kanban_dropdown_ids(
+                        sample_kanban.settings, sample_user, user, dropdown_map
+                    )
+                    KanbanSettings.objects.create(user=user, settings=updated_kanban_settings)
                 # 상태 attribute의 DropdownAttribute id 모두 구함
                 status_attr = Attribute.objects.filter(user=user, name='상태', attributeType__name='dropdown').first()
                 status_dropdown_ids = []
@@ -366,6 +370,72 @@ class SignupView(View):
         except Exception as e:
             print(f"샘플 데이터 생성 중 오류: {str(e)}")
             return False
+
+    def _map_kanban_dropdown_ids(self, settings, old_user, new_user, dropdown_map):
+        """칸반보드 설정의 DropdownAttribute ID를 새 사용자의 ID로 매핑하는 메서드"""
+        if not settings:
+            return {}
+
+        import copy
+        updated_settings = copy.deepcopy(settings)
+        
+        # filters에서 DropdownAttribute ID 매핑
+        if 'filters' in updated_settings:
+            for filter_rule in updated_settings['filters']:
+                if isinstance(filter_rule, dict) and 'attribute' in filter_rule and 'value' in filter_rule:
+                    attr_name = filter_rule['attribute']
+                    old_id = filter_rule['value']
+                    
+                    # 이 속성이 드롭다운 속성인지 확인하고 새 ID로 매핑
+                    new_id = self._map_dropdown_value_by_name(old_id, attr_name, old_user, new_user)
+                    if new_id is not None:
+                        filter_rule['value'] = new_id
+
+        # custom_rules에서 DropdownAttribute ID 매핑  
+        if 'custom_rules' in updated_settings:
+            for rule in updated_settings['custom_rules']:
+                if isinstance(rule, dict) and 'conditions' in rule:
+                    for condition in rule['conditions']:
+                        if isinstance(condition, dict) and 'attribute' in condition and 'value' in condition:
+                            attr_name = condition['attribute']
+                            old_id = condition['value']
+                            
+                            # 이 속성이 드롭다운 속성인지 확인하고 새 ID로 매핑
+                            new_id = self._map_dropdown_value_by_name(old_id, attr_name, old_user, new_user)
+                            if new_id is not None:
+                                condition['value'] = new_id
+
+        return updated_settings
+
+    def _map_dropdown_value_by_name(self, old_id, attribute_name, old_user, new_user):
+        """DropdownAttribute ID를 이름 기반으로 새 사용자의 ID로 매핑"""
+        try:
+            # 원본 사용자의 드롭다운 옵션 찾기
+            old_dropdown = DropdownAttribute.objects.get(
+                id=old_id,
+                attribute__name=attribute_name,
+                attribute__user=old_user
+            )
+            
+            # 새 사용자의 같은 이름을 가진 드롭다운 옵션 찾기
+            new_dropdown = DropdownAttribute.objects.filter(
+                option=old_dropdown.option,
+                attribute__name=attribute_name,
+                attribute__user=new_user
+            ).first()
+            
+            if new_dropdown:
+                return str(new_dropdown.id)
+            else:
+                print(f"매핑할 수 없는 드롭다운 옵션: {old_dropdown.option} (속성: {attribute_name})")
+                return str(old_id)  # 매핑 실패시 원본 ID 유지
+                
+        except DropdownAttribute.DoesNotExist:
+            print(f"존재하지 않는 드롭다운 ID: {old_id} (속성: {attribute_name})")
+            return str(old_id)  # 원본 ID 유지
+        except Exception as e:
+            print(f"드롭다운 ID 매핑 중 오류: {str(e)}")
+            return str(old_id)  # 오류시 원본 ID 유지
 
 class LogoutView(View):
     def get(self, request):
@@ -490,7 +560,6 @@ class SendVerificationEmailView(View):
                     'success': False,
                     'error': '올바른 이메일 형식을 입력해주세요.'
                 })
-            
             # 6자리 인증번호 생성
             verification_code = ''.join([str(random.randint(0, 9)) for _ in range(6)])
             

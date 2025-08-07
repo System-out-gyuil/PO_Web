@@ -8,6 +8,7 @@
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
     <link rel="stylesheet" href="{% static 'diary/diary_styles.css' %}">
+    <link rel="stylesheet" href="{% static 'diary/base/base.css' %}">
     <script>
         window.ATTR_FIELDS = JSON.parse('{{ attributes_json|default:"[]"|escapejs }}');
         window.DROPDOWN_OPTIONS = JSON.parse('{{ dropdown_options_json|default:"{}"|escapejs }}');
@@ -140,56 +141,7 @@
     
 </head>
 <body>
-<!-- 헤더 -->
-<header class="main-header">
-    <div class="header-container">
-        <div class="flex items-center header-logo-container" onclick="window.location.href='/sales/'">
-            <h1 class="text-2xl font-bold text-blue-600 header-title">💎 자금왕</h1>
-            <span class="ml-3 text-sm text-gray-500 header-sub-title">정책자금 전용 CRM</span>
-        </div>
-        <div class="header-right">
-            <!-- 알림 버튼 -->
-            <div class="notification-container">
-                <button class="w-10 h-10 bg-yellow-400 hover:bg-yellow-500 text-gray-900 rounded-lg transition flex items-center justify-center relative alarm-btn" id="notificationBtn" type="button">
-                    <i class="fas fa-bell text-lg"></i>
-                    <span class="notification-badge absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold border-2 border-white notification-badge-hidden" id="notificationBadge">0</span>
-                </button>
-                
-                <!-- 알림 패널 -->
-                <div class="notification-panel absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg z-50 border border-gray-200 notification-panel-hidden" id="notificationPanel">
-                    <div class="notification-header">
-                        <h3>알림</h3>
-                        <button class="close-notification-btn" onclick="toggleNotificationPanel()">×</button>
-                    </div>
-                    <div class="notification-list" id="notificationList">
-                        <!-- 알림 목록이 여기에 동적으로 추가됩니다 -->
-                    </div>
-                </div>
-            </div>
-            
-            <!-- 문의하기 버튼 -->
-            <button class="header-btn board-btn" onclick="toBoard()">
-                공지사항
-            </button>
-
-            <button class="header-btn inquiry-btn" onclick="openInquiryModal()">
-                문의하기
-            </button>
-            
-            <!-- 관리자 페이지 버튼 (관리자만 표시) -->
-            {% if is_admin %}
-            <button class="header-btn admin-btn" onclick="goToAdminPage()">
-                관리자 페이지
-            </button>
-            {% endif %}
-            
-            <!-- 로그아웃 버튼 -->
-            <button class="header-btn logout-btn" onclick="logout()">
-                로그아웃
-            </button>
-        </div>
-    </div>
-</header>
+{% include 'diary/header.html' %}
 
 <section class="main-section" style="display: none;">
     <div class="main-section-container">
@@ -933,7 +885,7 @@
 <script src="{% static 'diary/auto_blog.js' %}"></script>
 <script src="{% static 'diary/detail_openai.js' %}"></script>
 <script src="{% static 'diary/diary_inquiry.js' %}"></script>
-
+<script src="{% static 'diary/base/base.js' %}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     bindTableCellEvents();
@@ -2530,23 +2482,22 @@ function displayAllAttributes(attributes) {
         const eyeIcon = attr.view_select ? '👁️' : '👁️‍🗨️';
         const eyeTitle = attr.view_select ? '숨기기' : '보이기';
         html += `
-            <div class="hidden-attribute-item" data-attr-name="${attr.name}" style="display:flex;justify-content:space-between;align-items:center;padding:12px;border:1px solid #e9ecef;border-radius:6px;margin-bottom:8px;background:#f8f9fa;">
+            <div class="hidden-attribute-item" style="display:flex;justify-content:space-between;align-items:center;padding:12px;border:1px solid #e9ecef;border-radius:6px;margin-bottom:8px;background:#f8f9fa;">
                 <div style="display:flex;align-items:center;gap:10px;">
-                    <span class="modal-drag-handle" style="font-size:18px;color:#888;margin-right:6px;cursor:move;">⋮⋮⋮</span>
-                    <span class="attr-eye-icon" style="font-size:16px;">${eyeIcon}</span>
+                    <span style="font-size:16px;">${eyeIcon}</span>
                     <div>
-                        <div style="font-weight:bold;color:#495057;">${attr.name}</div>
+                        <div style="font-weight:bold;color:#495057;">
+                            ${attr.name}${detailIcon}${detailText}${cascadeIcon}${cascadeText}
+                        </div>
                         <div style="font-size:12px;color:#6c757d;">${typeIcon} ${attr.attributeType_name || '텍스트'}</div>
                     </div>
                     ${essentialBadge}
                 </div>
-                <div style="display:flex;gap:6px;">
-                    <button onclick="toggleAttributeVisibility('${attr.name}', this)" title="${eyeTitle}"
+                <button onclick="toggleAttributeVisibility('${attr.name}', this)" 
+                        title="${eyeTitle}"
                         style="padding:6px 12px;background:${attr.view_select ? '#dc3545' : '#28a745'};color:white;border:none;border-radius:4px;cursor:pointer;font-size:12px;">
-                        ${eyeTitle}
-                    </button>
-                    ${!attr.assential ? `<button onclick="deleteAttributeFromModal('${attr.name}', this)" title="삭제" style="padding:6px 10px;background:#dc3545;color:white;border:none;border-radius:4px;cursor:pointer;font-size:12px;">❌</button>` : ''}
-                </div>
+                    ${eyeTitle}
+                </button>
             </div>
         `;
     });
@@ -3318,6 +3269,18 @@ function toBoard() {
     window.location.href = '/sales/diary_board/';
 }
 
+// 일반 게시판 이동 함수
+function toGeneralBoard() {
+    console.log('toGeneralBoard 함수 호출됨');
+    try {
+        window.location.href = '/sales/board_list/';
+    } catch (error) {
+        console.error('게시판 이동 중 오류:', error);
+        // 대안 방법
+        window.open('/sales/board_list/', '_self');
+    }
+}
+
 // 알림 패널 토글 함수
 function toggleNotificationPanel() {
     console.log('알림 패널 토글 함수 호출');
@@ -3615,6 +3578,25 @@ function setupDropdownUpdateListeners() {
 // refreshTable 함수를 window 객체에 바인딩
 window.refreshTable = refreshTable;
 
+// 게시판 버튼 이벤트 리스너 설정
+document.addEventListener('DOMContentLoaded', function() {
+    const generalBoardBtn = document.getElementById('generalBoardBtn');
+    if (generalBoardBtn) {
+        generalBoardBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('게시판 버튼 클릭됨 - 페이지 이동 시작');
+            try {
+                window.location.href = '/sales/board_list/';
+            } catch (error) {
+                console.error('페이지 이동 실패:', error);
+                window.open('/sales/board_list/', '_self');
+            }
+        });
+    } else {
+        console.error('게시판 버튼을 찾을 수 없습니다');
+    }
+});
 </script>
 
 <script src="{% static 'diary/auto_blog.js' %}"></script>

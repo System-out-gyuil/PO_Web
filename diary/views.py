@@ -328,6 +328,7 @@ def diary_list(request):
         'cache_timestamp': cache_timestamp,
         'status_id': status_id,
         'show_detail': show_detail,
+        'is_authenticated': True,  # 로그인 상태 추가
         'is_admin': user.is_admin,  # 관리자 상태 추가
         'dropdown_options': dropdown_options  # 모든 드롭다운 옵션 추가
     }
@@ -5053,3 +5054,6 @@ def convert_hwp_to_pdf_board(request):
     except Exception as e:
         logger.error(f"convert_hwp_to_pdf_board 함수에서 예상치 못한 오류: {e}")
         return JsonResponse({'success': False, 'error': f'오류가 발생했습니다: {str(e)}'})
+
+
+

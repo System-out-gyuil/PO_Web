@@ -352,4 +352,56 @@ class UserAlarm(models.Model):
         self.save()
     
 
+class Board(models.Model):
+    """게시판 모델"""
+    title = models.CharField(max_length=200, db_collation='utf8mb4_unicode_ci')
+    content = models.TextField(db_collation='utf8mb4_unicode_ci')
+    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='boards')
+    files = models.JSONField(default=list, blank=True)  # 첨부파일 정보 저장
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'diary_board'
+        verbose_name = '게시판'
+        verbose_name_plural = '게시판'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['author', '-created_at']),
+            models.Index(fields=['-created_at']),
+        ]
+    
+    def __str__(self):
+        return self.title
+    
+    def get_file_count(self):
+        """첨부파일 개수 반환"""
+        return len(self.files) if self.files else 0
+    
+    def get_content_preview(self, length=300):
+        """내용 미리보기 반환"""
+        if len(self.content) > length:
+            return self.content[:length] + '...'
+        return self.content
+
+
+class BoardFile(models.Model):
+    """게시판 첨부파일 모델"""
+    board = models.ForeignKey(Board, on_delete=models.CASCADE, related_name='board_files')
+    original_name = models.CharField(max_length=255, db_collation='utf8mb4_unicode_ci')
+    saved_name = models.CharField(max_length=255)
+    file_size = models.BigIntegerField()
+    file_type = models.CharField(max_length=100)
+    s3_key = models.CharField(max_length=500)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'diary_board_file'
+        verbose_name = '게시판 첨부파일'
+        verbose_name_plural = '게시판 첨부파일'
+        ordering = ['uploaded_at']
+    
+    def __str__(self):
+        return f"{self.board.title} - {self.original_name}"
+    
     

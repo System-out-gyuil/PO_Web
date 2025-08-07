@@ -146,6 +146,9 @@ def admin_dashboard(request):
         'total_alarms': total_alarms,
         'unread_inquiries': unread_inquiries,
         'user_count': user_count,
+        'is_authenticated': True,  # 로그인 상태 추가
+        'is_admin': user.is_admin,  # 관리자 상태 추가
+        'user': user,  # 사용자 정보 추가
     }
     
     return render(request, 'diary/diary_admin.html', context)
@@ -374,7 +377,11 @@ def alarm_create(request):
         else:
             return UnicodeJsonResponse({'success': False, 'message': '제목과 내용을 모두 입력해주세요.'})
     
-    return render(request, 'diary/diary_admin.html')
+    return render(request, 'diary/diary_admin.html', {
+        'is_authenticated': True,
+        'is_admin': user.is_admin,
+        'user': user,
+    })
 
 def alarm_edit(request, alarm_id):
     """공지사항 수정"""

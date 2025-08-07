@@ -1,0 +1,110 @@
+<!-- 헤더 -->
+<header class="main-header">
+    <div class="header-container">
+        <div class="flex items-center header-logo-container" onclick="window.location.href='/sales/'">
+            <h1 class="text-2xl font-bold text-blue-600 header-title">💎 자금왕</h1>
+            <span class="ml-3 text-sm text-gray-500 header-sub-title">정책자금 전용 CRM</span>
+        </div>
+        <div class="header-right">
+            {% if is_authenticated %}
+                <!-- 로그인된 사용자용 버튼들 -->
+                <!-- 알림 버튼 -->
+                <div class="notification-container">
+                    <button class="w-10 h-10 bg-yellow-400 hover:bg-yellow-500 text-gray-900 rounded-lg transition flex items-center justify-center relative alarm-btn" id="notificationBtn" type="button">
+                        <i class="fas fa-bell text-lg"></i>
+                        <span class="notification-badge absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold border-2 border-white notification-badge-hidden" id="notificationBadge">0</span>
+                    </button>
+                    
+                    <!-- 알림 패널 -->
+                    <div class="notification-panel absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg z-50 border border-gray-200 notification-panel-hidden" id="notificationPanel">
+                        <div class="notification-header">
+                            <h3>알림</h3>
+                            <button class="close-notification-btn" onclick="toggleNotificationPanel()">×</button>
+                        </div>
+                        <div class="notification-list" id="notificationList">
+                            <!-- 알림 목록이 여기에 동적으로 추가됩니다 -->
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 게시판 버튼 -->
+                <button id="generalBoardBtn" class="header-btn board-btn">
+                    게시판
+                </button>
+                
+                <button class="header-btn board-btn" onclick="toBoard()">
+                    공지사항
+                </button>
+
+                <button class="header-btn inquiry-btn" onclick="openInquiryModal()">
+                    문의하기
+                </button>
+
+                <a href="/sales/diary/">
+                  <button class="diary-btn bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg transition font-medium">
+                      다이어리
+                  </button>
+              </a>
+
+                
+                
+                
+                <!-- 로그아웃 버튼 -->
+                <button class="header-btn logout-btn" onclick="logout()">
+                    로그아웃
+                </button>
+
+                <!-- 관리자 페이지 버튼 (관리자만 표시) -->
+                {% if is_admin %}
+                <button class="header-btn admin-btn" onclick="goToAdminPage()">
+                    관리자 페이지
+                </button>
+                {% endif %}
+
+                <!-- 메뉴 버튼 -->
+                <div class="menu-container">
+                    <button class="w-10 h-10 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition flex items-center justify-center relative" id="menuBtn" type="button">
+                        <i class="fas fa-bars text-lg"></i>
+                    </button>
+                    
+                    <!-- 메뉴 드롭다운 -->
+                    <div class="menu-dropdown menu-dropdown-hidden" id="menuDropdown">
+                        <div class="menu-list">
+                            <button class="menu-item" onclick="toGeneralBoard()">
+                                <i class="fas fa-clipboard-list"></i>
+                                <span>게시판</span>
+                            </button>
+                            <button class="menu-item" onclick="toBoard()">
+                                <i class="fas fa-bullhorn"></i>
+                                <span>공지사항</span>
+                            </button>
+                            <button class="menu-item" onclick="openInquiryModal()">
+                                <i class="fas fa-question-circle"></i>
+                                <span>문의하기</span>
+                            </button>
+                            <button class="menu-item" onclick="window.location.href='/sales/diary/'">
+                                <i class="fas fa-book"></i>
+                                <span>다이어리</span>
+                            </button>
+                            {% if is_admin %}
+                            <button class="menu-item" onclick="goToAdminPage()">
+                                <i class="fas fa-cog"></i>
+                                <span>관리자 페이지</span>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <!-- 비로그인 사용자용 버튼들 -->
+                <button class="header-btn login-btn" onclick="window.location.href='/sales/login/'">
+                    로그인
+                </button>
+                
+                <button class="header-btn signup-btn" onclick="window.location.href='/sales/register/'">
+                    회원가입
+                </button>
+            {% endif %}
+        </div>
+    </div>
+</header>
