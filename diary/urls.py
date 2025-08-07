@@ -55,6 +55,7 @@ urlpatterns = [
     path('delete_attribute/', delete_attribute, name='delete_attribute'),
     path('get_row_details/<int:row_id>/', views.get_row_details, name='get_row_details'),
     path('get_user_attributes/', views.get_user_attributes, name='get_user_attributes'),
+    path('update_detail_sort_order/', views.update_detail_sort_order, name='update_detail_sort_order'),
     path('get_kanban_data/', get_kanban_data, name='get_kanban_data'),
     path('upload_file/', upload_file, name='upload_file'),
     path('download_file/<int:row_id>/<str:field_name>/<str:fileId>/', download_file, name='download_file'),

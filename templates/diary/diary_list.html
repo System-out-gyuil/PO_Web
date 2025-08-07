@@ -169,7 +169,7 @@
             
             <!-- 문의하기 버튼 -->
             <button class="header-btn board-btn" onclick="toBoard()">
-                게시판
+                공지사항
             </button>
 
             <button class="header-btn inquiry-btn" onclick="openInquiryModal()">
@@ -2405,41 +2405,41 @@ function refreshTable() {
                 });
                 
                 // === 새로 추가된 행으로 스크롤 처리 ===
-                if (window.scrollTableToBottomAfterRefresh) {
-                    console.log('새로 생성된 행으로 스크롤 이동 시작');
+                if (window.scrollTableToTopAfterRefresh) {
+                    console.log('새로 생성된 행으로 스크롤 이동 시작 (상단으로)');
                     
                     setTimeout(() => {
                         // 방법 1: 테이블 컨테이너 스크롤 시도
                         const tableView = document.getElementById('tableView');
                         if (tableView) {
-                            tableView.scrollTop = tableView.scrollHeight;
-                            console.log('테이블 컨테이너 스크롤 시도 - scrollTop:', tableView.scrollTop, 'scrollHeight:', tableView.scrollHeight);
+                            tableView.scrollTop = 0;
+                            console.log('테이블 컨테이너 스크롤 시도 - scrollTop:', tableView.scrollTop);
                         }
                         
                         // 방법 2: 페이지 전체 스크롤 (더 확실한 방법)
                         const tableElement = document.getElementById('entryTable');
                         if (tableElement) {
-                            // 테이블의 마지막 행으로 스크롤
-                            const lastRow = tableElement.querySelector('tbody tr:last-child');
-                            if (lastRow) {
-                                lastRow.scrollIntoView({ 
+                            // 테이블의 첫 번째 행으로 스크롤
+                            const firstRow = tableElement.querySelector('tbody tr:first-child');
+                            if (firstRow) {
+                                firstRow.scrollIntoView({ 
                                     behavior: 'smooth', 
-                                    block: 'end',
+                                    block: 'start',
                                     inline: 'nearest'
                                 });
-                                console.log('새로 생성된 행으로 스크롤 완료');
+                                console.log('새로 생성된 행으로 스크롤 완료 (첫 번째 행으로)');
                             } else {
-                                // 마지막 행이 없으면 테이블 전체의 맨 아래로 스크롤
+                                // 첫 번째 행이 없으면 테이블 전체의 맨 위로 스크롤
                                 window.scrollTo({
-                                    top: document.body.scrollHeight,
+                                    top: 0,
                                     behavior: 'smooth'
                                 });
-                                console.log('페이지 맨 아래로 스크롤 완료');
+                                console.log('페이지 맨 위로 스크롤 완료');
                             }
                         }
                     }, 100);
                     
-                    window.scrollTableToBottomAfterRefresh = false;
+                    window.scrollTableToTopAfterRefresh = false;
                     console.log('스크롤 플래그 초기화 완료');
                 }
                 

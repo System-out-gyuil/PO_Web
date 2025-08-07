@@ -2315,7 +2315,7 @@ function processDropdownOptions(options, value, cell) {
                   console.log('서버 요청 데이터:', requestBody);
 
                   // --- SCROLL FLAG SET HERE ---
-                  window.scrollTableToBottomAfterRefresh = true;
+                  window.scrollTableToTopAfterRefresh = true;
 
                   fetch('/sales/create_new_row/', {
                       method: 'POST',
@@ -2846,13 +2846,13 @@ async function ensureKanbanSettingsLoaded() {
                           }
                       });
                   }
-                  // --- SCROLL TO BOTTOM IF FLAG IS SET ---
-                  if (window.scrollTableToBottomAfterRefresh) {
+                  // --- SCROLL TO TOP IF FLAG IS SET ---
+                  if (window.scrollTableToTopAfterRefresh) {
                       const tableView = document.getElementById('tableView');
                       if (tableView) {
-                          tableView.scrollTop = tableView.scrollHeight;
+                          tableView.scrollTop = 0;
                       }
-                      window.scrollTableToBottomAfterRefresh = false;
+                      window.scrollTableToTopAfterRefresh = false;
                   }
 // ... existing code ...
 

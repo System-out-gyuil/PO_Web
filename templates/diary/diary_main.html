@@ -85,13 +85,16 @@
                     {% if is_admin %}
                     <a href="/sales/diary_admin/board/">
                         <button class="bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-2 rounded-lg transition font-medium">
-                            관리자 페이지
+                            관리자
                         </button>
                     </a>
                     {% endif %}
                     {% else %}
                         <a href="{% url 'login' %}"><button class="login-btn bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition font-medium">
                             로그인
+                        </button></a>
+                        <a href="{% url 'login' %}?signup=true"><button class="signup-btn bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-2 rounded-lg transition font-medium">
+                            회원가입
                         </button></a>
                     {% endif %}
                 </div>

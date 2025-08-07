@@ -119,6 +119,7 @@ class Attribute(models.Model):
     assential = models.BooleanField(default=False)
     detail = models.BooleanField(default=False)
     sort_order = models.IntegerField(default=0, db_index=True)
+    detail_sort_order = models.IntegerField(default=0, db_index=True)  # 상세보기 모달에서의 순서
     view_select = models.JSONField(default=dict)
     cascade = models.BooleanField(default=False)
     width = models.IntegerField(default=180)

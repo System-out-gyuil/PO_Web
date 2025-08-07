@@ -724,12 +724,13 @@ def create_new_row(request):
 
         user = User.objects.get(id=user_id)
         
-        # 새 Row 생성 (임시로 빈 Row)
-        max_order = Row.objects.aggregate(max_order=models.Max('order'))['max_order']
-        new_order = (max_order + 1) if max_order is not None else 0
+        # 새 Row 생성 (가장 위에 추가하도록 변경)
+        # 기존 모든 행들의 order를 1씩 증가
+        Row.objects.filter(user=user).update(order=models.F('order') + 1)
         
-        new_row = Row.objects.create(order=new_order, user=user)
-        print(f"새 행 생성됨: row_id={new_row.id}, order={new_order}")
+        # 새 행은 order=0으로 가장 위에 추가
+        new_row = Row.objects.create(order=0, user=user)
+        print(f"새 행 생성됨: row_id={new_row.id}, order=0 (가장 위에 추가)")
         
         # 첫 번째 필드 값 설정
         try:
@@ -1214,7 +1215,13 @@ def get_user_attributes(request):
 
         user = User.objects.get(id=user_id)
         # select_related를 추가하여 N+1 쿼리 방지
-        attributes = Attribute.objects.filter(user=user).select_related('attributeType').order_by('-assential', 'id')  # 필수 속성 먼저, 그 다음 id 순
+        # 상세보기 모달용일 경우 detail_sort_order로 정렬, 일반적으로는 sort_order로 정렬
+        is_detail_modal = request.GET.get('for_detail_modal', 'false').lower() == 'true'
+        
+        if is_detail_modal:
+            attributes = Attribute.objects.filter(user=user).select_related('attributeType').order_by('detail_sort_order', 'id')
+        else:
+            attributes = Attribute.objects.filter(user=user).select_related('attributeType').order_by('-assential', 'id')  # 필수 속성 먼저, 그 다음 id 순
         
         attributes_data = []
         for attr in attributes:
@@ -1223,7 +1230,9 @@ def get_user_attributes(request):
                 'name': attr.name,
                 'type': attr.attributeType.name if attr.attributeType else 'text',
                 'essential': attr.assential,  # essential 정보 추가
-                'detail': attr.detail  # detail 필드 추가
+                'detail': attr.detail,  # detail 필드 추가
+                'sort_order': attr.sort_order,
+                'detail_sort_order': attr.detail_sort_order  # detail_sort_order 추가
             }
             attributes_data.append(attr_data)
         
@@ -1237,6 +1246,40 @@ def get_user_attributes(request):
             'error': str(e)
         })
 
+
+@csrf_exempt
+def update_detail_sort_order(request):
+    """상세보기 모달에서 속성 순서를 업데이트하는 API"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST method required'})
+    
+    try:
+        user_id = request.session.get('diary_member_id')
+        if not user_id:
+            return JsonResponse({'success': False, 'error': 'User not authenticated'})
+
+        user = User.objects.get(id=user_id)
+        data = json.loads(request.body)
+        attribute_orders = data.get('attribute_orders', [])
+        
+        # 트랜잭션으로 순서 업데이트
+        with transaction.atomic():
+            for order_data in attribute_orders:
+                attribute_id = order_data.get('id')
+                new_order = order_data.get('detail_sort_order')
+                
+                if attribute_id and new_order is not None:
+                    Attribute.objects.filter(id=attribute_id, user=user).update(
+                        detail_sort_order=new_order
+                    )
+        
+        return JsonResponse({'success': True})
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })
 
 
 @csrf_exempt

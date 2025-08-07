@@ -187,6 +187,8 @@ class SignupView(View):
             '경력',        # 9. baseattribute
             '직원수',      # 10. baseattribute
             '추천자금',
+            '지역',
+            '상세지역',
         ]
         
         # 동기화를 활성화할 속성들 정의
@@ -504,7 +506,7 @@ class SendVerificationEmailView(View):
             )
             
             # 이메일 발송
-            subject = '[PO 시스템] 이메일 인증번호'
+            subject = '[자금왕] 이메일 인증번호'
             message = f'''
 안녕하세요. 자금왕입니다.
 
@@ -646,7 +648,7 @@ class ForgotPasswordView(View):
             )
             
             # 이메일 발송
-            subject = '[PO 시스템] 비밀번호 찾기 인증번호'
+            subject = '[자금왕] 비밀번호 찾기 인증번호'
             message = f'''
 안녕하세요. 자금왕입니다.
 

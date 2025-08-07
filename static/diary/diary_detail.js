@@ -21,9 +21,9 @@ function showDetailModal(rowData, rowId) {
         return;
     }
     
-    // 백엔드에서 사용자의 속성 목록을 가져와야 함
+    // 백엔드에서 사용자의 속성 목록을 가져와야 함 - 상세보기 모달용으로 요청
     console.log('새로운 속성 데이터 요청');
-    fetch('/sales/get_user_attributes/')
+    fetch('/sales/get_user_attributes/?for_detail_modal=true')
         .then(response => response.json())
         .then(data => {
             if (!data.success) {
@@ -43,13 +43,13 @@ function showDetailModal(rowData, rowId) {
 }
 
 function generateDetailModalContent(attributes, rowData, rowId) {
-    // 속성을 순서대로 정렬 (sort_order 기준)
-    const sortedAttributes = attributes.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+    // 속성을 상세보기 모달 순서대로 정렬 (detail_sort_order 기준)
+    const sortedAttributes = attributes.sort((a, b) => (a.detail_sort_order || 0) - (b.detail_sort_order || 0));
     
     // 읽기 전용 필드 목록 - 모든 필드를 수정 가능하게 하기 위해 비움
     const readonlyFields = [];
     
-    // 숨김 필드 목록 (표시하지 않을 속성들)
+    // 숨김 필드 목록 (표시하지 않할 속성들)
     const hiddenFields = ['음성파일', '변환된 텍스트'];
     
     let html = '<h3>상세 정보</h3>';
@@ -60,6 +60,9 @@ function generateDetailModalContent(attributes, rowData, rowId) {
     let regionValue = '';
     let subregionValue = '';
     let regionProcessed = false;
+    
+    // 드래그 가능한 컨테이너 시작
+    html += '<div id="attributeContainer" style="position: relative;">';
     
     sortedAttributes.forEach(function(attr) {
         const value = rowData[attr.name] || '';
@@ -82,8 +85,9 @@ function generateDetailModalContent(attributes, rowData, rowId) {
             // 지역과 상세지역을 한 줄로 표시
             if (!regionProcessed) {
                 html += `
-                    <div style="display:flex;align-items:center;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #eee;">
-                        <label style="width:120px;font-weight:bold;color:#333;">지역:</label>
+                    <div class="attribute-row" draggable="true" data-attribute-id="${attr.id}" data-attribute-name="지역" style="display:flex;align-items:center;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #eee;cursor:move;position:relative;">
+                        <div class="drag-handle" style="position:absolute;left:-15px;top:50%;transform:translateY(-50%);color:#ccc;cursor:move;">⋮⋮</div>
+                        <label class="attribute-label" style="width:120px;font-weight:bold;color:#007bff;cursor:move;user-select:none;">지역:</label>
                         <div style="flex:1;display:flex;align-items:center;gap:10px;">
                             <button type="button" class="add-btn" style="width: 50%; background:#f8f9fa;color:#333;border:1px solid #eee;padding:8px 12px;border-radius:4px;" onclick="openDetailDropdown('${rowId}','지역',this)">${regionValue||'선택'}</button>
                             <button type="button" class="add-btn" style="width: 50%; background:#f8f9fa;color:#333;border:1px solid #eee;padding:8px 12px;border-radius:4px;" onclick="openDetailDropdown('${rowId}','상세지역',this)">${subregionValue||'선택'}</button>
@@ -192,7 +196,7 @@ function generateDetailModalContent(attributes, rowData, rowId) {
                     ${totalHtml}
                 </div>
             `;
-        }else if (attr.type === 'recommend') {
+        } else if (attr.type === 'recommend') {
             // 추천자금 필드 처리
             let displayValue = '';
             let detailData = null;
@@ -670,16 +674,23 @@ function generateDetailModalContent(attributes, rowData, rowId) {
             }
             
             html += `
-                <div style="display:flex;align-items:center;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #eee;">
-                    <label style="width:120px;font-weight:bold;color:${labelColor};">${attr.name}:</label>
+                <div class="attribute-row" draggable="true" data-attribute-id="${attr.id}" data-attribute-name="${attr.name}" style="display:flex;align-items:center;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #eee;cursor:move;position:relative;">
+                    <div class="drag-handle" style="position:absolute;left:-15px;top:50%;transform:translateY(-50%);color:#ccc;cursor:move;">⋮⋮</div>
+                    <label class="attribute-label" style="width:120px;font-weight:bold;color:${labelColor};cursor:move;user-select:none;">${attr.name}:</label>
                     <div style="flex:1;">${inputHtml}</div>
                 </div>
             `;
         }
     });
     
+    // 드래그 가능한 컨테이너 종료
+    html += '</div>';
+    
     // 상세정보 모달 내용 업데이트
     document.getElementById('detailModalContent').innerHTML = html;
+    
+    // 드래그앤드랍 이벤트 리스너 추가
+    initializeDetailModalDragAndDrop();
     
     // 음성파일 영역 업데이트
     updateAudioFileSection(rowId, audioFileValue);
@@ -735,6 +746,139 @@ function generateDetailModalContent(attributes, rowData, rowId) {
             });
         });
     }, 100);
+}
+
+// 상세보기 모달의 드래그앤드랍 기능 초기화
+function initializeDetailModalDragAndDrop() {
+    const container = document.getElementById('attributeContainer');
+    if (!container) return;
+    
+    let draggedElement = null;
+    let draggedOverElement = null;
+    
+    // 모든 드래그 가능한 요소에 이벤트 리스너 추가
+    const attributeRows = container.querySelectorAll('.attribute-row');
+    
+    attributeRows.forEach(row => {
+        row.addEventListener('dragstart', function(e) {
+            draggedElement = this;
+            this.style.opacity = '0.5';
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/html', this.outerHTML);
+        });
+        
+        row.addEventListener('dragend', function(e) {
+            this.style.opacity = '';
+            draggedElement = null;
+            draggedOverElement = null;
+            
+            // 모든 드래그 오버 스타일 제거
+            attributeRows.forEach(r => {
+                r.style.borderTop = '';
+                r.style.borderBottom = '';
+            });
+        });
+        
+        row.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            
+            if (draggedElement && this !== draggedElement) {
+                // 드래그 오버 시각적 피드백
+                const rect = this.getBoundingClientRect();
+                const midY = rect.top + rect.height / 2;
+                
+                if (e.clientY < midY) {
+                    this.style.borderTop = '2px solid #007bff';
+                    this.style.borderBottom = '';
+                } else {
+                    this.style.borderTop = '';
+                    this.style.borderBottom = '2px solid #007bff';
+                }
+                draggedOverElement = this;
+            }
+        });
+        
+        row.addEventListener('dragleave', function(e) {
+            // 마우스가 완전히 요소를 벗어날 때만 스타일 제거
+            const rect = this.getBoundingClientRect();
+            if (e.clientX < rect.left || e.clientX > rect.right || 
+                e.clientY < rect.top || e.clientY > rect.bottom) {
+                this.style.borderTop = '';
+                this.style.borderBottom = '';
+            }
+        });
+        
+        row.addEventListener('drop', function(e) {
+            e.preventDefault();
+            
+            if (draggedElement && this !== draggedElement) {
+                const rect = this.getBoundingClientRect();
+                const midY = rect.top + rect.height / 2;
+                
+                if (e.clientY < midY) {
+                    // 위쪽에 삽입
+                    container.insertBefore(draggedElement, this);
+                } else {
+                    // 아래쪽에 삽입
+                    container.insertBefore(draggedElement, this.nextSibling);
+                }
+                
+                // 순서 변경 사항을 서버에 저장
+                saveDetailSortOrder();
+            }
+            
+            // 드래그 스타일 정리
+            this.style.borderTop = '';
+            this.style.borderBottom = '';
+        });
+    });
+}
+
+// 상세보기 모달의 속성 순서를 서버에 저장
+function saveDetailSortOrder() {
+    const container = document.getElementById('attributeContainer');
+    if (!container) return;
+    
+    const attributeRows = container.querySelectorAll('.attribute-row');
+    const attributeOrders = [];
+    
+    attributeRows.forEach((row, index) => {
+        const attributeId = row.getAttribute('data-attribute-id');
+        if (attributeId) {
+            attributeOrders.push({
+                id: parseInt(attributeId),
+                detail_sort_order: index
+            });
+        }
+    });
+    
+    // 서버에 순서 업데이트 요청
+    fetch('/sales/update_detail_sort_order/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            attribute_orders: attributeOrders
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            console.log('상세보기 속성 순서가 저장되었습니다.');
+            // 캐시 무효화
+            userAttributesCache = null;
+            attributesCacheTimestamp = null;
+        } else {
+            console.error('속성 순서 저장 실패:', data.error);
+            alert('속성 순서 저장에 실패했습니다.');
+        }
+    })
+    .catch(error => {
+        console.error('속성 순서 저장 오류:', error);
+        alert('속성 순서 저장 중 오류가 발생했습니다.');
+    });
 }
 
 // 한국어 통화 단위로 업데이트하는 함수
@@ -2443,34 +2587,11 @@ function updateFileFieldInModal(rowId, fieldName, fileInfo) {
                         font-weight: 500;">
                     다운로드
                 </button>
-                <button type="button" 
-                    onclick="document.getElementById('file_${fieldName}_${rowId}').click()" 
-                    style="
-                        padding: 6px 12px; 
-                        background: #28a745; 
-                        color: white; 
-                        border: none; 
-                        border-radius: 4px; 
-                        cursor: pointer; 
-                        font-size: 12px;
-                        font-weight: 500;">
-                    수정
-                        font-weight: 500;
-                        margin-right: 5px;
-                    ">
-                    수정
-                </button>
-                <button type="button" 
-                    onclick="deleteFile('${rowId}', '${fieldName}')" 
-                    style="
-                        padding: 6px 12px; 
-                        background: #dc3545; 
-                        color: white; 
-                        border: none; 
-                        border-radius: 4px; 
-                        cursor: pointer; 
-                        font-size: 12px;
-                        font-weight: 500;">
+                <button class="delete-file-btn" 
+                        data-row-id="${rowId}" 
+                        data-field-name="${attr.name}" 
+                        data-file-index="${index}"
+                        style="padding: 4px 8px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: 500;">
                     삭제
                 </button>
                 <input type="file" 
