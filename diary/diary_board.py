@@ -57,7 +57,8 @@ def announcement_detail_page(request, announcement_id):
     if not user_id:
         return render(request, 'diary/diary_board_detail.html', {
             'error': '로그인이 필요합니다.',
-            'is_authenticated': False
+            'is_authenticated': False,
+            'is_admin': False
         })
     
     try:
@@ -65,33 +66,25 @@ def announcement_detail_page(request, announcement_id):
     except User.DoesNotExist:
         return render(request, 'diary/diary_board_detail.html', {
             'error': '사용자를 찾을 수 없습니다.',
-            'is_authenticated': False
+            'is_authenticated': False,
+            'is_admin': False
         })
     
     try:
-        alarm = Alarm.objects.get(id=announcement_id)
+        announcement = Alarm.objects.get(id=announcement_id)
     except Alarm.DoesNotExist:
         return render(request, 'diary/diary_board_detail.html', {
             'error': '공고를 찾을 수 없습니다.',
-            'is_authenticated': True
+            'is_authenticated': True,
+            'is_admin': user.is_admin,
+            'user': user
         })
-    
-    # 읽음 상태 업데이트
-    user_alarm, created = UserAlarm.objects.get_or_create(
-        user=user,
-        alarm=alarm,
-        defaults={'is_read': True, 'read_at': timezone.now()}
-    )
-    
-    if not user_alarm.is_read:
-        user_alarm.is_read = True
-        user_alarm.read_at = timezone.now()
-        user_alarm.save()
     
     context = {
         'user': user,
-        'announcement': alarm,
+        'announcement': announcement,
         'error': None,
+        'is_admin': user.is_admin,
         'is_authenticated': True
     }
     

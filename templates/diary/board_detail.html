@@ -389,6 +389,35 @@
         background: #c82333;
         transform: translateY(-1px);
     }
+    
+    .edit-button {
+        height: 47px;
+        background: #ffc107;
+        color: #212529;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: background 0.3s ease;
+    }
+    
+    .edit-button:hover {
+        background: #e0a800;
+    }
+    
+    .edit-input {
+        font-family: 'Noto Sans KR', sans-serif;
+    }
+    
+    .edit-input:focus {
+        outline: none;
+        border-color: #667eea !important;
+        box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+    }
     </style>
 </head>
 <body>
@@ -423,15 +452,24 @@
 
     <!-- Main Content -->
     <main class="container">
-        <button class="back-button" onclick="history.back()">
-            <i class="fas fa-arrow-left"></i> 뒤로가기
-        </button>
+        <!-- 수정하기 버튼 추가 -->
+        <div style="display: flex; gap: 1rem; margin-bottom: 2rem;">
+            <button class="back-button" onclick="history.back()">
+                <i class="fas fa-arrow-left"></i> 뒤로가기
+            </button>
+            <button id="edit-button" class="edit-button" onclick="toggleEditMode()" style="display: none;">
+                <i class="fas fa-edit"></i> <span id="edit-button-text">수정하기</span>
+            </button>
+        </div>
         
         <div class="detail-card">
             <div class="detail-header">
                 <h1 class="detail-title" id="board-title">
                     <i class="fas fa-clipboard-list"></i> 게시글 상세보기
                 </h1>
+                <!-- 수정 모드용 제목 입력 필드 -->
+                <input type="text" id="title-input" class="edit-input" style="display: none; width: 100%; font-size: 1.8rem; font-weight: 700; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); border-radius: 6px; padding: 0.5rem; color: white;" placeholder="제목을 입력하세요">
+                
                 <div class="detail-meta" id="board-meta">
                     <span><i class="fas fa-user"></i> 작성자: 로딩 중...</span>
                     <span><i class="fas fa-calendar-alt"></i> 작성일: 로딩 중...</span>
@@ -445,6 +483,32 @@
                         <div class="spinner"></div>
                     </div>
                 </div>
+                <!-- 수정 모드용 내용 입력 필드 -->
+                <textarea id="content-input" class="edit-input" style="display: none; width: 100%; min-height: 300px; font-size: 1.1rem; line-height: 1.8; border: 1px solid #ddd; border-radius: 6px; padding: 1rem; resize: vertical;" placeholder="내용을 입력하세요"></textarea>
+                
+                <!-- 수정 모드용 파일 업로드 섹션 -->
+                <div id="edit-file-section" style="display: none; margin-top: 2rem;">
+                    <h4 style="font-size: 1.1rem; font-weight: 600; color: #333; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fas fa-paperclip"></i> 첨부파일 관리
+                    </h4>
+                    
+                    <!-- 파일 업로드 영역 -->
+                    <div style="border: 2px dashed #ddd; border-radius: 8px; padding: 2rem; text-align: center; margin-bottom: 1rem; background: #f9f9f9;">
+                        <input type="file" id="file-upload" multiple style="display: none;" accept="*/*">
+                        <button onclick="document.getElementById('file-upload').click()" style="background: #667eea; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 6px; cursor: pointer; font-weight: 500; margin-bottom: 0.5rem;">
+                            <i class="fas fa-upload"></i> 파일 선택
+                        </button>
+                        <p style="color: #666; font-size: 0.9rem; margin: 0;">파일을 선택하거나 여기에 드래그하세요 (최대 10MB)</p>
+                    </div>
+                    
+                    <!-- 업로드된 파일 목록 -->
+                    <div id="uploaded-files-list" style="margin-bottom: 1rem;">
+                    </div>
+                    
+                    <!-- 기존 파일 목록 -->
+                    <div id="existing-files-list">
+                    </div>
+                </div>
                 
                 <div class="files-section" id="files-section" style="display: none;">
                     <h3 class="files-title">
@@ -453,6 +517,16 @@
                     <div id="files-list">
                     </div>
                 </div>
+            </div>
+            
+            <!-- 수정 모드 버튼들을 카드 외부 오른쪽 아래로 이동 -->
+            <div id="edit-actions" style="display: none; margin-top: 1rem; text-align: right; margin-bottom: 10px; margin-right: 10px;">
+                <button onclick="saveChanges()" style="background: #28a745; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 6px; cursor: pointer; font-weight: 500; margin-right: 0.5rem;">
+                    <i class="fas fa-save"></i> 저장하기
+                </button>
+                <button onclick="cancelEdit()" style="background: #6c757d; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                    <i class="fas fa-times"></i> 취소
+                </button>
             </div>
         </div>
     </main>
@@ -552,9 +626,257 @@
             // 내용 설정
             document.getElementById('board-content').innerHTML = formatContent(board.content);
             
+            // 수정 버튼 표시 (본인 게시글이므로 항상 표시)
+            document.getElementById('edit-button').style.display = 'flex';
+            
+            // 수정 입력 필드에 현재 값 설정
+            document.getElementById('title-input').value = board.title;
+            document.getElementById('content-input').value = board.content;
+            
             // 파일 섹션 렌더링
             if (board.files && board.files.length > 0) {
                 renderFilesSection(board.files);
+            }
+            
+            // 전역 변수에 현재 게시글 정보 저장
+            window.currentBoard = board;
+        }
+        
+        // 수정 모드 토글
+        let isEditMode = false;
+        function toggleEditMode() {
+            isEditMode = !isEditMode;
+            
+            if (isEditMode) {
+                // 수정 모드로 전환
+                document.getElementById('board-title').style.display = 'none';
+                document.getElementById('title-input').style.display = 'block';
+                document.getElementById('board-content').style.display = 'none';
+                document.getElementById('content-input').style.display = 'block';
+                document.getElementById('edit-file-section').style.display = 'block';
+                document.getElementById('files-section').style.display = 'none';
+                document.getElementById('edit-actions').style.display = 'block';
+                document.getElementById('edit-button-text').textContent = '수정 취소';
+                document.getElementById('edit-button').style.background = '#6c757d';
+                
+                // 기존 파일 목록 표시
+                renderExistingFiles();
+            } else {
+                // 보기 모드로 전환
+                cancelEdit();
+            }
+        }
+        
+        // 수정 취소
+        function cancelEdit() {
+            isEditMode = false;
+            document.getElementById('board-title').style.display = 'block';
+            document.getElementById('title-input').style.display = 'none';
+            document.getElementById('board-content').style.display = 'block';
+            document.getElementById('content-input').style.display = 'none';
+            document.getElementById('edit-file-section').style.display = 'none';
+            document.getElementById('edit-actions').style.display = 'none';
+            document.getElementById('edit-button-text').textContent = '수정하기';
+            document.getElementById('edit-button').style.background = '#ffc107';
+            
+            // 파일 섹션 원래대로 표시
+            if (window.currentBoard && window.currentBoard.files && window.currentBoard.files.length > 0) {
+                document.getElementById('files-section').style.display = 'block';
+            }
+            
+            // 원래 값으로 되돌리기
+            if (window.currentBoard) {
+                document.getElementById('title-input').value = window.currentBoard.title;
+                document.getElementById('content-input').value = window.currentBoard.content;
+                
+                // 파일 목록 초기화
+                currentFiles = [...(window.currentBoard.files || [])];
+                document.getElementById('uploaded-files-list').innerHTML = '';
+            }
+        }
+        
+        // 현재 파일 목록 (수정 중인 파일들)
+        let currentFiles = [];
+        let uploadedFiles = []; // 새로 업로드된 파일들
+        
+        // 기존 파일 목록 렌더링
+        function renderExistingFiles() {
+            const existingFilesList = document.getElementById('existing-files-list');
+            if (!window.currentBoard || !window.currentBoard.files || window.currentBoard.files.length === 0) {
+                existingFilesList.innerHTML = '<p style="color: #666; text-align: center; padding: 1rem;">기존 첨부파일이 없습니다.</p>';
+                return;
+            }
+            
+            // 현재 파일 목록 초기화
+            currentFiles = [...window.currentBoard.files];
+            
+            let html = '<h5 style="font-size: 1rem; margin-bottom: 0.5rem; color: #333;">기존 파일</h5>';
+            window.currentBoard.files.forEach((file, index) => {
+                const fileIcon = getFileIcon(file.original_name);
+                const fileSize = formatFileSize(file.file_size);
+                
+                html += `
+                    <div class="edit-file-item" data-index="${index}" style="background: white; border: 1px solid #e9ecef; border-radius: 6px; padding: 1rem; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            <span style="font-size: 1.2rem;">${fileIcon}</span>
+                            <div>
+                                <div style="font-weight: 500; color: #333;">${escapeHtml(file.original_name)}</div>
+                                <div style="font-size: 0.8rem; color: #6c757d;">${fileSize}</div>
+                            </div>
+                        </div>
+                        <button onclick="removeExistingFile(${index})" style="background: #dc3545; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">
+                            <i class="fas fa-trash"></i> 삭제
+                        </button>
+                    </div>
+                `;
+            });
+            
+            existingFilesList.innerHTML = html;
+        }
+        
+        // 기존 파일 삭제
+        function removeExistingFile(index) {
+            if (confirm('이 파일을 삭제하시겠습니까?')) {
+                currentFiles.splice(index, 1);
+                renderExistingFiles();
+            }
+        }
+        
+        // 새 파일 업로드
+        document.addEventListener('DOMContentLoaded', function() {
+            const fileUpload = document.getElementById('file-upload');
+            if (fileUpload) {
+                fileUpload.addEventListener('change', handleFileUpload);
+            }
+        });
+        
+        async function handleFileUpload(event) {
+            const files = event.target.files;
+            if (!files || files.length === 0) return;
+            
+            for (let file of files) {
+                // 파일 크기 체크 (10MB)
+                if (file.size > 10 * 1024 * 1024) {
+                    alert(`"${file.name}" 파일이 너무 큽니다. 10MB 이하의 파일만 업로드 가능합니다.`);
+                    continue;
+                }
+                
+                try {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    
+                    const response = await fetch('/sales/board/upload-file/', {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': getCsrfToken()
+                        },
+                        body: formData
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        uploadedFiles.push(data.file);
+                        renderUploadedFiles();
+                    } else {
+                        alert(`파일 업로드 실패: ${data.message}`);
+                    }
+                } catch (error) {
+                    console.error('파일 업로드 오류:', error);
+                    alert('파일 업로드 중 오류가 발생했습니다.');
+                }
+            }
+            
+            // 파일 input 초기화
+            event.target.value = '';
+        }
+        
+        // 업로드된 파일 목록 렌더링
+        function renderUploadedFiles() {
+            const uploadedFilesList = document.getElementById('uploaded-files-list');
+            
+            if (uploadedFiles.length === 0) {
+                uploadedFilesList.innerHTML = '';
+                return;
+            }
+            
+            let html = '<h5 style="font-size: 1rem; margin-bottom: 0.5rem; color: #333;">새로 추가된 파일</h5>';
+            uploadedFiles.forEach((file, index) => {
+                const fileIcon = getFileIcon(file.original_name);
+                const fileSize = formatFileSize(file.file_size);
+                
+                html += `
+                    <div class="upload-file-item" data-index="${index}" style="background: #e8f5e8; border: 1px solid #28a745; border-radius: 6px; padding: 1rem; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            <span style="font-size: 1.2rem;">${fileIcon}</span>
+                            <div>
+                                <div style="font-weight: 500; color: #333;">${escapeHtml(file.original_name)} <span style="color: #28a745; font-size: 0.8rem;">(새 파일)</span></div>
+                                <div style="font-size: 0.8rem; color: #6c757d;">${fileSize}</div>
+                            </div>
+                        </div>
+                        <button onclick="removeUploadedFile(${index})" style="background: #dc3545; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">
+                            <i class="fas fa-trash"></i> 삭제
+                        </button>
+                    </div>
+                `;
+            });
+            
+            uploadedFilesList.innerHTML = html;
+        }
+        
+        // 업로드된 파일 삭제
+        function removeUploadedFile(index) {
+            if (confirm('이 파일을 삭제하시겠습니까?')) {
+                uploadedFiles.splice(index, 1);
+                renderUploadedFiles();
+            }
+        }
+        
+        // 변경사항 저장
+        async function saveChanges() {
+            const title = document.getElementById('title-input').value.trim();
+            const content = document.getElementById('content-input').value.trim();
+            
+            if (!title) {
+                alert('제목을 입력해주세요.');
+                return;
+            }
+            
+            if (!content) {
+                alert('내용을 입력해주세요.');
+                return;
+            }
+            
+            // 최종 파일 목록 = 기존 파일 + 새로 업로드된 파일
+            const finalFiles = [...currentFiles, ...uploadedFiles];
+            
+            try {
+                const boardId = window.currentBoard.id;
+                const response = await fetch(`/sales/board/${boardId}/edit/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    body: JSON.stringify({
+                        title: title,
+                        content: content,
+                        files: finalFiles
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('게시글이 수정되었습니다.');
+                    // 페이지 새로고침하여 수정된 내용 반영
+                    location.reload();
+                } else {
+                    alert('수정 실패: ' + data.message);
+                }
+            } catch (error) {
+                console.error('게시글 수정 오류:', error);
+                alert('게시글 수정 중 오류가 발생했습니다.');
             }
         }
         

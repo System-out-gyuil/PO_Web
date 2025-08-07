@@ -369,7 +369,7 @@ body {
   border-radius: 12px;
   width: 95%;
   max-width: 800px;
-  max-height: 90vh;
+  max-height: 95vh;
   overflow-y: auto;
   box-shadow: 0 4px 20px rgba(0,0,0,0.3);
   animation: modalSlideIn 0.3s ease;
@@ -461,8 +461,8 @@ body {
   font-size: 1rem;
   transition: border-color 0.3s ease;
   font-family: inherit;
-  resize: vertical;
-  min-height: 150px;
+  resize: none;
+  height: 330px;
 }
 
 .form-textarea:focus {

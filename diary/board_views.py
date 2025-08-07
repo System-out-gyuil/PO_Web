@@ -224,6 +224,57 @@ def board_detail_api(request, board_id):
         })
 
 @csrf_exempt
+def board_edit(request, board_id):
+    """게시글 수정 API - 본인이 작성한 게시글만 수정 가능"""
+    if not request.session.get('diary_authenticated'):
+        return JsonResponse({'success': False, 'message': '로그인이 필요합니다.'})
+    
+    user_id = request.session.get('diary_member_id')
+    if not user_id:
+        return JsonResponse({'success': False, 'message': '로그인이 필요합니다.'})
+    
+    try:
+        user = User.objects.get(id=user_id)
+        # 본인이 작성한 게시글만 수정 가능
+        board = Board.objects.get(id=board_id, author=user)
+    except (User.DoesNotExist, Board.DoesNotExist):
+        return JsonResponse({'success': False, 'message': '게시글을 찾을 수 없습니다.'})
+    
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            
+            title = data.get('title', '').strip()
+            content = data.get('content', '').strip()
+            files = data.get('files', [])
+            
+            if not title:
+                return JsonResponse({'success': False, 'message': '제목을 입력해주세요.'})
+            
+            if not content:
+                return JsonResponse({'success': False, 'message': '내용을 입력해주세요.'})
+            
+            # 게시글 수정
+            board.title = title
+            board.content = content
+            board.files = files
+            board.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': '게시글이 수정되었습니다.',
+                'board_id': board.id
+            })
+            
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': f'게시글 수정에 실패했습니다: {str(e)}'
+            })
+    
+    return JsonResponse({'success': False, 'message': '잘못된 요청입니다.'})
+
+@csrf_exempt
 def board_file_upload(request):
     """게시판 파일 업로드"""
     if not request.session.get('diary_authenticated'):
