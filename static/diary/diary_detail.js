@@ -3883,12 +3883,6 @@ function bindDetailButtonEvents() {
 function updateDependentRows(updatedRowId, fieldName, value) {
     console.log('종속된 행들 업데이트 시작:', {updatedRowId, fieldName, value});
     
-    // 매출 필드인 경우 종속된 행 업데이트를 건너뛰기 (성능 최적화)
-    if (fieldName === '매출' || fieldName.includes('매출')) {
-        console.log('매출 필드는 종속된 행 업데이트를 건너뜁니다.');
-        return;
-    }
-    
     // 드롭다운 필드인지 확인
     const dropdownFields = (window.ATTR_FIELDS || [])
         .filter(attr => attr.attributeType_name === 'dropdown')

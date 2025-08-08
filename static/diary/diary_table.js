@@ -618,11 +618,9 @@ function processDropdownOptions(options, value, cell) {
                                   if (id && id.startsWith('temp_')) {
                                       saveNewRowField(td.parentElement, '회사명', newValue);
                                   } else {
-                                      fetch('/sales/update_row_field/', {
-                                          method: 'POST',
-                                          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                                          body: 'id=' + id + '&field=회사명&value=' + encodeURIComponent(newValue)
-                                      });
+                                      // 🔥 종속행 동기화를 위해 updateCellValue 함수 사용
+                                      console.log('[회사명 수정] updateCellValue 호출:', {id, field: '회사명', value: newValue});
+                                      updateCellValue(id, '회사명', newValue, td);
                                   }
                               };
                               input.onkeydown = function(e) {
@@ -638,11 +636,9 @@ function processDropdownOptions(options, value, cell) {
                           if (id && id.startsWith('temp_')) {
                               saveNewRowField(td.parentElement, '회사명', newValue);
                           } else {
-                              fetch('/sales/update_row_field/', {
-                                  method: 'POST',
-                                  headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                                  body: 'id=' + id + '&field=회사명&value=' + encodeURIComponent(newValue)
-                              });
+                              // 🔥 종속행 동기화를 위해 updateCellValue 함수 사용
+                              console.log('[회사명 수정] updateCellValue 호출:', {id, field: '회사명', value: newValue});
+                              updateCellValue(id, '회사명', newValue, td);
                           }
                       };
                       input.onkeydown = function(e) {
@@ -677,6 +673,8 @@ function processDropdownOptions(options, value, cell) {
                       };
                       input.onblur = function() {
                           const cleanValue = input.value.replace(/[^\d]/g, '');
+                          console.log(`[매출 수정] updateCellValue 호출:`, {id, type, cleanValue, element: td});
+                          console.log(`[매출 수정] 매출 필드 여부 확인: ${type === '매출' || type.includes('매출')}`);
                           updateCellValue(id, type, cleanValue, td);
                       };
                       input.onkeydown = function(e) {
@@ -744,6 +742,11 @@ function processDropdownOptions(options, value, cell) {
                                   // 종속된 행들 찾아서 업데이트
                                   updateDependentRows(id, type, newValue);
                                   
+                                  // datetime 필드인 경우 캘린더 리렌더링
+                                  if (dataType === 'datetime' && window.calendar) {
+                                      window.calendar.refetchEvents();
+                                  }
+                                  
                                   // 필요시 테이블/보드 갱신
                                   refreshCalendarSettings();
                               }).catch(function(error) {
@@ -797,17 +800,41 @@ function processDropdownOptions(options, value, cell) {
   
   // 부분 업데이트 함수 - 특정 셀만 업데이트
   function updateTableCell(rowId, field, value) {
+      console.log(`[테이블 셀 업데이트] 시작: rowId=${rowId}, field=${field}, value=${value}`);
+      
       const row = document.querySelector(`tr[data-id="${rowId}"]`);
-      if (!row) return;
+      if (!row) {
+          console.warn(`[테이블 셀 업데이트] 행을 찾을 수 없음: rowId=${rowId}`);
+          return;
+      }
       
       const cell = row.querySelector(`td[data-field="${field}"]`);
-      if (!cell) return;
+      if (!cell) {
+          console.warn(`[테이블 셀 업데이트] 셀을 찾을 수 없음: rowId=${rowId}, field=${field}`);
+          return;
+      }
       
+      console.log(`[테이블 셀 업데이트] 셀 발견, 업데이트 진행: rowId=${rowId}, field=${field}`);
       
       // 셀 내용만 업데이트 (전체 테이블 새로고침 없이)
       if (field === '매출' || field.includes('매출')) {
-          cell.textContent = formatToKoreanCurrency(value);
+          const formattedValue = formatToKoreanCurrency(value);
+          cell.textContent = formattedValue;
           cell.setAttribute('data-raw', value);
+          cell.setAttribute('data-value', value);
+          console.log(`[테이블 셀 업데이트] 매출 필드 업데이트 완료: ${value} -> ${formattedValue}`);
+          
+          // 매출 필드 종속행 동기화를 위한 추가 처리
+          setTimeout(() => {
+              const verifyCell = document.querySelector(`tr[data-id="${rowId}"] td[data-field="${field}"]`);
+              if (verifyCell && !verifyCell.textContent.includes('억')) {
+                  verifyCell.textContent = formattedValue;
+                  verifyCell.setAttribute('data-raw', value);
+                  verifyCell.setAttribute('data-value', value);
+                  console.log(`[테이블 셀 업데이트] 매출 필드 재확인 완료: ${formattedValue}`);
+              }
+          }, 50);
+          
       } else if (field === '개업년월') {
           // 개업년월 특별 처리
           try {
@@ -823,17 +850,42 @@ function processDropdownOptions(options, value, cell) {
               } else {
                   cell.textContent = value;
               }
+              cell.setAttribute('data-value', value);
+              console.log(`[테이블 셀 업데이트] 개업년월 필드 업데이트 완료: ${value}`);
           } catch (e) {
               cell.textContent = value;
+              cell.setAttribute('data-value', value);
+              console.error(`[테이블 셀 업데이트] 개업년월 JSON 파싱 오류:`, e);
           }
       } else if (field === '회사명') {
-          // 회사명 필드 특별 처리
+          // 회사명 필드 특별 처리 - 종속행 동기화 개선
           const nameTextDiv = cell.querySelector('.name-text');
           if (nameTextDiv) {
               nameTextDiv.innerText = value;
+              console.log(`[테이블 셀 업데이트] 회사명 .name-text 업데이트: ${value}`);
           } else {
               cell.textContent = value;
+              console.log(`[테이블 셀 업데이트] 회사명 직접 업데이트: ${value}`);
           }
+          cell.setAttribute('data-value', value);
+          
+          // 회사명 필드 종속행 동기화를 위한 추가 처리
+          setTimeout(() => {
+              const verifyCell = document.querySelector(`tr[data-id="${rowId}"] td[data-field="${field}"]`);
+              if (verifyCell) {
+                  const verifyNameText = verifyCell.querySelector('.name-text');
+                  if (verifyNameText && verifyNameText.innerText !== value) {
+                      verifyNameText.innerText = value;
+                      console.log(`[테이블 셀 업데이트] 회사명 재확인 완료: ${value}`);
+                  } else if (!verifyNameText && verifyCell.textContent !== value) {
+                      verifyCell.textContent = value;
+                      console.log(`[테이블 셀 업데이트] 회사명 직접 재확인 완료: ${value}`);
+                  }
+                  verifyCell.setAttribute('data-value', value);
+              }
+          }, 50);
+          
+          console.log(`[테이블 셀 업데이트] 회사명 필드 업데이트 완료: ${value}`);
       } else {
           // 드롭다운 필드인지 확인
           const dropdownFields = (window.ATTR_FIELDS || [])
@@ -841,6 +893,7 @@ function processDropdownOptions(options, value, cell) {
               .map(attr => attr.name);
           
           if (dropdownFields.includes(field)) {
+              console.log(`[테이블 셀 업데이트] 드롭다운 필드 처리: ${field}`);
               // 드롭다운 필드는 서버에서 최신 옵션 정보를 가져와서 업데이트
               
               // 먼저 현재 셀의 내용을 pill 형태로 임시 업데이트 (로딩 상태)
@@ -858,6 +911,8 @@ function processDropdownOptions(options, value, cell) {
               if (options) {
                   // 로컬에 있는 옵션 사용
                   processDropdownOptions(options, value, cell);
+                  cell.setAttribute('data-value', value);
+                  console.log(`[테이블 셀 업데이트] 드롭다운 로컬 옵션으로 업데이트 완료: ${value}`);
               } else {
                   // 서버에서 옵션 가져오기 (fallback)
                   fetch('/sales/dropdown_options/?field=' + encodeURIComponent(field))
@@ -870,38 +925,74 @@ function processDropdownOptions(options, value, cell) {
                       .then(data => {
                           if (data.options && Array.isArray(data.options)) {
                               processDropdownOptions(data.options, value, cell);
+                              cell.setAttribute('data-value', value);
+                              console.log(`[테이블 셀 업데이트] 드롭다운 서버 옵션으로 업데이트 완료: ${value}`);
                           } else {
                               // 옵션 데이터가 없는 경우에도 pill 형태로 표시
                               processDropdownOptions(window.DROPDOWN_OPTIONS[field], value, cell);
+                              cell.setAttribute('data-value', value);
+                              console.log(`[테이블 셀 업데이트] 드롭다운 fallback 업데이트 완료: ${value}`);
                           }
                       })
                       .catch(error => {
-                          console.error('드롭다운 옵션 업데이트 실패:', error);
+                          console.error('[테이블 셀 업데이트] 드롭다운 옵션 업데이트 실패:', error);
                           // 오류 발생 시에도 pill 형태로 표시
                           processDropdownOptions(window.DROPDOWN_OPTIONS[field], value, cell);
+                          cell.setAttribute('data-value', value);
                       });
               }
           } else {
               // 일반 필드
               cell.textContent = value;
               cell.setAttribute('data-value', value);
+              console.log(`[테이블 셀 업데이트] 일반 필드 업데이트 완료: ${value}`);
           }
       }
+      
+      // 셀 업데이트 후 시각적 피드백 (선택적)
+      cell.style.transition = 'background-color 0.3s ease';
+      cell.style.backgroundColor = '#e3f2fd';
+      setTimeout(() => {
+          cell.style.backgroundColor = '';
+      }, 500);
       
       // 실시간 동기화 (캘린더만)
       if (field === 'F/U 일정' && window.calendar) {
           window.calendar.refetchEvents();
+          console.log(`[테이블 셀 업데이트] 캘린더 리프레시 완료`);
       }
       
       // datetime 타입 필드인 경우 캘린더 리렌더링
       if (cell.getAttribute('data-type') === 'datetime' && window.calendar) {
           window.calendar.refetchEvents();
+          console.log(`[테이블 셀 업데이트] datetime 필드 캘린더 리프레시 완료`);
       }
       
       // 모든 datetime 필드 변경 시 캘린더 리렌더링
       if (typeof refreshCalendar === 'function') {
           refreshCalendar();
       }
+      
+      console.log(`[테이블 셀 업데이트] 완료: rowId=${rowId}, field=${field}`);
+      
+      // 최종 확인: 셀이 실제로 업데이트되었는지 검증
+      setTimeout(() => {
+          const verifyRow = document.querySelector(`tr[data-id="${rowId}"]`);
+          const verifyCell = verifyRow ? verifyRow.querySelector(`td[data-field="${field}"]`) : null;
+          if (verifyCell) {
+              const currentDisplayValue = verifyCell.textContent || verifyCell.innerText;
+              const currentDataValue = verifyCell.getAttribute('data-value');
+              console.log(`[테이블 셀 업데이트] 최종 검증: rowId=${rowId}, field=${field}`);
+              console.log(`[테이블 셀 업데이트] 화면 표시값: "${currentDisplayValue}", data-value: "${currentDataValue}"`);
+              
+              // 값이 올바르게 반영되지 않은 경우 한 번 더 시도
+              if (!currentDisplayValue && value) {
+                  console.warn(`[테이블 셀 업데이트] 재시도 필요: rowId=${rowId}, field=${field}`);
+                  verifyCell.textContent = value;
+                  verifyCell.setAttribute('data-value', value);
+              }
+          }
+      }, 200);
   }
   
   
@@ -1090,11 +1181,9 @@ function processDropdownOptions(options, value, cell) {
                                       if (id && id.startsWith('temp_')) {
                                           saveNewRowField(td.parentElement, '회사명', newValue);
                                       } else {
-                                          fetch('/sales/update_row_field/', {
-                                              method: 'POST',
-                                              headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                                              body: 'id=' + id + '&field=회사명&value=' + encodeURIComponent(newValue)
-                                          });
+                                          // 🔥 종속행 동기화를 위해 updateCellValue 함수 사용
+                                          console.log('[회사명 수정] updateCellValue 호출:', {id, field: '회사명', value: newValue});
+                                          updateCellValue(id, '회사명', newValue, td);
                                       }
                                   };
                                   input.onkeydown = function(e) {
@@ -1110,11 +1199,9 @@ function processDropdownOptions(options, value, cell) {
                               if (id && id.startsWith('temp_')) {
                                   saveNewRowField(td.parentElement, '회사명', newValue);
                               } else {
-                                  fetch('/sales/update_row_field/', {
-                                      method: 'POST',
-                                      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                                      body: 'id=' + id + '&field=회사명&value=' + encodeURIComponent(newValue)
-                                  });
+                                  // 🔥 종속행 동기화를 위해 updateCellValue 함수 사용
+                                  console.log('[회사명 수정] updateCellValue 호출:', {id, field: '회사명', value: newValue});
+                                  updateCellValue(id, '회사명', newValue, td);
                               }
                           };
                           input.onkeydown = function(e) {
@@ -1153,6 +1240,8 @@ function processDropdownOptions(options, value, cell) {
                           };
                           input.onblur = function() {
                               const cleanValue = removeCommaFromNumber(this.value);
+                              console.log(`[매출 수정] updateCellValue 호출:`, {id, type, cleanValue, element: td});
+                              console.log(`[매출 수정] 매출 필드 여부 확인: ${type === '매출' || type.includes('매출')}`);
                               updateCellValue(id, type, cleanValue, td);
                           };
                       } else {
@@ -1780,16 +1869,18 @@ function processDropdownOptions(options, value, cell) {
   });
   
   // 숫자 필드 업데이트 시 콤마 포맷팅 적용
-  function updateCellValue(id, fieldName, value, element) {
+  function updateCellValue(id, fieldName, value, element, skipDependentUpdate = false) {
+      console.log(`[셀 값 업데이트] 시작: id=${id}, field=${fieldName}, value=${value}, skipDependentUpdate=${skipDependentUpdate}`);
       
       // 새 행인 경우
       if (id && id.startsWith('temp_')) {
+          console.log(`[셀 값 업데이트] 새 행 처리: ${id}`);
           saveNewRowField(element.parentElement, fieldName, value);
           return;
       }
       
       // 기존 행인 경우
-      console.log('update_row_field, 테이블2')
+      console.log('[셀 값 업데이트] 기존 행 처리, 서버 업데이트 시작');
       fetch('/sales/update_row_field/', {
           method: 'POST',
           headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -1799,19 +1890,30 @@ function processDropdownOptions(options, value, cell) {
           return response.json();
       })
       .then(function(data) {
+          console.log(`[셀 값 업데이트] 서버 응답:`, data);
+          
           if (!data.success) {
+              console.error(`[셀 값 업데이트] 서버 오류:`, data.error);
               alert('수정 실패: ' + (data.error || ''));
               return;
           }
           
+          console.log(`[셀 값 업데이트] 서버 업데이트 성공, 로컬 테이블 업데이트 시작`);
+          
           // 모든 필드에 대해 현재 셀만 업데이트 (드롭다운 포함)
           updateTableCell(id, fieldName, value);
           
-          // 종속된 행들 찾아서 업데이트
-          updateDependentRows(id, fieldName, value);
+          // 복제된 행들의 종속성 업데이트 - 중요! (무한루프 방지용 플래그 사용)
+          if (!skipDependentUpdate) {
+              console.log(`[셀 값 업데이트] 복제행 동기화 시작`);
+              updateDependentRows(id, fieldName, value);
+          } else {
+              console.log(`[셀 값 업데이트] 복제행 동기화 스킵 (무한루프 방지)`);
+          }
           
           // 상태 필터가 활성화되어 있고, 변경된 필드가 상태 속성인 경우에만 즉시 필터 적용
           if (window.currentStatusTab !== null && fieldName === window.statusAttributeName) {
+              console.log(`[셀 값 업데이트] 상태 필터 업데이트 시작: ${fieldName}`);
               // 해당 행의 상태 셀 업데이트
               const row = document.querySelector(`tr[data-id="${id}"]`);
               if (row) {
@@ -1824,6 +1926,7 @@ function processDropdownOptions(options, value, cell) {
                       setTimeout(() => {
                           if (typeof applyStatusFilter === 'function') {
                               applyStatusFilter();
+                              console.log(`[셀 값 업데이트] 상태 필터 적용 완료`);
                           }
                       }, 50);
                   }
@@ -1833,20 +1936,30 @@ function processDropdownOptions(options, value, cell) {
           // datetime 필드인 경우 캘린더 리렌더링
           const fieldElement = document.querySelector(`td[data-field="${fieldName}"]`);
           if (fieldElement && fieldElement.getAttribute('data-type') === 'datetime' && window.calendar) {
+              console.log(`[셀 값 업데이트] datetime 필드 캘린더 업데이트: ${fieldName}`);
               window.calendar.refetchEvents();
           }
           
           // 필요시 테이블/보드 갱신
           refreshCalendarSettings();
+          
+          console.log(`[셀 값 업데이트] 모든 업데이트 완료: id=${id}, field=${fieldName}`);
       })
       .catch(function(error) {
-          console.error('업데이트 중 오류:', error);
+          console.error('[셀 값 업데이트] 오류 발생:', error);
           alert('업데이트 중 오류가 발생했습니다.');
       });
   }
   
   // 종속된 행들을 찾아서 업데이트하는 함수
   function updateDependentRows(updatedRowId, fieldName, value) {
+      console.log(`[복제행 동기화] 시작: rowId=${updatedRowId}, field=${fieldName}, value=${value}`);
+      console.log(`[복제행 동기화] 회사명 필드 여부: ${fieldName === '회사명'}`);
+      console.log(`[복제행 동기화] 매출 필드 여부: ${fieldName === '매출' || fieldName.includes('매출')}`);
+      
+      // 🔍 수동 CASCADE 확인 도구 - 콘솔에서 확인 가능
+      console.log(`%c[복제행 동기화] 🔍 CASCADE 확인이 필요하시면 다음 명령어를 실행하세요:`, 'color: blue; font-weight: bold;');
+      console.log(`%cfetch('/sales/check_cascade_status/', {method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body: 'field_name=${fieldName}'}).then(r=>r.json()).then(console.log)`, 'color: blue;');
       
       // 모든 필드에 대해 종속된 행들 찾기 (매출 관련 필드 제한 제거)
       // 서버에서 종속된 행들 정보 가져오기
@@ -1857,7 +1970,10 @@ function processDropdownOptions(options, value, cell) {
       })
       .then(response => response.json())
       .then(data => {
+          console.log(`[복제행 동기화] 서버 응답:`, data);
+          
           if (data.success && data.dependent_rows) {
+              console.log(`[복제행 동기화] 종속행 ${data.dependent_rows.length}개 발견`);
               
               // 드롭다운 필드인지 확인
               const dropdownFields = (window.ATTR_FIELDS || [])
@@ -1865,79 +1981,262 @@ function processDropdownOptions(options, value, cell) {
                   .map(attr => attr.name);
               
               const isDropdownField = dropdownFields.includes(fieldName);
+              console.log(`[복제행 동기화] 드롭다운 필드 여부: ${isDropdownField}`);
               
-              // 각 종속된 행의 셀 업데이트
-              data.dependent_rows.forEach(depRow => {
-                  if (depRow.row_id && depRow.field && depRow.value !== undefined) {
+              // 각 종속된 행의 셀을 현재 업데이트된 값으로 동기화
+              data.dependent_rows.forEach((depRow, index) => {
+                  console.log(`[복제행 동기화] 종속행 ${index + 1} 업데이트: rowId=${depRow.row_id}, field=${depRow.field}`);
+                  console.log(`[복제행 동기화] 기존값: ${depRow.value} -> 새값: ${value}`);
+                  
+                  if (depRow.row_id && depRow.field) {
                       
-                      // 드롭다운 필드인 경우 옵션 정보를 가져와서 처리
-                      let displayValue = depRow.value;
-                      if (isDropdownField && depRow.value) {
-                          // 값이 숫자인 경우에만 ID를 이름으로 변환
-                          if (!isNaN(depRow.value)) {
-                              // 드롭다운 옵션 정보 가져와서 ID를 이름으로 변환
-                              fetch('/sales/dropdown_options/?field=' + encodeURIComponent(fieldName))
-                                  .then(response => {
-                                      if (!response.ok) {
-                                          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                                      }
-                                      return response.json();
-                                  })
-                                  .then(optionData => {
-                                      if (optionData.options && Array.isArray(optionData.options)) {
-                                          const option = optionData.options.find(opt => opt.id == depRow.value);
-                                          if (option) {
-                                              displayValue = option.option;
-                                          } else {
-                                              // 옵션을 찾지 못한 경우 원래 값 사용
-                                              displayValue = depRow.value;
-                                          }
+                      // 회사명과 매출 필드는 즉시 강제 업데이트
+                      if (fieldName === '회사명' || fieldName === '매출' || fieldName.includes('매출')) {
+                          console.log(`[복제행 동기화] ⭐ 특별 필드 감지: ${fieldName}`);
+                          console.log(`[복제행 동기화] ⭐ 매출 필드인지 재확인: ${fieldName === '매출' || fieldName.includes('매출')}`);
+                          console.log(`[복제행 동기화] ⭐ 종속행 정보:`, {rowId: depRow.row_id, field: depRow.field, newValue: value});
+                          
+                          // 즉시 프론트엔드 업데이트
+                          forcedUpdateSpecialField(depRow.row_id, fieldName, value);
+                          
+                          // 서버 동기화
+                          syncDependentRowToServer(depRow.row_id, depRow.field, value);
+                          
+                          console.log(`[복제행 동기화] ⭐ 특별 필드 처리 완료: ${fieldName}`);
+                          
+                      } else {
+                          // 중요: 서버에서 받은 기존값이 아닌 현재 업데이트된 값을 사용
+                          let displayValue = value;
+                          
+                          // 드롭다운 필드인 경우 옵션 정보를 가져와서 처리
+                          if (isDropdownField && value) {
+                              // 값이 숫자인 경우에만 ID를 이름으로 변환
+                              if (!isNaN(value)) {
+                                  // 로컬 옵션을 먼저 확인
+                                  if (window.DROPDOWN_OPTIONS && window.DROPDOWN_OPTIONS[fieldName]) {
+                                      const option = window.DROPDOWN_OPTIONS[fieldName].find(opt => opt.id == value);
+                                      if (option) {
+                                          displayValue = option.option;
+                                          console.log(`[복제행 동기화] 드롭다운 로컬 옵션 변환: ${value} -> ${displayValue}`);
+                                          
+                                          // 즉시 업데이트
+                                          setTimeout(() => {
+                                              updateTableCell(depRow.row_id, depRow.field, displayValue);
+                                              // 백엔드에도 동기화
+                                              syncDependentRowToServer(depRow.row_id, depRow.field, value);
+                                              console.log(`[복제행 동기화] 테이블 셀 업데이트 완료: rowId=${depRow.row_id}`);
+                                          }, 5);
                                       } else {
-                                          // 옵션 데이터가 없는 경우 원래 값 사용
-                                          displayValue = depRow.value;
+                                          // 로컬에서 찾지 못한 경우 서버에서 옵션 가져오기
+                                          fetch('/sales/dropdown_options/?field=' + encodeURIComponent(fieldName))
+                                              .then(response => {
+                                                  if (!response.ok) {
+                                                      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                                                  }
+                                                  return response.json();
+                                              })
+                                              .then(optionData => {
+                                                  if (optionData.options && Array.isArray(optionData.options)) {
+                                                      const option = optionData.options.find(opt => opt.id == value);
+                                                      if (option) {
+                                                          displayValue = option.option;
+                                                      }
+                                                  }
+                                                  
+                                                  console.log(`[복제행 동기화] 드롭다운 서버 옵션 변환: ${value} -> ${displayValue}`);
+                                                  
+                                                  // 즉시 업데이트
+                                                  setTimeout(() => {
+                                                      updateTableCell(depRow.row_id, depRow.field, displayValue);
+                                                      // 백엔드에도 동기화
+                                                      syncDependentRowToServer(depRow.row_id, depRow.field, value);
+                                                      console.log(`[복제행 동기화] 테이블 셀 업데이트 완료: rowId=${depRow.row_id}`);
+                                                  }, 5);
+                                              })
+                                              .catch(error => {
+                                                  console.error('[복제행 동기화] 드롭다운 옵션 정보 가져오기 실패:', error);
+                                                  // 실패 시에도 업데이트
+                                                  setTimeout(() => {
+                                                      updateTableCell(depRow.row_id, depRow.field, value);
+                                                      syncDependentRowToServer(depRow.row_id, depRow.field, value);
+                                                      console.log(`[복제행 동기화] 테이블 셀 업데이트 완료 (fallback): rowId=${depRow.row_id}`);
+                                                  }, 5);
+                                              });
                                       }
-                                      
-                                      // 약간의 지연을 두고 업데이트 (DOM 업데이트 보장)
-                                      setTimeout(() => {
-                                          updateTableCell(depRow.row_id, depRow.field, displayValue);
-                                      }, 10);
-                                  })
-                                  .catch(error => {
-                                      console.error('드롭다운 옵션 정보 가져오기 실패:', error);
-                                      // 실패 시 원래 값으로 업데이트 (updateTableCell에서 pill 형태로 처리됨)
-                                      setTimeout(() => {
-                                          updateTableCell(depRow.row_id, depRow.field, depRow.value);
-                                      }, 10);
-                                  });
+                                  } else {
+                                      // DROPDOWN_OPTIONS가 없는 경우 서버에서 가져오기
+                                      fetch('/sales/dropdown_options/?field=' + encodeURIComponent(fieldName))
+                                          .then(response => response.json())
+                                          .then(optionData => {
+                                              if (optionData.options && Array.isArray(optionData.options)) {
+                                                  const option = optionData.options.find(opt => opt.id == value);
+                                                  if (option) {
+                                                      displayValue = option.option;
+                                                  }
+                                              }
+                                              
+                                              console.log(`[복제행 동기화] 드롭다운 서버 옵션 변환: ${value} -> ${displayValue}`);
+                                              
+                                              setTimeout(() => {
+                                                  updateTableCell(depRow.row_id, depRow.field, displayValue);
+                                                  syncDependentRowToServer(depRow.row_id, depRow.field, value);
+                                                  console.log(`[복제행 동기화] 테이블 셀 업데이트 완료: rowId=${depRow.row_id}`);
+                                              }, 5);
+                                          })
+                                          .catch(error => {
+                                              console.error('[복제행 동기화] 드롭다운 옵션 정보 가져오기 실패:', error);
+                                              setTimeout(() => {
+                                                  updateTableCell(depRow.row_id, depRow.field, value);
+                                                  syncDependentRowToServer(depRow.row_id, depRow.field, value);
+                                                  console.log(`[복제행 동기화] 테이블 셀 업데이트 완료 (fallback): rowId=${depRow.row_id}`);
+                                              }, 5);
+                                          });
+                                  }
+                              } else {
+                                  // 값이 이미 텍스트인 경우 그대로 사용
+                                  console.log(`[복제행 동기화] 텍스트 값 사용: ${displayValue}`);
+                                  setTimeout(() => {
+                                      updateTableCell(depRow.row_id, depRow.field, displayValue);
+                                      syncDependentRowToServer(depRow.row_id, depRow.field, value);
+                                      console.log(`[복제행 동기화] 테이블 셀 업데이트 완료: rowId=${depRow.row_id}`);
+                                  }, 5);
+                              }
                           } else {
-                              // 값이 이미 텍스트인 경우 그대로 사용
+                              // 일반 필드인 경우 그대로 사용
+                              console.log(`[복제행 동기화] 일반 필드 업데이트: ${displayValue}`);
                               setTimeout(() => {
                                   updateTableCell(depRow.row_id, depRow.field, displayValue);
-                              }, 10);
+                                  syncDependentRowToServer(depRow.row_id, depRow.field, value);
+                                  console.log(`[복제행 동기화] 테이블 셀 업데이트 완료: rowId=${depRow.row_id}`);
+                              }, 5);
                           }
-                      } else {
-                          // 일반 필드인 경우 그대로 사용
-                          setTimeout(() => {
-                              updateTableCell(depRow.row_id, depRow.field, displayValue);
-                          }, 10);
                       }
                   }
               });
+              
+              // 회사명과 매출 필드의 경우 추가적인 강제 검증
+              if (fieldName === '회사명' || fieldName === '매출' || fieldName.includes('매출')) {
+                  setTimeout(() => {
+                      console.log(`[복제행 동기화] ⭐ 특별 필드 최종 검증 시작: ${fieldName}`);
+                      data.dependent_rows.forEach(depRow => {
+                          forcedVerifySpecialField(depRow.row_id, fieldName, value);
+                      });
+                  }, 200);
+              }
+              
+              // 추가적인 동기화 보장 - 모든 업데이트가 완료된 후 한 번 더 확인
+              setTimeout(() => {
+                  console.log(`[복제행 동기화] 추가 동기화 확인 시작`);
+                  data.dependent_rows.forEach(depRow => {
+                      if (depRow.row_id && depRow.field) {
+                          const targetRow = document.querySelector(`tr[data-id="${depRow.row_id}"]`);
+                          const targetCell = targetRow ? targetRow.querySelector(`td[data-field="${depRow.field}"]`) : null;
+                          if (targetCell) {
+                              // 셀의 data-value 속성을 현재 값으로 업데이트
+                              targetCell.setAttribute('data-value', value);
+                              
+                              // 회사명과 매출 필드의 특별 재확인 처리
+                              if (fieldName === '회사명') {
+                                  const nameTextDiv = targetCell.querySelector('.name-text');
+                                  if (nameTextDiv) {
+                                      if (nameTextDiv.innerText !== value) {
+                                          nameTextDiv.innerText = value;
+                                          console.log(`[복제행 동기화] 회사명 최종 재확인: rowId=${depRow.row_id}, value=${value}`);
+                                      }
+                                  } else {
+                                      if (targetCell.textContent !== value) {
+                                          targetCell.textContent = value;
+                                          console.log(`[복제행 동기화] 회사명 직접 최종 재확인: rowId=${depRow.row_id}, value=${value}`);
+                                      }
+                                  }
+                              } else if (fieldName === '매출' || fieldName.includes('매출')) {
+                                  const formattedValue = formatToKoreanCurrency(value);
+                                  if (targetCell.textContent !== formattedValue) {
+                                      targetCell.textContent = formattedValue;
+                                      targetCell.setAttribute('data-raw', value);
+                                      console.log(`[복제행 동기화] 매출 최종 재확인: rowId=${depRow.row_id}, value=${value} -> ${formattedValue}`);
+                                  }
+                              }
+                              
+                              console.log(`[복제행 동기화] data-value 속성 업데이트: rowId=${depRow.row_id}, value=${value}`);
+                          }
+                      }
+                  });
+              }, 100);
+              
           } else {
-              console.log('종속된 행이 없거나 오류 발생:', data);
+              console.log('[복제행 동기화] 종속된 행이 없거나 오류 발생:', data);
           }
       })
       .catch(error => {
-          console.error('종속된 행들 업데이트 실패:', error);
+          console.error('[복제행 동기화] 종속된 행들 업데이트 실패:', error);
       });
       
       // 드롭다운 필드인 경우 관련 셀들 동기화
+      const dropdownFields = (window.ATTR_FIELDS || [])
+          .filter(attr => attr.attributeType_name === 'dropdown')
+          .map(attr => attr.name);
+          
       if (dropdownFields.includes(fieldName)) {
           // 드롭다운 옵션 동기화는 기존 syncTableAndKanban 함수에서 처리
+          console.log(`[복제행 동기화] 드롭다운 필드 추가 동기화 시작: ${fieldName}`);
           if (typeof syncTableAndKanban === 'function') {
               syncTableAndKanban(fieldName);
           }
       }
+  }
+  
+  // 종속된 행을 서버에 동기화하는 함수 (무한루프 방지)
+  function syncDependentRowToServer(rowId, fieldName, value) {
+      console.log(`[서버 동기화] 시작: rowId=${rowId}, field=${fieldName}, value=${value}`);
+      
+      fetch('/sales/update_row_field/', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+          body: 'id=' + rowId + '&field=' + encodeURIComponent(fieldName) + '&value=' + encodeURIComponent(value)
+      })
+      .then(response => response.json())
+      .then(data => {
+          if (data.success) {
+              console.log(`[서버 동기화] 성공: rowId=${rowId}, field=${fieldName}`);
+              
+              // 서버 업데이트 성공 후 해당 셀의 data-value도 확실히 업데이트
+              const targetRow = document.querySelector(`tr[data-id="${rowId}"]`);
+              const targetCell = targetRow ? targetRow.querySelector(`td[data-field="${fieldName}"]`) : null;
+              if (targetCell) {
+                  targetCell.setAttribute('data-value', value);
+                  
+                  // 회사명과 매출 필드의 특별 처리
+                  if (fieldName === '회사명') {
+                      const nameTextDiv = targetCell.querySelector('.name-text');
+                      if (nameTextDiv) {
+                          nameTextDiv.innerText = value;
+                          console.log(`[서버 동기화] 회사명 .name-text 확정: rowId=${rowId}, value=${value}`);
+                      } else {
+                          targetCell.textContent = value;
+                          console.log(`[서버 동기화] 회사명 직접 확정: rowId=${rowId}, value=${value}`);
+                      }
+                  } else if (fieldName === '매출' || fieldName.includes('매출')) {
+                      const formattedValue = formatToKoreanCurrency(value);
+                      targetCell.textContent = formattedValue;
+                      targetCell.setAttribute('data-raw', value);
+                      console.log(`[서버 동기화] 매출 필드 확정: rowId=${rowId}, value=${value} -> ${formattedValue}`);
+                  }
+                  
+                  console.log(`[서버 동기화] 셀 data-value 속성 확정: rowId=${rowId}, value=${value}`);
+              }
+              
+          } else {
+              console.error(`[서버 동기화] 실패: rowId=${rowId}, field=${fieldName}, error=${data.error}`);
+              // 실패 시 사용자에게 알림
+              alert(`종속 행 동기화 실패 (행 ID: ${rowId}): ${data.error || '알 수 없는 오류'}`);
+          }
+      })
+      .catch(error => {
+          console.error(`[서버 동기화] 오류: rowId=${rowId}, field=${fieldName}`, error);
+          // 네트워크 오류 시 사용자에게 알림
+          alert(`종속 행 동기화 중 네트워크 오류가 발생했습니다 (행 ID: ${rowId})`);
+      });
   }
   
   // 테이블과 칸반보드 실시간 동기화 함수 (개선된 버전)
@@ -3336,3 +3635,166 @@ async function checkKanbanAndRefresh(fieldName) {
         }
     }
 }
+
+// 회사명과 매출 필드를 강제로 업데이트하는 함수
+function forcedUpdateSpecialField(rowId, fieldName, value) {
+    console.log(`[강제 업데이트] ⭐ 시작: rowId=${rowId}, field=${fieldName}, value=${value}`);
+    
+    const targetRow = document.querySelector(`tr[data-id="${rowId}"]`);
+    const targetCell = targetRow ? targetRow.querySelector(`td[data-field="${fieldName}"]`) : null;
+    
+    if (!targetCell) {
+        console.error(`[강제 업데이트] ⭐ 셀을 찾을 수 없음: rowId=${rowId}, field=${fieldName}`);
+        return;
+    }
+    
+    if (fieldName === '회사명') {
+        const nameTextDiv = targetCell.querySelector('.name-text');
+        if (nameTextDiv) {
+            nameTextDiv.innerText = value;
+            console.log(`[강제 업데이트] ⭐ 회사명 .name-text 업데이트: ${value}`);
+        } else {
+            targetCell.textContent = value;
+            console.log(`[강제 업데이트] ⭐ 회사명 직접 업데이트: ${value}`);
+        }
+        targetCell.setAttribute('data-value', value);
+    } else if (fieldName === '매출' || fieldName.includes('매출')) {
+        console.log(`[강제 업데이트] ⭐⭐ 매출 필드 처리 시작: ${fieldName}`);
+        console.log(`[강제 업데이트] ⭐⭐ 원본 값: ${value}, 타입: ${typeof value}`);
+        
+        // formatToKoreanCurrency 함수가 정의되어 있는지 확인
+        if (typeof formatToKoreanCurrency === 'function') {
+            const formattedValue = formatToKoreanCurrency(value);
+            console.log(`[강제 업데이트] ⭐⭐ formatToKoreanCurrency 사용: ${formattedValue}`);
+            
+            targetCell.textContent = formattedValue;
+            targetCell.setAttribute('data-raw', value);
+            targetCell.setAttribute('data-value', value);
+            console.log(`[강제 업데이트] ⭐⭐ 매출 DOM 업데이트 완료: ${value} -> ${formattedValue}`);
+        } else {
+            console.log(`[강제 업데이트] ⭐⭐ formatSalesValue 사용 (fallback)`);
+            const formattedValue = formatSalesValue(value);
+            
+            targetCell.textContent = formattedValue;
+            targetCell.setAttribute('data-raw', value);
+            targetCell.setAttribute('data-value', value);
+            console.log(`[강제 업데이트] ⭐⭐ 매출 fallback 포맷팅 완료: ${value} -> ${formattedValue}`);
+        }
+    }
+    
+    // 시각적 피드백 - 매출 필드는 더 강한 색상
+    targetCell.style.transition = 'background-color 0.5s ease';
+    if (fieldName === '매출' || fieldName.includes('매출')) {
+        targetCell.style.backgroundColor = '#4caf50'; // 녹색
+        console.log(`[강제 업데이트] ⭐⭐ 매출 필드 녹색 하이라이트 적용`);
+    } else {
+        targetCell.style.backgroundColor = '#ffeb3b'; // 노란색
+    }
+    setTimeout(() => {
+        targetCell.style.backgroundColor = '';
+    }, 1500);
+    
+    console.log(`[강제 업데이트] ⭐ 완료: rowId=${rowId}, field=${fieldName}`);
+}
+
+// 회사명과 매출 필드를 강제로 검증하는 함수
+function forcedVerifySpecialField(rowId, fieldName, expectedValue) {
+    console.log(`[강제 검증] ⭐ 시작: rowId=${rowId}, field=${fieldName}, expectedValue=${expectedValue}`);
+    
+    const targetRow = document.querySelector(`tr[data-id="${rowId}"]`);
+    const targetCell = targetRow ? targetRow.querySelector(`td[data-field="${fieldName}"]`) : null;
+    
+    if (!targetCell) {
+        console.error(`[강제 검증] ⭐ 셀을 찾을 수 없음: rowId=${rowId}, field=${fieldName}`);
+        return;
+    }
+    
+    let needsUpdate = false;
+    
+    if (fieldName === '회사명') {
+        const nameTextDiv = targetCell.querySelector('.name-text');
+        if (nameTextDiv) {
+            if (nameTextDiv.innerText !== expectedValue) {
+                nameTextDiv.innerText = expectedValue;
+                needsUpdate = true;
+                console.log(`[강제 검증] ⭐ 회사명 .name-text 재수정: ${expectedValue}`);
+            }
+        } else {
+            if (targetCell.textContent !== expectedValue) {
+                targetCell.textContent = expectedValue;
+                needsUpdate = true;
+                console.log(`[강제 검증] ⭐ 회사명 직접 재수정: ${expectedValue}`);
+            }
+        }
+    } else if (fieldName === '매출' || fieldName.includes('매출')) {
+        console.log(`[강제 검증] ⭐⭐ 매출 필드 검증 시작: ${fieldName}`);
+        console.log(`[강제 검증] ⭐⭐ 현재 셀 내용: "${targetCell.textContent}"`);
+        console.log(`[강제 검증] ⭐⭐ 현재 data-raw: "${targetCell.getAttribute('data-raw')}"`);
+        console.log(`[강제 검증] ⭐⭐ 기대값: ${expectedValue}`);
+        
+        const currentDataRaw = targetCell.getAttribute('data-raw');
+        
+        let formattedValue;
+        if (typeof formatToKoreanCurrency === 'function') {
+            formattedValue = formatToKoreanCurrency(expectedValue);
+            console.log(`[강제 검증] ⭐⭐ formatToKoreanCurrency 사용: ${formattedValue}`);
+        } else {
+            formattedValue = formatSalesValue(expectedValue);
+            console.log(`[강제 검증] ⭐⭐ formatSalesValue 사용 (fallback): ${formattedValue}`);
+        }
+        
+        console.log(`[강제 검증] ⭐⭐ 기대 포맷값: "${formattedValue}"`);
+        
+        // data-raw 값이 다르거나 화면 표시값이 다른 경우 업데이트
+        if (currentDataRaw != expectedValue || targetCell.textContent !== formattedValue) {
+            console.log(`[강제 검증] ⭐⭐ 매출 값 불일치 감지 - 재수정 시작`);
+            console.log(`[강제 검증] ⭐⭐ data-raw 비교: "${currentDataRaw}" != "${expectedValue}" = ${currentDataRaw != expectedValue}`);
+            console.log(`[강제 검증] ⭐⭐ 표시값 비교: "${targetCell.textContent}" != "${formattedValue}" = ${targetCell.textContent !== formattedValue}`);
+            
+            targetCell.textContent = formattedValue;
+            targetCell.setAttribute('data-raw', expectedValue);
+            needsUpdate = true;
+            console.log(`[강제 검증] ⭐⭐ 매출 재수정 완료: ${expectedValue} -> ${formattedValue}`);
+        } else {
+            console.log(`[강제 검증] ⭐⭐ 매출 값 일치 - 수정 불필요`);
+        }
+    }
+    
+    if (needsUpdate) {
+        targetCell.setAttribute('data-value', expectedValue);
+        // 재수정된 경우 빨간색 하이라이트
+        targetCell.style.transition = 'background-color 0.5s ease';
+        targetCell.style.backgroundColor = '#f44336';
+        setTimeout(() => {
+            targetCell.style.backgroundColor = '';
+        }, 1500);
+    }
+    
+    console.log(`[강제 검증] ⭐ 완료: rowId=${rowId}, field=${fieldName}, needsUpdate=${needsUpdate}`);
+}
+
+// 매출 필드 전용 포맷팅 함수 (종속행 동기화용)
+function formatSalesValue(value) {
+    if (!value || value === '0' || value === 0) return '0';
+    
+    const numValue = parseInt(value) || 0;
+    const billionValue = Math.floor(numValue / 100000000);
+    const remainValue = numValue % 100000000;
+    const tenMillionValue = Math.floor(remainValue / 10000000);
+    
+    let result = '';
+    if (billionValue > 0) {
+        result += billionValue + '억';
+    }
+    if (tenMillionValue > 0) {
+        result += tenMillionValue + '천만';
+    }
+    if (!result) {
+        result = '0';
+    }
+    
+    console.log(`[매출 포맷팅] ${value} -> ${result}`);
+    return result;
+}
+
+// 회사명과 매출 필드를 강제로 업데이트하는 함수
