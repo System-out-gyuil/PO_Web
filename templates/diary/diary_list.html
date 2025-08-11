@@ -913,6 +913,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // 상태 탭 초기화
     initializeStatusTabs();
     
+    // 상태 속성 변경 이벤트 리스너 설정
+    if (typeof setupStatusAttributeChangeListener === 'function') {
+        setupStatusAttributeChangeListener();
+    }
+    
     // 칸반보드 필터 이벤트 바인딩
     const kanbanSelect = document.getElementById('kanbanAttributeSelect');
     const refreshKanbanBtn = document.getElementById('refreshKanbanBtn');
@@ -3106,12 +3111,18 @@ function updateCellValueWithStatusFilter(rowId, fieldName, value) {
 // 상태 탭 새로고침 함수 추가
 function refreshStatusTabs() {
     console.log('상태 탭 새로고침 시작');
+    
+    // 현재 활성 탭 상태 저장
+    const activeTab = document.querySelector('.status-tab.active');
+    const currentStatusId = activeTab ? activeTab.getAttribute('data-status-id') : 'all';
+    
     fetch('/sales/get_status_tabs/')
         .then(response => response.json())
         .then(data => {
             console.log('상태 탭 데이터 응답:', data);
             if (data.success) {
                 window.statusAttributeName = data.attribute_name;
+                window.statusOptions = data.options;
                 console.log('사용할 속성명:', window.statusAttributeName);
                 
                 // 기존 탭 컨테이너 초기화
@@ -3121,22 +3132,51 @@ function refreshStatusTabs() {
                     createStatusTabs(data.options);
                     
                     // 현재 활성 탭 상태 복원
-                    if (window.currentStatusTab !== null) {
-                        const statusTabs = document.querySelectorAll('.status-tab');
-                        statusTabs.forEach(tab => {
-                            tab.classList.remove('active');
-                            if (tab.onclick && tab.onclick.toString().includes(window.currentStatusTab)) {
-                                tab.classList.add('active');
+                    setTimeout(() => {
+                        const newActiveTab = document.querySelector(`.status-tab[data-status-id="${currentStatusId}"]`);
+                        if (newActiveTab) {
+                            // 기존 활성 탭 비활성화
+                            document.querySelectorAll('.status-tab').forEach(tab => {
+                                tab.classList.remove('active');
+                            });
+                            // 새 활성 탭 활성화
+                            newActiveTab.classList.add('active');
+                            window.currentStatusTab = currentStatusId === 'all' ? null : currentStatusId;
+                            
+                            // 테이블 새로고침
+                            if (typeof loadFilteredData === 'function') {
+                                loadFilteredData(currentStatusId === 'all' ? null : currentStatusId);
+                            } else if (typeof refreshTable === 'function') {
+                                refreshTable();
                             }
-                        });
-                    }
+                        } else {
+                            // 이전 탭이 삭제된 경우 전체 탭으로 돌아가기
+                            const allTab = document.querySelector('.status-tab[data-status-id="all"]');
+                            if (allTab) {
+                                document.querySelectorAll('.status-tab').forEach(tab => {
+                                    tab.classList.remove('active');
+                                });
+                                allTab.classList.add('active');
+                                window.currentStatusTab = null;
+                                
+                                // 전체 데이터로 테이블 새로고침
+                                if (typeof loadFilteredData === 'function') {
+                                    loadFilteredData(null);
+                                } else if (typeof refreshTable === 'function') {
+                                    refreshTable();
+                                }
+                            }
+                        }
+                    }, 200);
                 }
                 
                 // 모달용 상태 탭도 업데이트
                 const modalTabContainer = document.getElementById('statusTabsContainer');
                 if (modalTabContainer) {
                     modalTabContainer.innerHTML = '';
-                    createStatusTabsForModal(data.options);
+                    if (typeof createStatusTabsForModal === 'function') {
+                        createStatusTabsForModal(data.options);
+                    }
                 }
                 
                 console.log('상태 탭 새로고침 완료');

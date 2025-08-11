@@ -655,3 +655,142 @@ function refreshStatusTabs() {
       }, 200);
   }
 }
+
+// 상태 속성 변경 감지 및 탭 리랜더링 함수
+function handleStatusAttributeChange(fieldName) {
+  console.log('상태 속성 변경 감지:', fieldName, '현재 상태 속성:', window.statusAttributeName);
+  
+  // 변경된 필드가 현재 상태 속성과 일치하는지 확인
+  if (fieldName === window.statusAttributeName) {
+      console.log('상태 속성이 변경되었으므로 상태 탭을 새로고침합니다.');
+      console.log('현재 활성 탭 상태:', window.currentStatusTab);
+      
+      // 기존 상태 옵션 캐시 삭제
+      window.statusOptions = null;
+      
+      // 상태 탭 강제 새로고침 (서버에서 최신 데이터 가져오기)
+      refreshStatusTabsFromServer();
+  } else {
+      console.log('변경된 필드가 상태 속성이 아니므로 상태 탭을 새로고침하지 않습니다.');
+  }
+}
+
+// 서버에서 최신 상태 데이터를 가져와서 탭 새로고침
+function refreshStatusTabsFromServer() {
+  console.log('서버에서 상태 탭 데이터 새로고침 시작');
+  
+  // 현재 활성 탭 상태 저장
+  const activeTab = document.querySelector('.status-tab.active');
+  const currentStatusId = activeTab ? activeTab.getAttribute('data-status-id') : null;
+  
+  // 현재 속성 설정 상태 백업
+  const currentAttributeSettings = {};
+  if (window.allAttributes) {
+      window.allAttributes.forEach(attr => {
+          if (attr.view_select) {
+              currentAttributeSettings[attr.id] = { ...attr.view_select };
+          }
+      });
+  }
+  
+  // 서버에서 최신 상태 탭 데이터 가져오기
+  fetch('/sales/get_status_tabs/')
+      .then(response => response.json())
+      .then(data => {
+          console.log('서버에서 받은 최신 상태 탭 데이터:', data);
+          
+          if (data.success) {
+              // 상태 옵션 업데이트
+              window.statusOptions = data.options;
+              window.statusAttributeName = data.attribute_name;
+              
+              // 탭 컨테이너 초기화
+              const tabContainer = document.getElementById('tabContainer');
+              if (tabContainer) {
+                  tabContainer.innerHTML = '';
+              }
+              
+              // 새로운 상태 탭 생성
+              createStatusTabs(data.options);
+              
+              // 속성 설정 복원
+              if (window.allAttributes && Object.keys(currentAttributeSettings).length > 0) {
+                  window.allAttributes.forEach(attr => {
+                      if (currentAttributeSettings[attr.id]) {
+                          attr.view_select = { ...currentAttributeSettings[attr.id] };
+                      }
+                  });
+              }
+              
+              // 이전 활성 탭 복원 시도
+              if (currentStatusId !== null) {
+                  setTimeout(() => {
+                      const newActiveTab = document.querySelector(`.status-tab[data-status-id="${currentStatusId}"]`);
+                      if (newActiveTab) {
+                          // 기존 활성 탭 비활성화
+                          document.querySelectorAll('.status-tab').forEach(tab => {
+                              tab.classList.remove('active');
+                          });
+                          // 새 활성 탭 활성화
+                          newActiveTab.classList.add('active');
+                          window.currentStatusTab = currentStatusId;
+                          
+                          console.log('이전 활성 탭 복원 완료:', currentStatusId);
+                          
+                          // 테이블 데이터 새로고침 (현재 상태로)
+                          loadFilteredData(currentStatusId);
+                      } else {
+                          // 이전 탭이 삭제된 경우 전체 탭으로 돌아가기
+                          console.log('이전 활성 탭을 찾을 수 없어 전체 탭으로 전환');
+                          const allTab = document.querySelector('.status-tab[data-status-id="all"]');
+                          if (allTab) {
+                              document.querySelectorAll('.status-tab').forEach(tab => {
+                                  tab.classList.remove('active');
+                              });
+                              allTab.classList.add('active');
+                              window.currentStatusTab = null;
+                              
+                              // 전체 데이터로 테이블 새로고침
+                              loadFilteredData(null);
+                          }
+                      }
+                  }, 200);
+              } else {
+                  // 전체 탭이 활성화된 상태였다면 유지
+                  setTimeout(() => {
+                      const allTab = document.querySelector('.status-tab[data-status-id="all"]');
+                      if (allTab && !allTab.classList.contains('active')) {
+                          document.querySelectorAll('.status-tab').forEach(tab => {
+                              tab.classList.remove('active');
+                          });
+                          allTab.classList.add('active');
+                      }
+                      
+                      // 전체 데이터로 테이블 새로고침
+                      loadFilteredData(null);
+                  }, 200);
+              }
+              
+              console.log('상태 탭 새로고침 완료');
+          } else {
+              console.error('상태 탭 데이터 로드 실패:', data.error);
+          }
+      })
+      .catch(error => {
+          console.error('상태 탭 새로고침 중 오류:', error);
+      });
+}
+
+// 전역 상태 속성 변경 이벤트 리스너 설정
+function setupStatusAttributeChangeListener() {
+  // 커스텀 이벤트 리스너 등록
+  document.addEventListener('statusAttributeChanged', function(event) {
+      const { fieldName, action } = event.detail;
+      console.log('상태 속성 변경 이벤트 수신:', { fieldName, action });
+      
+      // 상태 속성 변경 처리
+      handleStatusAttributeChange(fieldName);
+  });
+  
+  console.log('상태 속성 변경 이벤트 리스너 설정 완료');
+}

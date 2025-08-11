@@ -697,7 +697,6 @@ def write_naver_blog(driver, user_id, title, content, typo_probability, typing_s
             slow_type_with_actionchains(driver, title_container, title, min_delay=min_d, max_delay=max_d, session_id=session_id)
             print("✅ 제목 입력 완료")
             # 제목 입력 완료 시 전체 제목을 함께 전달
-            update_status('title_input_complete', '제목 입력 완료', f'FINAL_TITLE:{title}', session_id=session_id)
             time.sleep(1)
 
         except Exception as e:
@@ -721,7 +720,6 @@ def write_naver_blog(driver, user_id, title, content, typo_probability, typing_s
 
             print("✅ 본문 입력 완료")
             # 본문 입력 완료 시 전체 내용을 함께 전달
-            update_status('content_input_complete', '본문 입력 완료', f'FINAL_CONTENT:{content}', session_id=session_id)
             time.sleep(1)
 
         except Exception as e:

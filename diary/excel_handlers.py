@@ -247,6 +247,22 @@ def upload_excel(request):
                                         # 해당 옵션이 없으면 원본 값 그대로 저장
                                         value_to_save = excel_value
                                         print(f"    Dropdown 옵션 없음: {excel_value} (원본 값 저장)")
+                                elif attribute.attributeType and attribute.attributeType.name == 'datetime':
+                                    # datetime 타입인 경우 날짜만 추출 (YYYY-MM-DD 형식)
+                                    try:
+                                        # pandas에서 datetime 객체로 변환된 경우
+                                        if hasattr(row_data[excel_column], 'strftime'):
+                                            value_to_save = row_data[excel_column].strftime('%Y-%m-%d')
+                                        else:
+                                            # 문자열인 경우 datetime으로 파싱 후 날짜만 추출
+                                            from datetime import datetime
+                                            parsed_date = pd.to_datetime(excel_value)
+                                            value_to_save = parsed_date.strftime('%Y-%m-%d')
+                                        print(f"    Datetime 변환: {excel_value} -> {value_to_save}")
+                                    except (ValueError, TypeError) as e:
+                                        # 날짜 파싱에 실패한 경우 원본 값 사용
+                                        value_to_save = excel_value
+                                        print(f"    Datetime 파싱 실패: {excel_value} (원본 값 저장)")
                                 else:
                                     # 일반 텍스트 필드
                                     value_to_save = excel_value

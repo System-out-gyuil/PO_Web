@@ -66,7 +66,7 @@ class Command(BaseCommand):
     # ──────────────────────────────────────────────────────────────────────────
     def fetch_api_items(self):
         try:
-            r = requests.get(API_URL, params=API_PARAMS, timeout=30)
+            r = requests.get(API_URL, params=API_PARAMS, timeout=60)
             r.raise_for_status()
             return r.json().get("jsonArray", [])
         except Exception as e:

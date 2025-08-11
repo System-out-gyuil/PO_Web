@@ -9,6 +9,12 @@ let pendingRequests = new Map();
 let requestTimeout = 5000; // 5초로 증가
 let isProcessingRequest = false; // 전역 처리 상태 플래그
 
+// 랜덤 색상 생성 함수
+function generateRandomColor() {
+    // 완전히 랜덤한 16진수 색상 생성
+    return '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
+}
+
 function closeAllDropdowns() {
     console.log('모든 드롭다운 닫기 실행');
     console.trace('closeAllDropdowns 호출 스택');
@@ -2140,7 +2146,10 @@ function deleteDropdownOption(fieldName, optionId) {
 function addDropdownOption(fieldName, optionName, td, currentDropdown) {
     console.log('새 옵션 추가 요청:', fieldName, optionName);
     
-    fetch(`/sales/dropdown_options/?field=${encodeURIComponent(fieldName)}&name=${encodeURIComponent(optionName)}&color=${encodeURIComponent('#e3f2fd')}`, {
+    // 랜덤 색상 생성
+    const randomColor = generateRandomColor();
+    
+    fetch(`/sales/dropdown_options/?field=${encodeURIComponent(fieldName)}&name=${encodeURIComponent(optionName)}&color=${encodeURIComponent(randomColor)}`, {
         method: 'POST',
         headers: {
             'X-CSRFToken': getCsrfToken()
@@ -2159,6 +2168,13 @@ function addDropdownOption(fieldName, optionName, td, currentDropdown) {
             // 칸반보드 리프레시
             if (typeof triggerKanbanRefreshIfNeeded === 'function') {
                 triggerKanbanRefreshIfNeeded(fieldName);
+            }
+            
+            // 상태 속성 변경 이벤트 발생
+            if (window.statusAttributeName && fieldName === window.statusAttributeName) {
+                document.dispatchEvent(new CustomEvent('statusAttributeChanged', {
+                    detail: { fieldName: fieldName, action: 'add', optionName: optionName }
+                }));
             }
         } else {
             throw new Error(data.error || '옵션 추가 실패');
@@ -2222,6 +2238,13 @@ function updateDropdownOptionColor(fieldName, optionId, newColor, td, currentDro
             // 칸반보드 리프레시
             if (typeof triggerKanbanRefreshIfNeeded === 'function') {
                 triggerKanbanRefreshIfNeeded(fieldName);
+            }
+            
+            // 상태 속성 변경 이벤트 발생
+            if (window.statusAttributeName && fieldName === window.statusAttributeName) {
+                document.dispatchEvent(new CustomEvent('statusAttributeChanged', {
+                    detail: { fieldName: fieldName, action: 'colorUpdate', optionId: optionId, newColor: newColor }
+                }));
             }
         } else {
             throw new Error(data.error || '색상 업데이트 실패');
@@ -2288,6 +2311,13 @@ function updateDropdownOptionName(fieldName, optionId, newName, oldName, td, cur
             if (typeof triggerKanbanRefreshIfNeeded === 'function') {
                 triggerKanbanRefreshIfNeeded(fieldName);
             }
+            
+            // 상태 속성 변경 이벤트 발생
+            if (window.statusAttributeName && fieldName === window.statusAttributeName) {
+                document.dispatchEvent(new CustomEvent('statusAttributeChanged', {
+                    detail: { fieldName: fieldName, action: 'nameUpdate', optionId: optionId, oldName: oldName, newName: newName }
+                }));
+            }
         } else {
             throw new Error(data.error || '옵션 이름 업데이트 실패');
         }
@@ -2323,6 +2353,13 @@ function deleteDropdownOption(fieldName, optionId, td, currentDropdown) {
             // 칸반보드 리프레시
             if (typeof triggerKanbanRefreshIfNeeded === 'function') {
                 triggerKanbanRefreshIfNeeded(fieldName);
+            }
+            
+            // 상태 속성 변경 이벤트 발생
+            if (window.statusAttributeName && fieldName === window.statusAttributeName) {
+                document.dispatchEvent(new CustomEvent('statusAttributeChanged', {
+                    detail: { fieldName: fieldName, action: 'delete', optionId: optionId }
+                }));
             }
         } else {
             throw new Error(data.error || '옵션 삭제 실패');

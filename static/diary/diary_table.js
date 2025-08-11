@@ -1,31 +1,3 @@
-// hexToRgba 함수 정의
-function hexToRgba(hex, alpha) {
-    // hex 값이 없거나 유효하지 않은 경우 기본값 반환
-    if (!hex || typeof hex !== 'string') {
-        return `rgba(0, 0, 0, ${alpha})`;
-    }
-    
-    // # 제거
-    hex = hex.replace('#', '');
-    
-    // 3자리 hex를 6자리로 변환
-    if (hex.length === 3) {
-        hex = hex.split('').map(char => char + char).join('');
-    }
-    
-    // 유효한 hex 값인지 확인
-    if (!/^[0-9A-F]{6}$/i.test(hex)) {
-        return `rgba(0, 0, 0, ${alpha})`;
-    }
-    
-    // RGB 값 추출
-    const r = parseInt(hex.substr(0, 2), 16);
-    const g = parseInt(hex.substr(2, 2), 16);
-    const b = parseInt(hex.substr(4, 2), 16);
-    
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
-
 // 드롭다운 옵션을 처리하는 공통 함수
 function processDropdownOptions(options, value, cell) {
     // 값이 숫자인 경우 ID로 처리, 그렇지 않으면 텍스트로 처리
@@ -2614,7 +2586,7 @@ function processDropdownOptions(options, value, cell) {
                   console.log('서버 요청 데이터:', requestBody);
 
                   // --- SCROLL FLAG SET HERE ---
-                  window.scrollTableToTopAfterRefresh = true;
+                  // window.scrollTableToTopAfterRefresh = true;  // 스크롤 이동 비활성화
 
                   fetch('/sales/create_new_row/', {
                       method: 'POST',
