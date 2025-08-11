@@ -12,7 +12,7 @@ from .audio_handler import upload_audio_file, get_audio_files_by_date, delete_au
 from .cascade_handlers import toggle_cascade_attribute, get_cascade_attributes_list
 from .auto_blog import upload_blog_file, get_blog_files, get_blog_status, debug_redis_status
 from .detail_openai import ai_chat, ai_chat_cache_clear, file_cache_management, performance_monitoring
-from .admin_view import admin_dashboard, inquiry_list, inquiry_detail, alarm_list, alarm_create, alarm_edit, alarm_delete, inquiry_delete, admin_api, user_list, user_delete, user_toggle_admin
+from .admin_view import admin_dashboard, inquiry_list, inquiry_detail, alarm_list, alarm_create, alarm_edit, alarm_delete, inquiry_delete, admin_api, user_list, user_delete, user_toggle_admin, user_update_use_date
 from .diary_board import diary_board, get_announcements, get_announcement_detail, mark_as_read, download_announcement_file, announcement_detail_page, create_announcement, upload_announcement_file, get_announcement_file_url, get_announcement_download_url
 from .main_views import CompanyInfoView, PersonalInfoView, TermsOfServiceView
 from .session_handlers import cleanup_session_cache_api, get_active_sessions_api
@@ -191,6 +191,7 @@ urlpatterns = [
     path('diary_admin/users/', user_list, name='admin_user_list'),
     path('diary_admin/users/<int:user_id>/delete/', user_delete, name='admin_user_delete'),
     path('diary_admin/users/<int:user_id>/toggle_admin/', user_toggle_admin, name='admin_user_toggle_admin'),
+    path('diary_admin/users/<int:user_id>/update_use_date/', user_update_use_date, name='admin_user_update_use_date'),
     
     # 회사 소개 관련 URL
     path('company_info/', CompanyInfoView.as_view(), name='company_info'),

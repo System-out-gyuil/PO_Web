@@ -1209,15 +1209,15 @@ function showModalDropdownOptions(rowId, fieldName, btn) {
             let html = `<div><b>${fieldName} 선택</b><ul style="margin:8px 0 12px 0;max-height:120px;overflow-y:auto;">`;
             data.options.forEach(function(option) {
                 const bgColor = option.color ? `background-color: ${hexToRgba(option.color, 0.18)};` : '';
-                html += `<li style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
-                    <span data-option-id="${option.id}" style="cursor:pointer;padding:2px 8px;border-radius:4px;min-width:60px;display:inline-block;${bgColor}">${option.option}</span>
-                    <input type="color" value="${option.color||'#eeeeee'}" data-color-edit="${option.id}" style="width:24px;height:24px;border:none;vertical-align:middle;cursor:pointer;">
+                html += `<li style="display:flex;align-items:center;gap:6px;margin-bottom:5px;${bgColor}">
+                    <span data-option-id="${option.id}" style="cursor:pointer;padding:2px 8px;border-radius:4px;min-width:60px;display:inline-block;">${option.option}</span>
+                    <input type="color" value="${option.color||'#eeeeee'}" data-color-edit="${option.id}" style="width:24px;height:24px;padding:0;border:none;vertical-align:middle;cursor:pointer;">
                     <button data-edit="${option.id}" style="font-size:0.9em;">✏️</button>
                     <button data-del="${option.id}" style="font-size:0.9em;">🗑️</button>
                 </li>`;
             });
             html += '</ul>';
-            html += '<input type="text" placeholder="새 옵션 추가" style="width:70%;margin-bottom:5px;"> <button class="add-btn">추가</button></div>';
+            html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;"><input type="text" placeholder="새 옵션 추가" style="width:75%;margin-bottom:0;border: 1px solid #ccc;"> <button class="add-btn">추가</button></div></div>';
             
             dropdown.innerHTML = html;
             document.body.appendChild(dropdown);
@@ -1227,13 +1227,8 @@ function showModalDropdownOptions(rowId, fieldName, btn) {
             
             // 옵션 선택 이벤트
             dropdown.querySelectorAll('span[data-option-id]').forEach(function(span) {
-                span.onmouseover = function() {
-                    this.style.background = hexToRgba(this.style.backgroundColor || '#eee', 0.3);
-                };
-                span.onmouseout = function() {
-                    const originalColor = span.getAttribute('data-original-bg') || '';
-                    this.style.background = originalColor;
-                };
+                
+                
                 span.onclick = function() {
                     const selectedOptionId = this.getAttribute('data-option-id');
                     const selectedOptionText = this.innerText;

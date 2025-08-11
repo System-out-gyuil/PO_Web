@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
-from django.db.models import Q
+from django.db.models import Q, F
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 import json
@@ -611,15 +611,19 @@ def user_list(request):
         )
     
     # 정렬
-    if sort_by == 'name':
-        users = users.order_by('name')
-    elif sort_by == 'email':
-        users = users.order_by('email')
-    elif sort_by == 'company_name':
-        users = users.order_by('company_name')
-    elif sort_by == 'created_at':
-        users = users.order_by('created_at')
-    else:  # 기본값: 최신순
+    if sort_by:
+        # Django ORM의 order_by는 - 접두사를 자동으로 처리합니다
+        # use_date가 null인 경우를 고려하여 정렬
+        if 'use_date' in sort_by:
+            # use_date가 null인 경우를 마지막으로 정렬
+            if sort_by.startswith('-'):
+                users = users.order_by(F('use_date').desc(nulls_last=True))
+            else:
+                users = users.order_by(F('use_date').asc(nulls_last=True))
+        else:
+            users = users.order_by(sort_by)
+    else:
+        # 기본값: 최신순
         users = users.order_by('-created_at')
     
     # 페이지네이션
@@ -639,6 +643,7 @@ def user_list(request):
             'company_name': user.company_name,
             'phone_number': user.phone_number,
             'created_at': user.created_at.isoformat(),
+            'use_date': user.use_date.isoformat() if user.use_date else None,
             'is_admin': user.is_admin
         }
         users_data.append(user_dict)
@@ -761,3 +766,52 @@ def user_toggle_admin(request, user_id):
         return JsonResponse({'success': False, 'message': '잘못된 요청 형식입니다.'})
     except Exception as e:
         return JsonResponse({'success': False, 'message': f'관리자 권한 변경 중 오류가 발생했습니다: {str(e)}'})
+
+@csrf_exempt
+def user_update_use_date(request, user_id):
+    """사용자 사용 기간 수정"""
+    admin_user_id = request.session.get('diary_member_id')
+    
+    if not admin_user_id:
+        return JsonResponse({'success': False, 'message': '로그인이 필요합니다.'})
+    
+    try:
+        admin_user = User.objects.get(id=admin_user_id)
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'message': '관리자를 찾을 수 없습니다.'})
+
+    if not admin_user.is_admin:
+        return JsonResponse({'success': False, 'message': '권한이 없습니다.'})
+    
+    try:
+        user_to_update = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'message': '수정할 사용자를 찾을 수 없습니다.'})
+    
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            use_date_str = data.get('use_date')
+            
+            if use_date_str:
+                from datetime import datetime
+                use_date = datetime.strptime(use_date_str, '%Y-%m-%d').date()
+                user_to_update.use_date = use_date
+                user_to_update.save()
+                
+                return JsonResponse({
+                    'success': True, 
+                    'message': '사용 기간이 성공적으로 수정되었습니다.',
+                    'use_date': use_date.isoformat()
+                })
+            else:
+                return JsonResponse({'success': False, 'message': '사용 기간을 입력해주세요.'})
+                
+        except json.JSONDecodeError:
+            return JsonResponse({'success': False, 'message': '잘못된 요청 형식입니다.'})
+        except ValueError:
+            return JsonResponse({'success': False, 'message': '올바른 날짜 형식이 아닙니다.'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': f'사용 기간 수정 중 오류가 발생했습니다: {str(e)}'})
+    
+    return JsonResponse({'success': False, 'message': '잘못된 요청입니다.'})

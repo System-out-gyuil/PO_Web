@@ -220,7 +220,7 @@ function generateDetailModalContent(attributes, rowData, rowId) {
                            value="${displayValue}" 
                            data-field="${attr.name}" 
                            onchange="detailUpdateRowField('${rowId}', '${attr.name}', this.value)"
-                           style="flex: 1; padding: 8px; border: 1px solid #000; border-radius: 4px;">
+                           style="flex: 1; padding: 8px; border: 1px solid #b1b1b1; border-radius: 4px;">
                     ${detailData ? `
                     <button type="button" 
                             onclick="showFundingDetailModal('${rowId}', '${attr.name}')" 
@@ -321,7 +321,7 @@ function generateDetailModalContent(attributes, rowData, rowId) {
             }
             
             inputHtml = `
-                <div style="border: 1px solid #000000; border-radius: 4px; padding: 12px; background: #fff;" data-field="${attr.name}" data-current-value='${JSON.stringify(businessData)}'>
+                <div style="border: 1px solid #b1b1b1; border-radius: 4px; padding: 12px; background: #fff;" data-field="${attr.name}" data-current-value='${JSON.stringify(businessData)}'>
                     <div style="display: flex; flex-direction: column; gap: 12px;">
                         <!-- 개업일 입력 -->
                         <div style="display: flex; align-items: center; gap: 10px;">
@@ -600,7 +600,7 @@ function generateDetailModalContent(attributes, rowData, rowId) {
             }
             
             inputHtml = `
-                <div style="border: 1px solid rgb(0, 0, 0); border-radius: 4px; padding: 12px; background: #fff;" data-field="${attr.name}" data-current-value='${JSON.stringify(ageData)}'>
+                <div style="border: 1px solid #b1b1b1; border-radius: 4px; padding: 12px; background: #fff;" data-field="${attr.name}" data-current-value='${JSON.stringify(ageData)}'>
                     <div style="display: flex; flex-direction: column; gap: 12px;">
                         <!-- 생년월일 입력 -->
                         <div style="display: flex; align-items: center; gap: 10px;">

@@ -3,6 +3,8 @@
 // 전역 변수
 let currentInquiryId = null;
 let currentAlarmId = null;
+let currentUserSort = { field: null, direction: null }; // 정렬이 설정되지 않은 상태
+let isSortingInProgress = false; // 정렬 진행 중 플래그
 
 // 페이지 로드 시 초기화
 document.addEventListener('DOMContentLoaded', function() {
@@ -60,6 +62,9 @@ function initializeEventListeners() {
     if (userSort) {
         userSort.addEventListener('change', loadUsers);
     }
+    
+    // 사용자 테이블 정렬 헤더 이벤트 리스너
+    initializeUserTableSorting();
     
     // 폼 제출 이벤트
     const createAlarmForm = document.getElementById('create-alarm-form');
@@ -171,6 +176,13 @@ function showUsers() {
         usersContent.setAttribute('style', 'display: block !important; visibility: visible !important; opacity: 1 !important;');
     }
     updateActiveNav('users');
+    
+    // 사용자 테이블 정렬 초기화 (한 번만)
+    if (!document.querySelector('.sortable')._sortClickHandler) {
+        initializeUserTableSorting();
+    }
+    
+    // 기본 정렬 상태는 설정하지 않음 (사용자가 선택할 때까지)
     loadUsers();
 }
 
@@ -286,20 +298,62 @@ async function loadAlarms(page = 1) {
 async function loadUsers(page = 1) {
     try {
         const searchQuery = document.getElementById('user-search')?.value || '';
-        const sortBy = document.getElementById('user-sort')?.value || '-created_at';
+        
+        // 정렬 필드 매핑
+        let sortField = currentUserSort.field;
+        let sortBy = '';
+        
+        console.log('=== LOAD USERS SORT LOGIC ===');
+        console.log('Raw currentUserSort:', currentUserSort);
+        console.log('sortField:', sortField, 'direction:', currentUserSort.direction);
+        
+        if (sortField && currentUserSort.direction) {
+            if (sortField === 'phone_number') {
+                sortField = 'phone_number'; // Django 모델 필드명과 일치
+            } else if (sortField === 'company_name') {
+                sortField = 'company_name'; // Django 모델 필드명과 일치
+            }
+            
+            // 내림차순인 경우 '-' 접두사 추가
+            if (currentUserSort.direction === 'desc') {
+                sortBy = `-${sortField}`;
+                console.log('Descending sort detected, adding minus prefix');
+            } else {
+                sortBy = sortField;
+                console.log('Ascending sort detected, no prefix');
+            }
+            
+            console.log('Direction check:', currentUserSort.direction, 'Is desc?', currentUserSort.direction === 'desc');
+            console.log('Final sortBy value:', sortBy);
+        } else {
+            console.log('No sort field or direction, sortBy will be empty');
+        }
+        
+        console.log('Final sortBy for request:', sortBy);
         
         const params = new URLSearchParams({
             search: searchQuery,
-            sort: sortBy,
             page: page
         });
         
-        const response = await fetch(`/sales/diary_admin/users/?${params}`);
+        // 정렬이 설정된 경우에만 sort 파라미터 추가
+        if (sortBy) {
+            params.append('sort', sortBy);
+            console.log('Added sort parameter to request:', sortBy);
+        } else {
+            console.log('No sort parameter added to request');
+        }
+        
+        const requestUrl = `/sales/diary_admin/users/?${params}`;
+        console.log('Requesting URL:', requestUrl);
+        
+        const response = await fetch(requestUrl);
         const data = await response.json();
         
         if (data.success) {
             renderUsersTable(data.users, data.current_user_id, data.is_super_admin);
             renderPagination(data.pagination, 'users-pagination', loadUsers);
+            // 정렬 상태는 이미 handleUserTableSort에서 업데이트됨
         } else {
             showAlert('사용자 목록을 불러오는데 실패했습니다.', 'danger');
         }
@@ -387,7 +441,7 @@ function renderUsersTable(users, currentUserId, isSuperAdmin) {
     tbody.innerHTML = '';
     
     if (users.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">사용자가 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">사용자가 없습니다.</td></tr>';
         return;
     }
     
@@ -410,6 +464,17 @@ function renderUsersTable(users, currentUserId, isSuperAdmin) {
                 : `<span class="badge bg-secondary">일반</span>`;
         }
         
+        // 사용 기간 표시 및 수정 버튼
+        const useDate = user.use_date ? formatDateOnly(user.use_date) : '미설정';
+        const useDateCell = `
+            <div class="d-flex align-items-center">
+                <span class="me-2">${useDate}</span>
+                <button class="btn btn-sm btn-outline-primary" onclick="editUseDate(${user.id}, '${user.name || '사용자'}', '${user.email}', '${user.use_date || ''}')">
+                    <i class="fas fa-edit"></i>
+                </button>
+            </div>
+        `;
+        
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${user.id}</td>
@@ -417,7 +482,8 @@ function renderUsersTable(users, currentUserId, isSuperAdmin) {
             <td>${user.email}</td>
             <td>${user.company_name || '-'}</td>
             <td>${user.phone_number || '-'}</td>
-            <td>${formatDate(user.created_at)}</td>
+            <td>${formatDateOnly(user.created_at)}</td>
+            <td>${useDateCell}</td>
             <td>${adminToggleBtn}</td>
             <td>
                 <button class="btn btn-sm btn-outline-danger" onclick="confirmDeleteUser(${user.id}, '${user.name || '사용자'}', '${user.email}')">
@@ -862,6 +928,17 @@ function formatDate(dateString) {
     });
 }
 
+function formatDateOnly(dateString) {
+    const date = new Date(dateString);
+    const formattedDate = date.toLocaleDateString('ko-KR', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    });
+    // 마지막 점 제거
+    return formattedDate.replace(/\.$/, '');
+}
+
 function formatFileSize(bytes) {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -912,4 +989,158 @@ function getCookie(name) {
         }
     }
     return cookieValue;
+}
+
+// 사용 기간 수정
+function editUseDate(userId, userName, userEmail, currentUseDate) {
+    // 모달에 사용자 정보 설정
+    document.getElementById('edit-use-date-user-name').textContent = userName;
+    document.getElementById('edit-use-date-user-email').textContent = userEmail;
+    
+    // 현재 사용 기간 설정
+    const useDateInput = document.getElementById('edit-use-date');
+    if (currentUseDate) {
+        useDateInput.value = currentUseDate.split('T')[0]; // ISO 문자열에서 날짜 부분만 추출
+    } else {
+        useDateInput.value = '';
+    }
+    
+    // 저장 버튼에 사용자 ID 저장
+    const saveBtn = document.getElementById('save-use-date-btn');
+    saveBtn.onclick = () => saveUseDate(userId);
+    
+    // 모달 표시
+    const modal = new bootstrap.Modal(document.getElementById('useDateEditModal'));
+    modal.show();
+}
+
+// 사용 기간 저장
+async function saveUseDate(userId) {
+    const useDate = document.getElementById('edit-use-date').value;
+    
+    if (!useDate) {
+        showAlert('사용 기간을 입력해주세요.', 'warning');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/sales/diary_admin/users/${userId}/update_use_date/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                use_date: useDate
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showAlert(data.message, 'success');
+            // 모달 닫기
+            bootstrap.Modal.getInstance(document.getElementById('useDateEditModal')).hide();
+            // 사용자 목록 새로고침
+            loadUsers();
+        } else {
+            showAlert(data.message, 'danger');
+        }
+    } catch (error) {
+        console.error('Error updating use date:', error);
+        showAlert('사용 기간 수정에 실패했습니다.', 'danger');
+    }
+}
+
+// 사용자 테이블 정렬 초기화
+function initializeUserTableSorting() {
+    // 기존 이벤트 리스너 제거
+    const sortButtons = document.querySelectorAll('.sort-btn');
+    sortButtons.forEach(button => {
+        // 기존 클릭 이벤트 제거
+        button.removeEventListener('click', button._sortClickHandler);
+        
+        // 새로운 클릭 이벤트 핸들러 생성 및 저장
+        button._sortClickHandler = function() {
+            const field = this.getAttribute('data-field');
+            const direction = this.getAttribute('data-direction');
+            handleUserTableSort(field, direction);
+        };
+        
+        // 이벤트 리스너 등록
+        button.addEventListener('click', button._sortClickHandler);
+    });
+}
+
+// 사용자 테이블 정렬 처리
+function handleUserTableSort(field, direction) {
+    // 이미 정렬 중이면 무시
+    if (isSortingInProgress) {
+        console.log('Sort already in progress, ignoring click');
+        return;
+    }
+    
+    console.log('=== SORT CLICK ===');
+    console.log('Clicked field:', field, 'direction:', direction);
+    console.log('Current sort before:', currentUserSort);
+    
+    // 정렬 진행 중 플래그 설정
+    isSortingInProgress = true;
+    
+    try {
+        // 같은 필드와 방향을 클릭한 경우 정렬 해제
+        if (currentUserSort.field === field && currentUserSort.direction === direction) {
+            console.log('Removing sort - same field and direction clicked');
+            currentUserSort.field = null;
+            currentUserSort.direction = null;
+        } else {
+            // 새로운 정렬 설정 (기존 정렬과 다른 경우)
+            console.log('Setting new sort - field:', field, 'direction:', direction);
+            currentUserSort.field = field;
+            currentUserSort.direction = direction;
+        }
+        
+        console.log('Current sort after update:', currentUserSort);
+        console.log('Will send sort parameter:', currentUserSort.field && currentUserSort.direction ? `${currentUserSort.direction === 'desc' ? '-' : ''}${currentUserSort.field}` : 'none');
+        
+        // 즉시 시각적 업데이트
+        updateUserTableSortVisuals();
+        
+        // 사용자 목록 새로고침
+        loadUsers();
+    } finally {
+        // 정렬 완료 후 플래그 해제
+        setTimeout(() => {
+            isSortingInProgress = false;
+        }, 100); // 100ms 후 플래그 해제
+    }
+}
+
+// 사용자 테이블 정렬 상태 시각적 업데이트
+function updateUserTableSortVisuals() {
+    console.log('=== UPDATE SORT VISUALS ===');
+    console.log('Current sort state:', currentUserSort);
+    
+    // 모든 정렬 버튼을 비활성 상태로 초기화
+    const allSortButtons = document.querySelectorAll('.sort-btn');
+    console.log('Found sort buttons:', allSortButtons.length);
+    allSortButtons.forEach(button => {
+        button.classList.remove('active');
+    });
+    
+    // 현재 정렬 중인 버튼만 활성화
+    if (currentUserSort.field && currentUserSort.direction) {
+        const activeButton = document.querySelector(`.sort-btn[data-field="${currentUserSort.field}"][data-direction="${currentUserSort.direction}"]`);
+        console.log('Looking for button with field:', currentUserSort.field, 'direction:', currentUserSort.direction);
+        console.log('Found active button:', activeButton);
+        
+        if (activeButton) {
+            activeButton.classList.add('active');
+            console.log('Successfully activated button for:', currentUserSort.field, currentUserSort.direction);
+        } else {
+            console.error('Button not found for field:', currentUserSort.field, 'direction:', currentUserSort.direction);
+        }
+    } else {
+        console.log('No active sort - all buttons deactivated');
+    }
 }

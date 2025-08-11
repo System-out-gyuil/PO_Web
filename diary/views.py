@@ -81,6 +81,39 @@ def check_login_status(request):
         # 세션에서 로그인 상태 확인
         is_authenticated = request.session.get('diary_authenticated', False)
         
+        if is_authenticated:
+            # 로그인된 사용자의 ID 가져오기
+            user_id = request.session.get('diary_member_id')
+            if user_id:
+                from .models import User
+                from django.utils import timezone
+                
+                try:
+                    user = User.objects.get(id=user_id)
+                    
+                    # use_date가 설정되어 있는지 확인
+                    if user.use_date:
+                        # 현재 날짜와 use_date 비교 (타입 통일)
+                        current_date = timezone.now().date()
+                        use_date = user.use_date.date() if hasattr(user.use_date, 'date') else user.use_date
+                        if current_date > use_date:
+                            # 사용 기간이 만료된 경우 세션 정리
+                            request.session.flush()
+                            return JsonResponse({
+                                'is_authenticated': False,
+                                'success': True,
+                                'expired': True,
+                                'message': '사용 기간이 만료되었습니다.'
+                            })
+                except User.DoesNotExist:
+                    # 사용자를 찾을 수 없는 경우 세션 정리
+                    request.session.flush()
+                    return JsonResponse({
+                        'is_authenticated': False,
+                        'success': True,
+                        'message': '사용자 정보를 찾을 수 없습니다.'
+                    })
+        
         return JsonResponse({
             'is_authenticated': is_authenticated,
             'success': True

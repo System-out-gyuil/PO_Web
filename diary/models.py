@@ -64,9 +64,17 @@ class User(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     is_admin = models.BooleanField(default=False)
+    use_date = models.DateTimeField(null=True, blank=True)  # 사용 기간 만료일
     
     def __str__(self):
         return self.name
+    
+    def is_expired(self):
+        """사용 기간이 만료되었는지 확인"""
+        from django.utils import timezone
+        if self.use_date is None:
+            return False
+        return timezone.now() > self.use_date
 
 class EmailVerification(models.Model):
     """이메일 인증을 위한 모델"""

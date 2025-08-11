@@ -38,6 +38,13 @@ class LoginView(View):
                 # 사용자 조회 (이메일로만 조회)
                 member = User.objects.get(email=member_id)
                 
+                # 사용 기간 만료 확인
+                if member.is_expired():
+                    return JsonResponse({
+                        'success': False,
+                        'error': '사용기간이 만료되었습니다.'
+                    })
+                
                 # 비밀번호 검증
                 if check_password(member_pw, member.password):
                     # 로그인 성공 → 세션 저장
@@ -134,7 +141,8 @@ class SignupView(View):
                 password=hashed_password,  # 암호화된 비밀번호 저장
                 manager_name=manager_name,
                 company_name=company_name,
-                phone_number=phone_number
+                phone_number=phone_number,
+                use_date=timezone.now() + timedelta(days=30)  # 한 달 사용 기간 설정
             )
 
             # 모든 기존 공지(Alarm)를 UserAlarm으로 추가
