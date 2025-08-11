@@ -327,7 +327,6 @@ function processDropdownOptions(options, value, cell) {
               td._clickHandler = clickHandler;
               td.addEventListener('click', clickHandler);
           } else if (dataType === 'memo' || (type === '메모' || type.includes('메모'))) {
-              console.log('메모 필드 클릭 이벤트')
               // 메모 필드 클릭 이벤트
               const clickHandler = function() {
                   if (td.querySelector('textarea')) return;
@@ -394,14 +393,10 @@ function processDropdownOptions(options, value, cell) {
                   const minHeight = 55;
                   const maxHeight = 300;
                   const finalHeight = Math.max(minHeight, Math.min(contentHeight, maxHeight));
-                  console.log('finalHeight', finalHeight)
                   
                   // textarea 높이를 명시적으로 설정 (minHeight를 먼저 설정하고 height를 나중에 설정)
                   textarea.style.minHeight = minHeight + 'px';
                   textarea.style.maxHeight = finalHeight + 'px';
-                  
-                  console.log(`메모 textarea 초기 높이 설정: 텍스트="${oldValue.substring(0, 50)}...", 내용 높이=${contentHeight}px, 최종 높이=${finalHeight}px`);
-                  console.log(`textarea 실제 높이 설정: ${textarea.style.height}`);
                   
                   td.appendChild(textarea);
                   textarea.focus();
@@ -409,7 +404,6 @@ function processDropdownOptions(options, value, cell) {
                   // DOM에 추가된 후 height 설정 (다른 스타일이 덮어쓰지 않도록)
                   setTimeout(() => {
                       textarea.style.height = finalHeight + 'px';
-                      console.log(`textarea DOM 추가 후 실제 높이: ${textarea.offsetHeight}px, 설정된 높이: ${textarea.style.height}`);
                   }, 10);
                   
                   // 자동 크기 조정 함수 - scrollHeight를 사용하여 자연스럽게 조정
@@ -447,7 +441,6 @@ function processDropdownOptions(options, value, cell) {
                       const lineHeight = parseInt(getComputedStyle(textarea).lineHeight) || 20;
                       const estimatedLines = Math.ceil(contentHeight / lineHeight);
                       
-                      console.log(`메모 textarea 높이 조정: 텍스트="${text.substring(0, 50)}...", 내용 높이=${contentHeight}px, 최종 높이=${finalHeight}px, 예상 줄 수=${estimatedLines}`);
                   }
                   
                   // 입력 시 크기 조정
@@ -609,7 +602,6 @@ function processDropdownOptions(options, value, cell) {
                               saveNewRowField(td.parentElement, '회사명', newValue);
                           } else {
                               // 🔥 종속행 동기화를 위해 updateCellValue 함수 사용
-                              console.log('[회사명 수정] updateCellValue 호출:', {id, field: '회사명', value: newValue});
                               updateCellValue(id, '회사명', newValue, td);
                           }
                       };
@@ -645,8 +637,6 @@ function processDropdownOptions(options, value, cell) {
                       };
                       input.onblur = function() {
                           const cleanValue = input.value.replace(/[^\d]/g, '');
-                          console.log(`[매출 수정] updateCellValue 호출:`, {id, type, cleanValue, element: td});
-                          console.log(`[매출 수정] 매출 필드 여부 확인: ${type === '매출' || type.includes('매출')}`);
                           updateCellValue(id, type, cleanValue, td);
                       };
                       input.onkeydown = function(e) {
@@ -695,7 +685,6 @@ function processDropdownOptions(options, value, cell) {
                               saveNewRowField(td.parentElement, type, newValue);
                           } else {
                               // 기존 행인 경우
-                              console.log('update_row_field, 테이블6')
                               fetch('/sales/update_row_field/', {
                                   method: 'POST',
                                   headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -772,21 +761,16 @@ function processDropdownOptions(options, value, cell) {
   
   // 부분 업데이트 함수 - 특정 셀만 업데이트
   function updateTableCell(rowId, field, value) {
-      console.log(`[테이블 셀 업데이트] 시작: rowId=${rowId}, field=${field}, value=${value}`);
       
       const row = document.querySelector(`tr[data-id="${rowId}"]`);
       if (!row) {
-          console.warn(`[테이블 셀 업데이트] 행을 찾을 수 없음: rowId=${rowId}`);
           return;
       }
       
       const cell = row.querySelector(`td[data-field="${field}"]`);
       if (!cell) {
-          console.warn(`[테이블 셀 업데이트] 셀을 찾을 수 없음: rowId=${rowId}, field=${field}`);
           return;
       }
-      
-      console.log(`[테이블 셀 업데이트] 셀 발견, 업데이트 진행: rowId=${rowId}, field=${field}`);
       
       // 셀 내용만 업데이트 (전체 테이블 새로고침 없이)
       if (field === '매출' || field.includes('매출')) {
@@ -794,7 +778,6 @@ function processDropdownOptions(options, value, cell) {
           cell.textContent = formattedValue;
           cell.setAttribute('data-raw', value);
           cell.setAttribute('data-value', value);
-          console.log(`[테이블 셀 업데이트] 매출 필드 업데이트 완료: ${value} -> ${formattedValue}`);
           
           // 매출 필드 종속행 동기화를 위한 추가 처리
           setTimeout(() => {
@@ -803,7 +786,6 @@ function processDropdownOptions(options, value, cell) {
                   verifyCell.textContent = formattedValue;
                   verifyCell.setAttribute('data-raw', value);
                   verifyCell.setAttribute('data-value', value);
-                  console.log(`[테이블 셀 업데이트] 매출 필드 재확인 완료: ${formattedValue}`);
               }
           }, 50);
           
@@ -823,21 +805,17 @@ function processDropdownOptions(options, value, cell) {
                   cell.textContent = value;
               }
               cell.setAttribute('data-value', value);
-              console.log(`[테이블 셀 업데이트] 개업년월 필드 업데이트 완료: ${value}`);
           } catch (e) {
               cell.textContent = value;
               cell.setAttribute('data-value', value);
-              console.error(`[테이블 셀 업데이트] 개업년월 JSON 파싱 오류:`, e);
           }
       } else if (field === '회사명') {
           // 회사명 필드 특별 처리 - 종속행 동기화 개선
           const nameTextDiv = cell.querySelector('.name-text');
           if (nameTextDiv) {
               nameTextDiv.innerText = value;
-              console.log(`[테이블 셀 업데이트] 회사명 .name-text 업데이트: ${value}`);
           } else {
               cell.textContent = value;
-              console.log(`[테이블 셀 업데이트] 회사명 직접 업데이트: ${value}`);
           }
           cell.setAttribute('data-value', value);
           
@@ -848,16 +826,13 @@ function processDropdownOptions(options, value, cell) {
                   const verifyNameText = verifyCell.querySelector('.name-text');
                   if (verifyNameText && verifyNameText.innerText !== value) {
                       verifyNameText.innerText = value;
-                      console.log(`[테이블 셀 업데이트] 회사명 재확인 완료: ${value}`);
                   } else if (!verifyNameText && verifyCell.textContent !== value) {
                       verifyCell.textContent = value;
-                      console.log(`[테이블 셀 업데이트] 회사명 직접 재확인 완료: ${value}`);
                   }
                   verifyCell.setAttribute('data-value', value);
               }
           }, 50);
           
-          console.log(`[테이블 셀 업데이트] 회사명 필드 업데이트 완료: ${value}`);
       } else {
           // 드롭다운 필드인지 확인
           const dropdownFields = (window.ATTR_FIELDS || [])
@@ -865,7 +840,6 @@ function processDropdownOptions(options, value, cell) {
               .map(attr => attr.name);
           
           if (dropdownFields.includes(field)) {
-              console.log(`[테이블 셀 업데이트] 드롭다운 필드 처리: ${field}`);
               // 드롭다운 필드는 서버에서 최신 옵션 정보를 가져와서 업데이트
               
               // 먼저 현재 셀의 내용을 pill 형태로 임시 업데이트 (로딩 상태)
@@ -884,7 +858,6 @@ function processDropdownOptions(options, value, cell) {
                   // 로컬에 있는 옵션 사용
                   processDropdownOptions(options, value, cell);
                   cell.setAttribute('data-value', value);
-                  console.log(`[테이블 셀 업데이트] 드롭다운 로컬 옵션으로 업데이트 완료: ${value}`);
               } else {
                   // 서버에서 옵션 가져오기 (fallback)
                   fetch('/sales/dropdown_options/?field=' + encodeURIComponent(field))
@@ -898,12 +871,10 @@ function processDropdownOptions(options, value, cell) {
                           if (data.options && Array.isArray(data.options)) {
                               processDropdownOptions(data.options, value, cell);
                               cell.setAttribute('data-value', value);
-                              console.log(`[테이블 셀 업데이트] 드롭다운 서버 옵션으로 업데이트 완료: ${value}`);
                           } else {
                               // 옵션 데이터가 없는 경우에도 pill 형태로 표시
                               processDropdownOptions(window.DROPDOWN_OPTIONS[field], value, cell);
                               cell.setAttribute('data-value', value);
-                              console.log(`[테이블 셀 업데이트] 드롭다운 fallback 업데이트 완료: ${value}`);
                           }
                       })
                       .catch(error => {
@@ -917,7 +888,6 @@ function processDropdownOptions(options, value, cell) {
               // 일반 필드
               cell.textContent = value;
               cell.setAttribute('data-value', value);
-              console.log(`[테이블 셀 업데이트] 일반 필드 업데이트 완료: ${value}`);
           }
       }
       
@@ -931,13 +901,11 @@ function processDropdownOptions(options, value, cell) {
       // 실시간 동기화 (캘린더만)
       if (field === 'F/U 일정' && window.calendar) {
           window.calendar.refetchEvents();
-          console.log(`[테이블 셀 업데이트] 캘린더 리프레시 완료`);
       }
       
       // datetime 타입 필드인 경우 캘린더 리렌더링
       if (cell.getAttribute('data-type') === 'datetime' && window.calendar) {
           window.calendar.refetchEvents();
-          console.log(`[테이블 셀 업데이트] datetime 필드 캘린더 리프레시 완료`);
       }
       
       // 모든 datetime 필드 변경 시 캘린더 리렌더링
@@ -945,7 +913,6 @@ function processDropdownOptions(options, value, cell) {
           refreshCalendar();
       }
       
-      console.log(`[테이블 셀 업데이트] 완료: rowId=${rowId}, field=${field}`);
       
       // 최종 확인: 셀이 실제로 업데이트되었는지 검증
       setTimeout(() => {
@@ -954,8 +921,6 @@ function processDropdownOptions(options, value, cell) {
           if (verifyCell) {
               const currentDisplayValue = verifyCell.textContent || verifyCell.innerText;
               const currentDataValue = verifyCell.getAttribute('data-value');
-              console.log(`[테이블 셀 업데이트] 최종 검증: rowId=${rowId}, field=${field}`);
-              console.log(`[테이블 셀 업데이트] 화면 표시값: "${currentDisplayValue}", data-value: "${currentDataValue}"`);
               
               // 값이 올바르게 반영되지 않은 경우 한 번 더 시도
               if (!currentDisplayValue && value) {
@@ -989,11 +954,9 @@ function processDropdownOptions(options, value, cell) {
           }
           // dropdown 타입이나 특수 지역 필드들
           else if(type === 'dropdown' || field === '지역' || field === '상세지역') {
-              console.log('드롭다운/지역 셀 이벤트 바인딩:', {type, field, dataType});
               td.style.cursor = 'pointer';
               td.onclick = function(e) {
                   e.stopPropagation();
-                  console.log('드롭다운/지역 셀 클릭됨:', {type, field, dataType});
                   
                   let dropdownType = '';
                   if(type === 'dropdown') {
@@ -1001,13 +964,9 @@ function processDropdownOptions(options, value, cell) {
                       dropdownType = field;
                   } else if(field === '지역') {
                       dropdownType = 'region';
-                      console.log('지역 드롭다운으로 설정');
                   } else if(field === '상세지역') {
                       dropdownType = 'region_detail';
-                      console.log('상세지역 드롭다운으로 설정');
                   }
-                  
-                  console.log('dropdownType 설정됨:', dropdownType);
                   
                   if(dropdownType === 'region') {
                       // 회사명 필드인 경우 .name-text에서 값 추출, 다른 필드는 td.innerText 사용
@@ -1019,11 +978,9 @@ function processDropdownOptions(options, value, cell) {
                           (regionValue.getAttribute('data-field') === '회사명' ? 
                               (regionValue.querySelector('.name-text')?.innerText.trim() || '') : 
                               regionValue.innerText.trim()) : '';
-                      console.log('지역 드롭다운 호출:', {currentValue, regionText});
                       openDropdown(td, 'region', id, currentValue, regionText);
 
                   } else if(dropdownType === 'region_detail') {
-                      console.log('상세지역 드롭다운 처리');
                       const regionTd = td.parentElement.querySelector('td[data-field="지역"]');
                       const regionValue = regionTd ? 
                           (regionTd.getAttribute('data-field') === '회사명' ? 
@@ -1033,11 +990,9 @@ function processDropdownOptions(options, value, cell) {
                       const currentValue = (field === '회사명') ? 
                           (td.querySelector('.name-text')?.innerText.trim() || '') : 
                           td.innerText.trim();
-                      console.log('상세지역 드롭다운 호출:', {regionValue, currentValue});
                       openDropdown(td, 'region_detail', id, regionValue, currentValue);
 
                   } else if(dataType === 'dropdown') {
-                      console.log('일반 드롭다운 처리');
                       openDropdown(td, type, id, td.getAttribute('data-value'));
                   }
               };
@@ -1154,7 +1109,6 @@ function processDropdownOptions(options, value, cell) {
                                           saveNewRowField(td.parentElement, '회사명', newValue);
                                       } else {
                                           // 🔥 종속행 동기화를 위해 updateCellValue 함수 사용
-                                          console.log('[회사명 수정] updateCellValue 호출:', {id, field: '회사명', value: newValue});
                                           updateCellValue(id, '회사명', newValue, td);
                                       }
                                   };
@@ -1172,7 +1126,6 @@ function processDropdownOptions(options, value, cell) {
                                   saveNewRowField(td.parentElement, '회사명', newValue);
                               } else {
                                   // 🔥 종속행 동기화를 위해 updateCellValue 함수 사용
-                                  console.log('[회사명 수정] updateCellValue 호출:', {id, field: '회사명', value: newValue});
                                   updateCellValue(id, '회사명', newValue, td);
                               }
                           };
@@ -1212,8 +1165,6 @@ function processDropdownOptions(options, value, cell) {
                           };
                           input.onblur = function() {
                               const cleanValue = removeCommaFromNumber(this.value);
-                              console.log(`[매출 수정] updateCellValue 호출:`, {id, type, cleanValue, element: td});
-                              console.log(`[매출 수정] 매출 필드 여부 확인: ${type === '매출' || type.includes('매출')}`);
                               updateCellValue(id, type, cleanValue, td);
                           };
                       } else {
@@ -1228,7 +1179,6 @@ function processDropdownOptions(options, value, cell) {
                                   td.innerText = newValue;
                               }
                               td.style.width = '';
-                              console.log('update_row_field, 테이블7')
                               fetch('/sales/update_row_field/', {
                                   method: 'POST',
                                   headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -1263,9 +1213,7 @@ function processDropdownOptions(options, value, cell) {
                       input.className = 'table-edit-input';
                       
                       // 메모 필드인 경우 특별한 스타일 적용
-                      console.log('필드 타입 확인:', type, 'data-type:', dataType);
                       if (type === '메모' || type.includes('메모') || dataType === 'memo') {
-                          console.log('메모 필드 특별 스타일 적용 - 타입:', type, '데이터타입:', dataType);
                           
                           // input을 textarea로 변경
                           const textarea = document.createElement('textarea');
@@ -1338,7 +1286,6 @@ function processDropdownOptions(options, value, cell) {
                               const lineHeight = parseInt(getComputedStyle(textarea).lineHeight) || 20;
                               const estimatedLines = Math.ceil(contentHeight / lineHeight);
                               
-                              console.log(`메모 textarea 높이 조정: 텍스트="${text.substring(0, 50)}...", 내용 높이=${contentHeight}px, 최종 높이=${finalHeight}px, 예상 줄 수=${estimatedLines}`);
                           }
                           
                           // input을 textarea로 교체
@@ -1375,7 +1322,6 @@ function processDropdownOptions(options, value, cell) {
                               // td 스타일 복원
                               restoreTdStyle();
                               
-                              console.log('update_row_field, 새 행 메모 필드')
                               fetch('/sales/update_row_field/', {
                                   method: 'POST',
                                   headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -1413,7 +1359,6 @@ function processDropdownOptions(options, value, cell) {
                               }
                           };
                       } else {
-                          console.log('일반 필드 스타일 적용 - 타입:', type);
                           // 일반 필드의 경우 기존 스타일 유지
                           input.style.position = 'absolute';
                           input.style.left = '0';
@@ -1489,7 +1434,6 @@ function processDropdownOptions(options, value, cell) {
       
       // 임시 ID인 경우 (새 행 생성)
       if (currentId && currentId.startsWith('temp_')) {
-          console.log('새 행 생성 중...');
           fetch('/sales/create_new_row/', {
               method: 'POST',
               headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -1528,7 +1472,6 @@ function processDropdownOptions(options, value, cell) {
       }
       // 실제 ID가 있는 경우 (기존 행 업데이트)
       else if (currentId && !currentId.startsWith('temp_')) {
-          console.log('기존 행 업데이트 중...');
           fetch('/sales/update_row_field/', {
               method: 'POST',
               headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -1824,7 +1767,6 @@ function processDropdownOptions(options, value, cell) {
           if (!isDropdownButton) {
               // 지역/상세지역 드롭다운인 경우 완전히 보호
               if (isRegionDropdown) {
-                  console.log('diary_table.js: 지역 드롭다운 감지, 전역 클릭 이벤트 무시');
                   return; // 지역 드롭다운인 경우 아무것도 하지 않음
               } else {
                   closeDropdown();
@@ -1842,17 +1784,14 @@ function processDropdownOptions(options, value, cell) {
   
   // 숫자 필드 업데이트 시 콤마 포맷팅 적용
   function updateCellValue(id, fieldName, value, element, skipDependentUpdate = false) {
-      console.log(`[셀 값 업데이트] 시작: id=${id}, field=${fieldName}, value=${value}, skipDependentUpdate=${skipDependentUpdate}`);
       
       // 새 행인 경우
       if (id && id.startsWith('temp_')) {
-          console.log(`[셀 값 업데이트] 새 행 처리: ${id}`);
           saveNewRowField(element.parentElement, fieldName, value);
           return;
       }
       
       // 기존 행인 경우
-      console.log('[셀 값 업데이트] 기존 행 처리, 서버 업데이트 시작');
       fetch('/sales/update_row_field/', {
           method: 'POST',
           headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -1862,7 +1801,6 @@ function processDropdownOptions(options, value, cell) {
           return response.json();
       })
       .then(function(data) {
-          console.log(`[셀 값 업데이트] 서버 응답:`, data);
           
           if (!data.success) {
               console.error(`[셀 값 업데이트] 서버 오류:`, data.error);
@@ -1870,14 +1808,12 @@ function processDropdownOptions(options, value, cell) {
               return;
           }
           
-          console.log(`[셀 값 업데이트] 서버 업데이트 성공, 로컬 테이블 업데이트 시작`);
           
           // 모든 필드에 대해 현재 셀만 업데이트 (드롭다운 포함)
           updateTableCell(id, fieldName, value);
           
           // 복제된 행들의 종속성 업데이트 - 중요! (무한루프 방지용 플래그 사용)
           if (!skipDependentUpdate) {
-              console.log(`[셀 값 업데이트] 복제행 동기화 시작`);
               updateDependentRows(id, fieldName, value);
           } else {
               console.log(`[셀 값 업데이트] 복제행 동기화 스킵 (무한루프 방지)`);
@@ -1885,7 +1821,6 @@ function processDropdownOptions(options, value, cell) {
           
           // 상태 필터가 활성화되어 있고, 변경된 필드가 상태 속성인 경우에만 즉시 필터 적용
           if (window.currentStatusTab !== null && fieldName === window.statusAttributeName) {
-              console.log(`[셀 값 업데이트] 상태 필터 업데이트 시작: ${fieldName}`);
               // 해당 행의 상태 셀 업데이트
               const row = document.querySelector(`tr[data-id="${id}"]`);
               if (row) {
@@ -1898,7 +1833,6 @@ function processDropdownOptions(options, value, cell) {
                       setTimeout(() => {
                           if (typeof applyStatusFilter === 'function') {
                               applyStatusFilter();
-                              console.log(`[셀 값 업데이트] 상태 필터 적용 완료`);
                           }
                       }, 50);
                   }
@@ -1908,31 +1842,22 @@ function processDropdownOptions(options, value, cell) {
           // datetime 필드인 경우 캘린더 리렌더링
           const fieldElement = document.querySelector(`td[data-field="${fieldName}"]`);
           if (fieldElement && fieldElement.getAttribute('data-type') === 'datetime' && window.calendar) {
-              console.log(`[셀 값 업데이트] datetime 필드 캘린더 업데이트: ${fieldName}`);
               window.calendar.refetchEvents();
           }
           
           // 필요시 테이블/보드 갱신
           refreshCalendarSettings();
           
-          console.log(`[셀 값 업데이트] 모든 업데이트 완료: id=${id}, field=${fieldName}`);
       })
       .catch(function(error) {
-          console.error('[셀 값 업데이트] 오류 발생:', error);
           alert('업데이트 중 오류가 발생했습니다.');
       });
   }
   
   // 종속된 행들을 찾아서 업데이트하는 함수
   function updateDependentRows(updatedRowId, fieldName, value) {
-      console.log(`[복제행 동기화] 시작: rowId=${updatedRowId}, field=${fieldName}, value=${value}`);
-      console.log(`[복제행 동기화] 회사명 필드 여부: ${fieldName === '회사명'}`);
-      console.log(`[복제행 동기화] 매출 필드 여부: ${fieldName === '매출' || fieldName.includes('매출')}`);
       
       // 🔍 수동 CASCADE 확인 도구 - 콘솔에서 확인 가능
-      console.log(`%c[복제행 동기화] 🔍 CASCADE 확인이 필요하시면 다음 명령어를 실행하세요:`, 'color: blue; font-weight: bold;');
-      console.log(`%cfetch('/sales/check_cascade_status/', {method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body: 'field_name=${fieldName}'}).then(r=>r.json()).then(console.log)`, 'color: blue;');
-      
       // 모든 필드에 대해 종속된 행들 찾기 (매출 관련 필드 제한 제거)
       // 서버에서 종속된 행들 정보 가져오기
       fetch('/sales/get_dependent_rows/', {
@@ -1942,10 +1867,8 @@ function processDropdownOptions(options, value, cell) {
       })
       .then(response => response.json())
       .then(data => {
-          console.log(`[복제행 동기화] 서버 응답:`, data);
           
           if (data.success && data.dependent_rows) {
-              console.log(`[복제행 동기화] 종속행 ${data.dependent_rows.length}개 발견`);
               
               // 드롭다운 필드인지 확인
               const dropdownFields = (window.ATTR_FIELDS || [])
@@ -1953,28 +1876,20 @@ function processDropdownOptions(options, value, cell) {
                   .map(attr => attr.name);
               
               const isDropdownField = dropdownFields.includes(fieldName);
-              console.log(`[복제행 동기화] 드롭다운 필드 여부: ${isDropdownField}`);
               
               // 각 종속된 행의 셀을 현재 업데이트된 값으로 동기화
               data.dependent_rows.forEach((depRow, index) => {
-                  console.log(`[복제행 동기화] 종속행 ${index + 1} 업데이트: rowId=${depRow.row_id}, field=${depRow.field}`);
-                  console.log(`[복제행 동기화] 기존값: ${depRow.value} -> 새값: ${value}`);
                   
                   if (depRow.row_id && depRow.field) {
                       
                       // 회사명과 매출 필드는 즉시 강제 업데이트
                       if (fieldName === '회사명' || fieldName === '매출' || fieldName.includes('매출')) {
-                          console.log(`[복제행 동기화] ⭐ 특별 필드 감지: ${fieldName}`);
-                          console.log(`[복제행 동기화] ⭐ 매출 필드인지 재확인: ${fieldName === '매출' || fieldName.includes('매출')}`);
-                          console.log(`[복제행 동기화] ⭐ 종속행 정보:`, {rowId: depRow.row_id, field: depRow.field, newValue: value});
                           
                           // 즉시 프론트엔드 업데이트
                           forcedUpdateSpecialField(depRow.row_id, fieldName, value);
                           
                           // 서버 동기화
                           syncDependentRowToServer(depRow.row_id, depRow.field, value);
-                          
-                          console.log(`[복제행 동기화] ⭐ 특별 필드 처리 완료: ${fieldName}`);
                           
                       } else {
                           // 중요: 서버에서 받은 기존값이 아닌 현재 업데이트된 값을 사용
@@ -1989,14 +1904,12 @@ function processDropdownOptions(options, value, cell) {
                                       const option = window.DROPDOWN_OPTIONS[fieldName].find(opt => opt.id == value);
                                       if (option) {
                                           displayValue = option.option;
-                                          console.log(`[복제행 동기화] 드롭다운 로컬 옵션 변환: ${value} -> ${displayValue}`);
                                           
                                           // 즉시 업데이트
                                           setTimeout(() => {
                                               updateTableCell(depRow.row_id, depRow.field, displayValue);
                                               // 백엔드에도 동기화
                                               syncDependentRowToServer(depRow.row_id, depRow.field, value);
-                                              console.log(`[복제행 동기화] 테이블 셀 업데이트 완료: rowId=${depRow.row_id}`);
                                           }, 5);
                                       } else {
                                           // 로컬에서 찾지 못한 경우 서버에서 옵션 가져오기
@@ -2015,14 +1928,12 @@ function processDropdownOptions(options, value, cell) {
                                                       }
                                                   }
                                                   
-                                                  console.log(`[복제행 동기화] 드롭다운 서버 옵션 변환: ${value} -> ${displayValue}`);
                                                   
                                                   // 즉시 업데이트
                                                   setTimeout(() => {
                                                       updateTableCell(depRow.row_id, depRow.field, displayValue);
                                                       // 백엔드에도 동기화
                                                       syncDependentRowToServer(depRow.row_id, depRow.field, value);
-                                                      console.log(`[복제행 동기화] 테이블 셀 업데이트 완료: rowId=${depRow.row_id}`);
                                                   }, 5);
                                               })
                                               .catch(error => {
@@ -2031,7 +1942,6 @@ function processDropdownOptions(options, value, cell) {
                                                   setTimeout(() => {
                                                       updateTableCell(depRow.row_id, depRow.field, value);
                                                       syncDependentRowToServer(depRow.row_id, depRow.field, value);
-                                                      console.log(`[복제행 동기화] 테이블 셀 업데이트 완료 (fallback): rowId=${depRow.row_id}`);
                                                   }, 5);
                                               });
                                       }
@@ -2047,12 +1957,10 @@ function processDropdownOptions(options, value, cell) {
                                                   }
                                               }
                                               
-                                              console.log(`[복제행 동기화] 드롭다운 서버 옵션 변환: ${value} -> ${displayValue}`);
                                               
                                               setTimeout(() => {
                                                   updateTableCell(depRow.row_id, depRow.field, displayValue);
                                                   syncDependentRowToServer(depRow.row_id, depRow.field, value);
-                                                  console.log(`[복제행 동기화] 테이블 셀 업데이트 완료: rowId=${depRow.row_id}`);
                                               }, 5);
                                           })
                                           .catch(error => {
@@ -2060,26 +1968,21 @@ function processDropdownOptions(options, value, cell) {
                                               setTimeout(() => {
                                                   updateTableCell(depRow.row_id, depRow.field, value);
                                                   syncDependentRowToServer(depRow.row_id, depRow.field, value);
-                                                  console.log(`[복제행 동기화] 테이블 셀 업데이트 완료 (fallback): rowId=${depRow.row_id}`);
                                               }, 5);
                                           });
                                   }
                               } else {
                                   // 값이 이미 텍스트인 경우 그대로 사용
-                                  console.log(`[복제행 동기화] 텍스트 값 사용: ${displayValue}`);
                                   setTimeout(() => {
                                       updateTableCell(depRow.row_id, depRow.field, displayValue);
                                       syncDependentRowToServer(depRow.row_id, depRow.field, value);
-                                      console.log(`[복제행 동기화] 테이블 셀 업데이트 완료: rowId=${depRow.row_id}`);
                                   }, 5);
                               }
                           } else {
                               // 일반 필드인 경우 그대로 사용
-                              console.log(`[복제행 동기화] 일반 필드 업데이트: ${displayValue}`);
                               setTimeout(() => {
                                   updateTableCell(depRow.row_id, depRow.field, displayValue);
                                   syncDependentRowToServer(depRow.row_id, depRow.field, value);
-                                  console.log(`[복제행 동기화] 테이블 셀 업데이트 완료: rowId=${depRow.row_id}`);
                               }, 5);
                           }
                       }
@@ -2089,7 +1992,6 @@ function processDropdownOptions(options, value, cell) {
               // 회사명과 매출 필드의 경우 추가적인 강제 검증
               if (fieldName === '회사명' || fieldName === '매출' || fieldName.includes('매출')) {
                   setTimeout(() => {
-                      console.log(`[복제행 동기화] ⭐ 특별 필드 최종 검증 시작: ${fieldName}`);
                       data.dependent_rows.forEach(depRow => {
                           forcedVerifySpecialField(depRow.row_id, fieldName, value);
                       });
@@ -2098,7 +2000,6 @@ function processDropdownOptions(options, value, cell) {
               
               // 추가적인 동기화 보장 - 모든 업데이트가 완료된 후 한 번 더 확인
               setTimeout(() => {
-                  console.log(`[복제행 동기화] 추가 동기화 확인 시작`);
                   data.dependent_rows.forEach(depRow => {
                       if (depRow.row_id && depRow.field) {
                           const targetRow = document.querySelector(`tr[data-id="${depRow.row_id}"]`);
@@ -2113,12 +2014,10 @@ function processDropdownOptions(options, value, cell) {
                                   if (nameTextDiv) {
                                       if (nameTextDiv.innerText !== value) {
                                           nameTextDiv.innerText = value;
-                                          console.log(`[복제행 동기화] 회사명 최종 재확인: rowId=${depRow.row_id}, value=${value}`);
                                       }
                                   } else {
                                       if (targetCell.textContent !== value) {
                                           targetCell.textContent = value;
-                                          console.log(`[복제행 동기화] 회사명 직접 최종 재확인: rowId=${depRow.row_id}, value=${value}`);
                                       }
                                   }
                               } else if (fieldName === '매출' || fieldName.includes('매출')) {
@@ -2126,11 +2025,9 @@ function processDropdownOptions(options, value, cell) {
                                   if (targetCell.textContent !== formattedValue) {
                                       targetCell.textContent = formattedValue;
                                       targetCell.setAttribute('data-raw', value);
-                                      console.log(`[복제행 동기화] 매출 최종 재확인: rowId=${depRow.row_id}, value=${value} -> ${formattedValue}`);
                                   }
                               }
                               
-                              console.log(`[복제행 동기화] data-value 속성 업데이트: rowId=${depRow.row_id}, value=${value}`);
                           }
                       }
                   });
@@ -2151,7 +2048,6 @@ function processDropdownOptions(options, value, cell) {
           
       if (dropdownFields.includes(fieldName)) {
           // 드롭다운 옵션 동기화는 기존 syncTableAndKanban 함수에서 처리
-          console.log(`[복제행 동기화] 드롭다운 필드 추가 동기화 시작: ${fieldName}`);
           if (typeof syncTableAndKanban === 'function') {
               syncTableAndKanban(fieldName);
           }
@@ -2160,7 +2056,6 @@ function processDropdownOptions(options, value, cell) {
   
   // 종속된 행을 서버에 동기화하는 함수 (무한루프 방지)
   function syncDependentRowToServer(rowId, fieldName, value) {
-      console.log(`[서버 동기화] 시작: rowId=${rowId}, field=${fieldName}, value=${value}`);
       
       fetch('/sales/update_row_field/', {
           method: 'POST',
@@ -2170,7 +2065,6 @@ function processDropdownOptions(options, value, cell) {
       .then(response => response.json())
       .then(data => {
           if (data.success) {
-              console.log(`[서버 동기화] 성공: rowId=${rowId}, field=${fieldName}`);
               
               // 서버 업데이트 성공 후 해당 셀의 data-value도 확실히 업데이트
               const targetRow = document.querySelector(`tr[data-id="${rowId}"]`);
@@ -2183,19 +2077,15 @@ function processDropdownOptions(options, value, cell) {
                       const nameTextDiv = targetCell.querySelector('.name-text');
                       if (nameTextDiv) {
                           nameTextDiv.innerText = value;
-                          console.log(`[서버 동기화] 회사명 .name-text 확정: rowId=${rowId}, value=${value}`);
                       } else {
                           targetCell.textContent = value;
-                          console.log(`[서버 동기화] 회사명 직접 확정: rowId=${rowId}, value=${value}`);
                       }
                   } else if (fieldName === '매출' || fieldName.includes('매출')) {
                       const formattedValue = formatToKoreanCurrency(value);
                       targetCell.textContent = formattedValue;
                       targetCell.setAttribute('data-raw', value);
-                      console.log(`[서버 동기화] 매출 필드 확정: rowId=${rowId}, value=${value} -> ${formattedValue}`);
                   }
                   
-                  console.log(`[서버 동기화] 셀 data-value 속성 확정: rowId=${rowId}, value=${value}`);
               }
               
           } else {
@@ -2288,7 +2178,6 @@ function processDropdownOptions(options, value, cell) {
                                               cell.setAttribute('data-value', textOption.id);
                                           } else {
                                               // 옵션을 찾지 못한 경우에도 pill 형태로 표시
-                                              console.log(`옵션을 찾지 못함, pill 형태로 표시: ${currentValue}`);
                                               cell.innerHTML = `<div class="dropdown-pill" style="background:#f8f9fa; color:#6c757d; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center; border:1px solid #dee2e6;">${currentValue}</div>`;
                                               cell.setAttribute('data-value', currentValue);
                                           }

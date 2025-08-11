@@ -1,77 +1,227 @@
-from django.shortcuts import render, redirect
-from django.http import JsonResponse, HttpResponse, Http404
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_GET, require_http_methods
-from django.core.serializers.json import DjangoJSONEncoder
-from django.utils import timezone
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth.models import User
-from django.db import models, transaction
-from django.db.models import Q, Max
-from django.core.paginator import Paginator
-from django.conf import settings
-
-from .models import (
-    DiaryEntry, Category, Region, SalesStatus, BaseAttribute, 
-    Attribute, AttributeValue, User, DropdownAttribute, Row, 
-    AttributeType, CalendarSettings, UserAlarm
-)
-from .funding_calculator import FundingCalculator
-from board.models import BizInfo
-
-import json
-import random
-import re
-import time
-import uuid
+# ===== Standard library =====
 import os
-import logging
-import base64
+import re
+import ast
+import json
+import uuid
+import time
+import random
 import hashlib
-import hmac
-import mimetypes
+import logging
 import tempfile
 import subprocess
-from datetime import datetime, timedelta, date
+import traceback
+import urllib.parse
 from types import SimpleNamespace
-from urllib.parse import quote
+from datetime import datetime
 
+# ===== Third-party =====
 import boto3
-from botocore.exceptions import ClientError
-from google.cloud import speech
-import io
+import chardet
 import requests
-import pandas as pd
-from openpyxl import load_workbook
 
-from config import (
-    GOOGLE_APPLICATION_CREDENTIALS, GOOGLE_APPLICATION_CREDENTIALS2, 
-    NAVER_CLOVA_SPEECH_SECRET_KEY, NAVER_CLOVA_SPEECH_INVOKE_URL, 
-    OPEN_AI_API_KEY
+# ===== Django =====
+from django.conf import settings
+from django.db import models, transaction, connection
+from django.db.models import Q, Prefetch
+from django.http import JsonResponse
+from django.shortcuts import render, redirect
+from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_GET, require_http_methods
+
+# ===== Local apps =====
+from board.models import BizInfo
+
+from .models import (
+    User,  # 로컬 User 사용 (장고 기본 User와 중복 주의)
+    DiaryEntry, Category, Region, SalesStatus,
+    Attribute, AttributeValue, DropdownAttribute, Row,
+    AttributeType, UserAlarm, Inquiry,
 )
 
-# 분리된 모듈들에서 함수들 import
-from .kanban_handlers import get_kanban_data, update_kanban_option_order
-from .attribute_handlers import (
-    add_attribute, delete_attribute, update_attribute_name,
-    toggle_attribute_visibility, update_attribute_visibility,
-    get_hidden_attributes, get_all_attributes, get_dropdown_attributes,
-    filter_attributes_by_status
+from .funding_calculator import PolicyFundRecommendationEngineV2
+from .attribute_handlers import filter_attributes_by_status
+from .cascade_handlers import sync_cascade_attributes
+from .data_utils import (
+    parse_korean_currency, parse_sales_amount, parse_business_data,
+    calculate_business_years, formatToKoreanCurrency,
 )
-from .excel_handlers import preview_excel, upload_excel
-from .calendar_handlers import get_calendar_settings, save_calendar_settings, calendar_events
-
-from .data_utils import parse_korean_currency, parse_sales_amount, parse_business_data
-
-from .cascade_handlers import toggle_cascade_attribute, get_cascade_attributes_list, sync_cascade_attributes
-
-from .audio_handler import upload_audio_file, get_audio_files_by_date, delete_audio_file, update_audio_file_order
-from .calendar_handlers import get_calendar_settings, save_calendar_settings, calendar_events
-from .kanban_handlers import get_kanban_data, update_kanban_option_order
-from .funding_calculator import FundingCalculator
-from .data_utils import parse_korean_currency, parse_sales_amount, parse_business_data, calculate_business_years, formatToKoreanCurrency
 
 logger = logging.getLogger(__name__)
+
+def _build_dropdown_cache(user_attributes):
+    """드롭다운 속성들을 미리 캐시하는 함수"""
+    cache = {}
+    dropdown_attrs = [attr for attr in user_attributes if attr.attributeType and attr.attributeType.name == 'dropdown']
+    
+    if dropdown_attrs:
+        # 드롭다운 속성들의 ID 목록
+        attr_ids = [attr.id for attr in dropdown_attrs]
+        
+        # 한 번의 쿼리로 모든 드롭다운 옵션을 가져오기
+        attributes_with_dropdowns = Attribute.objects.filter(
+            id__in=attr_ids
+        ).prefetch_related('dropdown_attributes')
+        
+        for attr in attributes_with_dropdowns:
+            cache[attr.id] = {
+                dropdown_attr.id: dropdown_attr 
+                for dropdown_attr in attr.dropdown_attributes.all()
+            }
+    
+    return cache
+
+def _safe_json_parse(value):
+    """안전하게 JSON을 파싱하는 함수"""
+    if isinstance(value, str):
+        try:
+            return json.loads(value)
+        except (json.JSONDecodeError, TypeError):
+            return value
+    return value
+
+def _parse_session_data_optimized(request, keys_with_defaults):
+    """세션 데이터를 효율적으로 파싱하는 함수"""
+    return {
+        key: _safe_json_parse(request.session.get(key, default_value))
+        for key, default_value in keys_with_defaults.items()
+    }
+
+def _get_row_values_optimized(row, user_attributes, dropdown_cache):
+    """행의 값들을 효율적으로 가져오는 함수"""
+    row_values = {}
+    
+    # prefetched_values 사용으로 쿼리 최적화
+    if hasattr(row, 'prefetched_values'):
+        row_value_dict = {value.attribute_id: value.value for value in row.prefetched_values}
+    else:
+        # fallback: 기존 방식
+        row_value_dict = {value.attribute_id: value.value for value in row.values.all()}
+    
+    for attr in user_attributes:
+        value = row_value_dict.get(attr.id, '')
+        
+        if attr.name == '매출' or '매출' in attr.name:
+            numeric_value = parse_korean_currency(value)
+            row_values[attr.name] = {
+                'label': value,
+                'value': numeric_value,
+                'color': ''
+            }
+        elif attr.attributeType and attr.attributeType.name == 'dropdown' and value.isdigit():
+            # 미리 생성된 드롭다운 캐시 사용
+            dropdown = dropdown_cache.get(attr.id, {}).get(int(value))
+            
+            if dropdown:
+                row_values[attr.name] = {
+                    'label': dropdown.option, 
+                    'color': dropdown.color,
+                    'raw_value': value,
+                    'selected_options': [{'id': dropdown.id, 'label': dropdown.option, 'color': dropdown.color}]
+                }
+            else:
+                row_values[attr.name] = {
+                    'label': value, 
+                    'color': '',
+                    'raw_value': value,
+                    'selected_options': []
+                }
+        elif attr.attributeType and attr.attributeType.name == 'dropdown' and value.startswith('[') and value.endswith(']'):
+            # 다중선택(dropdown) 필드인 경우
+            try:
+                selected_ids = json.loads(value)
+                selected_options = []
+                
+                # 미리 생성된 드롭다운 캐시 사용
+                attr_cache = dropdown_cache.get(attr.id, {})
+                
+                for selected_id in selected_ids:
+                    dropdown = attr_cache.get(selected_id)
+                    if dropdown:
+                        selected_options.append({
+                            'id': dropdown.id,
+                            'label': dropdown.option,
+                            'color': dropdown.color
+                        })
+                
+                if selected_options:
+                    # 첫 번째 옵션의 색상을 기본 색상으로 사용
+                    default_color = selected_options[0]['color']
+                    row_values[attr.name] = {
+                        'label': ', '.join([opt['label'] for opt in selected_options]),
+                        'color': default_color,
+                        'raw_value': value,
+                        'selected_options': selected_options,
+                        'multi_select': True
+                    }
+                else:
+                    row_values[attr.name] = {
+                        'label': '선택 없음',
+                        'color': '',
+                        'raw_value': value,
+                        'selected_options': [],
+                        'multi_select': True
+                    }
+            except json.JSONDecodeError:
+                row_values[attr.name] = {
+                    'label': value,
+                    'color': '',
+                    'raw_value': value,
+                    'selected_options': [],
+                    'multi_select': True
+                }
+        elif attr.attributeType and attr.attributeType.name == 'file' and value:
+            # 파일 타입인 경우
+            try:
+                file_info = json.loads(value)
+                original_filename = file_info.get('original_filename', '파일')
+                
+                row_values[attr.name] = {
+                    'type': 'file',
+                    'label': original_filename,
+                    'download_url': file_info.get('download_url', ''),
+                    'file_size': file_info.get('file_size', 0),
+                    'content_type': file_info.get('content_type', ''),
+                    'original_filename': original_filename
+                }
+            except (json.JSONDecodeError, TypeError):
+                row_values[attr.name] = {
+                    'type': 'file',
+                    'label': value,
+                    'download_url': '',
+                    'file_size': 0,
+                    'content_type': '',
+                    'original_filename': value
+                }
+        elif attr.attributeType and attr.attributeType.name == 'datetime' and value:
+            # datetime 타입의 경우 날짜 포맷 적용
+            try:
+                # 값이 이미 datetime 객체인지 확인
+                if isinstance(value, str):
+                    # 문자열인 경우 파싱 시도
+                    if 'T' in value or ' ' in value:
+                        # datetime 형식
+                        dt = datetime.fromisoformat(value.replace('T', ' ').split('.')[0])
+                    else:
+                        # date 형식
+                        dt = datetime.strptime(value, '%Y-%m-%d')
+                    formatted_value = dt.strftime('%Y-%m-%d')
+                else:
+                    # datetime 객체인 경우
+                    formatted_value = value.strftime('%Y-%m-%d')
+                row_values[attr.name] = {'label': formatted_value, 'color': ''}
+            except (ValueError, TypeError):
+                # 파싱 실패 시 원본 값 사용
+                row_values[attr.name] = {'label': value, 'color': ''}
+        else:
+            row_values[attr.name] = {
+                'label': value,
+                'color': '',
+                'raw_value': value
+            }
+    
+    return row_values
 
 # 로그인 상태 확인 뷰
 @require_GET
@@ -85,8 +235,7 @@ def check_login_status(request):
             # 로그인된 사용자의 ID 가져오기
             user_id = request.session.get('diary_member_id')
             if user_id:
-                from .models import User
-                from django.utils import timezone
+                
                 
                 try:
                     user = User.objects.get(id=user_id)
@@ -196,127 +345,34 @@ def diary_list(request):
     # 쿼리 최적화: select_related와 prefetch_related 적용
     # 모든 관련 데이터를 한 번에 가져오기
     rows = Row.objects.filter(user=user).select_related('user').prefetch_related(
-        'values__attribute__attributeType',
-        'values__attribute__dropdown_attributes'
+        Prefetch(
+            'values',
+            queryset=AttributeValue.objects.select_related(
+                'attribute', 
+                'attribute__attributeType'
+            ).prefetch_related('attribute__dropdown_attributes'),
+            to_attr='prefetched_values'
+        )
     ).order_by('order')
     
     # 세션 데이터 파싱 최적화 - 한 번만 파싱
-    session_data = {
+    session_keys = {
         'column_widths': {},
         'hidden_attributes': [],
         'status_tabs': [],
         'calendar_settings': {}
     }
+    session_data = _parse_session_data_optimized(request, session_keys)
     
-    # 세션 데이터 파싱을 한 번에 처리
-    for key, default_value in session_data.items():
-        try:
-            session_value = request.session.get(key, default_value)
-            if isinstance(session_value, str):
-                session_data[key] = json.loads(session_value)
-            else:
-                session_data[key] = session_value
-        except (json.JSONDecodeError, TypeError):
-            session_data[key] = default_value
+    # 드롭다운 캐시를 미리 생성 (한 번에 처리)
+    dropdown_cache = _build_dropdown_cache(user_attributes)
     
     # 각 행의 속성 값들을 가져오기 (필터링된 속성만)
     rows_data = []
-    # 드롭다운 옵션을 미리 캐시
-    dropdown_cache = {}
     
     for row in rows:
-        row_values = {}
-        # 행의 모든 값들을 딕셔너리로 미리 구성
-        row_value_dict = {value.attribute_id: value.value for value in row.values.all()}
-        
-        for attr in user_attributes:  # 이미 필터링된 속성들만 사용
-            value = row_value_dict.get(attr.id, '')
-            
-            if attr.name == '매출' or '매출' in attr.name:
-                numeric_value = parse_korean_currency(value)
-                row_values[attr.name] = {
-                    'label': value,  # 화면 표시용(한글 단위 등)
-                    'value': numeric_value,  # 실제 숫자값
-                    'color': ''
-                }
-            elif attr.attributeType and attr.attributeType.name == 'dropdown' and value.isdigit():
-                # 드롭다운 캐시 사용
-                if attr.id not in dropdown_cache:
-                    dropdown_cache[attr.id] = {
-                        dropdown_attr.id: dropdown_attr 
-                        for dropdown_attr in attr.dropdown_attributes.all()
-                    }
-                
-                dropdown = dropdown_cache[attr.id].get(int(value))
-                
-                if dropdown:
-                    row_values[attr.name] = {
-                        'label': dropdown.option, 
-                        'color': dropdown.color,
-                        'raw_value': value,
-                        'selected_options': [{'id': dropdown.id, 'label': dropdown.option, 'color': dropdown.color}]
-                    }
-                else:
-                    row_values[attr.name] = {
-                        'label': value, 
-                        'color': '',
-                        'raw_value': value,
-                        'selected_options': []
-                    }
-            elif attr.attributeType and attr.attributeType.name == 'dropdown' and value.startswith('[') and value.endswith(']'):
-                # 다중선택(dropdown) 필드인 경우
-                try:
-                    selected_ids = json.loads(value)
-                    selected_options = []
-                    
-                    # 드롭다운 캐시 사용
-                    if attr.id not in dropdown_cache:
-                        dropdown_cache[attr.id] = {
-                            dropdown_attr.id: dropdown_attr 
-                            for dropdown_attr in attr.dropdown_attributes.all()
-                        }
-                    
-                    for selected_id in selected_ids:
-                        dropdown = dropdown_cache[attr.id].get(selected_id)
-                        if dropdown:
-                            selected_options.append({
-                                'id': dropdown.id,
-                                'label': dropdown.option,
-                                'color': dropdown.color
-                            })
-                    
-                    if selected_options:
-                        # 첫 번째 옵션의 색상을 기본 색상으로 사용
-                        default_color = selected_options[0]['color']
-                        row_values[attr.name] = {
-                            'label': ', '.join([opt['label'] for opt in selected_options]),
-                            'color': default_color,
-                            'raw_value': value,
-                            'selected_options': selected_options,
-                            'multi_select': True
-                        }
-                    else:
-                        row_values[attr.name] = {
-                            'label': '선택 없음',
-                            'color': '',
-                            'raw_value': value,
-                            'selected_options': [],
-                            'multi_select': True
-                        }
-                except json.JSONDecodeError:
-                    row_values[attr.name] = {
-                        'label': value,
-                        'color': '',
-                        'raw_value': value,
-                        'selected_options': [],
-                        'multi_select': True
-                    }
-            else:
-                row_values[attr.name] = {
-                    'label': value,
-                    'color': '',
-                    'raw_value': value
-                }
+        # 새로운 헬퍼 함수 사용으로 코드 간소화 및 성능 향상
+        row_values = _get_row_values_optimized(row, user_attributes, dropdown_cache)
         
         rows_data.append({
             'id': row.id,
@@ -650,89 +706,6 @@ def board_view(request):
     
     return render(request, 'diary/diary_list.html', {'board': board, 'statuses': dropdown_options})
 
-@csrf_exempt
-def update_entry(request):
-    if request.method == 'POST':
-        row_id = request.POST.get('id')
-        field = request.POST.get('field')
-        value = request.POST.get('value')
-        print(field, value)
-        if not row_id or not field or row_id == 'null':
-            return JsonResponse({'success': False, 'error': 'Missing id or field'})
-            
-        try:
-            # 사용자 ID를 1로 고정
-             
-            user_id = request.session.get('diary_member_id')
-
-            user = User.objects.get(id=user_id)
-            row = Row.objects.get(id=row_id, user=user)
-        except Row.DoesNotExist:
-            return JsonResponse({'success': False, 'error': 'Row not found'})
-        except ValueError:
-            return JsonResponse({'success': False, 'error': 'Invalid row ID'})
-            
-        try:
-            attr = Attribute.objects.get(name=field, user=user)
-        except Attribute.DoesNotExist:
-            return JsonResponse({'success': False, 'error': 'Invalid attribute'})
-        
-        attr_type = attr.attributeType.name if attr.attributeType else ''
-        attribute, _ = Attribute.objects.get_or_create(
-            name=attr.name,
-            user=user,
-            defaults={'attributeType': attr.attributeType}
-        )
-        # Dropdown 처리
-        if attr_type == 'dropdown':
-            try:
-                dropdown = DropdownAttribute.objects.get(id=int(value), attribute=attr)
-                value_to_save = str(dropdown.id)
-            except (DropdownAttribute.DoesNotExist, ValueError):
-                return JsonResponse({'success': False, 'error': 'Invalid dropdown value'})
-        else:
-            value_to_save = value
-        # AttributeValue 조회 또는 생성 - 중복 저장 방지
-        try:
-            with transaction.atomic():
-                # 동시 요청으로 인한 중복 방지를 위해 기존 레코드 모두 삭제 후 새로 생성
-                existing_records = AttributeValue.objects.filter(row=row, attribute=attr)
-                
-                if existing_records.exists():
-                    # 기존 레코드가 있으면 모두 삭제
-                    existing_records.delete()
-                    print(f"기존 AttributeValue 레코드 삭제: {field_name}")
-                
-                # 새 레코드 생성
-                attr_value = AttributeValue.objects.create(
-                    row=row,
-                    attribute=attr,
-                    value=value_to_save
-                )
-                print(f"새 AttributeValue 생성: {field_name} = {value_to_save}")
-                
-        except Exception as e:
-            print(f"AttributeValue 처리 중 오류: {e}")
-            return JsonResponse({'success': False, 'error': f'속성 값 저장 중 오류: {str(e)}'})
-        
-        # Cascade 기능: cascade가 true인 속성이 수정되면 원본 행과 복제된 행들을 동기화
-        if attr.cascade:
-            print(f"=== Cascade 동기화 시작 (update_entry) ===")
-            print(f"속성 '{field}'의 cascade 값: {attr.cascade}")
-            print(f"수정된 행 ID: {row_id}")
-            print(f"새 값: {value_to_save}")
-            
-            synced_count = sync_cascade_attributes(request, row_id, field, value_to_save)
-            if synced_count > 0:
-                print(f"Cascade 동기화 완료: {field} 속성이 {synced_count}개 행에 동기화됨")
-            else:
-                print(f"Cascade 동기화 실패 또는 동기화할 행이 없음")
-            print(f"=== Cascade 동기화 종료 (update_entry) ===")
-        else:
-            print(f"속성 '{field}'의 cascade 값: {attr.cascade} - 동기화하지 않음")
-        
-        return JsonResponse({'success': True})
-    return JsonResponse({'success': False, 'error': 'Invalid request'})
 
 @csrf_exempt
 def create_new_row(request):
@@ -744,17 +717,12 @@ def create_new_row(request):
         status_value = request.POST.get('status_value')
         
         print(f"=== 새 행 생성 요청 ===")
-        print(f"field: {field}")
-        print(f"value: {value}")
-        print(f"status_field: {status_field}")
-        print(f"status_value: {status_value}")
         
         if not field:
             return JsonResponse({'success': False, 'error': 'Missing field'})
             
          
         user_id = request.session.get('diary_member_id')
-        print(f"user_id: {user_id}")
 
         user = User.objects.get(id=user_id)
         
@@ -764,7 +732,6 @@ def create_new_row(request):
         
         # 새 행은 order=0으로 가장 위에 추가
         new_row = Row.objects.create(order=0, user=user)
-        print(f"새 행 생성됨: row_id={new_row.id}, order=0 (가장 위에 추가)")
         
         # 첫 번째 필드 값 설정
         try:
@@ -795,7 +762,6 @@ def create_new_row(request):
             attribute=attribute,
             value=value_to_save
         )
-        print(f"첫 번째 필드 값 설정: {field}={value_to_save}")
         
         # 상태 필드가 있으면 추가로 생성
         if status_field and status_value:
@@ -816,11 +782,9 @@ def create_new_row(request):
                     attribute=status_attr,
                     value=status_value_to_save
                 )
-                print(f"상태 필드 값 설정: {status_field}={status_value_to_save}")
             except Exception as e:
                 print(f"상태 필드 생성 오류: {e}")
         
-        print(f"=== 새 행 생성 완료: row_id={new_row.id} ===")
         return JsonResponse({'success': True, 'id': new_row.id})
         
     return JsonResponse({'success': False, 'error': 'Invalid request'})
@@ -845,17 +809,6 @@ def update_row_field(request):
             if not row_id or not field_name:
                 return JsonResponse({'success': False, 'error': 'row_id와 field_name이 필요합니다'})
             
-            print(f"=== update_row_field 디버그 ===")
-            print(f"row_id: {row_id}")
-            print(f"field_name: {field_name}")
-            print(f"value: '{value}' (type: {type(value)})")
-            print(f"value length: {len(str(value)) if value else 0}")
-            print(f"value is empty: {value == ''}")
-            print(f"value is None: {value is None}")
-            print(f"========================")
-            
-            # 사용자와 행 조회
-             
             user_id = request.session.get('diary_member_id')
 
             user = User.objects.get(id=user_id)
@@ -891,29 +844,23 @@ def update_row_field(request):
             
             # 드롭다운 타입인 경우 특별 처리
             if attr.attributeType and attr.attributeType.name == 'dropdown':
-                print(f"Dropdown 필드 처리 - {attr.name}: value='{value}', isdigit: {value.isdigit() if value else False}")
                 
                 # 빈 값 처리
                 if value == '' or value is None:
-                    print(f"  빈 값 처리 - 빈 문자열로 저장")
                     value_to_save = ''
                 elif value.isdigit():
                     # 단일 선택
-                    print(f"  단일 선택 처리")
                     value_to_save = value
                 elif value.startswith('[') and value.endswith(']'):
                     # 다중선택(dropdown) 필드인 경우
-                    print(f"다중선택 처리 - {attr.name}: value='{value}'")
                     try:
                         selected_ids = json.loads(value)
-                        print(f"  JSON 파싱 성공: {selected_ids}")
                         value_to_save = value  # JSON 배열 형태로 저장
                     except json.JSONDecodeError as e:
                         print(f"  JSON 파싱 실패: {e}")
                         value_to_save = value
                 else:
                     # 다른 형태
-                    print(f"  다른 형태: '{value}'")
                     value_to_save = value
 
             else:
@@ -928,7 +875,6 @@ def update_row_field(request):
                     if existing_records.exists():
                         # 기존 레코드가 있으면 모두 삭제
                         existing_records.delete()
-                        print(f"기존 AttributeValue 레코드 삭제: {field_name}")
                     
                     # 새 레코드 생성
                     attr_value = AttributeValue.objects.create(
@@ -936,7 +882,6 @@ def update_row_field(request):
                         attribute=attr,
                         value=value_to_save
                     )
-                    print(f"새 AttributeValue 생성: {field_name} = {value_to_save}")
                     
             except Exception as e:
                 print(f"AttributeValue 처리 중 오류: {e}")
@@ -944,17 +889,8 @@ def update_row_field(request):
             
             # Cascade 기능: cascade가 true인 속성이 수정되면 원본 행과 복제된 행들을 동기화
             if attr.cascade:
-                print(f"=== Cascade 동기화 시작 ===")
-                print(f"속성 '{field_name}'의 cascade 값: {attr.cascade}")
-                print(f"수정된 행 ID: {row_id}")
-                print(f"새 값: {value_to_save}")
                 
                 synced_count = sync_cascade_attributes(request, row_id, field_name, value_to_save)
-                if synced_count > 0:
-                    print(f"Cascade 동기화 완료: {field_name} 속성이 {synced_count}개 행에 동기화됨")
-                else:
-                    print(f"Cascade 동기화 실패 또는 동기화할 행이 없음")
-                print(f"=== Cascade 동기화 종료 ===")
             else:
                 print(f"속성 '{field_name}'의 cascade 값: {attr.cascade} - 동기화하지 않음")
             
@@ -973,7 +909,6 @@ def update_row_field(request):
 def dropdown_options(request):
     # GET과 POST 모두에서 field 파라미터 확인
     field = request.GET.get('field') or request.POST.get('field')
-    print(field)
     if not field:
         return JsonResponse({'error': 'No field'}, status=400)
     
@@ -1021,14 +956,12 @@ def dropdown_options(request):
                     user_attr.view_select = view_select_data
                     user_attr.save()
                 
-                print(f"상태 속성 '{attr.name}'의 새 옵션 '{dropdown.option}' (ID: {dropdown.id})을 모든 Attribute의 view_select에 추가 + 전체 탭 설정")
             
             return JsonResponse({'success': True, 'id': dropdown.id, 'option': dropdown.option, 'color': dropdown.color, 'created': created})
         return JsonResponse({'error': 'No option'}, status=400)
 
     elif request.method == 'PUT':
         # PUT 요청의 body 파싱
-        import urllib.parse
         body_data = urllib.parse.parse_qs(request.body.decode('utf-8'))
         
         id = request.GET.get('id') or body_data.get('id', [None])[0]
@@ -1062,14 +995,12 @@ def dropdown_options(request):
                 attr.view_select = view_select_data
                 attr.save()
                 
-                print(f"상태 속성 '{attr.name}'의 view_select 재설정: {len(all_dropdown_options)}개 옵션 + 전체 탭")
             
             return JsonResponse({'success': True})
         return JsonResponse({'error': 'Invalid'}, status=400)
 
     elif request.method == 'DELETE':
         # DELETE 요청의 body 파싱
-        import urllib.parse
         body_data = urllib.parse.parse_qs(request.body.decode('utf-8'))
         
         id = request.GET.get('id') or body_data.get('id', [None])[0]
@@ -1095,7 +1026,6 @@ def dropdown_options(request):
                     user_attr.view_select = view_select_data
                     user_attr.save()
             
-            print(f"상태 속성 '{attr.name}'의 옵션 '{dropdown.option}' (ID: {deleted_option_id})을 모든 Attribute의 view_select에서 제거")
             
             # DropdownAttribute 삭제
             dropdown.delete()
@@ -1205,7 +1135,6 @@ def get_row_details(request, row_id):
                         elif value and value.startswith('[') and value.endswith(']'):
                             # 리스트 형태의 값인 경우 (예: [27]) 첫 번째 값만 추출
                             try:
-                                import ast
                                 list_value = ast.literal_eval(value)
                                 if isinstance(list_value, list) and len(list_value) > 0:
                                     dropdown_id = list_value[0]
@@ -1378,17 +1307,8 @@ def update_audio_text(request):
             
             # Cascade 기능: cascade가 true인 속성이 수정되면 원본 행과 복제된 행들을 동기화
             if audio_attribute.cascade:
-                print(f"=== Cascade 동기화 시작 (update_audio_text) ===")
-                print(f"속성 '음성파일'의 cascade 값: {audio_attribute.cascade}")
-                print(f"수정된 행 ID: {row_id}")
-                print(f"새 값: {json.dumps(audio_data, ensure_ascii=False)}")
                 
                 synced_count = sync_cascade_attributes(request, row_id, '음성파일', json.dumps(audio_data, ensure_ascii=False))
-                if synced_count > 0:
-                    print(f"Cascade 동기화 완료: 음성파일 속성이 {synced_count}개 행에 동기화됨")
-                else:
-                    print(f"Cascade 동기화 실패 또는 동기화할 행이 없음")
-                print(f"=== Cascade 동기화 종료 (update_audio_text) ===")
             else:
                 print(f"속성 '음성파일'의 cascade 값: {audio_attribute.cascade} - 동기화하지 않음")
             
@@ -1463,17 +1383,8 @@ def update_audio_memo(request):
             
             # Cascade 기능: cascade가 true인 속성이 수정되면 원본 행과 복제된 행들을 동기화
             if audio_attr.cascade:
-                print(f"=== Cascade 동기화 시작 (update_audio_memo) ===")
-                print(f"속성 '음성파일'의 cascade 값: {audio_attr.cascade}")
-                print(f"수정된 행 ID: {row_id}")
-                print(f"새 값: {json.dumps(audio_data, ensure_ascii=False)}")
                 
                 synced_count = sync_cascade_attributes(request, row_id, '음성파일', json.dumps(audio_data, ensure_ascii=False))
-                if synced_count > 0:
-                    print(f"Cascade 동기화 완료: 음성파일 속성이 {synced_count}개 행에 동기화됨")
-                else:
-                    print(f"Cascade 동기화 실패 또는 동기화할 행이 없음")
-                print(f"=== Cascade 동기화 종료 (update_audio_memo) ===")
             else:
                 print(f"속성 '음성파일'의 cascade 값: {audio_attr.cascade} - 동기화하지 않음")
             
@@ -1549,17 +1460,8 @@ def update_expected_loans(request):
         
         # Cascade 기능: cascade가 true인 속성이 수정되면 원본 행과 복제된 행들을 동기화
         if expected_loans_attr.cascade:
-            print(f"=== Cascade 동기화 시작 (update_expected_loans) ===")
-            print(f"속성 '기대출'의 cascade 값: {expected_loans_attr.cascade}")
-            print(f"수정된 행 ID: {row_id}")
-            print(f"새 값: {value}")
             
             synced_count = sync_cascade_attributes(request, row_id, '기대출', value)
-            if synced_count > 0:
-                print(f"Cascade 동기화 완료: 기대출 속성이 {synced_count}개 행에 동기화됨")
-            else:
-                print(f"Cascade 동기화 실패 또는 동기화할 행이 없음")
-            print(f"=== Cascade 동기화 종료 (update_expected_loans) ===")
         else:
             print(f"속성 '기대출'의 cascade 값: {expected_loans_attr.cascade} - 동기화하지 않음")
         
@@ -1627,17 +1529,8 @@ def update_loan_amount(request):
         
         # Cascade 기능: cascade가 true인 속성이 수정되면 원본 행과 복제된 행들을 동기화
         if expected_loans_attr.cascade:
-            print(f"=== Cascade 동기화 시작 (update_loan_amount) ===")
-            print(f"속성 '기대출'의 cascade 값: {expected_loans_attr.cascade}")
-            print(f"수정된 행 ID: {row_id}")
-            print(f"새 값: {loan_data_str}")
             
             synced_count = sync_cascade_attributes(request, row_id, '기대출', loan_data_str)
-            if synced_count > 0:
-                print(f"Cascade 동기화 완료: 기대출 속성이 {synced_count}개 행에 동기화됨")
-            else:
-                print(f"Cascade 동기화 실패 또는 동기화할 행이 없음")
-            print(f"=== Cascade 동기화 종료 (update_loan_amount) ===")
         else:
             print(f"속성 '기대출'의 cascade 값: {expected_loans_attr.cascade} - 동기화하지 않음")
         
@@ -1711,17 +1604,8 @@ def update_debt_field(request):
         
         # Cascade 기능: cascade가 true인 속성이 수정되면 원본 행과 복제된 행들을 동기화
         if debt_attribute.cascade:
-            print(f"=== Cascade 동기화 시작 (update_debt_field) ===")
-            print(f"속성 '기대출'의 cascade 값: {debt_attribute.cascade}")
-            print(f"수정된 행 ID: {row_id}")
-            print(f"새 값: {json.dumps(debt_data)}")
             
             synced_count = sync_cascade_attributes(request, row_id, '기대출', json.dumps(debt_data))
-            if synced_count > 0:
-                print(f"Cascade 동기화 완료: 기대출 속성이 {synced_count}개 행에 동기화됨")
-            else:
-                print(f"Cascade 동기화 실패 또는 동기화할 행이 없음")
-            print(f"=== Cascade 동기화 종료 (update_debt_field) ===")
         else:
             print(f"속성 '기대출'의 cascade 값: {debt_attribute.cascade} - 동기화하지 않음")
         
@@ -2084,7 +1968,6 @@ def get_funding_recommendation(request):
         print("========================")
         
         # 새로운 정책자금 추천 엔진 V2.0 사용
-        from .funding_calculator import PolicyFundRecommendationEngineV2
         engine = PolicyFundRecommendationEngineV2()
         recommendation_result = engine.recommend_funds(company_data)
         
@@ -2186,7 +2069,6 @@ def get_funding_recommendation(request):
     except Exception as e:
         error_msg = f'정책자금 추천 중 오류가 발생했습니다: {str(e)}'
         print(f"ERROR: {error_msg}")
-        import traceback
         traceback.print_exc()
         return JsonResponse({
             'success': False,
@@ -2231,7 +2113,6 @@ def _parse_number(value, default=0):
     
     if isinstance(value, str):
         # 숫자가 아닌 문자 제거 후 변환
-        import re
         numbers_only = re.sub(r'[^\d.]', '', value)
         try:
             return int(float(numbers_only)) if numbers_only else default
@@ -2255,7 +2136,6 @@ def _calculate_business_months(opening_date_str):
             # YYYY년 MM월 형식
             elif '년' in opening_date_str and '월' in opening_date_str:
                 # 예: "2023년 5월"
-                import re
                 match = re.search(r'(\d{4})년\s*(\d{1,2})월', opening_date_str)
                 if match:
                     year, month = int(match.group(1)), int(match.group(2))
@@ -2276,8 +2156,6 @@ def _calculate_business_months(opening_date_str):
 
 def _calculate_age_from_data(age_data_str):
     """나이 데이터에서 실제 나이를 계산하는 헬퍼 함수"""
-    import json
-    from datetime import datetime, timedelta
     
     if not age_data_str:
         return 35  # 기본값
@@ -2663,7 +2541,6 @@ def entry_table_partial(request):
     try:
         user = User.objects.get(id=user_id)
     except User.DoesNotExist:
-        # 사용자가 존재하지 않는 경우 세션 정리 후 로그인 페이지로 리다이렉트
         request.session.flush()
         return redirect('login')
     
@@ -2672,154 +2549,61 @@ def entry_table_partial(request):
     if not status_id or status_id in ['undefined', 'null', None, '']:
         status_id = 'all'
     
-    # 기본 속성 쿼리
-    base_attributes = Attribute.objects.filter(user=user, detail=False).select_related('attributeType').order_by('sort_order', 'id')
+    # 세션에 캐시된 데이터가 있는지 확인 (5분간 유효)
+    cache_key = f'entry_table_{user_id}_{status_id}'
+    cache_timeout = 300  # 5분
+    
+    cached_data = request.session.get(cache_key)
+    if cached_data and cached_data.get('timestamp', 0) > time.time() - cache_timeout:
+        # 캐시된 데이터가 유효한 경우 사용
+        response = render(request, 'diary/entry_table_partial.html', cached_data['data'])
+        # 적절한 캐시 헤더 설정 (5분간 캐시 허용)
+        response['Cache-Control'] = 'public, max-age=300'
+        return response
+    
+    # 기본 속성 쿼리 - 한 번에 모든 필요한 데이터를 가져오기
+    base_attributes = Attribute.objects.filter(
+        user=user, 
+        detail=False
+    ).select_related('attributeType').order_by('sort_order', 'id')
     
     # 상태별 필터링 적용
     user_attributes = filter_attributes_by_status(base_attributes, status_id)
     
-    # 행 데이터도 상태별로 필터링
-    rows = Row.objects.filter(user=user).select_related('user').prefetch_related(
-        'values__attribute__attributeType',
-        'values__attribute__dropdown_attributes'
-    ).order_by('order')
+    # 드롭다운 속성들을 미리 캐시 (쿼리 최적화)
+    dropdown_cache = _build_dropdown_cache(user_attributes)
     
-    # 상태별로 행 필터링 추가
+    # 행 데이터 쿼리 최적화 - 필요한 모든 관계를 한 번에 prefetch
+    rows_query = Row.objects.filter(user=user).select_related('user')
+    
+    # 상태별로 행 필터링
     if status_id != 'all':
-        # 상태 속성 찾기
         status_attribute = Attribute.objects.filter(user=user, name='상태').first()
         if status_attribute:
-            # 해당 상태를 가진 행들만 필터링 (distinct 추가로 중복 방지)
-            rows = rows.filter(values__attribute=status_attribute, values__value=status_id).distinct()
-            print(f"상태 필터링 적용: status_id={status_id}, 필터링된 행 수: {rows.count()}")
-        else:
-            print(f"상태 속성을 찾을 수 없음: status_id={status_id}")
-    else:
-        print(f"전체 상태 표시: status_id={status_id}, 전체 행 수: {rows.count()}")
+            rows_query = rows_query.filter(
+                values__attribute=status_attribute, 
+                values__value=status_id
+            ).distinct()
     
+    # 최적화된 prefetch로 모든 필요한 데이터를 한 번에 가져오기
+    rows = rows_query.prefetch_related(
+        Prefetch(
+            'values',
+            queryset=AttributeValue.objects.select_related('attribute', 'attribute__attributeType'),
+            to_attr='prefetched_values'
+        )
+    ).order_by('order')
+    
+    # 행 데이터 처리 최적화
     rows_data = []
     for row in rows:
-        row_values = {}
-        for attr in user_attributes:
-            # prefetch된 데이터에서 찾기
-            attr_value = None
-            for value in row.values.all():
-                if value.attribute_id == attr.id:
-                    attr_value = value
-                    break
-            
-            value = attr_value.value if attr_value else ''
-            
-            if attr.name == '매출' or '매출' in attr.name:
-                numeric_value = parse_korean_currency(value)
-                row_values[attr.name] = {
-                    'label': value,  # 화면 표시용(한글 단위 등)
-                    'value': numeric_value,  # 실제 숫자값
-                    'color': ''
-                }
-            elif attr.attributeType and attr.attributeType.name == 'dropdown' and value.isdigit():
-                # prefetch된 dropdown 데이터에서 찾기
-                dropdown = None
-                for dropdown_attr in attr.dropdown_attributes.all():
-                    if dropdown_attr.id == int(value):
-                        dropdown = dropdown_attr
-                        break
-                
-                if dropdown:
-                    row_values[attr.name] = {
-                        'label': dropdown.option, 
-                        'color': dropdown.color,
-                        'raw_value': value,
-                        'selected_options': [{'id': dropdown.id, 'label': dropdown.option, 'color': dropdown.color}]
-                    }
-                else:
-                    row_values[attr.name] = {
-                        'label': value, 
-                        'color': '',
-                        'raw_value': value,
-                        'selected_options': []
-                    }
-            elif attr.attributeType and attr.attributeType.name == 'dropdown' and value.startswith('[') and value.endswith(']'):
-                # 다중선택(dropdown) 필드인 경우
-                try:
-                    selected_ids = json.loads(value)
-                    selected_options = []
-                    for dropdown_attr in attr.dropdown_attributes.all():
-                        if dropdown_attr.id in selected_ids:
-                            selected_options.append({
-                                'id': dropdown_attr.id,
-                                'label': dropdown_attr.option,
-                                'color': dropdown_attr.color
-                            })
-                    
-                    
-                    if selected_options:
-                        # 첫 번째 옵션의 색상을 기본 색상으로 사용
-                        default_color = selected_options[0]['color']
-                        row_values[attr.name] = {
-                            'label': ', '.join([opt['label'] for opt in selected_options]),
-                            'color': default_color,
-                            'raw_value': value,
-                            'selected_options': selected_options,
-                            'multi_select': True
-                        }
-                    else:
-                        row_values[attr.name] = {
-                            'label': '선택 없음',
-                            'color': '',
-                            'raw_value': value,
-                            'selected_options': [],
-                            'multi_select': True
-                        }
-                except json.JSONDecodeError as e:
-                    row_values[attr.name] = {
-                        'label': value,
-                        'color': '',
-                        'raw_value': value,
-                        'selected_options': [],
-                        'multi_select': True
-                    }
-            elif attr.attributeType and attr.attributeType.name == 'file' and value:
-                # 파일 타입인 경우
-                file_info = json.loads(value)
-                original_filename = file_info.get('original_filename', '파일')
-                
-                row_values[attr.name] = {
-                    'type': 'file',
-                    'label': original_filename,
-                    'download_url': file_info.get('download_url', ''),
-                    'file_size': file_info.get('file_size', 0),
-                    'content_type': file_info.get('content_type', ''),
-                    'original_filename': original_filename
-                }
-            elif attr.attributeType and attr.attributeType.name == 'datetime' and value:
-                # datetime 타입의 경우 날짜 포맷 적용
-                try:
-                    # 값이 이미 datetime 객체인지 확인
-                    if isinstance(value, str):
-                        # 문자열인 경우 파싱 시도
-                        if 'T' in value or ' ' in value:
-                            # datetime 형식
-                            dt = datetime.fromisoformat(value.replace('T', ' ').split('.')[0])
-                        else:
-                            # date 형식
-                            dt = datetime.strptime(value, '%Y-%m-%d')
-                        formatted_value = dt.strftime('%Y-%m-%d')
-                    else:
-                        # datetime 객체인 경우
-                        formatted_value = value.strftime('%Y-%m-%d')
-                    row_values[attr.name] = {'label': formatted_value, 'color': ''}
-                except:
-                    # 파싱 실패 시 원본 값 사용
-                    row_values[attr.name] = {'label': value, 'color': ''}
-            else:
-                row_values[attr.name] = {'label': value, 'color': ''}
-        
+        row_values = _get_row_values_optimized(row, user_attributes, dropdown_cache)
         rows_data.append({
             'id': row.id,
             'values': row_values
         })
     
+    # 속성 리스트 생성 최적화
     attributes_list = [
         {
             'name': attr.name,
@@ -2830,14 +2614,20 @@ def entry_table_partial(request):
         for attr in user_attributes
     ]
 
-    # 캐시 헤더 추가로 브라우저 캐싱 비활성화 (새 행 생성 후 즉시 반영을 위해)
-    response = render(request, 'diary/entry_table_partial.html', {
+    # 데이터를 세션에 캐시
+    cache_data = {
         'attributes': attributes_list,
         'rows': rows_data,
-    })
-    response['Cache-Control'] = 'no-cache, no-store, must-revalidate'  # 캐시 비활성화
-    response['Pragma'] = 'no-cache'
-    response['Expires'] = '0'
+    }
+    
+    request.session[cache_key] = {
+        'data': cache_data,
+        'timestamp': time.time()
+    }
+    
+    # 적절한 캐시 헤더 설정 (5분간 캐시 허용)
+    response = render(request, 'diary/entry_table_partial.html', cache_data)
+    response['Cache-Control'] = 'public, max-age=300'
     return response
 
 
@@ -2856,7 +2646,6 @@ def upload_note_file(request):
             return JsonResponse({'success': False, 'error': '파일 크기가 20MB를 초과합니다.'})
         
         # 파일 해시 계산 (업로드 전에 먼저 계산)
-        import hashlib
         file_hash = None
         try:
             hash_md5 = hashlib.md5()
@@ -2869,10 +2658,7 @@ def upload_note_file(request):
             print(f"파일 해시 계산 실패: {e}")
         
         # === DB 저장 로직 추가 ===
-        from .models import User, Row, Attribute, AttributeValue
-        import json
-        from django.db import transaction
-        from django.db.models import Q
+        
 
         user_id = request.session.get('diary_member_id')
 
@@ -2960,7 +2746,6 @@ def upload_note_file(request):
                     file_info['type'] = 'file'
                 
                 # 고유 id 생성 (더 정확한 타임스탬프 사용)
-                import time
                 file_id = f'f{int(time.time()*1000000)}'  # 마이크로초 단위로 더 정확하게
                 
                 # order 필드 추가 (기존 아이템 개수 + 1)
@@ -3928,133 +3713,7 @@ def save_column_width(request):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
 
-@csrf_exempt
-def get_dependent_rows(request):
-    """종속된 행들을 반환하는 API"""
-    if request.method == 'POST':
-        try:
-            row_id = request.POST.get('row_id')
-            field = request.POST.get('field')
-            
-            if not row_id or not field:
-                return JsonResponse({'success': False, 'error': 'row_id와 field가 필요합니다'})
-            
-            # 사용자 정보 가져오기
-            user_id = request.session.get('diary_member_id')
-            user = User.objects.get(id=user_id)
-            
-            # 현재 행 조회
-            try:
-                current_row = Row.objects.get(id=row_id, user=user)
-            except Row.DoesNotExist:
-                return JsonResponse({'success': False, 'error': '행을 찾을 수 없습니다'})
-            
-            dependent_rows = []
-            
-            # Cascade가 활성화된 속성인지 확인
-            try:
-                cascade_attribute = Attribute.objects.get(name=field, user=user, cascade=True)
-                print(f"Cascade 속성 찾음: {field}")
-            except Attribute.DoesNotExist:
-                print(f"Cascade 속성을 찾을 수 없습니다: {field}")
-                # Cascade가 false인 속성이면 종속된 행들을 찾지 않음
-                return JsonResponse({
-                    'success': True,
-                    'dependent_rows': []
-                })
-            
-            # === 새로운 행 복제 시스템을 사용한 종속된 행들 찾기 ===
-            
-            # 1. 현재 행의 원본 행들
-            original_rows = []
-            for original_id in current_row.original_row_ids:
-                try:
-                    original_row = Row.objects.get(id=original_id, user=user)
-                    original_rows.append(original_row)
-                except Row.DoesNotExist:
-                    print(f"원본 행 {original_id}를 찾을 수 없습니다.")
-                    continue
-            
-            # 2. 현재 행의 복제된 행들
-            copied_rows = []
-            for copied_id in current_row.copied_row_ids:
-                try:
-                    copied_row = Row.objects.get(id=copied_id, user=user)
-                    copied_rows.append(copied_row)
-                except Row.DoesNotExist:
-                    print(f"복제된 행 {copied_id}를 찾을 수 없습니다.")
-                    continue
-            
-            # 3. 원본 행들의 복제된 행들도 포함
-            for original_row in original_rows:
-                for copied_id in original_row.copied_row_ids:
-                    try:
-                        copied_row = Row.objects.get(id=copied_id, user=user)
-                        if copied_row not in copied_rows and copied_row.id != row_id:
-                            copied_rows.append(copied_row)
-                    except Row.DoesNotExist:
-                        continue
-            
-            # 4. 복제된 행들의 원본 행들도 포함
-            for copied_row in copied_rows:
-                for original_id in copied_row.original_row_ids:
-                    try:
-                        original_row = Row.objects.get(id=original_id, user=user)
-                        if original_row not in original_rows and original_row.id != row_id:
-                            original_rows.append(original_row)
-                    except Row.DoesNotExist:
-                        continue
-            
-            # 모든 관련 행들을 하나의 리스트로 합치기
-            all_related_rows = original_rows + copied_rows
-            unique_related_rows = []
-            seen_ids = set()
-            
-            for row in all_related_rows:
-                if row.id not in seen_ids and row.id != row_id:
-                    unique_related_rows.append(row)
-                    seen_ids.add(row.id)
-            
-            print(f"동기화할 관련 행들: {[row.id for row in unique_related_rows]}")
-            
-            # 각 관련 행에 대해 해당 필드의 값을 가져와서 종속된 행 목록에 추가
-            for dep_row in unique_related_rows:
-                try:
-                    attr_value = AttributeValue.objects.filter(row=dep_row, attribute=cascade_attribute).first()
-                    if attr_value:
-                        dependent_rows.append({
-                            'row_id': dep_row.id,
-                            'field': field,
-                            'value': attr_value.value
-                        })
-                        print(f"종속된 행 추가: {dep_row.id}, {field}, {attr_value.value}")
-                    else:
-                        # 해당 속성의 값이 없으면 빈 값으로 설정
-                        dependent_rows.append({
-                            'row_id': dep_row.id,
-                            'field': field,
-                            'value': ''
-                        })
-                        print(f"종속된 행 추가 (빈 값): {dep_row.id}, {field}")
-                except AttributeValue.DoesNotExist:
-                    # 해당 속성의 값이 없으면 빈 값으로 설정
-                    dependent_rows.append({
-                        'row_id': dep_row.id,
-                        'field': field,
-                        'value': ''
-                    })
-                    print(f"종속된 행 추가 (빈 값): {dep_row.id}, {field}")
-            
-            return JsonResponse({
-                'success': True,
-                'dependent_rows': dependent_rows
-            })
-            
-        except Exception as e:
-            print(f"get_dependent_rows 오류: {str(e)}")
-            return JsonResponse({'success': False, 'error': str(e)})
-    
-    return JsonResponse({'success': False, 'error': 'POST 요청만 지원합니다'})
+
 
 @csrf_exempt
 def get_column_widths(request):
@@ -4083,130 +3742,119 @@ def get_column_widths(request):
 @csrf_exempt
 def get_dependent_rows(request):
     """종속된 행들을 반환하는 API"""
-    if request.method == 'POST':
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST 요청만 지원합니다'})
+    
+    try:
+        row_id = request.POST.get('row_id')
+        field = request.POST.get('field')
+        
+        if not row_id or not field:
+            return JsonResponse({'success': False, 'error': 'row_id와 field가 필요합니다'})
+        
+        # 사용자 정보 가져오기
+        user_id = request.session.get('diary_member_id')
+        if not user_id:
+            return JsonResponse({'success': False, 'error': '로그인이 필요합니다'})
+        
         try:
-            row_id = request.POST.get('row_id')
-            field = request.POST.get('field')
-            
-            if not row_id or not field:
-                return JsonResponse({'success': False, 'error': 'row_id와 field가 필요합니다'})
-            
-            # 사용자 정보 가져오기
-            user_id = request.session.get('diary_member_id')
             user = User.objects.get(id=user_id)
-            
-            # 현재 행 조회
-            try:
-                current_row = Row.objects.get(id=row_id, user=user)
-            except Row.DoesNotExist:
-                return JsonResponse({'success': False, 'error': '행을 찾을 수 없습니다'})
-            
-            dependent_rows = []
-            
-            # Cascade가 활성화된 속성인지 확인
-            try:
-                cascade_attribute = Attribute.objects.get(name=field, user=user, cascade=True)
-                print(f"Cascade 속성 찾음: {field}")
-            except Attribute.DoesNotExist:
-                print(f"Cascade 속성을 찾을 수 없습니다: {field}")
-                # Cascade가 false인 속성이면 종속된 행들을 찾지 않음
-                return JsonResponse({
-                    'success': True,
-                    'dependent_rows': []
-                })
-            
-            # === 새로운 행 복제 시스템을 사용한 종속된 행들 찾기 ===
-            
-            # 1. 현재 행의 원본 행들
-            original_rows = []
-            for original_id in current_row.original_row_ids:
-                try:
-                    original_row = Row.objects.get(id=original_id, user=user)
-                    original_rows.append(original_row)
-                except Row.DoesNotExist:
-                    print(f"원본 행 {original_id}를 찾을 수 없습니다.")
-                    continue
-            
-            # 2. 현재 행의 복제된 행들
-            copied_rows = []
-            for copied_id in current_row.copied_row_ids:
-                try:
-                    copied_row = Row.objects.get(id=copied_id, user=user)
-                    copied_rows.append(copied_row)
-                except Row.DoesNotExist:
-                    print(f"복제된 행 {copied_id}를 찾을 수 없습니다.")
-                    continue
-            
-            # 3. 원본 행들의 복제된 행들도 포함
-            for original_row in original_rows:
-                for copied_id in original_row.copied_row_ids:
-                    try:
-                        copied_row = Row.objects.get(id=copied_id, user=user)
-                        if copied_row not in copied_rows and copied_row.id != row_id:
-                            copied_rows.append(copied_row)
-                    except Row.DoesNotExist:
-                        continue
-            
-            # 4. 복제된 행들의 원본 행들도 포함
-            for copied_row in copied_rows:
-                for original_id in copied_row.original_row_ids:
-                    try:
-                        original_row = Row.objects.get(id=original_id, user=user)
-                        if original_row not in original_rows and original_row.id != row_id:
-                            original_rows.append(original_row)
-                    except Row.DoesNotExist:
-                        continue
-            
-            # 모든 관련 행들을 하나의 리스트로 합치기
-            all_related_rows = original_rows + copied_rows
-            unique_related_rows = []
-            seen_ids = set()
-            
-            for row in all_related_rows:
-                if row.id not in seen_ids and row.id != row_id:
-                    unique_related_rows.append(row)
-                    seen_ids.add(row.id)
-            
-            print(f"동기화할 관련 행들: {[row.id for row in unique_related_rows]}")
-            
-            # 각 관련 행에 대해 해당 필드의 값을 가져와서 종속된 행 목록에 추가
-            for dep_row in unique_related_rows:
-                try:
-                    attr_value = AttributeValue.objects.filter(row=dep_row, attribute=cascade_attribute).first()
-                    if attr_value:
-                        dependent_rows.append({
-                            'row_id': dep_row.id,
-                            'field': field,
-                            'value': attr_value.value
-                        })
-                        print(f"종속된 행 추가: {dep_row.id}, {field}, {attr_value.value}")
-                    else:
-                        # 해당 속성의 값이 없으면 빈 값으로 설정
-                        dependent_rows.append({
-                            'row_id': dep_row.id,
-                            'field': field,
-                            'value': ''
-                        })
-                        print(f"종속된 행 추가 (빈 값): {dep_row.id}, {field}")
-                except AttributeValue.DoesNotExist:
-                    # 해당 속성의 값이 없으면 빈 값으로 설정
-                    dependent_rows.append({
-                        'row_id': dep_row.id,
-                        'field': field,
-                        'value': ''
-                    })
-                    print(f"종속된 행 추가 (빈 값): {dep_row.id}, {field}")
-            
+        except User.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '사용자를 찾을 수 없습니다'})
+        
+        # 현재 행 조회
+        try:
+            current_row = Row.objects.get(id=row_id, user=user)
+        except Row.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '행을 찾을 수 없습니다'})
+        
+        # Cascade가 활성화된 속성인지 확인
+        try:
+            cascade_attribute = Attribute.objects.get(name=field, user=user, cascade=True)
+        except Attribute.DoesNotExist:
+            # Cascade가 false인 속성이면 종속된 행들을 찾지 않음
             return JsonResponse({
                 'success': True,
-                'dependent_rows': dependent_rows
+                'dependent_rows': []
             })
+        
+        # === 최적화된 종속 행 찾기 ===
+        
+        # 1. 모든 관련 행 ID를 한 번에 수집
+        all_related_ids = set()
+        
+        # 현재 행의 원본 행들
+        if hasattr(current_row, 'original_row_ids') and current_row.original_row_ids:
+            all_related_ids.update(current_row.original_row_ids)
+        
+        # 현재 행의 복제된 행들
+        if hasattr(current_row, 'copied_row_ids') and current_row.copied_row_ids:
+            all_related_ids.update(current_row.copied_row_ids)
+        
+        # 원본 행들의 복제된 행들도 포함
+        if hasattr(current_row, 'original_row_ids') and current_row.original_row_ids:
+            original_rows = Row.objects.filter(
+                id__in=current_row.original_row_ids, 
+                user=user
+            ).values_list('copied_row_ids', flat=True)
             
-        except Exception as e:
-            print(f"get_dependent_rows 오류: {str(e)}")
-            return JsonResponse({'success': False, 'error': str(e)})
-    
-    return JsonResponse({'success': False, 'error': 'POST 요청만 지원합니다'})
+            for copied_ids in original_rows:
+                if copied_ids:
+                    all_related_ids.update(copied_ids)
+        
+        # 복제된 행들의 원본 행들도 포함
+        if hasattr(current_row, 'copied_row_ids') and current_row.copied_row_ids:
+            copied_rows = Row.objects.filter(
+                id__in=current_row.copied_row_ids, 
+                user=user
+            ).values_list('original_row_ids', flat=True)
+            
+            for original_ids in copied_rows:
+                if original_ids:
+                    all_related_ids.update(original_ids)
+        
+        # 현재 행 ID 제거 및 빈 값 필터링
+        all_related_ids.discard(row_id)
+        all_related_ids.discard(None)
+        all_related_ids.discard('')
+        
+        if not all_related_ids:
+            return JsonResponse({
+                'success': True,
+                'dependent_rows': []
+            })
+        
+        # 2. 모든 관련 행을 한 번의 쿼리로 가져오기
+        related_rows = Row.objects.filter(
+            id__in=list(all_related_ids), 
+            user=user
+        ).select_related('user')
+        
+        # 3. 모든 관련 행의 속성 값을 한 번의 쿼리로 가져오기
+        attr_values = AttributeValue.objects.filter(
+            row__in=related_rows,
+            attribute=cascade_attribute
+        ).select_related('row')
+        
+        # 4. 결과 구성
+        dependent_rows = []
+        row_values_map = {av.row_id: av.value for av in attr_values}
+        
+        for row in related_rows:
+            dependent_rows.append({
+                'row_id': row.id,
+                'field': field,
+                'value': row_values_map.get(row.id, '')
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'dependent_rows': dependent_rows
+        })
+        
+    except Exception as e:
+        logger.error(f"get_dependent_rows 오류: {str(e)}")
+        return JsonResponse({'success': False, 'error': '서버 오류가 발생했습니다'})
 
 @csrf_exempt
 def get_file_content_note(request, file_id):
@@ -4254,9 +3902,7 @@ def get_file_content_note(request, file_id):
             file_ext = filename.split('.')[-1].lower() if '.' in filename else ''
             
             try:
-                import boto3
-                from django.conf import settings
-                import chardet
+                
                 
                 s3_client = boto3.client(
                     's3',
@@ -4300,7 +3946,6 @@ def get_file_content_note(request, file_id):
                         
                         # 한글 파일의 경우 한글이 포함되어 있는지 확인
                         if file_ext in ['txt', 'log', 'csv']:
-                            import re
                             korean_pattern = re.compile(r'[가-힣]')
                             if korean_pattern.search(decoded_content):
                                 print(f"한글 텍스트 감지됨 - 인코딩: {encoding}")
@@ -4365,7 +4010,6 @@ def submit_inquiry(request):
                 user_name = '익명'
                 user_contact = ''
             
-            from .models import Inquiry
             inquiry = Inquiry.objects.create(
                 name=user_name,
                 company_name=data.get('company_name', '').strip(),
@@ -4484,9 +4128,7 @@ def convert_hwp_to_pdf(request):
         logger.info(f"요청 데이터: row_id={row_id}, field_name={field_name}, file_id={file_id}, file_name={file_name}")
         
         # 파일 URL에서 파일 다운로드
-        import requests
-        import tempfile
-        import os
+        
         
         try:
             # 파일 다운로드
@@ -4527,8 +4169,6 @@ def convert_hwp_to_pdf(request):
                 
                 if os.path.exists(pdf_path):
                     # PDF 파일을 S3에 업로드
-                    from django.conf import settings
-                    import boto3
                     
                     s3_client = boto3.client(
                         's3',
@@ -4734,7 +4374,6 @@ def cleanup_duplicate_attribute_values():
     try:
         with transaction.atomic():
             # 중복된 레코드 찾기 (row_id, attribute_id, value가 동일한 레코드들)
-            from django.db import connection
             
             with connection.cursor() as cursor:
                 # 중복 레코드 찾기
@@ -4967,11 +4606,6 @@ def convert_hwp_to_pdf_board(request):
         if not check_libreoffice_status():
             return JsonResponse({'success': False, 'error': '파일 변환에 실패했습니다.'})
         
-        # 파일 URL에서 파일 다운로드
-        import requests
-        import tempfile
-        import os
-        
         try:
             # 파일 다운로드
             response = requests.get(file_url, timeout=30)
@@ -5011,8 +4645,6 @@ def convert_hwp_to_pdf_board(request):
                 
                 if os.path.exists(pdf_path):
                     # PDF 파일을 S3에 업로드
-                    from django.conf import settings
-                    import boto3
                     
                     s3_client = boto3.client(
                         's3',
@@ -5208,6 +4840,3 @@ def add_sample_row(request):
             return JsonResponse({'success': False, 'error': f'오류가 발생했습니다: {str(e)}'})
     
     return JsonResponse({'success': False, 'error': 'Invalid request method'})
-
-
-

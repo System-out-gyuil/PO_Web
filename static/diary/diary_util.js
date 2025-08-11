@@ -37,39 +37,6 @@ function refreshKanban() {
     });
 }
 
-function updateEntryField(id, field, value) {
-  fetch('/sales/update_row_field/', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-      body: 'id='+encodeURIComponent(id)+'&field='+encodeURIComponent(field)+'&value='+encodeURIComponent(value)
-  })
-  .then(r=>r.json())
-  .then(function(data){
-      if(!data.success) {
-          alert('수정 실패: '+(data.error||''));
-          return;
-      }
-      // 항상 최신 entry로 모달/테이블/보드 동기화
-      return fetch('/sales/update/?id='+id);
-  })
-  .then(r => r ? r.json() : null)
-  .then(function(data){
-      if(data && data.success && data.entry) {
-          showDetailModal(data.entry);
-          updateTableRow(data.entry);
-          // 칸반보드가 활성화되어 있고 업데이트된 필드가 현재 칸반보드 속성과 일치하는 경우에만 새로고침
-          if (window.kanbanAttribute && field === window.kanbanAttribute) {
-              refreshKanban();
-          }
-          if(field === 'fu_date' && window.calendar) window.calendar.refetchEvents();
-      }
-  })
-  .catch(function(err){
-      alert('수정 실패: 네트워크 오류');
-      console.error(err);
-  });
-}
-
 
 function showFilePreviewModal(fileInfo) {
     console.log('=== showFilePreviewModal 시작 ===');
