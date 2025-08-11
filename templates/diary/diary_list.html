@@ -1820,7 +1820,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // 속성 관리 모달 열기
 function openAttributeVisibilityModal() {
-    console.log('속성 관리 모달 열기');
+    console.log('속성 관리 모달 열기 - 캐시 초기화 및 새로운 데이터 받아오기');
+    
+    // 기존 캐시된 데이터 완전 초기화
+    window.statusOptions = null;
+    window.allAttributes = null;
+    window.currentModalStatusId = 'all';
+    
     const modal = document.getElementById('attributeVisibilityModal');
     modal.style.display = 'flex';
     

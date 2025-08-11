@@ -284,7 +284,7 @@ function createNewDropdown(td, type, id, currentId, currentSubregion) {
         borderRadius: '4px',
         boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
         zIndex: '9999',
-        maxHeight: '200px',
+        maxHeight: '250px',
         overflowY: 'auto',
         minWidth: '300px',
         width: dropdownWidth + 'px',
@@ -820,32 +820,74 @@ function processModalDropdownOptions(data, rowId, fieldName, btn) {
         const isSelected = label === currentValue;
         const backgroundColor = option.color ? hexToRgba(option.color, 0.18) : 'white';
         html += `
-          <div class="dropdown-item" data-option-id="${option.id}" data-option-text="${label}" data-color="${option.color||''}"
-               style="padding: 8px 12px; 
-                      cursor: pointer; 
-                      border-bottom: 1px solid #f0f0f0;
-                      background: ${backgroundColor};
-                      color: #333;
-                      ${isSelected ? 'border-left: 3px solid #007bff; font-weight: bold;' : ''}
-                      transition: background-color 0.2s;">
-            ${label}
+          <div class="dropdown-option-container" style="padding: 6px 10px; border-bottom: 1px solid #f0f0f0;">
+            <div class="dropdown-item" data-option-id="${option.id}" data-option-text="${label}" data-color="${option.color||''}"
+                 style="cursor: pointer; 
+                        background: ${backgroundColor}; 
+                        border-radius: 4px; 
+                        padding: 6px 8px; 
+                        margin-bottom: 4px;
+                        ${isSelected ? 'border: 2px solid #007bff; font-weight: bold;' : 'border: 1px solid #ddd;'}
+                        transition: all 0.2s;
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        position: relative;">
+              <div style="display: flex; align-items: center; flex: 1; min-width: 0;">
+                <span style="flex: 1; word-wrap: break-word; word-break: break-all; color: #333; font-size: 14px; line-height: 1.4; padding: 2px 0;">${label}</span>
+              </div>
+              <div class="option-controls" style="display: flex; gap: 4px; align-items: center; margin-left: 8px;">
+                <input type="color" value="${option.color||'#eeeeee'}" data-color-edit="${option.id}" 
+                       style="padding: 0; width: 20px; height: 20px; border: none; cursor: pointer; border-radius: 2px; background: transparent; position: relative;" title="색상 변경">
+                <button data-edit="${option.id}" 
+                        style="background: none; border: none; cursor: pointer; font-size: 12px; padding: 2px; color: #666; transition: color 0.2s;" 
+                        title="수정"
+                        onmouseover="this.style.color='#007bff'"
+                        onmouseout="this.style.color='#666'">✏️</button>
+                <button data-del="${option.id}" 
+                        style="background: none; border: none; cursor: pointer; font-size: 12px; padding: 2px; color: #666; transition: color 0.2s;" 
+                        title="삭제"
+                        onmouseover="this.style.color='#dc3545'"
+                        onmouseout="this.style.color='#666'">🗑️</button>
+              </div>
+            </div>
           </div>
         `;
     });
     
     // "선택 없음" 옵션 추가
     html += `
-      <div class="dropdown-item" data-option-id="" data-option-text="선택 없음" data-color=""
-           style="padding: 8px 12px; 
-                  cursor: pointer; 
-                  border-bottom: 1px solid #f0f0f0;
-                  background: #f8f9fa;
-                  color: #999;
-                  font-style: italic;
-                  transition: background-color 0.2s;">
-        선택 없음
+      <div class="dropdown-option-container" style="padding: 6px 10px; border-bottom: 1px solid #f0f0f0;">
+        <div class="dropdown-item" data-option-id="" data-option-text="선택 없음" data-color=""
+             style="cursor: pointer; 
+                    background: #f8f9fa; 
+                    border-radius: 4px; 
+                    padding: 6px 8px; 
+                    margin-bottom: 4px;
+                    border: 1px solid #ddd;
+                    transition: all 0.2s;
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    position: relative;">
+          <div style="display: flex; align-items: center; flex: 1; min-width: 0;">
+            <span style="flex: 1; word-wrap: break-word; word-break: break-all; color: #999; font-style: italic; font-size: 14px; line-height: 1.4; padding: 2px 0;">선택 없음</span>
+          </div>
+        </div>
       </div>
     `;
+    
+    // 새 옵션 추가 영역
+    html += `<div style="border-top: 1px solid #eee; padding: 8px; background: #f8f9fa;">
+      <div style="display: flex; gap: 4px; align-items: center;">
+        <input type="text" placeholder="새 옵션 추가" class="new-option-input"
+               style="flex: 1; padding: 4px 8px; border: 1px solid #ddd; border-radius: 3px; font-size: 12px;">
+        <button class="add-option-btn" 
+                style="padding: 4px 12px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 12px; transition: background-color 0.2s;"
+                onmouseover="this.style.background='#0056b3'"
+                onmouseout="this.style.background='#007bff'">추가</button>
+      </div>
+    </div>`;
     
     dropdown.innerHTML = html;
     document.body.appendChild(dropdown);
@@ -941,6 +983,88 @@ function processModalDropdownOptions(data, rowId, fieldName, btn) {
             }, 1000);
         });
     });
+    
+    // 색상 변경 이벤트 바인딩
+    dropdown.querySelectorAll('input[data-color-edit]').forEach(function(colorInput) {
+        colorInput.addEventListener('mousedown', function(e) {
+            e.stopPropagation();
+            e.preventDefault();
+        });
+        
+        colorInput.addEventListener('change', function(e) {
+            e.stopPropagation();
+            e.preventDefault();
+            const optionId = this.getAttribute('data-color-edit');
+            const newColor = this.value;
+            console.log('모달 색상 변경 요청:', optionId, newColor);
+            updateModalDropdownOptionColor(fieldName, optionId, newColor);
+        });
+    });
+    
+    // 수정 버튼 이벤트 바인딩
+    dropdown.querySelectorAll('button[data-edit]').forEach(function(editBtn) {
+        editBtn.addEventListener('mousedown', function(e) {
+            e.stopPropagation();
+            e.preventDefault();
+        });
+        
+        editBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            e.preventDefault();
+            const optionId = this.getAttribute('data-edit');
+            console.log('모달 수정 버튼 클릭됨:', optionId);
+            editModalDropdownOption(fieldName, optionId);
+        });
+    });
+    
+    // 삭제 버튼 이벤트 바인딩
+    dropdown.querySelectorAll('button[data-del]').forEach(function(delBtn) {
+        delBtn.addEventListener('mousedown', function(e) {
+            e.stopPropagation();
+            e.preventDefault();
+        });
+        
+        delBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            e.preventDefault();
+            const optionId = this.getAttribute('data-del');
+            console.log('모달 삭제 버튼 클릭됨:', optionId);
+            deleteModalDropdownOption(fieldName, optionId);
+        });
+    });
+    
+    // 새 옵션 추가 이벤트 바인딩
+    const addBtn = dropdown.querySelector('.add-option-btn');
+    const inputField = dropdown.querySelector('.new-option-input');
+    
+    if (addBtn && inputField) {
+        const handleAddOption = () => {
+            const newOptionName = inputField.value.trim();
+            if (newOptionName) {
+                addModalDropdownOption(fieldName, newOptionName);
+                inputField.value = '';
+            }
+        };
+        
+        addBtn.addEventListener('mousedown', function(e) {
+            e.stopPropagation();
+            e.preventDefault();
+        });
+        
+        addBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            e.preventDefault();
+            handleAddOption();
+        });
+        
+        inputField.addEventListener('keypress', function(e) {
+            e.stopPropagation();
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                handleAddOption();
+            }
+        });
+    }
     
     // 드롭다운 외부 클릭 시 닫기
     addGlobalClickHandler(dropdown, btn);
@@ -2018,202 +2142,6 @@ async function checkKanbanAndRefresh(fieldName) {
 }
 
 // 드롭다운 옵션 색상 업데이트 함수
-function updateDropdownOptionColor(fieldName, optionId, newColor) {
-    console.log('색상 업데이트 요청:', fieldName, optionId, newColor);
-    
-    fetch('/sales/dropdown_options/?field=' + encodeURIComponent(fieldName) + '&id=' + optionId + '&color=' + encodeURIComponent(newColor), {
-        method: 'PUT',
-        headers: {
-            'X-CSRFToken': getCsrfToken()
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            console.log('색상 업데이트 성공');
-            // 드롭다운 새로고침
-            if (typeof updateTableDropdownOptions === 'function') {
-                updateTableDropdownOptions(fieldName);
-            }
-            // 칸반보드 리프레시
-            if (typeof triggerKanbanRefreshIfNeeded === 'function') {
-                triggerKanbanRefreshIfNeeded(fieldName);
-            }
-        } else {
-            throw new Error(data.error || '색상 업데이트 실패');
-        }
-    })
-    .catch(error => {
-        console.error('색상 업데이트 실패:', error);
-        alert('색상 업데이트 중 오류가 발생했습니다: ' + error.message);
-    });
-}
-
-// 드롭다운 옵션 수정 함수
-function editDropdownOption(fieldName, optionId, td, currentDropdown) {
-    console.log('옵션 수정 요청:', fieldName, optionId);
-    
-    // 현재 옵션 정보 가져오기
-    fetch(`/sales/dropdown_options/?field=${encodeURIComponent(fieldName)}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.options) {
-                const option = data.options.find(opt => opt.id == optionId);
-                if (option) {
-                    const newName = prompt('옵션 이름을 수정하세요:', option.option);
-                    
-                    if (newName && newName.trim() !== '' && newName.trim() !== option.option) {
-                        updateDropdownOptionName(fieldName, optionId, newName.trim(), option.option, td, currentDropdown);
-                    }
-                } else {
-                    alert('옵션을 찾을 수 없습니다.');
-                }
-            } else {
-                throw new Error(data.error || '옵션 정보를 가져올 수 없습니다.');
-            }
-        })
-        .catch(error => {
-            console.error('옵션 정보 가져오기 실패:', error);
-            alert('옵션 정보를 가져오는 중 오류가 발생했습니다.');
-        });
-}
-
-// 드롭다운 옵션 이름 업데이트 함수
-function updateDropdownOptionName(fieldName, optionId, newName) {
-    console.log('옵션 이름 업데이트 요청:', fieldName, optionId, newName);
-    
-    fetch('/sales/dropdown_options/?field=' + encodeURIComponent(fieldName) + '&id=' + optionId + '&name=' + encodeURIComponent(newName), {
-        method: 'PUT',
-        headers: {
-            'X-CSRFToken': getCsrfToken()
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            console.log('옵션 이름 업데이트 성공');
-            // 드롭다운 새로고침
-            if (typeof updateTableDropdownOptions === 'function') {
-                updateTableDropdownOptions(fieldName);
-            }
-            // 칸반보드 리프레시
-            if (typeof triggerKanbanRefreshIfNeeded === 'function') {
-                triggerKanbanRefreshIfNeeded(fieldName);
-            }
-        } else {
-            throw new Error(data.error || '옵션 이름 업데이트 실패');
-        }
-    })
-    .catch(error => {
-        console.error('옵션 이름 업데이트 실패:', error);
-        alert('옵션 이름 업데이트 중 오류가 발생했습니다: ' + error.message);
-    });
-}
-
-// 드롭다운 옵션 삭제 함수
-function deleteDropdownOption(fieldName, optionId) {
-    console.log('옵션 삭제 요청:', fieldName, optionId);
-    
-    fetch('/sales/dropdown_options/?field=' + encodeURIComponent(fieldName) + '&id=' + optionId, {
-        method: 'DELETE',
-        headers: {
-            'X-CSRFToken': getCsrfToken()
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            console.log('옵션 삭제 성공');
-            // 드롭다운 새로고침
-            if (typeof updateTableDropdownOptions === 'function') {
-                updateTableDropdownOptions(fieldName);
-            }
-            // 칸반보드 리프레시
-            if (typeof triggerKanbanRefreshIfNeeded === 'function') {
-                triggerKanbanRefreshIfNeeded(fieldName);
-            }
-        } else {
-            throw new Error(data.error || '옵션 삭제 실패');
-        }
-    })
-    .catch(error => {
-        console.error('옵션 삭제 실패:', error);
-        alert('옵션 삭제 중 오류가 발생했습니다: ' + error.message);
-    });
-}
-
-// 새 드롭다운 옵션 추가 함수
-function addDropdownOption(fieldName, optionName, td, currentDropdown) {
-    console.log('새 옵션 추가 요청:', fieldName, optionName);
-    
-    // 랜덤 색상 생성
-    const randomColor = generateRandomColor();
-    
-    fetch(`/sales/dropdown_options/?field=${encodeURIComponent(fieldName)}&name=${encodeURIComponent(optionName)}&color=${encodeURIComponent(randomColor)}`, {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': getCsrfToken()
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            console.log('옵션 추가 성공');
-            // 드롭다운 캐시 초기화
-            if (window.dropdownOptionsCache && window.dropdownOptionsCache[fieldName]) {
-                delete window.dropdownOptionsCache[fieldName];
-            }
-            // 드롭다운 새로고침
-            refreshCurrentDropdown(fieldName, td, currentDropdown);
-            // 칸반보드 리프레시
-            if (typeof triggerKanbanRefreshIfNeeded === 'function') {
-                triggerKanbanRefreshIfNeeded(fieldName);
-            }
-            
-            // 상태 속성 변경 이벤트 발생
-            if (window.statusAttributeName && fieldName === window.statusAttributeName) {
-                document.dispatchEvent(new CustomEvent('statusAttributeChanged', {
-                    detail: { fieldName: fieldName, action: 'add', optionName: optionName }
-                }));
-            }
-        } else {
-            throw new Error(data.error || '옵션 추가 실패');
-        }
-    })
-    .catch(error => {
-        console.error('옵션 추가 실패:', error);
-        alert('옵션 추가 중 오류가 발생했습니다: ' + error.message);
-    });
-}
-
-// 현재 드롭다운 새로고침 함수
-function refreshCurrentDropdown(fieldName, td, currentDropdown) {
-    if (!currentDropdown || !currentDropdown.parentNode) {
-        console.log('드롭다운이 이미 닫혀있어 새로고침할 수 없습니다.');
-        return;
-    }
-    
-    // 새로운 옵션 데이터 가져오기
-    fetch('/sales/dropdown_options/?field=' + encodeURIComponent(fieldName))
-        .then(r => r.json())
-        .then(function(data) {
-            if (data.options) {
-                // 기존 드롭다운 제거
-                if (currentDropdown && currentDropdown.parentNode) {
-                    currentDropdown.parentNode.removeChild(currentDropdown);
-                }
-                
-                // 새 드롭다운 생성
-                const id = td.parentElement.getAttribute('data-id');
-                openDropdown(td, fieldName, id);
-            }
-        })
-        .catch(error => {
-            console.error('드롭다운 새로고침 실패:', error);
-        });
-}
-
-// 드롭다운 옵션 색상 업데이트 함수 (수정)
 function updateDropdownOptionColor(fieldName, optionId, newColor, td, currentDropdown) {
     console.log('색상 업데이트 요청:', fieldName, optionId, newColor);
     
@@ -2233,8 +2161,15 @@ function updateDropdownOptionColor(fieldName, optionId, newColor, td, currentDro
             if (window.dropdownOptionsCache && window.dropdownOptionsCache[fieldName]) {
                 delete window.dropdownOptionsCache[fieldName];
             }
-            // 드롭다운 새로고침
-            refreshCurrentDropdown(fieldName, td, currentDropdown);
+            
+            // 상세보기 모달의 드롭다운이 현재 열려있는지 확인하고 리랜더링
+            if (window.currentDetailRowId && document.querySelector('#detailModal') && document.querySelector('#detailModal').style.display !== 'none') {
+                reloadModalDropdown(fieldName);
+            } else {
+                // 테이블 드롭다운인 경우 기존 로직 사용
+                refreshCurrentDropdown(fieldName, td, currentDropdown);
+            }
+            
             // 칸반보드 리프레시
             if (typeof triggerKanbanRefreshIfNeeded === 'function') {
                 triggerKanbanRefreshIfNeeded(fieldName);
@@ -2256,7 +2191,7 @@ function updateDropdownOptionColor(fieldName, optionId, newColor, td, currentDro
     });
 }
 
-// 드롭다운 옵션 수정 함수 (수정)
+// 드롭다운 옵션 수정 함수
 function editDropdownOption(fieldName, optionId, td, currentDropdown) {
     console.log('옵션 수정 요청:', fieldName, optionId);
     
@@ -2305,18 +2240,18 @@ function updateDropdownOptionName(fieldName, optionId, newName, oldName, td, cur
             if (window.dropdownOptionsCache && window.dropdownOptionsCache[fieldName]) {
                 delete window.dropdownOptionsCache[fieldName];
             }
-            // 드롭다운 새로고침
-            refreshCurrentDropdown(fieldName, td, currentDropdown);
+            
+            // 상세보기 모달의 드롭다운이 현재 열려있는지 확인하고 리랜더링
+            if (window.currentDetailRowId && document.querySelector('#detailModal') && document.querySelector('#detailModal').style.display !== 'none') {
+                reloadModalDropdown(fieldName);
+            } else {
+                // 테이블 드롭다운인 경우 기존 로직 사용
+                refreshCurrentDropdown(fieldName, td, currentDropdown);
+            }
+            
             // 칸반보드 리프레시
             if (typeof triggerKanbanRefreshIfNeeded === 'function') {
                 triggerKanbanRefreshIfNeeded(fieldName);
-            }
-            
-            // 상태 속성 변경 이벤트 발생
-            if (window.statusAttributeName && fieldName === window.statusAttributeName) {
-                document.dispatchEvent(new CustomEvent('statusAttributeChanged', {
-                    detail: { fieldName: fieldName, action: 'nameUpdate', optionId: optionId, oldName: oldName, newName: newName }
-                }));
             }
         } else {
             throw new Error(data.error || '옵션 이름 업데이트 실패');
@@ -2328,7 +2263,7 @@ function updateDropdownOptionName(fieldName, optionId, newName, oldName, td, cur
     });
 }
 
-// 드롭다운 옵션 삭제 함수 (수정)
+// 드롭다운 옵션 삭제 함수
 function deleteDropdownOption(fieldName, optionId, td, currentDropdown) {
     console.log('옵션 삭제 요청:', fieldName, optionId);
     
@@ -2342,24 +2277,24 @@ function deleteDropdownOption(fieldName, optionId, td, currentDropdown) {
     .then(data => {
         if (data.success) {
             console.log('옵션 삭제 성공');
-            // 테이블의 모든 관련 셀을 "선택 없음"으로 업데이트
+            // 테이블의 모든 관련 셀 업데이트 (삭제된 옵션 처리)
             updateTableCellsAfterOptionDelete(fieldName, optionId);
             // 드롭다운 캐시 초기화
             if (window.dropdownOptionsCache && window.dropdownOptionsCache[fieldName]) {
                 delete window.dropdownOptionsCache[fieldName];
             }
-            // 드롭다운 새로고침
-            refreshCurrentDropdown(fieldName, td, currentDropdown);
+            
+            // 상세보기 모달의 드롭다운이 현재 열려있는지 확인하고 리랜더링
+            if (window.currentDetailRowId && document.querySelector('#detailModal') && document.querySelector('#detailModal').style.display !== 'none') {
+                reloadModalDropdown(fieldName);
+            } else {
+                // 테이블 드롭다운인 경우 기존 로직 사용
+                refreshCurrentDropdown(fieldName, td, currentDropdown);
+            }
+            
             // 칸반보드 리프레시
             if (typeof triggerKanbanRefreshIfNeeded === 'function') {
                 triggerKanbanRefreshIfNeeded(fieldName);
-            }
-            
-            // 상태 속성 변경 이벤트 발생
-            if (window.statusAttributeName && fieldName === window.statusAttributeName) {
-                document.dispatchEvent(new CustomEvent('statusAttributeChanged', {
-                    detail: { fieldName: fieldName, action: 'delete', optionId: optionId }
-                }));
             }
         } else {
             throw new Error(data.error || '옵션 삭제 실패');
@@ -2369,6 +2304,84 @@ function deleteDropdownOption(fieldName, optionId, td, currentDropdown) {
         console.error('옵션 삭제 실패:', error);
         alert('옵션 삭제 중 오류가 발생했습니다: ' + error.message);
     });
+}
+
+// 새 드롭다운 옵션 추가 함수
+function addDropdownOption(fieldName, optionName, td, currentDropdown) {
+    console.log('새 옵션 추가 요청:', fieldName, optionName);
+    
+    // 랜덤 색상 생성
+    const randomColor = generateRandomColor();
+    
+    fetch(`/sales/dropdown_options/?field=${encodeURIComponent(fieldName)}&name=${encodeURIComponent(optionName)}&color=${encodeURIComponent(randomColor)}`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCsrfToken()
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            console.log('옵션 추가 성공');
+            // 드롭다운 캐시 초기화
+            if (window.dropdownOptionsCache && window.dropdownOptionsCache[fieldName]) {
+                delete window.dropdownOptionsCache[fieldName];
+            }
+            
+            // 상세보기 모달의 드롭다운이 현재 열려있는지 확인하고 리랜더링
+            if (window.currentDetailRowId && document.querySelector('#detailModal') && document.querySelector('#detailModal').style.display !== 'none') {
+                reloadModalDropdown(fieldName);
+            } else {
+                // 테이블 드롭다운인 경우 기존 로직 사용
+                refreshCurrentDropdown(fieldName, td, currentDropdown);
+            }
+            
+            // 칸반보드 리프레시
+            if (typeof triggerKanbanRefreshIfNeeded === 'function') {
+                triggerKanbanRefreshIfNeeded(fieldName);
+            }
+            
+            // 상태 속성 변경 이벤트 발생
+            if (window.statusAttributeName && fieldName === window.statusAttributeName) {
+                document.dispatchEvent(new CustomEvent('statusAttributeChanged', {
+                    detail: { fieldName: fieldName, action: 'add', optionName: optionName }
+                }));
+            }
+        } else {
+            throw new Error(data.error || '옵션 추가 실패');
+        }
+    })
+    .catch(error => {
+        console.error('옵션 추가 실패:', error);
+        alert('옵션 추가 중 오류가 발생했습니다: ' + error.message);
+    });
+}
+
+// 현재 드롭다운 새로고침 함수
+function refreshCurrentDropdown(fieldName, td, currentDropdown) {
+    if (!currentDropdown || !currentDropdown.parentNode) {
+        console.log('드롭다운이 이미 닫혀있어 새로고침할 수 없습니다.');
+        return;
+    }
+    
+    // 새로운 옵션 데이터 가져오기
+    fetch('/sales/dropdown_options/?field=' + encodeURIComponent(fieldName))
+        .then(r => r.json())
+        .then(function(data) {
+            if (data.options) {
+                // 기존 드롭다운 제거
+                if (currentDropdown && currentDropdown.parentNode) {
+                    currentDropdown.parentNode.removeChild(currentDropdown);
+                }
+                
+                // 새 드롭다운 생성
+                const id = td.parentElement.getAttribute('data-id');
+                openDropdown(td, fieldName, id);
+            }
+        })
+        .catch(error => {
+            console.error('드롭다운 새로고침 실패:', error);
+        });
 }
 
 // 테이블 셀의 옵션 색상 업데이트
@@ -2428,5 +2441,312 @@ function updateTableCellsAfterOptionDelete(fieldName, deletedOptionId) {
                 });
             }
         }
+    });
+}
+
+// 상세보기 모달용 드롭다운 옵션 수정 함수
+function editModalDropdownOption(fieldName, optionId) {
+    console.log('모달 옵션 수정 요청:', fieldName, optionId);
+    
+    // 현재 옵션 정보 가져오기
+    fetch(`/sales/dropdown_options/?field=${encodeURIComponent(fieldName)}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.options) {
+                const option = data.options.find(opt => opt.id == optionId);
+                if (option) {
+                    const newName = prompt('옵션 이름을 수정하세요:', option.option);
+                    
+                    if (newName && newName.trim() !== '' && newName.trim() !== option.option) {
+                        updateModalDropdownOptionName(fieldName, optionId, newName.trim());
+                    }
+                } else {
+                    alert('옵션을 찾을 수 없습니다.');
+                }
+            } else {
+                throw new Error(data.error || '옵션 정보를 가져올 수 없습니다.');
+            }
+        })
+        .catch(error => {
+            console.error('옵션 정보 가져오기 실패:', error);
+            alert('옵션 정보를 가져오는 중 오류가 발생했습니다.');
+        });
+}
+
+// 상세보기 모달용 드롭다운 옵션 이름 업데이트 함수
+function updateModalDropdownOptionName(fieldName, optionId, newName) {
+    console.log('모달 옵션 이름 업데이트 요청:', fieldName, optionId, newName);
+    
+    fetch('/sales/dropdown_options/?field=' + encodeURIComponent(fieldName) + '&id=' + optionId + '&name=' + encodeURIComponent(newName), {
+        method: 'PUT',
+        headers: {
+            'X-CSRFToken': getCsrfToken()
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            console.log('모달 옵션 이름 업데이트 성공');
+            
+            // 캐시 무효화
+            if (window.dropdownOptionsCache && window.dropdownOptionsCache[fieldName]) {
+                delete window.dropdownOptionsCache[fieldName];
+            }
+            
+            // 상세보기 모달 드롭다운 강제 리랜더링
+            reloadModalDropdown(fieldName);
+            
+            // 테이블과 칸반보드도 업데이트
+            if (typeof updateTableDropdownOptions === 'function') {
+                updateTableDropdownOptions(fieldName);
+            }
+            if (typeof triggerKanbanRefreshIfNeeded === 'function') {
+                triggerKanbanRefreshIfNeeded(fieldName);
+            }
+        } else {
+            throw new Error(data.error || '옵션 이름 업데이트 실패');
+        }
+    })
+    .catch(error => {
+        console.error('모달 옵션 이름 업데이트 실패:', error);
+        alert('옵션 이름 업데이트 중 오류가 발생했습니다: ' + error.message);
+    });
+}
+
+// 상세보기 모달용 드롭다운 옵션 삭제 함수
+function deleteModalDropdownOption(fieldName, optionId) {
+    console.log('모달 옵션 삭제 요청:', fieldName, optionId);
+    
+    if (!confirm('이 옵션을 삭제하시겠습니까? 테이블의 관련 데이터도 함께 업데이트됩니다.')) {
+        return;
+    }
+    
+    fetch('/sales/dropdown_options/?field=' + encodeURIComponent(fieldName) + '&id=' + optionId, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRFToken': getCsrfToken()
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            console.log('모달 옵션 삭제 성공');
+            
+            // 캐시 무효화
+            if (window.dropdownOptionsCache && window.dropdownOptionsCache[fieldName]) {
+                delete window.dropdownOptionsCache[fieldName];
+            }
+            
+            // 상세보기 모달 드롭다운 강제 리랜더링
+            reloadModalDropdown(fieldName);
+            
+            // 테이블과 칸반보드도 업데이트
+            if (typeof updateTableDropdownOptions === 'function') {
+                updateTableDropdownOptions(fieldName);
+            }
+            if (typeof triggerKanbanRefreshIfNeeded === 'function') {
+                triggerKanbanRefreshIfNeeded(fieldName);
+            }
+        } else {
+            throw new Error(data.error || '옵션 삭제 실패');
+        }
+    })
+    .catch(error => {
+        console.error('모달 옵션 삭제 실패:', error);
+        alert('옵션 삭제 중 오류가 발생했습니다: ' + error.message);
+    });
+}
+
+// 상세보기 모달 드롭다운 강제 리랜더링 함수
+function reloadModalDropdown(fieldName) {
+    console.log('모달 드롭다운 리랜더링:', fieldName);
+    
+    // 현재 열려있는 드롭다운과 모달 정보 확인
+    const currentDropdown = document.querySelector('.dropdown-edit');
+    const detailModal = document.querySelector('#detailModal');
+    
+    if (!detailModal || detailModal.style.display === 'none' || !window.currentDetailRowId) {
+        console.log('상세보기 모달이 열려있지 않아 리랜더링을 생략합니다.');
+        return;
+    }
+    
+    // 현재 열려있는 드롭다운이 해당 필드의 드롭다운인지 확인
+    const modalBtn = document.querySelector(`#detailModal button[onclick*="openDetailDropdown('${window.currentDetailRowId}','${fieldName}'"]`);
+    if (!modalBtn) {
+        console.log('해당 필드의 버튼을 찾을 수 없습니다:', fieldName);
+        return;
+    }
+    
+    // 현재 선택된 값 저장 (버튼 텍스트에서 추출)
+    const currentSelectedText = modalBtn.textContent.trim();
+    console.log('현재 선택된 값:', currentSelectedText);
+    
+    // 캐시 강제 무효화
+    if (window.dropdownOptionsCache && window.dropdownOptionsCache[fieldName]) {
+        delete window.dropdownOptionsCache[fieldName];
+        console.log('드롭다운 캐시 무효화:', fieldName);
+    }
+    
+    // 기존 드롭다운이 열려있으면 완전히 제거
+    if (currentDropdown) {
+        console.log('기존 드롭다운 제거');
+        if (typeof closeDropdown === 'function') {
+            closeDropdown();
+        }
+        
+        // 모든 드롭다운 요소 강제 제거
+        setTimeout(() => {
+            document.querySelectorAll('.dropdown-edit').forEach(dropdown => {
+                if (dropdown.parentNode) {
+                    dropdown.parentNode.removeChild(dropdown);
+                }
+            });
+        }, 50);
+    }
+    
+    // 약간의 지연 후 새로운 드롭다운 생성
+    setTimeout(() => {
+        console.log('새로운 모달 드롭다운 생성 시작');
+        
+        // 최신 데이터로 버튼 업데이트 (서버에서 현재 값 다시 확인)
+        fetch(`/sales/get_row_details/${window.currentDetailRowId}/`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const currentValue = data.row_data[fieldName] || '';
+                    console.log('서버에서 가져온 현재 값:', currentValue);
+                    
+                    // 버튼 텍스트 업데이트 (값이 있으면 해당 옵션명으로, 없으면 '선택'으로)
+                    if (currentValue && currentValue !== '' && currentValue !== 'null') {
+                        // 옵션 정보를 가져와서 실제 옵션명으로 업데이트
+                        fetch(`/sales/dropdown_options/?field=${encodeURIComponent(fieldName)}`)
+                            .then(response => response.json())
+                            .then(optionsData => {
+                                if (optionsData.options) {
+                                    const selectedOption = optionsData.options.find(opt => opt.id.toString() === currentValue.toString());
+                                    if (selectedOption) {
+                                        modalBtn.textContent = selectedOption.option;
+                                        if (selectedOption.color) {
+                                            modalBtn.style.background = hexToRgba(selectedOption.color, 0.18);
+                                        }
+                                    } else {
+                                        modalBtn.textContent = '선택';
+                                        modalBtn.style.background = '#f8f9fa';
+                                    }
+                                }
+                                
+                                // 새로운 드롭다운 생성
+                                showModalDropdownOptions(window.currentDetailRowId, fieldName, modalBtn);
+                            })
+                            .catch(error => {
+                                console.error('옵션 정보 가져오기 실패:', error);
+                                modalBtn.textContent = '선택';
+                                modalBtn.style.background = '#f8f9fa';
+                                showModalDropdownOptions(window.currentDetailRowId, fieldName, modalBtn);
+                            });
+                    } else {
+                        modalBtn.textContent = '선택';
+                        modalBtn.style.background = '#f8f9fa';
+                        showModalDropdownOptions(window.currentDetailRowId, fieldName, modalBtn);
+                    }
+                } else {
+                    console.error('행 데이터 가져오기 실패');
+                    showModalDropdownOptions(window.currentDetailRowId, fieldName, modalBtn);
+                }
+            })
+            .catch(error => {
+                console.error('행 데이터 가져오기 오류:', error);
+                showModalDropdownOptions(window.currentDetailRowId, fieldName, modalBtn);
+            });
+    }, 200);
+}
+
+// 상세보기 모달용 드롭다운 옵션 색상 업데이트 함수
+function updateModalDropdownOptionColor(fieldName, optionId, newColor) {
+    console.log('모달 옵션 색상 업데이트 요청:', fieldName, optionId, newColor);
+    
+    fetch(`/sales/dropdown_options/?field=${encodeURIComponent(fieldName)}&id=${encodeURIComponent(optionId)}&color=${encodeURIComponent(newColor)}`, {
+        method: 'PUT',
+        headers: {
+            'X-CSRFToken': getCsrfToken()
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            console.log('모달 옵션 색상 업데이트 성공');
+            
+            // 캐시 무효화
+            if (window.dropdownOptionsCache && window.dropdownOptionsCache[fieldName]) {
+                delete window.dropdownOptionsCache[fieldName];
+            }
+            
+            // 상세보기 모달 드롭다운 강제 리랜더링
+            reloadModalDropdown(fieldName);
+            
+            // 테이블과 칸반보드도 업데이트
+            if (typeof updateTableCellsWithOptionColor === 'function') {
+                updateTableCellsWithOptionColor(fieldName, optionId, newColor);
+            }
+            if (typeof triggerKanbanRefreshIfNeeded === 'function') {
+                triggerKanbanRefreshIfNeeded(fieldName);
+            }
+        } else {
+            throw new Error(data.error || '색상 업데이트 실패');
+        }
+    })
+    .catch(error => {
+        console.error('모달 옵션 색상 업데이트 실패:', error);
+        alert('옵션 색상 업데이트 중 오류가 발생했습니다: ' + error.message);
+    });
+}
+
+// 상세보기 모달용 새 드롭다운 옵션 추가 함수
+function addModalDropdownOption(fieldName, optionName) {
+    console.log('모달 새 옵션 추가 요청:', fieldName, optionName);
+    
+    // 랜덤 색상 생성
+    const randomColor = generateRandomColor();
+    
+    fetch(`/sales/dropdown_options/?field=${encodeURIComponent(fieldName)}&name=${encodeURIComponent(optionName)}&color=${encodeURIComponent(randomColor)}`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCsrfToken()
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            console.log('모달 옵션 추가 성공');
+            
+            // 캐시 무효화
+            if (window.dropdownOptionsCache && window.dropdownOptionsCache[fieldName]) {
+                delete window.dropdownOptionsCache[fieldName];
+            }
+            
+            // 상세보기 모달 드롭다운 강제 리랜더링
+            reloadModalDropdown(fieldName);
+            
+            // 테이블과 칸반보드도 업데이트
+            if (typeof updateTableDropdownOptions === 'function') {
+                updateTableDropdownOptions(fieldName);
+            }
+            if (typeof triggerKanbanRefreshIfNeeded === 'function') {
+                triggerKanbanRefreshIfNeeded(fieldName);
+            }
+            
+            // 상태 속성 변경 이벤트 발생
+            if (window.statusAttributeName && fieldName === window.statusAttributeName) {
+                document.dispatchEvent(new CustomEvent('statusAttributeChanged', {
+                    detail: { fieldName: fieldName, action: 'add', optionName: optionName }
+                }));
+            }
+        } else {
+            throw new Error(data.error || '옵션 추가 실패');
+        }
+    })
+    .catch(error => {
+        console.error('모달 옵션 추가 실패:', error);
+        alert('옵션 추가 중 오류가 발생했습니다: ' + error.message);
     });
 }

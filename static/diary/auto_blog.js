@@ -22,6 +22,15 @@ window.currentSessionId = window.currentSessionId || null;
 // 로그 중복 방지를 위한 해시 추적 변수 추가
 window.logMessageHistory = window.logMessageHistory || new Set();
 window.lastLogTimestamp = window.lastLogTimestamp || 0;
+// 미리보기 모달 상태 보존을 위한 변수 추가
+window.previewModalState = window.previewModalState || {
+    title: '',
+    body: '',
+    step: '',
+    progress: 0,
+    logs: [],
+    fileInfo: ''
+};
 
 // 모달 HTML을 동적으로 생성
 function createBlogModal() {
@@ -364,6 +373,22 @@ function openBlogModal() {
             naverPasswordError.style.display = 'block';
         }
     });
+
+    // 네이버 아이디 필드 Enter 키 이벤트 리스너
+    naverIdInput.addEventListener('keypress', function(event) {
+        if (event.key === 'Enter') {
+            event.preventDefault(); // 기본 폼 제출 방지
+            naverPasswordInput.focus(); // 비밀번호 필드로 포커스 이동
+        }
+    });
+
+    // 네이버 비밀번호 필드 Enter 키 이벤트 리스너
+    naverPasswordInput.addEventListener('keypress', function(event) {
+        if (event.key === 'Enter') {
+            event.preventDefault(); // 기본 폼 제출 방지
+            uploadBlogFile(); // 파일 업로드 함수 호출
+        }
+    });
 }
 
 // 블로그 모달 닫기
@@ -447,22 +472,14 @@ function openPreviewModal(startPolling = false) {
         
         console.log('📊 비폴링 모드로 모달 열림');
         
-        // 기본 메시지 표시
-        const logContainer = document.getElementById('previewLog');
-        if (logContainer) {
-            logContainer.innerHTML = '<div style="color: #6c757d; font-style: italic;">현재 블로그 작성 중이 아닙니다. 블로그 업로드를 시작하면 실시간 진행상황이 여기에 표시됩니다.</div>';
-        }
+        // 기존 상태 복원
+        restorePreviewModalState();
         
-        const stepElement = document.getElementById('previewStep');
-        if (stepElement) {
-            stepElement.textContent = '대기 중...';
-        }
-        
-        const progressElement = document.getElementById('previewProgress');
-        const progressBarElement = document.getElementById('previewProgressBar');
-        if (progressElement && progressBarElement) {
-            progressElement.textContent = '0%';
-            progressBarElement.style.width = '0%';
+        // 블로그 작성이 진행 중인 경우 폴링 재시작
+        if (window.currentSessionId && window.previewModalState.progress > 0) {
+            console.log('📊 기존 세션 감지, 폴링 재시작');
+            window.isBlogWritingActive = true;
+            startStatusPolling();
         }
     }
 }
@@ -471,6 +488,35 @@ function openPreviewModal(startPolling = false) {
 function closePreviewModal() {
     const modal = document.getElementById('blogPreviewModal');
     if (modal) {
+        // 현재 상태를 보존 객체에 저장
+        const stepElement = document.getElementById('previewStep');
+        const progressElement = document.getElementById('previewProgress');
+        const titleElement = document.getElementById('previewTitleText');
+        const bodyElement = document.getElementById('previewBodyText');
+        const fileInfoElement = document.getElementById('currentFileInfo');
+        
+        if (stepElement) {
+            window.previewModalState.step = stepElement.textContent;
+        }
+        if (progressElement) {
+            const progressText = progressElement.textContent;
+            const progressMatch = progressText.match(/(\d+)%/);
+            if (progressMatch) {
+                window.previewModalState.progress = parseInt(progressMatch[1]);
+            }
+        }
+        if (titleElement) {
+            window.previewModalState.title = titleElement.textContent;
+        }
+        if (bodyElement) {
+            window.previewModalState.body = bodyElement.textContent;
+        }
+        if (fileInfoElement) {
+            window.previewModalState.fileInfo = fileInfoElement.textContent;
+        }
+        
+        console.log('📊 미리보기 모달 상태 보존 완료:', window.previewModalState);
+        
         modal.style.display = 'none';
     }
     
@@ -478,7 +524,7 @@ function closePreviewModal() {
     window.isBlogWritingActive = false;
     stopStatusPolling();
     
-    // 로그 해시 히스토리 정리
+    // 로그 해시 히스토리 정리 (상태는 보존)
     window.logMessageHistory = new Set();
     window.lastLogTimestamp = 0;
     
@@ -579,6 +625,23 @@ function addToPreviewLog(message, type = 'info') {
         logContainer.removeChild(removedEntry);
     }
     
+    // 로그를 상태 보존 객체에 저장 (최대 100개)
+    const logData = {
+        styles: logEntry.style.cssText,
+        html: logEntry.innerHTML
+    };
+    
+    if (!window.previewModalState.logs) {
+        window.previewModalState.logs = [];
+    }
+    
+    window.previewModalState.logs.push(logData);
+    
+    // 로그 개수 제한 (최대 100개)
+    if (window.previewModalState.logs.length > 100) {
+        window.previewModalState.logs.shift();
+    }
+    
     console.log('📊 로그 추가됨:', message);
 }
 
@@ -594,6 +657,64 @@ function clearPreviewLog() {
     window.lastLogTimestamp = 0;
     
     console.log('📊 로그 및 히스토리 초기화 완료');
+}
+
+// 미리보기 모달 상태 복원 함수
+function restorePreviewModalState() {
+    const state = window.previewModalState;
+    
+    // 단계 및 진행도 복원
+    const stepElement = document.getElementById('previewStep');
+    const progressElement = document.getElementById('previewProgress');
+    const progressBarElement = document.getElementById('previewProgressBar');
+    const titleElement = document.getElementById('previewTitleText');
+    const bodyElement = document.getElementById('previewBodyText');
+    const fileInfoElement = document.getElementById('currentFileInfo');
+    
+    if (stepElement && state.step) {
+        stepElement.textContent = state.step;
+    } else if (stepElement) {
+        stepElement.textContent = '블로그 작성 진행 중...';
+    }
+    
+    if (progressElement && progressBarElement && state.progress > 0) {
+        progressElement.textContent = `${state.progress}%`;
+        progressBarElement.style.width = `${state.progress}%`;
+        window.currentProgress = state.progress;
+    }
+    
+    if (titleElement && state.title) {
+        titleElement.textContent = state.title;
+    } else if (titleElement) {
+        titleElement.textContent = '제목이 여기에 표시됩니다...';
+    }
+    
+    if (bodyElement && state.body) {
+        bodyElement.textContent = state.body;
+    } else if (bodyElement) {
+        bodyElement.textContent = '본문이 여기에 실시간으로 표시됩니다...';
+    }
+    
+    if (fileInfoElement && state.fileInfo) {
+        fileInfoElement.textContent = state.fileInfo;
+    }
+    
+    // 로그 복원
+    const logContainer = document.getElementById('previewLog');
+    if (logContainer && state.logs.length > 0) {
+        logContainer.innerHTML = '';
+        state.logs.forEach(log => {
+            const logEntry = document.createElement('div');
+            logEntry.style.cssText = log.styles;
+            logEntry.innerHTML = log.html;
+            logContainer.appendChild(logEntry);
+        });
+        logContainer.scrollTop = logContainer.scrollHeight;
+    } else if (logContainer) {
+        logContainer.innerHTML = '<div style="color: #6c757d; font-style: italic;">블로그 작성 진행 중...</div>';
+    }
+    
+    console.log('📊 미리보기 모달 상태 복원 완료:', state);
 }
 
 // 미리보기 상태 업데이트
@@ -746,10 +867,14 @@ function updatePreviewStatus() {
                                 const match = status.content.match(/"([^"]+)"/);
                                 if (match) {
                                     titleElement.textContent = match[1];
+                                    // 상태 보존을 위해 저장
+                                    window.previewModalState.title = match[1];
                                     console.log('📊 제목 타이핑:', match[1]);
                                 }
                             } else {
                                 titleElement.textContent = status.content;
+                                // 상태 보존을 위해 저장
+                                window.previewModalState.title = status.content;
                                 console.log('📊 제목 타이핑:', status.content);
                             }
                         }
@@ -767,6 +892,8 @@ function updatePreviewStatus() {
                                 }
                             }
                             bodyElement.textContent = contentToShow;
+                            // 상태 보존을 위해 저장
+                            window.previewModalState.body = contentToShow;
                             console.log('📊 본문 타이핑:', contentToShow.substring(0, 50) + '...');
                         }
                         break;
@@ -780,6 +907,8 @@ function updatePreviewStatus() {
                                 const match = status.content.match(/"([^"]+)"/);
                                 if (match) {
                                     titleElement.textContent = match[1];
+                                    // 상태 보존을 위해 저장
+                                    window.previewModalState.title = match[1];
                                     console.log('📊 제목 타이핑 (호환):', match[1]);
                                 }
                             }
@@ -795,6 +924,8 @@ function updatePreviewStatus() {
                                     }
                                 }
                                 bodyElement.textContent = contentToShow;
+                                // 상태 보존을 위해 저장
+                                window.previewModalState.body = contentToShow;
                                 console.log('📊 본문 타이핑 (호환):', contentToShow.substring(0, 50) + '...');
                             }
                         }
@@ -808,6 +939,8 @@ function updatePreviewStatus() {
                             const cleanContent = status.content.replace(/오타 발생.*$/, '').trim();
                             if (cleanContent) {
                                 bodyElement.textContent = cleanContent;
+                                // 상태 보존을 위해 저장
+                                window.previewModalState.body = cleanContent;
                                 console.log('📊 오타 발생:', cleanContent.substring(0, 30) + '...');
                             }
                         }
@@ -820,6 +953,8 @@ function updatePreviewStatus() {
                             const cleanContent = status.content.replace(/오타 수정중.*$/, '').replace(/백스페이스.*$/, '').trim();
                             if (cleanContent) {
                                 bodyElement.textContent = cleanContent;
+                                // 상태 보존을 위해 저장
+                                window.previewModalState.body = cleanContent;
                                 console.log('📊 오타 수정:', cleanContent.substring(0, 30) + '...');
                             }
                         }
@@ -834,11 +969,15 @@ function updatePreviewStatus() {
                             if (status.content.startsWith('FINAL_TITLE:')) {
                                 const finalTitle = status.content.replace('FINAL_TITLE:', '');
                                 titleElement.textContent = finalTitle;
+                                // 상태 보존을 위해 저장
+                                window.previewModalState.title = finalTitle;
                                 addToPreviewLog(`제목 입력 완료: "${finalTitle}"`, 'success');
                                 console.log('📊 제목 입력 완료:', finalTitle);
                             } else {
                                 // 기존 방식 (호환성)
                                 titleElement.textContent = status.content;
+                                // 상태 보존을 위해 저장
+                                window.previewModalState.title = status.content;
                                 addToPreviewLog(`제목 입력 완료: "${status.content}"`, 'success');
                                 console.log('📊 제목 입력 완료 (호환):', status.content);
                             }
@@ -853,6 +992,8 @@ function updatePreviewStatus() {
                             if (status.content.startsWith('FINAL_CONTENT:')) {
                                 const finalContent = status.content.replace('FINAL_CONTENT:', '');
                                 bodyElement.textContent = finalContent;
+                                // 상태 보존을 위해 저장
+                                window.previewModalState.body = finalContent;
                                 addToPreviewLog(`본문 입력 완료 (${finalContent.length}자)`, 'success');
                                 console.log('📊 본문 입력 완료:', finalContent.length + '자');
                             } else {
@@ -915,6 +1056,14 @@ function updatePreviewStatus() {
                             }
                         }, 5000);
                         break;
+                }
+                
+                // 현재 상태를 보존 객체에 저장
+                if (stepElement) {
+                    window.previewModalState.step = stepElement.textContent;
+                }
+                if (fileInfoElement) {
+                    window.previewModalState.fileInfo = fileInfoElement.textContent;
                 }
             }
         })

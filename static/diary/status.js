@@ -228,7 +228,13 @@ function applyStatusFilter() {
 
 // 모달용 상태 탭 로드
 function loadStatusTabsForModal() {
-  console.log('모달용 상태 탭 로드 시작');
+  console.log('모달용 상태 탭 로드 시작 - 캐시 초기화');
+  
+  // 기존 캐시된 데이터 초기화
+  window.statusOptions = null;
+  window.allAttributes = null;
+  window.currentModalStatusId = 'all';
+  
   fetch('/sales/get_status_tabs/')
       .then(response => response.json())
       .then(data => {
@@ -292,38 +298,20 @@ function selectModalStatusTab(statusId) {
   
   console.log('현재 모달 상태 ID 업데이트:', window.currentModalStatusId);
   
-  // 속성 데이터 다시 로드하여 최신 상태 반영
+  // 속성 데이터 서버에서 새로 받아와서 최신 상태 반영
+  console.log('탭 전환으로 인한 속성 데이터 새로고침');
   loadAttributesForModal();
 }
 
 // 모달용 속성 데이터 로드
 function loadAttributesForModal() {
-  console.log('모달용 속성 데이터 로드 시작');
-  
-  // 기존 속성 설정 백업
-  const existingAttributeSettings = {};
-  if (window.allAttributes) {
-      window.allAttributes.forEach(attr => {
-          if (attr.view_select) {
-              existingAttributeSettings[attr.id] = { ...attr.view_select };
-          }
-      });
-  }
+  console.log('모달용 속성 데이터 로드 시작 - 최신 데이터 받아오기');
   
   fetch('/sales/get_all_attributes/')
       .then(response => response.json())
       .then(data => {
           console.log('속성 데이터 응답:', data);
           if (data.success) {
-              // 기존 속성 설정 복원
-              if (data.attributes && Object.keys(existingAttributeSettings).length > 0) {
-                  data.attributes.forEach(attr => {
-                      if (existingAttributeSettings[attr.id]) {
-                          attr.view_select = { ...existingAttributeSettings[attr.id] };
-                      }
-                  });
-              }
-              
               window.allAttributes = data.attributes;
               updateAttributesListForModal();
           } else {
@@ -363,7 +351,7 @@ function updateAttributesListForModal() {
       checkbox.id = `attr_${attr.id}_${window.currentModalStatusId}`; // 상태별로 고유한 ID
       checkbox.className = 'attribute-visibility-checkbox';
       
-      // 현재 상태에서의 표시 여부 설정
+      // 현재 상태에서의 표시 여부 설정 (서버에서 받은 최신 데이터 기준)
       let isChecked = false;
       if (window.currentModalStatusId === 'all') {
           // 전체 탭은 "0" 키로 관리되는 독립적인 상태
@@ -376,10 +364,11 @@ function updateAttributesListForModal() {
       
       // 체크박스 변경 이벤트 추가
       checkbox.addEventListener('change', function() {
+          console.log(`속성 ${attr.name} (${attr.id}) 체크 상태 변경: ${this.checked} (상태 ID: ${window.currentModalStatusId})`);
           saveSingleAttributeSetting(attr.id, window.currentModalStatusId, this.checked);
       });
       
-      console.log(`속성 ${attr.name}: view_select=${JSON.stringify(attr.view_select)}, checked=${isChecked}`);
+      console.log(`속성 ${attr.name} (ID: ${attr.id}): view_select=${JSON.stringify(attr.view_select)}, 현재 상태=${window.currentModalStatusId}, checked=${isChecked}`);
       
       const label = document.createElement('label');
       label.htmlFor = `attr_${attr.id}_${window.currentModalStatusId}`;
@@ -390,6 +379,8 @@ function updateAttributesListForModal() {
       attrDiv.appendChild(label);
       container.appendChild(attrDiv);
   });
+  
+  console.log('모달용 속성 목록 업데이트 완료');
 }
 
 // 단일 속성 설정 저장
