@@ -957,7 +957,7 @@
             // Office 문서 파일들
             if (['docx', 'doc', 'pptx', 'ppt', 'xlsx', 'xls', 'hwp'].includes(fileExt) || 
                 contentType.includes('wordprocessingml') || 
-                contentType.includes('presentationml') || 
+                contentType.includes('presentationml') ||
                 contentType.includes('spreadsheetml') ||
                 contentType.includes('msword')) {
                 return true;
@@ -982,12 +982,24 @@
             const contentType = file.file_type || file.content_type || '';
 
             // S3 서명 URL 요청 - 게시판용 URL 사용
-            fetch(`/sales/board/file/${file.saved_name}/preview/`)
+            console.log('파일 정보:', file);
+            
+            // file.saved_name에서 'board/' 접두사 제거
+            const cleanSavedName = file.saved_name.replace('board/', '');
+            
+            fetch(`/sales/board/file/${cleanSavedName}/preview/`)
                 .then(response => response.json())
                 .then(data => {
+                    console.log('파일 미리보기 API 응답:', data);
+                    console.log('응답 데이터 타입:', typeof data);
+                    console.log('응답 데이터 키들:', Object.keys(data));
+                    console.log('data.success:', data.success);
+                    console.log('data.preview_url:', data.preview_url);
+                    
                     if (data.success && data.preview_url) {
                         showFilePreview(file, fileName, data.preview_url, contentType, fileExt);
                     } else {
+                        console.error('미리보기 URL을 찾을 수 없음:', data);
                         alert('파일 미리보기를 불러올 수 없습니다.');
                     }
                 })
@@ -1103,8 +1115,8 @@
             }
             // 오피스 문서 파일들 (Google Docs Viewer 사용)
             else if (
-                ['docx','doc','pptx','ppt','xlsx','xls'].includes(fileExt) ||
-                contentType.includes('wordprocessingml') || contentType.includes('presentationml') || contentType.includes('spreadsheetml') || contentType.includes('msword')
+                ['docx','doc','pptx','ppt'].includes(fileExt) ||
+                contentType.includes('wordprocessingml') || contentType.includes('presentationml') || contentType.includes('msword')
             ) {
                 const encodedUrl = encodeURIComponent(fileUrl);
                 previewContent = `
@@ -1121,6 +1133,28 @@
                                 다운로드
                             </button>
                         </div>
+                    </div>
+                `;
+            }
+            // 엑셀 파일은 미리보기 지원하지 않음
+            else if (
+                ['xlsx','xls'].includes(fileExt) ||
+                contentType.includes('spreadsheetml')
+            ) {
+                previewContent = `
+                    <div style="text-align: center; background: #f8f9fa; padding: 40px; border-radius: 8px;">
+                        <div style="font-size: 48px; margin-bottom: 20px;">📊</div>
+                        <div style="font-size: 18px; margin-bottom: 20px; color: #333;">${fileName}</div>
+                        <div style="font-size: 14px; color: #666; margin-bottom: 20px;">
+                            엑셀 파일 형식은 미리보기를 지원하지 않습니다.<br>
+                            파일을 다운로드하여 확인해주세요.
+                        </div>
+                        
+                        <button data-saved-name="${file.saved_name}" data-original-name="${fileName}"
+                                onclick="downloadFileFromButton(this)" 
+                                style="padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 4px; font-weight: 500; cursor: pointer;">
+                            다운로드
+                        </button>
                     </div>
                 `;
             }

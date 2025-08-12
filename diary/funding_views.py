@@ -91,6 +91,7 @@ def get_funding_recommendation(request):
         print(f'업력 : {company_data["business_months"]} ')
 
         biz_region = _get_attribute_value(user, row, '지역')
+        biz_region_detail = _get_attribute_value(user, row, '상세지역')
         biz_industry = company_data['industry']
 
         # 매출액 카테고리 분류
@@ -133,6 +134,7 @@ def get_funding_recommendation(request):
             biz_business_months = "3년 이상"
 
         print(f'지역 : {biz_region} ')
+        print(f'상세지역 : {biz_region_detail} ')
         print(f'업종 : {biz_industry} ')
         print(f'매출 : {biz_revenue} ')
         print(f'규모 : {biz_employees} ')
@@ -140,13 +142,47 @@ def get_funding_recommendation(request):
 
         # region이 None이 아닐 경우에만 지역 조건 포함
         if biz_region:
-            biz_data = BizInfo.objects.filter(
-                                            (Q(region__contains=biz_region) | Q(region__contains="전국"))\
-                                           & Q(possible_industry__contains=biz_industry) \
-                                           & Q(revenue__contains=biz_revenue)\
-                                           & Q(business_period__contains=biz_business_months) \
-                                           & Q(target__contains=biz_employees)
-                                           )[:5]
+            # 상세지역이 정확히 포함된 데이터만 검색
+            data_with_detail = BizInfo.objects.filter(
+                                            (Q(region__contains=biz_region) | Q(region__contains="전국") | Q(hashtag__contains=biz_region))\
+                                           & (Q(possible_industry__contains=biz_industry) | Q(possible_industry__contains='무관')) \
+                                           & (Q(revenue__contains=biz_revenue) | Q(revenue__contains='무관'))\
+                                           & (Q(business_period__contains=biz_business_months) | Q(business_period__contains='무관')) \
+                                           & (Q(target__contains=biz_employees) | Q(target__contains='무관'))\
+                                           & (
+                                               # 상세지역이 포함된 경우만
+                                               Q(noti_summary__contains=biz_region_detail) | 
+                                               Q(hashtag__contains=biz_region_detail) | 
+                                               Q(content__contains=biz_region_detail) | 
+                                               Q(title__contains=biz_region_detail) |
+                                               Q(region__contains=biz_region_detail)
+                                           ))
+            
+            # 상세지역이 포함된 데이터가 5개 미만인 경우, 포함되지 않은 데이터도 추가
+            if data_with_detail.count() < 5:
+                # 포함되지 않은 데이터에서 필요한 만큼 추가 (중복 제거)
+                needed_count = 5 - data_with_detail.count()
+                additional_data = BizInfo.objects.filter(
+                                            (Q(region__contains=biz_region) | Q(region__contains="전국") | Q(hashtag__contains=biz_region))\
+                                           & (Q(possible_industry__contains=biz_industry) | Q(possible_industry__contains='무관')) \
+                                           & (Q(revenue__contains=biz_revenue) | Q(revenue__contains='무관'))\
+                                           & (Q(business_period__contains=biz_business_months) | Q(business_period__contains='무관')) \
+                                           & (Q(target__contains=biz_employees) | Q(target__contains='무관'))
+                                           ).exclude(
+                                               # detail_region이 포함된 데이터 제외
+                                               Q(noti_summary__contains=biz_region_detail) | 
+                                               Q(hashtag__contains=biz_region_detail) | 
+                                               Q(content__contains=biz_region_detail) | 
+                                               Q(title__contains=biz_region_detail) |
+                                               Q(region__contains=biz_region_detail)
+                                           ).exclude(
+                                               build_detail_region_exclude_query(biz_region, biz_region_detail)
+                                           )[:needed_count]
+                
+                # 두 데이터셋 합치기
+                biz_data = list(data_with_detail) + list(additional_data)
+            else:
+                biz_data = data_with_detail[:5]
         else:
             # region이 None인 경우 지역 조건 제외
             biz_data = BizInfo.objects.filter(
@@ -881,3 +917,54 @@ def get_recommended_notices(request):
             'success': False,
             'error': '공고 정보를 조회할 수 없습니다.'
         })
+    
+def build_detail_region_exclude_query(region, detail_region):
+        """다른 상세지역만 특정되어 있는 경우를 제외하는 쿼리 구성"""
+        # regionDetails에 정의된 실제 상세지역 목록
+        region_details = {
+            "서울": ["강남구", "강동구", "강북구", "강서구", "관악구", "광진구", "구로구", "금천구", "노원구", "도봉구", "동대문구", "동작구", "마포구", "서대문구", "서초구", "성동구", "성북구", "송파구", "양천구", "영등포구", "용산구", "은평구", "종로구", "중구", "중랑구"],
+            "경기": ["수원시", "성남시", "의정부시", "안양시", "부천시", "광명시", "평택시", "동두천시", "안산시", "고양시", "과천시", "구리시", "남양주시", "오산시", "시흥시", "군포시", "의왕시", "하남시", "용인시", "파주시", "이천시", "안성시", "김포시", "화성시", "광주시", "여주시", "양평군", "고양군", "연천군", "포천군", "가평군"],
+            "인천": ["중구", "동구", "미추홀구", "연수구", "남동구", "부평구", "계양구", "서구", "강화군", "옹진군"],
+            "강원": ["춘천시", "원주시", "강릉시", "동해시", "태백시", "속초시", "삼척시", "홍천군", "횡성군", "영월군", "평창군", "정선군", "철원군", "화천군", "양구군", "인제군", "고성군", "양양군"],
+            "경북": ["포항시", "경주시", "김천시", "안동시", "구미시", "영주시", "영천시", "상주시", "문경시", "경산시", "군위군", "의성군", "청송군", "영양군", "영덕군", "청도군", "고령군", "성주군", "칠곡군", "예천군", "봉화군", "울진군", "울릉군"],
+            "경남": ["창원시", "진주시", "통영시", "사천시", "김해시", "밀양시", "거제시", "양산시", "의령군", "함안군", "창녕군", "고성군", "남해군", "하동군", "산청군", "함양군", "거창군", "합천군"],
+            "부산": ["중구", "서구", "동구", "영도구", "부산진구", "동래구", "남구", "북구", "해운대구", "사하구", "금정구", "강서구", "연제구", "수영구", "사상구", "기장군"],
+            "대구": ["중구", "동구", "서구", "남구", "북구", "수성구", "달서구", "달성군"],
+            "울산": ["중구", "남구", "동구", "북구", "울주군"],
+            "대전": ["중구", "동구", "서구", "유성구", "대덕구"],
+            "충북": ["청주시", "충주시", "제천시", "보은군", "옥천군", "영동군", "증평군", "진천군", "괴산군", "음성군", "단양군"],
+            "충남": ["천안시", "공주시", "보령시", "아산시", "서산시", "논산시", "계룡시", "당진시", "금산군", "부여군", "서천군", "청양군", "홍성군", "예산군", "태안군"],
+            "전북": ["전주시", "군산시", "익산시", "정읍시", "남원시", "김제시", "완주군", "진안군", "무주군", "장수군", "임실군", "순창군", "고창군", "부안군"],
+            "전남": ["목포시", "여수시", "순천시", "나주시", "광양시", "담양군", "곡성군", "구례군", "고흥군", "보성군", "화순군", "장흥군", "강진군", "해남군", "영암군", "무안군", "함평군", "영광군", "장성군", "완도군", "진도군", "신안군"],
+            "광주": ["동구", "서구", "남구", "북구", "광산구"],
+            "제주": ["제주시", "서귀포시"],
+            "세종": ["세종특별자치시"]
+        }
+        
+        # 해당 지역의 상세지역 목록 가져오기
+        if region in region_details:
+            detail_regions = region_details[region]
+            
+            # detail_region을 제외한 다른 상세지역들로 쿼리 구성
+            other_detail_regions = [dr for dr in detail_regions if dr != detail_region]
+            
+            # 다른 상세지역이 포함된 데이터를 제외하는 쿼리
+            exclude_queries = []
+            for other_detail in other_detail_regions:
+                exclude_queries.extend([
+                    Q(noti_summary__contains=other_detail),
+                    Q(hashtag__contains=other_detail),
+                    Q(content__contains=other_detail),
+                    Q(title__contains=other_detail),
+                    Q(region__contains=other_detail)
+                ])
+            
+            # OR 조건으로 결합 (하나라도 포함되면 제외)
+            if exclude_queries:
+                combined_query = exclude_queries[0]
+                for query in exclude_queries[1:]:
+                    combined_query |= query
+                return combined_query
+        
+        # 해당 지역의 상세지역 정보가 없으면 빈 쿼리 반환
+        return Q()

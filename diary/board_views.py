@@ -336,14 +336,28 @@ def board_file_upload(request):
 @csrf_exempt
 def board_file_preview(request, saved_name):
     """게시판 파일 미리보기"""
+    print(f"=== board_file_preview 시작 ===")
+    print(f"원본 saved_name: {saved_name}")
+    
+    # board/ 접두사가 없으면 추가
+    if not saved_name.startswith('board/'):
+        saved_name = f"board/{saved_name}"
+        print(f"board/ 접두사 추가됨: {saved_name}")
+    
+    print(f"최종 saved_name: {saved_name}")
+    print(f"session diary_authenticated: {request.session.get('diary_authenticated')}")
+    
     if not request.session.get('diary_authenticated'):
+        print("로그인 필요")
         return JsonResponse({'success': False, 'message': '로그인이 필요합니다.'})
     
     try:
         from django.conf import settings
         import boto3
         import os
-        from .views import download_file_from_s3_for_preview, convert_hwp_to_pdf, upload_pdf_to_s3_for_preview
+        from .audio_handler import download_file_from_s3_for_preview, convert_hwp_to_pdf, upload_pdf_to_s3_for_preview
+        
+        print(f"AWS 설정 확인: BUCKET={settings.AWS_STORAGE_BUCKET_NAME}, REGION={settings.AWS_S3_REGION_NAME}")
         
         # S3에서 파일 가져오기
         s3_client = boto3.client(
@@ -355,16 +369,20 @@ def board_file_preview(request, saved_name):
         
         # 파일 확장자 확인
         file_ext = os.path.splitext(saved_name)[1].lower()
+        print(f"파일 확장자: {file_ext}")
         
-        # HWP 파일인 경우 PDF로 변환
+        # HWP 파일인 경우에만 PDF 변환 시도
         if file_ext == '.hwp':
+            print("HWP 파일 감지, PDF 변환 시도")
             # PDF 변환된 파일이 있는지 확인
             pdf_key = saved_name.replace('.hwp', '_converted.pdf')
             try:
                 s3_client.head_object(Bucket=settings.AWS_STORAGE_BUCKET_NAME, Key=pdf_key)
                 saved_name = pdf_key  # PDF 파일 사용
+                print(f"기존 PDF 파일 사용: {pdf_key}")
             except:
                 # PDF 변환 수행
+                print("PDF 변환 수행")
                 try:
                     # 원본 HWP 파일 다운로드
                     temp_hwp = download_file_from_s3_for_preview(saved_name)
@@ -382,6 +400,21 @@ def board_file_preview(request, saved_name):
                         os.unlink(temp_hwp)
                 except Exception as e:
                     print(f"HWP to PDF conversion failed: {e}")
+        else:
+            print(f"{file_ext} 파일은 변환 없이 직접 처리")
+        
+        print(f"최종 saved_name: {saved_name}")
+        
+        # S3에서 파일 존재 여부 확인
+        try:
+            s3_client.head_object(Bucket=settings.AWS_STORAGE_BUCKET_NAME, Key=saved_name)
+            print(f"S3에서 파일 확인됨: {saved_name}")
+        except Exception as e:
+            print(f"S3에서 파일을 찾을 수 없음: {saved_name}, 오류: {e}")
+            return JsonResponse({
+                'success': False,
+                'message': f'파일을 찾을 수 없습니다: {saved_name}'
+            })
         
         # 파일 URL 생성
         presigned_url = s3_client.generate_presigned_url(
@@ -390,12 +423,20 @@ def board_file_preview(request, saved_name):
             ExpiresIn=3600  # 1시간
         )
         
-        return JsonResponse({
+        print(f"생성된 presigned_url: {presigned_url[:100]}...")
+        
+        response_data = {
             'success': True,
             'preview_url': presigned_url
-        })
+        }
+        print(f"응답 데이터: {response_data}")
+        
+        return JsonResponse(response_data)
         
     except Exception as e:
+        print(f"오류 발생: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return JsonResponse({
             'success': False,
             'message': f'파일 미리보기에 실패했습니다: {str(e)}'
