@@ -6,9 +6,6 @@ from django.db.models import Q
 from .models import User, Board
 import json
 
-from .views import download_file_from_s3_for_preview, convert_hwp_to_pdf, upload_pdf_to_s3_for_preview
-        
-
 @csrf_exempt
 def board_list_view(request):
     """게시판 목록 페이지"""

@@ -1,14 +1,13 @@
 from django.urls import path
 from . import views
-from .views import upload_note_file, delete_note_file, update_note_order_and_notes, get_file_preview_url, get_file_preview_url_note, get_file_content_note, convert_hwp_to_pdf, convert_hwp_to_pdf_board
 from .login_views import LoginView, LogoutView, SignupView, ChangePasswordView, SendVerificationEmailView, VerifyEmailView, ForgotPasswordView, ResetPasswordView, CheckEmailDuplicateView
 from .main_views import DiaryMainView
 from .file_handler import upload_file, delete_file, download_file, download_file_note
 from .calendar_handlers import get_datetime_attributes, get_calendar_settings, save_calendar_settings, calendar_events
 from .excel_handlers import preview_excel, upload_excel, download_excel_template
 from .kanban_handlers import update_kanban_option_order, get_kanban_data, get_kanban_settings, save_kanban_settings, get_dropdown_attributes_for_kanban
-from .attribute_handlers import delete_attribute_value, toggle_attribute_visibility, update_attribute_visibility, get_dropdown_attributes, add_attribute, delete_attribute
-from .audio_handler import upload_audio_file, get_audio_files_by_date, delete_audio_file, update_audio_file_order
+from .attribute_handlers import delete_attribute_value, toggle_attribute_visibility, update_attribute_visibility, get_dropdown_attributes, add_attribute, delete_attribute, get_hidden_attributes, get_all_attributes, update_attribute_name, update_attribute_name
+from .audio_handler import upload_audio_file, get_audio_files_by_date, delete_audio_file, update_audio_file_order, upload_note_file, delete_note_file, update_note_order_and_notes, get_file_preview_url_note, get_file_content_note, convert_hwp_to_pdf, get_file_preview_url
 from .cascade_handlers import toggle_cascade_attribute, get_cascade_attributes_list
 from .auto_blog import upload_blog_file, get_blog_files, get_blog_status, debug_redis_status
 from .detail_openai import ai_chat, ai_chat_cache_clear, file_cache_management, performance_monitoring
@@ -17,6 +16,8 @@ from .diary_board import diary_board, get_announcements, get_announcement_detail
 from .main_views import CompanyInfoView, PersonalInfoView, TermsOfServiceView
 from .session_handlers import cleanup_session_cache_api, get_active_sessions_api
 from .board_views import board_list_view, board_list_api, board_create, board_detail_view, board_file_upload, board_file_preview, board_file_download, board_detail_api, board_edit
+from .funding_views import get_funding_recommendation, get_recommended_notices, update_debt_field, get_debt_details, save_debt_details
+
 
 urlpatterns = [
     path('', DiaryMainView.as_view(), name='diary_main'),
@@ -72,9 +73,9 @@ urlpatterns = [
     path('update_loan_amount/', views.update_loan_amount, name='update_loan_amount'),
     path('update_debt_field/', views.update_debt_field, name='update_debt_field'),
     path('get_debt_details/<int:row_id>/', views.get_debt_details, name='get_debt_details'),
-    path('save_debt_details/', views.save_debt_details, name='save_debt_details'),
-    path('get_funding_recommendation/', views.get_funding_recommendation, name='get_funding_recommendation'),
-    path('get_recommended_notices/', views.get_recommended_notices, name='get_recommended_notices'),
+    path('save_debt_details/', save_debt_details, name='save_debt_details'),
+    path('get_funding_recommendation/', get_funding_recommendation, name='get_funding_recommendation'),
+    path('get_recommended_notices/', get_recommended_notices, name='get_recommended_notices'),
     path('save_column_order/', views.save_column_order, name='save_column_order'),
     path('delete_row/', views.delete_row, name='delete_row'),
     path('delete_attribute_value/', delete_attribute_value, name='delete_attribute_value'),
@@ -83,10 +84,10 @@ urlpatterns = [
     path('update_audio_file_order_and_notes/', views.update_audio_file_order_and_notes, name='update_audio_file_order_and_notes'),
     path('entry_table_partial/', views.entry_table_partial, name='entry_table_partial'),
     path('toggle_attribute_visibility/', toggle_attribute_visibility, name='toggle_attribute_visibility'),
-    path('get_hidden_attributes/', views.get_hidden_attributes, name='get_hidden_attributes'),
-    path('get_all_attributes/', views.get_all_attributes, name='get_all_attributes'),
+    path('get_hidden_attributes/', get_hidden_attributes, name='get_hidden_attributes'),
+    path('get_all_attributes/', get_all_attributes, name='get_all_attributes'),
     path('get_dropdown_attributes/', get_dropdown_attributes, name='get_dropdown_attributes'),
-    path('update_attribute_name/', views.update_attribute_name, name='update_attribute_name'),
+    path('update_attribute_name/', update_attribute_name, name='update_attribute_name'),
     path('get_status_tabs/', views.get_status_tabs, name='get_status_tabs'),
     path('upload_note_file/', upload_note_file, name='upload_note_file'),
     path('delete_note_file/', delete_note_file, name='delete_note_file'),
@@ -95,7 +96,7 @@ urlpatterns = [
     path('get_file_preview_url_note/<str:file_id>/', get_file_preview_url_note, name='get_file_preview_url_note'),
     path('get_file_content_note/<str:file_id>/', get_file_content_note, name='get_file_content_note'),
     path('convert_hwp_to_pdf/', convert_hwp_to_pdf, name='convert_hwp_to_pdf'),
-    path('convert_hwp_to_pdf_board/', convert_hwp_to_pdf_board, name='convert_hwp_to_pdf_board'),
+    path('convert_hwp_to_pdf_board/', views.convert_hwp_to_pdf_board, name='convert_hwp_to_pdf_board'),
     
     # 캘린더 설정 관련 API
     path('get_datetime_attributes/', get_datetime_attributes, name='get_datetime_attributes'),
@@ -124,7 +125,7 @@ urlpatterns = [
     path('get_dropdown_attributes_for_kanban/', get_dropdown_attributes_for_kanban, name='get_dropdown_attributes_for_kanban'),
 
     # 속성관리
-    path('get_all_attributes/', views.get_all_attributes, name='get_all_attributes'),
+    path('get_all_attributes/', get_all_attributes, name='get_all_attributes'),
     path('update_attribute_visibility/', update_attribute_visibility, name='update_attribute_visibility'),
     path('get_dropdown_attributes/', get_dropdown_attributes, name='get_dropdown_attributes'),
     
