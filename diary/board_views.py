@@ -355,7 +355,7 @@ def board_file_preview(request, saved_name):
         from django.conf import settings
         import boto3
         import os
-        from .audio_handler import download_file_from_s3_for_preview, convert_hwp_to_pdf, upload_pdf_to_s3_for_preview
+        from .audio_handler import download_file_from_s3_for_preview, convert_hwp_to_pdf
         
         print(f"AWS 설정 확인: BUCKET={settings.AWS_STORAGE_BUCKET_NAME}, REGION={settings.AWS_S3_REGION_NAME}")
         
@@ -399,14 +399,21 @@ def board_file_preview(request, saved_name):
                         if temp_pdf:
                             print(f"PDF 변환 성공: {temp_pdf}")
                             
-                            # 변환된 PDF를 S3에 업로드
-                            pdf_s3_key = upload_pdf_to_s3_for_preview(temp_pdf, saved_name)
-                            if pdf_s3_key:
-                                saved_name = pdf_s3_key
-                                print(f"PDF 변환 및 업로드 성공: {pdf_s3_key}")
-                            else:
-                                print("PDF S3 업로드 실패")
-                                raise Exception("PDF S3 upload failed")
+                            # 변환된 PDF를 S3에 직접 업로드
+                            pdf_s3_key = f"converted_pdfs/board_{os.path.basename(saved_name).replace('.hwp', '')}_{os.path.basename(temp_pdf)}"
+                            
+                            print(f"PDF S3 업로드 시도: {pdf_s3_key}")
+                            
+                            with open(temp_pdf, 'rb') as pdf_file:
+                                s3_client.upload_fileobj(
+                                    pdf_file,
+                                    settings.AWS_STORAGE_BUCKET_NAME,
+                                    pdf_s3_key,
+                                    ExtraArgs={'ContentType': 'application/pdf'}
+                                )
+                            
+                            saved_name = pdf_s3_key
+                            print(f"PDF 변환 및 업로드 성공: {pdf_s3_key}")
                             
                             # 임시 파일 정리
                             os.unlink(temp_pdf)
