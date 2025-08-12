@@ -1038,23 +1038,11 @@
             `;
             document.body.appendChild(modal);
 
-            // HWP 파일인 경우 LibreOffice로 PDF 변환 후 미리보기
+            // HWP 파일인 경우 백엔드에서 자동으로 PDF 변환됨
             if (fileExt === 'hwp' || contentType.includes('hwp')) {
-                // 로딩 상태 표시
-                const contentDiv = modal.querySelector('#file-preview-content');
-                if (contentDiv) {
-                    contentDiv.innerHTML = `
-                        <div style="text-align: center; background: #f8f9fa; padding: 40px; border-radius: 8px;">
-                            <div style="font-size: 48px; margin-bottom: 20px;">⏳</div>
-                            <div style="font-size: 16px; color: #666;">HWP 파일을 PDF로 변환 중...</div>
-                            
-                        </div>
-                    `;
-                }
-                
-                // LibreOffice PDF 변환 요청
-                convertHwpToPdfForBoard(file, fileName, fileUrl);
-                return; // 아래에서 contentDiv.innerHTML을 또 바꾸지 않도록 return
+                // 백엔드에서 이미 PDF로 변환되어 있으므로 PDF로 처리
+                console.log('HWP 파일이 백엔드에서 PDF로 변환됨');
+                // 아래 PDF 처리 로직으로 계속 진행
             }
 
             // 미리보기 컨텐츠 결정
