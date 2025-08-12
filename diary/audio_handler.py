@@ -13,7 +13,6 @@ import json
 import logging
 import hashlib
 from django.http import JsonResponse
-from django.shortcuts import render
 from .cascade_handlers import sync_cascade_attributes
 import subprocess
 import tempfile
@@ -1513,4 +1512,372 @@ def get_file_preview_url(request, row_id, field_name):
         )
         return JsonResponse({'success': True, 'preview_url': signed_preview_url})
     except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+    
+
+@csrf_exempt
+def update_audio_text(request):
+    """
+    음성파일의 변환된 텍스트를 업데이트하는 함수
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': '잘못된 요청 방법입니다.'})
+    
+    try:
+        # 파라미터 검증
+        row_id = request.POST.get('row_id')
+        date = request.POST.get('date')
+        file_id = request.POST.get('file_id')
+        converted_text = request.POST.get('converted_text', '')
+        
+        if not all([row_id, date, file_id]):
+            return JsonResponse({'success': False, 'error': '필수 파라미터가 누락되었습니다.'})
+        
+        # 사용자 정보 가져오기 (고정 ID: 1)
+        try:
+             
+            user_id = request.session.get('diary_member_id')
+
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '사용자를 찾을 수 없습니다.'})
+        
+        # Row 객체 가져오기
+        try:
+            row = Row.objects.get(id=row_id, user=user)
+        except Row.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '행을 찾을 수 없습니다.'})
+        
+        # 음성파일 속성 가져오기
+        try:
+            audio_attribute = Attribute.objects.get(user=user, name='음성파일')
+        except Attribute.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '음성파일 속성을 찾을 수 없습니다.'})
+        
+        # AttributeValue 가져오기 또는 생성
+        attr_value, created = AttributeValue.objects.get_or_create(
+            row=row,
+            attribute=audio_attribute,
+            defaults={'value': '{}'}
+        )
+        
+        # 기존 데이터 파싱
+        try:
+            audio_data = json.loads(attr_value.value) if attr_value.value else {}
+        except json.JSONDecodeError:
+            audio_data = {}
+        
+        # 해당 날짜의 파일 데이터 찾기 및 업데이트
+        if file_id in audio_data.get('data', {}):
+            audio_data['data'][file_id]['converted_text'] = converted_text
+            
+            # 데이터베이스에 저장
+            attr_value.value = json.dumps(audio_data, ensure_ascii=False)
+            attr_value.save()
+            
+            # Cascade 기능: cascade가 true인 속성이 수정되면 원본 행과 복제된 행들을 동기화
+            if audio_attribute.cascade:
+                print(f"=== Cascade 동기화 시작 (update_audio_text) ===")
+                print(f"속성 '음성파일'의 cascade 값: {audio_attribute.cascade}")
+                print(f"수정된 행 ID: {row_id}")
+                print(f"새 값: {json.dumps(audio_data, ensure_ascii=False)}")
+                
+                synced_count = sync_cascade_attributes(request, row_id, '음성파일', json.dumps(audio_data, ensure_ascii=False))
+                if synced_count > 0:
+                    print(f"Cascade 동기화 완료: 음성파일 속성이 {synced_count}개 행에 동기화됨")
+                else:
+                    print(f"Cascade 동기화 실패 또는 동기화할 행이 없음")
+                print(f"=== Cascade 동기화 종료 (update_audio_text) ===")
+            else:
+                print(f"속성 '음성파일'의 cascade 값: {audio_attribute.cascade} - 동기화하지 않음")
+            
+            logger.info(f"음성파일 텍스트 업데이트 성공 - Row ID: {row_id}, Date: {date}, File ID: {file_id}")
+            
+            return JsonResponse({
+                'success': True,
+                'message': '변환된 텍스트가 성공적으로 업데이트되었습니다.'
+            })
+        else:
+            return JsonResponse({'success': False, 'error': '해당 음성파일을 찾을 수 없습니다.'})
+            
+    except Exception as e:
+        logger.error(f"음성파일 텍스트 업데이트 오류: {str(e)}")
+        return JsonResponse({'success': False, 'error': f'서버 오류: {str(e)}'})
+
+@csrf_exempt
+def update_audio_memo(request):
+    """음성파일 메모 업데이트"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': '허용되지 않은 메소드입니다.'})
+    
+    try:
+        # 파라미터 가져오기
+        row_id = request.POST.get('row_id')
+        date = request.POST.get('date')
+        file_id = request.POST.get('file_id')
+        memo = request.POST.get('memo', '')
+        
+        if not all([row_id, date, file_id]):
+            return JsonResponse({'success': False, 'error': '필수 파라미터가 누락되었습니다.'})
+        
+        # 사용자 정보 가져오기 (고정 ID: 1)
+        try:
+             
+            user_id = request.session.get('diary_member_id')
+
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '사용자를 찾을 수 없습니다.'})
+        
+        # Row 정보 가져오기
+        try:
+            row = Row.objects.get(id=row_id, user=user)
+        except Row.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '해당 행을 찾을 수 없습니다.'})
+        
+        # 음성파일 속성 가져오기
+        try:
+            audio_attr = Attribute.objects.get(name='음성파일', user=user)
+            audio_attr_value, created = AttributeValue.objects.get_or_create(
+                row=row,
+                attribute=audio_attr,
+                defaults={'value': '{}'}
+            )
+        except Attribute.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '음성파일 속성을 찾을 수 없습니다.'})
+        
+        # 기존 음성파일 데이터 파싱
+        try:
+            audio_data = json.loads(audio_attr_value.value) if audio_attr_value.value else {}
+        except (json.JSONDecodeError, TypeError):
+            audio_data = {}
+        
+        # 해당 날짜와 파일 ID의 메모 업데이트
+        if file_id in audio_data.get('data', {}):
+            audio_data['data'][file_id]['memo'] = memo
+            
+            # 업데이트된 데이터 저장
+            audio_attr_value.value = json.dumps(audio_data, ensure_ascii=False)
+            audio_attr_value.save()
+            
+            # Cascade 기능: cascade가 true인 속성이 수정되면 원본 행과 복제된 행들을 동기화
+            if audio_attr.cascade:
+                print(f"=== Cascade 동기화 시작 (update_audio_memo) ===")
+                print(f"속성 '음성파일'의 cascade 값: {audio_attr.cascade}")
+                print(f"수정된 행 ID: {row_id}")
+                print(f"새 값: {json.dumps(audio_data, ensure_ascii=False)}")
+                
+                synced_count = sync_cascade_attributes(request, row_id, '음성파일', json.dumps(audio_data, ensure_ascii=False))
+                if synced_count > 0:
+                    print(f"Cascade 동기화 완료: 음성파일 속성이 {synced_count}개 행에 동기화됨")
+                else:
+                    print(f"Cascade 동기화 실패 또는 동기화할 행이 없음")
+                print(f"=== Cascade 동기화 종료 (update_audio_memo) ===")
+            else:
+                print(f"속성 '음성파일'의 cascade 값: {audio_attr.cascade} - 동기화하지 않음")
+            
+            logger.info(f"음성파일 메모 업데이트 성공: Row {row_id}, Date {date}, File {file_id}")
+            return JsonResponse({'success': True, 'message': '메모가 성공적으로 저장되었습니다.'})
+        else:
+            return JsonResponse({'success': False, 'error': '해당 음성파일을 찾을 수 없습니다.'})
+            
+    except Exception as e:
+        logger.error(f"음성파일 메모 업데이트 오류: {str(e)}")
+        return JsonResponse({'success': False, 'error': f'메모 저장 중 오류가 발생했습니다: {str(e)}'})
+
+
+
+@csrf_exempt
+def update_audio_text_notes(request):
+    """
+    음성파일 노트(텍스트) 추가/수정/순서변경
+    POST: row_id, date, notes(JSON string: [{id, text, order}, ...])
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST만 허용'})
+    try:
+        row_id = request.POST.get('row_id')
+        notes_json = request.POST.get('notes')
+        target_date = request.POST.get('date')
+        if not row_id or not notes_json or not target_date:
+            return JsonResponse({'success': False, 'error': '필수 파라미터 누락'})
+        notes = json.loads(notes_json)
+         
+        user_id = request.session.get('diary_member_id')
+
+        user = User.objects.get(id=user_id)
+        row = Row.objects.get(id=row_id, user=user)
+        audio_attr = Attribute.objects.get(name='음성파일', user=user)
+        attr_value, _ = AttributeValue.objects.get_or_create(row=row, attribute=audio_attr, defaults={'value': '{}'})
+        # 기존 데이터 파싱
+        try:
+            data = json.loads(attr_value.value) if attr_value.value else {}
+        except:
+            data = {}
+        # 지정한 날짜가 없으면 생성
+        if 'data' not in data:
+            data['data'] = {}
+        # 기존 텍스트 노트들 제거 (같은 날짜의 텍스트 타입만)
+        keys_to_remove = []
+        for key, value in data['data'].items():
+            if isinstance(value, dict) and value.get('type') == 'text':
+                keys_to_remove.append(key)
+        for key in keys_to_remove:
+            del data['data'][key]
+        # 새로운 텍스트 노트들 추가
+        for note in notes:
+            note_id = note.get('id')
+            if note_id:
+                # 텍스트 값이 undefined나 null인 경우 빈 문자열로 처리
+                text_value = note.get('text', '')
+                if text_value is None:
+                    text_value = ''
+                    
+                data['data'][note_id] = {
+                    'text': text_value,
+                    'order': note.get('order', 0),
+                    'type': 'text'
+                }
+        attr_value.value = json.dumps(data, ensure_ascii=False)
+        attr_value.save()
+        
+        # Cascade 기능: cascade가 true인 속성이 수정되면 원본 행과 복제된 행들을 동기화
+        if audio_attr.cascade:
+            print(f"=== Cascade 동기화 시작 (update_audio_text_notes) ===")
+            print(f"속성 '음성파일'의 cascade 값: {audio_attr.cascade}")
+            print(f"수정된 행 ID: {row_id}")
+            print(f"새 값: {json.dumps(data, ensure_ascii=False)}")
+            
+            synced_count = sync_cascade_attributes(request, row_id, '음성파일', json.dumps(data, ensure_ascii=False))
+            if synced_count > 0:
+                print(f"Cascade 동기화 완료: 음성파일 속성이 {synced_count}개 행에 동기화됨")
+            else:
+                print(f"Cascade 동기화 실패 또는 동기화할 행이 없음")
+            print(f"=== Cascade 동기화 종료 (update_audio_text_notes) ===")
+        else:
+            print(f"속성 '음성파일'의 cascade 값: {audio_attr.cascade} - 동기화하지 않음")
+        
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+    
+@csrf_exempt
+def update_audio_file_order_and_notes(request):
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST 요청만 허용됩니다.'})
+
+    row_id = request.POST.get('row_id')
+    notes_json = request.POST.get('notes')
+
+    print(f"=== update_audio_file_order_and_notes 시작 ===")
+    print(f"row_id: {row_id}")
+    print(f"notes_json: {notes_json}")
+
+    if not row_id:
+        return JsonResponse({'success': False, 'error': 'row_id 누락'})
+
+    try:
+        notes = json.loads(notes_json or "[]")
+        print(f"파싱된 notes: {notes}")
+
+         
+        user_id = request.session.get('diary_member_id')
+
+        user = User.objects.get(id=user_id)
+        row = Row.objects.get(id=row_id, user=user)
+        attr = Attribute.objects.get(name="음성파일", user=user)
+        attr_value = AttributeValue.objects.filter(row=row, attribute=attr).first()
+
+        if not attr_value:
+            # 최초 생성: 빈 dict으로 생성
+            attr_value = AttributeValue.objects.create(row=row, attribute=attr, value='{}')
+
+        value = json.loads(attr_value.value or "{}")
+        print(f"기존 value: {value}")
+
+        # 'data' 키가 없으면 생성
+        if 'data' not in value:
+            value['data'] = {}
+
+        # 새로운 순서로 재구성된 데이터
+        new_data = {}
+
+        # 모든 아이템을 순서대로 저장
+        for item in notes:
+            item_id = item.get('id')
+            if not item_id:
+                continue
+                
+            print(f"처리 중인 아이템: {item}")
+            
+            if item.get('type') == 'text':
+                # 텍스트 노트
+                text_value = item.get('text', '')
+                if text_value is None:
+                    text_value = ''
+                
+                new_data[item_id] = {
+                    'text': text_value,
+                    'order': item.get('order', 0),
+                    'type': 'text',
+                    'upload_date': item.get('upload_date', '')
+                }
+                print(f"텍스트 노트 저장: {new_data[item_id]}")
+            else:
+                # 파일 (오디오, 이미지, 문서)
+                # notes에서 받은 모든 파일 정보를 그대로 사용 (JS에서 이미 완전한 정보를 보냄)
+                file_data = {
+                    'order': item.get('order', 0),
+                    'type': item.get('type', 'file'),
+                    'original_filename': item.get('original_filename', ''),
+                    'filename': item.get('filename', ''),
+                    'stored_filename': item.get('stored_filename', ''),
+                    's3_key': item.get('s3_key', ''),
+                    'download_url': item.get('download_url', ''),
+                    'preview_url': item.get('preview_url', ''),
+                    'file_size': item.get('file_size', 0),
+                    'content_type': item.get('content_type', ''),
+                    'upload_time': item.get('upload_time', ''),
+                    'upload_date': item.get('upload_date', ''),
+                    'converted_text': item.get('converted_text', ''),
+                    'memo': item.get('memo', ''),
+                    'gpt_summary': item.get('gpt_summary', '')
+                }
+                
+                # None 값들을 빈 문자열로 변환
+                for key, val in file_data.items():
+                    if val is None:
+                        file_data[key] = ''
+                
+                new_data[item_id] = file_data
+                print(f"파일 저장: {new_data[item_id]}")
+
+        # 새로운 데이터로 교체
+        value['data'] = new_data
+        print(f"최종 저장할 value: {value}")
+
+        attr_value.value = json.dumps(value, ensure_ascii=False)
+        attr_value.save()
+
+        # Cascade 기능: cascade가 true인 속성이 수정되면 원본 행과 복제된 행들을 동기화
+        if attr.cascade:
+            print(f"=== Cascade 동기화 시작 (update_audio_file_order_and_notes) ===")
+            print(f"속성 '음성파일'의 cascade 값: {attr.cascade}")
+            print(f"수정된 행 ID: {row_id}")
+            print(f"새 값: {json.dumps(value, ensure_ascii=False)}")
+            
+            synced_count = sync_cascade_attributes(request, row_id, '음성파일', json.dumps(value, ensure_ascii=False))
+            if synced_count > 0:
+                print(f"Cascade 동기화 완료: 음성파일 속성이 {synced_count}개 행에 동기화됨")
+            else:
+                print(f"Cascade 동기화 실패 또는 동기화할 행이 없음")
+            print(f"=== Cascade 동기화 종료 (update_audio_file_order_and_notes) ===")
+        else:
+            print(f"속성 '음성파일'의 cascade 값: {attr.cascade} - 동기화하지 않음")
+
+        print("=== update_audio_file_order_and_notes 완료 ===")
+        return JsonResponse({'success': True})
+
+    except Exception as e:
+        print(f"오류 발생: {str(e)}")
         return JsonResponse({'success': False, 'error': str(e)})

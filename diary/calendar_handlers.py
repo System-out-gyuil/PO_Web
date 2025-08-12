@@ -1,9 +1,8 @@
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET
-from django.db.models import Prefetch, Q
-from django.core.exceptions import ObjectDoesNotExist
-from .models import Attribute, AttributeValue, User, Row, CalendarSettings
+from django.db.models import Prefetch
+from .models import Attribute, AttributeValue, Row, CalendarSettings
 import json
 from datetime import datetime, timedelta
 import logging
