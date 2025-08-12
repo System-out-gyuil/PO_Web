@@ -1,6 +1,6 @@
 {% load static %}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
   <head>
     <!-- Google Tag Manager -->
     <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
@@ -16,25 +16,25 @@
     <!-- 타이틀 태그 : 구글 검색 결과에 노출되는 제목, 탭 제목-->
     <title>나맞지 - {{ item.title }}</title>
     <!-- descriptionn: 구글 검색 결과에 노출되는 설명 -->
-    <meta name="description" content="{{ item.noti_summary|striptags|truncatechars:250 }}">
+    <meta name="description" content="{{ item.noti_summary|striptags|truncatechars:150 }}">
     <!-- keywords : 현재는 구글에서 거의 무시되지만 단어단위 검색 유도 -->
     <meta name="keywords" content="{{ item.hashtag }}"> 
     <!-- robots : 검색엔진 크롤러에게 이 페이지를 색인하고 따라가도 된다는 의미 -->
     <meta name="robots" content="index, follow">
     <!-- canonical : 중복 페이지가 있을 경우 이 페이지가 원본이라고 알리는 태그 -->
-    <link rel="canonical" href="https://namatji.com/board/{{ item.pblanc_id }}/">
+    <link rel="canonical" href="https://namatji.com/board/detail/{{ item.pblanc_id }}/">
   
     <!-- 🔹 Open Graph (SNS 공유 시) -->
     <meta property="og:type" content="article">
     <meta property="og:title" content="{{ item.title }}">
-    <meta property="og:description" content="{{ item.noti_summary|striptags|truncatechars:250 }}">
-    <meta property="og:url" content="{{ request.build_absolute_uri }}">
+    <meta property="og:description" content="{{ item.noti_summary|striptags|truncatechars:150 }}">
+    <meta property="og:url" content="https://namatji.com/board/detail/{{ item.pblanc_id }}/">
     <meta property="og:image" content="{% static 'images/NAMATJI_SNS_ICON.png' %}">
   
     <!-- 🔹 Twitter Card -->
     <meta name="twitter:card" content="summary">
     <meta name="twitter:title" content="{{ item.title }}">
-    <meta name="twitter:description" content="{{ item.noti_summary|striptags|truncatechars:250 }}">
+    <meta name="twitter:description" content="{{ item.noti_summary|striptags|truncatechars:150 }}">
   
     <link rel="stylesheet" href="{% static 'base/base.css' %}">
     <link rel="stylesheet" href="{% static 'board/detail.css' %}">

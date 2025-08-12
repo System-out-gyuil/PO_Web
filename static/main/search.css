@@ -33,6 +33,125 @@ body {
   align-items: center;
 }
 
+#detail-region-section {
+  min-height: 100vh;
+  display: none;
+  align-content: center;
+  justify-content: center;
+  align-items: center;
+}
+
+#business-style-section {
+  min-height: 100vh;
+  display: none;
+  align-content: center;
+  justify-content: center;
+  align-items: center;
+}
+
+#industry-section {
+  min-height: 100vh;
+  display: none;
+  align-content: center;
+  justify-content: center;
+  align-items: center;
+}
+
+#industry-search-section {
+  min-height: 100vh;
+  display: none;
+  align-content: center;
+  justify-content: center;
+  align-items: center;
+}
+
+#business-period-section {
+  min-height: 100vh;
+  display: none;
+  align-content: center;
+  justify-content: center;
+  align-items: center;
+}
+
+#billing-last-year-section {
+  min-height: 100vh;
+  display: none;
+  align-content: center;
+  justify-content: center;
+  align-items: center;
+}
+
+#export-performance-section {
+  min-height: 100vh;
+  display: none;
+  align-content: center;
+  justify-content: center;
+  align-items: center;
+}
+
+#employee-number-section {
+  min-height: 100vh;
+  display: none;
+  align-content: center;
+  justify-content: center;
+  align-items: center;
+}
+
+/* #search-none-result-section {
+  min-height: 100vh;
+  display: none;
+  align-content: center;
+  justify-content: center;
+  align-items: center;
+} */
+
+#first-section {
+  min-height: 100vh;
+  display: none;
+  align-content: center;
+  justify-content: center;
+  align-items: center;
+}
+
+/* 
+
+.search-region-container {
+  display: flex;
+}
+
+.business-style-container {
+  display: none;
+}
+
+.search-industry-container {
+  display: none;
+}
+
+.industry-category-container {
+  display: flex;
+}
+
+.business-period-container {
+  display: none;
+}
+
+.billing-last-year-container {
+  display: none;
+}
+
+.export-performance-container {
+  display: none;
+}
+
+.employee-number-container {
+  display: none;
+}
+
+.search-result-container {
+  display: none;
+}
+ */
+
 #main-content {
   flex: 1 0 auto;
   display: flex;
@@ -1132,6 +1251,83 @@ ul {
   margin-bottom: -15px;
 }
 
+/* 상세지역 드롭다운 스타일 */
+.detail-region-container {
+  margin-top: 20px;
+  text-align: center;
+}
+
+.detail-region-select {
+  width: 100%;
+  border: 2px solid #5d60f5;
+  border-radius: 8px;
+  font-size: 23px;
+  font-weight: 700;
+  background-color: white;
+  color: #333;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.3s ease;
+  font-family: 'Nanum Barun Gothic', sans-serif;
+  height: inherit;
+}
+
+.detail-region-select:hover {
+  border-color: #bfc2fd;
+}
+
+.detail-region-select:focus {
+  border-color: #5d60f5;
+  box-shadow: 0 0 0 3px rgba(93, 96, 245, 0.1);
+}
+
+.detail-region-select option {
+  padding: 8px;
+  font-size: 14px;
+}
+
+/* 선택된 옵션이 보이도록 하는 스타일 */
+.detail-region-select option:checked {
+  background-color: #5d60f5;
+  color: white;
+}
+
+.detail-region-select option:hover {
+  background-color: #bfc2fd;
+  color: white;
+}
+
+/* 상세지역 선택 스타일 */
+.detail-region-select-container {
+  width: 70%;
+  height: 50px;
+  margin-top: 50px;
+  text-align: center;
+}
+
+.detail-region-select:hover {
+  border-color: #bfc2fd;
+}
+
+.detail-region-select:focus {
+  border-color: #5d60f5;
+  box-shadow: 0 0 0 3px rgba(93, 96, 245, 0.1);
+}
+
+.detail-region-select option {
+  padding: 8px;
+  font-size: 14px;
+}
+
+.detail-region-title {
+  margin-bottom: 10%;
+}
+
+/* 기존 스타일과의 간격 조정 */
+.search-region-wrapper {
+  margin-bottom: 20px;
+}
+
 @media (max-width: 500px) {
 
   /* body {
@@ -1580,122 +1776,3 @@ ul {
   }
   
 }
-
-#region-section {
-  min-height: 100vh;
-  display: flex;
-  align-content: center;
-  justify-content: center;
-  align-items: center;
-}
-
-#business-style-section {
-  min-height: 100vh;
-  display: none;
-  align-content: center;
-  justify-content: center;
-  align-items: center;
-}
-
-#industry-section {
-  min-height: 100vh;
-  display: none;
-  align-content: center;
-  justify-content: center;
-  align-items: center;
-}
-
-#industry-search-section {
-  min-height: 100vh;
-  display: none;
-  align-content: center;
-  justify-content: center;
-  align-items: center;
-}
-
-#business-period-section {
-  min-height: 100vh;
-  display: none;
-  align-content: center;
-  justify-content: center;
-  align-items: center;
-}
-
-#billing-last-year-section {
-  min-height: 100vh;
-  display: none;
-  align-content: center;
-  justify-content: center;
-  align-items: center;
-}
-
-#export-performance-section {
-  min-height: 100vh;
-  display: none;
-  align-content: center;
-  justify-content: center;
-  align-items: center;
-}
-
-#employee-number-section {
-  min-height: 100vh;
-  display: none;
-  align-content: center;
-  justify-content: center;
-  align-items: center;
-}
-
-/* #search-none-result-section {
-  min-height: 100vh;
-  display: none;
-  align-content: center;
-  justify-content: center;
-  align-items: center;
-} */
-
-#first-section {
-  min-height: 100vh;
-  display: none;
-  align-content: center;
-  justify-content: center;
-  align-items: center;
-}
-
-/* 
-
-.search-region-container {
-  display: flex;
-}
-
-.business-style-container {
-  display: none;
-}
-
-.search-industry-container {
-  display: none;
-}
-
-.industry-category-container {
-  display: flex;
-}
-
-.business-period-container {
-  display: none;
-}
-
-.billing-last-year-container {
-  display: none;
-}
-
-.export-performance-container {
-  display: none;
-}
-
-.employee-number-container {
-  display: none;
-}
-
-.search-result-container {
-  display: none;
-}
- */

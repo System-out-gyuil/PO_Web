@@ -120,35 +120,60 @@
       <div class="search-title2">지역을 알려주세요</div>
       <div class="search-region-wrapper">
         <div class="search-region">
-          <div class="region">서울</div>
-          <div class="region">경기</div>
-          <div class="region">인천</div>
-          <div class="region">강원</div>
+          <div class="region" data-region="서울">서울</div>
+          <div class="region" data-region="경기">경기</div>
+          <div class="region" data-region="인천">인천</div>
+          <div class="region" data-region="강원">강원</div>
         </div>
         <div class="search-region">
-          <div class="region">경북</div>
-          <div class="region">경남</div>
-          <div class="region">부산</div>
-          <div class="region">대구</div>
+          <div class="region" data-region="경북">경북</div>
+          <div class="region" data-region="경남">경남</div>
+          <div class="region" data-region="부산">부산</div>
+          <div class="region" data-region="대구">대구</div>
         </div>
         <div class="search-region">
-          <div class="region">울산</div>
-          <div class="region">대전</div>
-          <div class="region">충북</div>
-          <div class="region">충남</div>
+          <div class="region" data-region="울산">울산</div>
+          <div class="region" data-region="대전">대전</div>
+          <div class="region" data-region="충북">충북</div>
+          <div class="region" data-region="충남">충남</div>
         </div>
         <div class="search-region">
-          <div class="region">전북</div>
-          <div class="region">전남</div>
-          <div class="region">광주</div>
-          <div class="region">제주</div>
+          <div class="region" data-region="전북">전북</div>
+          <div class="region" data-region="전남">전남</div>
+          <div class="region" data-region="광주">광주</div>
+          <div class="region" data-region="제주">제주</div>
         </div>
         <div class="search-region">
-          <div class="region">세종</div>
+          <div class="region" data-region="세종">세종</div>
         </div>
       </div>
+      
       <div class="search-btn-container search-region-btn-container">
         <button class="search-region-button-text search-btn">다음으로</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="detail-region-section">
+    <div class="detail-region-container search-container">
+      <div class="percent-box">
+        <div class="percent-box-text">
+        </div>
+      </div>
+      <div class="search-back-icon">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M3.825 9L9.425 14.6L8 16L0 8L8 3.57628e-07L9.425 1.4L3.825 7H16V9H3.825Z" fill="#5d60f5"/>
+        </svg>
+      </div>
+      <div class="search-title detail-region-title">상세지역 선택</div>
+      <div class="search-title2">상세지역을 선택해주세요</div>
+      <div class="detail-region-select-container">
+        <select id="detail-region-select" class="detail-region-select">
+          <option value="">상세지역 선택</option>
+        </select>
+      </div>
+      <div class="search-btn-container search-detail-region-btn-container">
+        <button class="detail-region-button search-btn">다음으로</button>
       </div>
     </div>
   </section>
