@@ -375,21 +375,6 @@ def board_file_preview(request, saved_name):
         if file_ext == '.hwp':
             print("HWP 파일 감지, PDF 변환 시도")
             
-            # LibreOffice 상태 확인
-            try:
-                import subprocess
-                result = subprocess.run(['libreoffice', '--version'], capture_output=True, text=True, timeout=10)
-                if result.returncode != 0:
-                    print("LibreOffice가 설치되지 않았거나 사용할 수 없습니다.")
-                    raise Exception("LibreOffice not available")
-                print("LibreOffice 사용 가능")
-            except Exception as e:
-                print(f"LibreOffice 확인 실패: {e}")
-                return JsonResponse({
-                    'success': False,
-                    'message': 'HWP 파일 변환을 위한 LibreOffice가 설치되지 않았습니다.'
-                })
-            
             # PDF 변환된 파일이 있는지 확인
             pdf_key = saved_name.replace('.hwp', '_converted.pdf')
             try:
@@ -403,54 +388,31 @@ def board_file_preview(request, saved_name):
                     import tempfile
                     import os
                     
-                    # S3에서 HWP 파일 다운로드
+                    # S3에서 HWP 파일 다운로드 (board/ 접두사 포함)
+                    print(f"HWP 파일 다운로드 시도: {saved_name}")
                     temp_hwp = download_file_from_s3_for_preview(saved_name)
                     if temp_hwp:
-                        # LibreOffice로 PDF 변환
-                        with tempfile.TemporaryDirectory() as temp_dir:
-                            hwp_path = temp_hwp
-                            pdf_name = os.path.splitext(os.path.basename(saved_name))[0] + '.pdf'
-                            pdf_path = os.path.join(temp_dir, pdf_name)
+                        print(f"HWP 파일 다운로드 성공: {temp_hwp}")
+                        
+                        # 기존 convert_hwp_to_pdf 함수 사용
+                        temp_pdf = convert_hwp_to_pdf(temp_hwp)
+                        if temp_pdf:
+                            print(f"PDF 변환 성공: {temp_pdf}")
                             
-                            # LibreOffice 명령어 실행
-                            cmd = [
-                                'libreoffice', '--headless', '--convert-to', 'pdf',
-                                '--outdir', temp_dir, hwp_path
-                            ]
-                            
-                            print(f"LibreOffice 명령어: {' '.join(cmd)}")
-                            
-                            result = subprocess.run(
-                                cmd,
-                                capture_output=True,
-                                text=True,
-                                timeout=600  # 10분 타임아웃
-                            )
-                            
-                            print(f"LibreOffice 변환 결과: returncode={result.returncode}")
-                            if result.stdout:
-                                print(f"LibreOffice stdout: {result.stdout}")
-                            if result.stderr:
-                                print(f"LibreOffice stderr: {result.stderr}")
-                            
-                            # 변환된 PDF 파일 확인
-                            if os.path.exists(pdf_path):
-                                # PDF 파일을 S3에 업로드
-                                pdf_s3_key = f"converted_pdfs/board_{saved_name.replace('board/', '')}_{pdf_name}"
-                                
-                                with open(pdf_path, 'rb') as pdf_file:
-                                    s3_client.upload_fileobj(
-                                        pdf_file,
-                                        settings.AWS_STORAGE_BUCKET_NAME,
-                                        pdf_s3_key,
-                                        ExtraArgs={'ContentType': 'application/pdf'}
-                                    )
-                                
+                            # 변환된 PDF를 S3에 업로드
+                            pdf_s3_key = upload_pdf_to_s3_for_preview(temp_pdf, saved_name)
+                            if pdf_s3_key:
                                 saved_name = pdf_s3_key
                                 print(f"PDF 변환 및 업로드 성공: {pdf_s3_key}")
                             else:
-                                print(f"PDF 변환 실패: {pdf_path} 파일이 존재하지 않습니다.")
-                                raise Exception("PDF conversion failed")
+                                print("PDF S3 업로드 실패")
+                                raise Exception("PDF S3 upload failed")
+                            
+                            # 임시 파일 정리
+                            os.unlink(temp_pdf)
+                        else:
+                            print("PDF 변환 실패")
+                            raise Exception("PDF conversion failed")
                         
                         # 임시 파일 정리
                         os.unlink(temp_hwp)
