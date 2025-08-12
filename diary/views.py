@@ -40,6 +40,21 @@ from .data_utils import parse_korean_currency, parse_sales_amount, parse_busines
 
 logger = logging.getLogger(__name__)
 
+# 세션 데이터 파싱을 위한 헬퍼 함수
+def parse_session_data(request, keys_with_defaults):
+    """세션 데이터를 효율적으로 파싱하는 헬퍼 함수"""
+    session_data = {}
+    for key, default_value in keys_with_defaults.items():
+        try:
+            session_value = request.session.get(key, default_value)
+            if isinstance(session_value, str):
+                session_data[key] = json.loads(session_value)
+            else:
+                session_data[key] = session_value
+        except (json.JSONDecodeError, TypeError):
+            session_data[key] = default_value
+    return session_data
+
 # 로그인 상태 확인 뷰
 @require_GET
 def check_login_status(request):
@@ -167,29 +182,26 @@ def diary_list(request):
         'values__attribute__dropdown_attributes'
     ).order_by('order')
     
+    # 드롭다운 옵션을 미리 캐시하여 N+1 쿼리 방지
+    dropdown_cache = {}
+    for attr in user_attributes:
+        if attr.attributeType and attr.attributeType.name == 'dropdown':
+            dropdown_cache[attr.id] = {
+                dropdown_attr.id: dropdown_attr 
+                for dropdown_attr in attr.dropdown_attributes.all()
+            }
+    
     # 세션 데이터 파싱 최적화 - 한 번만 파싱
-    session_data = {
+    session_keys = {
         'column_widths': {},
         'hidden_attributes': [],
         'status_tabs': [],
         'calendar_settings': {}
     }
-    
-    # 세션 데이터 파싱을 한 번에 처리
-    for key, default_value in session_data.items():
-        try:
-            session_value = request.session.get(key, default_value)
-            if isinstance(session_value, str):
-                session_data[key] = json.loads(session_value)
-            else:
-                session_data[key] = session_value
-        except (json.JSONDecodeError, TypeError):
-            session_data[key] = default_value
+    session_data = parse_session_data(request, session_keys)
     
     # 각 행의 속성 값들을 가져오기 (필터링된 속성만)
     rows_data = []
-    # 드롭다운 옵션을 미리 캐시
-    dropdown_cache = {}
     
     for row in rows:
         row_values = {}
@@ -305,6 +317,7 @@ def diary_list(request):
                 # order로 정렬
                 dropdown_options[attr.name].sort(key=lambda x: (x['order'], x['id']))
             else:
+                # 캐시에 없는 경우에만 쿼리 실행
                 dropdown_options[attr.name] = list(attr.dropdown_attributes.values('id', 'option', 'color', 'order').order_by('order'))
     
     context = {
@@ -626,18 +639,14 @@ def create_new_row(request):
         status_field = request.POST.get('status_field')
         status_value = request.POST.get('status_value')
         
-        print(f"=== 새 행 생성 요청 ===")
-        print(f"field: {field}")
-        print(f"value: {value}")
-        print(f"status_field: {status_field}")
-        print(f"status_value: {status_value}")
+        logger.info(f"새 행 생성 요청: field={field}, value={value}, status_field={status_field}")
         
         if not field:
             return JsonResponse({'success': False, 'error': 'Missing field'})
             
          
         user_id = request.session.get('diary_member_id')
-        print(f"user_id: {user_id}")
+        logger.debug(f"user_id: {user_id}")
 
         user = User.objects.get(id=user_id)
         
@@ -647,7 +656,7 @@ def create_new_row(request):
         
         # 새 행은 order=0으로 가장 위에 추가
         new_row = Row.objects.create(order=0, user=user)
-        print(f"새 행 생성됨: row_id={new_row.id}, order=0 (가장 위에 추가)")
+        logger.info(f"새 행 생성됨: row_id={new_row.id}, order=0 (가장 위에 추가)")
         
         # 첫 번째 필드 값 설정
         try:
@@ -678,7 +687,7 @@ def create_new_row(request):
             attribute=attribute,
             value=value_to_save
         )
-        print(f"첫 번째 필드 값 설정: {field}={value_to_save}")
+        logger.info(f"첫 번째 필드 값 설정: {field}={value_to_save}")
         
         # 상태 필드가 있으면 추가로 생성
         if status_field and status_value:
@@ -699,11 +708,11 @@ def create_new_row(request):
                     attribute=status_attr,
                     value=status_value_to_save
                 )
-                print(f"상태 필드 값 설정: {status_field}={status_value_to_save}")
+                logger.info(f"상태 필드 값 설정: {status_field}={status_value_to_save}")
             except Exception as e:
-                print(f"상태 필드 생성 오류: {e}")
+                logger.error(f"상태 필드 생성 오류: {e}")
         
-        print(f"=== 새 행 생성 완료: row_id={new_row.id} ===")
+        logger.info(f"새 행 생성 완료: row_id={new_row.id}")
         return JsonResponse({'success': True, 'id': new_row.id})
         
     return JsonResponse({'success': False, 'error': 'Invalid request'})
@@ -711,7 +720,7 @@ def create_new_row(request):
 @csrf_exempt
 def update_row_field(request):
     if request.method == 'POST':
-        print("===========update_row_field===========")
+        logger.info("=== update_row_field 시작 ===")
         try:
             # JSON 형 field식과 form-urlencoded 형식 모두 지원
             if request.content_type == 'application/json':
@@ -728,14 +737,7 @@ def update_row_field(request):
             if not row_id or not field_name:
                 return JsonResponse({'success': False, 'error': 'row_id와 field_name이 필요합니다'})
             
-            print(f"=== update_row_field 디버그 ===")
-            print(f"row_id: {row_id}")
-            print(f"field_name: {field_name}")
-            print(f"value: '{value}' (type: {type(value)})")
-            print(f"value length: {len(str(value)) if value else 0}")
-            print(f"value is empty: {value == ''}")
-            print(f"value is None: {value is None}")
-            print(f"========================")
+            logger.debug(f"update_row_field: row_id={row_id}, field_name={field_name}, value='{value}'")
             
             # 사용자와 행 조회
              
@@ -774,29 +776,29 @@ def update_row_field(request):
             
             # 드롭다운 타입인 경우 특별 처리
             if attr.attributeType and attr.attributeType.name == 'dropdown':
-                print(f"Dropdown 필드 처리 - {attr.name}: value='{value}', isdigit: {value.isdigit() if value else False}")
+                logger.debug(f"Dropdown 필드 처리 - {attr.name}: value='{value}'")
                 
                 # 빈 값 처리
                 if value == '' or value is None:
-                    print(f"  빈 값 처리 - 빈 문자열로 저장")
+                    logger.debug(f"  빈 값 처리 - 빈 문자열로 저장")
                     value_to_save = ''
                 elif value.isdigit():
                     # 단일 선택
-                    print(f"  단일 선택 처리")
+                    logger.debug(f"  단일 선택 처리")
                     value_to_save = value
                 elif value.startswith('[') and value.endswith(']'):
                     # 다중선택(dropdown) 필드인 경우
-                    print(f"다중선택 처리 - {attr.name}: value='{value}'")
+                    logger.debug(f"다중선택 처리 - {attr.name}: value='{value}'")
                     try:
                         selected_ids = json.loads(value)
-                        print(f"  JSON 파싱 성공: {selected_ids}")
+                        logger.debug(f"  JSON 파싱 성공: {selected_ids}")
                         value_to_save = value  # JSON 배열 형태로 저장
                     except json.JSONDecodeError as e:
-                        print(f"  JSON 파싱 실패: {e}")
+                        logger.error(f"  JSON 파싱 실패: {e}")
                         value_to_save = value
                 else:
                     # 다른 형태
-                    print(f"  다른 형태: '{value}'")
+                    logger.debug(f"  다른 형태: '{value}'")
                     value_to_save = value
 
             else:
@@ -811,7 +813,7 @@ def update_row_field(request):
                     if existing_records.exists():
                         # 기존 레코드가 있으면 모두 삭제
                         existing_records.delete()
-                        print(f"기존 AttributeValue 레코드 삭제: {field_name}")
+                        logger.debug(f"기존 AttributeValue 레코드 삭제: {field_name}")
                     
                     # 새 레코드 생성
                     attr_value = AttributeValue.objects.create(
@@ -819,27 +821,27 @@ def update_row_field(request):
                         attribute=attr,
                         value=value_to_save
                     )
-                    print(f"새 AttributeValue 생성: {field_name} = {value_to_save}")
+                    logger.debug(f"새 AttributeValue 생성: {field_name} = {value_to_save}")
                     
             except Exception as e:
-                print(f"AttributeValue 처리 중 오류: {e}")
+                logger.error(f"AttributeValue 처리 중 오류: {e}")
                 return JsonResponse({'success': False, 'error': f'속성 값 저장 중 오류: {str(e)}'})
             
             # Cascade 기능: cascade가 true인 속성이 수정되면 원본 행과 복제된 행들을 동기화
             if attr.cascade:
-                print(f"=== Cascade 동기화 시작 ===")
-                print(f"속성 '{field_name}'의 cascade 값: {attr.cascade}")
-                print(f"수정된 행 ID: {row_id}")
-                print(f"새 값: {value_to_save}")
+                logger.info(f"=== Cascade 동기화 시작 ===")
+                logger.info(f"속성 '{field_name}'의 cascade 값: {attr.cascade}")
+                logger.info(f"수정된 행 ID: {row_id}")
+                logger.info(f"새 값: {value_to_save}")
                 
                 synced_count = sync_cascade_attributes(request, row_id, field_name, value_to_save)
                 if synced_count > 0:
-                    print(f"Cascade 동기화 완료: {field_name} 속성이 {synced_count}개 행에 동기화됨")
+                    logger.info(f"Cascade 동기화 완료: {field_name} 속성이 {synced_count}개 행에 동기화됨")
                 else:
-                    print(f"Cascade 동기화 실패 또는 동기화할 행이 없음")
-                print(f"=== Cascade 동기화 종료 ===")
+                    logger.info(f"Cascade 동기화 실패 또는 동기화할 행이 없음")
+                logger.info(f"=== Cascade 동기화 종료 ===")
             else:
-                print(f"속성 '{field_name}'의 cascade 값: {attr.cascade} - 동기화하지 않음")
+                logger.debug(f"속성 '{field_name}'의 cascade 값: {attr.cascade} - 동기화하지 않음")
             
             return JsonResponse({'success': True})
             
@@ -1341,43 +1343,60 @@ def entry_table_partial(request):
     if not status_id or status_id in ['undefined', 'null', None, '']:
         status_id = 'all'
     
-    # 기본 속성 쿼리
+    # 기본 속성 쿼리 - 한 번에 모든 필요한 데이터 가져오기
     base_attributes = Attribute.objects.filter(user=user, detail=False).select_related('attributeType').order_by('sort_order', 'id')
     
     # 상태별 필터링 적용
     user_attributes = filter_attributes_by_status(base_attributes, status_id)
     
-    # 행 데이터도 상태별로 필터링
-    rows = Row.objects.filter(user=user).select_related('user').prefetch_related(
-        'values__attribute__attributeType',
-        'values__attribute__dropdown_attributes'
-    ).order_by('order')
+    # 속성 ID 목록을 미리 추출하여 쿼리 최적화
+    attribute_ids = [attr.id for attr in user_attributes]
     
-    # 상태별로 행 필터링 추가
+    # 행 데이터 쿼리 최적화 - 상태별 필터링을 포함하여 한 번에 처리
     if status_id != 'all':
         # 상태 속성 찾기
         status_attribute = Attribute.objects.filter(user=user, name='상태').first()
         if status_attribute:
             # 해당 상태를 가진 행들만 필터링 (distinct 추가로 중복 방지)
-            rows = rows.filter(values__attribute=status_attribute, values__value=status_id).distinct()
-            print(f"상태 필터링 적용: status_id={status_id}, 필터링된 행 수: {rows.count()}")
+            rows = Row.objects.filter(
+                user=user,
+                values__attribute=status_attribute, 
+                values__value=status_id
+            ).distinct().select_related('user').prefetch_related(
+                'values__attribute__attributeType',
+                'values__attribute__dropdown_attributes'
+            ).order_by('order')
+            logger.debug(f"상태 필터링 적용: status_id={status_id}, 필터링된 행 수: {rows.count()}")
         else:
-            print(f"상태 속성을 찾을 수 없음: status_id={status_id}")
+            logger.debug(f"상태 속성을 찾을 수 없음: status_id={status_id}")
+            # 상태 속성이 없으면 빈 결과 반환
+            rows = Row.objects.none()
     else:
-        print(f"전체 상태 표시: status_id={status_id}, 전체 행 수: {rows.count()}")
+        logger.debug(f"전체 상태 표시: status_id={status_id}")
+        rows = Row.objects.filter(user=user).select_related('user').prefetch_related(
+            'values__attribute__attributeType',
+            'values__attribute__dropdown_attributes'
+        ).order_by('order')
     
+    # 드롭다운 옵션을 미리 캐시하여 N+1 쿼리 방지
+    dropdown_cache = {}
+    for attr in user_attributes:
+        if attr.attributeType and attr.attributeType.name == 'dropdown':
+            dropdown_cache[attr.id] = {
+                dropdown_attr.id: dropdown_attr 
+                for dropdown_attr in attr.dropdown_attributes.all()
+            }
+    
+    # 각 행의 속성 값들을 가져오기 (필터링된 속성만)
     rows_data = []
+    
     for row in rows:
         row_values = {}
-        for attr in user_attributes:
-            # prefetch된 데이터에서 찾기
-            attr_value = None
-            for value in row.values.all():
-                if value.attribute_id == attr.id:
-                    attr_value = value
-                    break
-            
-            value = attr_value.value if attr_value else ''
+        # 행의 모든 값들을 딕셔너리로 미리 구성하여 N+1 쿼리 방지
+        row_value_dict = {value.attribute_id: value.value for value in row.values.all()}
+        
+        for attr in user_attributes:  # 이미 필터링된 속성들만 사용
+            value = row_value_dict.get(attr.id, '')
             
             if attr.name == '매출' or '매출' in attr.name:
                 numeric_value = parse_korean_currency(value)
@@ -1387,12 +1406,14 @@ def entry_table_partial(request):
                     'color': ''
                 }
             elif attr.attributeType and attr.attributeType.name == 'dropdown' and value.isdigit():
-                # prefetch된 dropdown 데이터에서 찾기
-                dropdown = None
-                for dropdown_attr in attr.dropdown_attributes.all():
-                    if dropdown_attr.id == int(value):
-                        dropdown = dropdown_attr
-                        break
+                # 드롭다운 캐시 사용
+                if attr.id not in dropdown_cache:
+                    dropdown_cache[attr.id] = {
+                        dropdown_attr.id: dropdown_attr 
+                        for dropdown_attr in attr.dropdown_attributes.all()
+                    }
+                
+                dropdown = dropdown_cache[attr.id].get(int(value))
                 
                 if dropdown:
                     row_values[attr.name] = {
@@ -1413,14 +1434,22 @@ def entry_table_partial(request):
                 try:
                     selected_ids = json.loads(value)
                     selected_options = []
-                    for dropdown_attr in attr.dropdown_attributes.all():
-                        if dropdown_attr.id in selected_ids:
-                            selected_options.append({
-                                'id': dropdown_attr.id,
-                                'label': dropdown_attr.option,
-                                'color': dropdown_attr.color
-                            })
                     
+                    # 드롭다운 캐시 사용
+                    if attr.id not in dropdown_cache:
+                        dropdown_cache[attr.id] = {
+                            dropdown_attr.id: dropdown_attr 
+                            for dropdown_attr in attr.dropdown_attributes.all()
+                        }
+                    
+                    for selected_id in selected_ids:
+                        dropdown = dropdown_cache[attr.id].get(selected_id)
+                        if dropdown:
+                            selected_options.append({
+                                'id': dropdown.id,
+                                'label': dropdown.option,
+                                'color': dropdown.color
+                            })
                     
                     if selected_options:
                         # 첫 번째 옵션의 색상을 기본 색상으로 사용
@@ -1450,17 +1479,28 @@ def entry_table_partial(request):
                     }
             elif attr.attributeType and attr.attributeType.name == 'file' and value:
                 # 파일 타입인 경우
-                file_info = json.loads(value)
-                original_filename = file_info.get('original_filename', '파일')
-                
-                row_values[attr.name] = {
-                    'type': 'file',
-                    'label': original_filename,
-                    'download_url': file_info.get('download_url', ''),
-                    'file_size': file_info.get('file_size', 0),
-                    'content_type': file_info.get('content_type', ''),
-                    'original_filename': original_filename
-                }
+                try:
+                    file_info = json.loads(value)
+                    original_filename = file_info.get('original_filename', '파일')
+                    
+                    row_values[attr.name] = {
+                        'type': 'file',
+                        'label': original_filename,
+                        'download_url': file_info.get('download_url', ''),
+                        'file_size': file_info.get('file_size', 0),
+                        'content_type': file_info.get('content_type', ''),
+                        'original_filename': original_filename
+                    }
+                except (json.JSONDecodeError, TypeError):
+                    # JSON 파싱 실패 시 기본값 사용
+                    row_values[attr.name] = {
+                        'type': 'file',
+                        'label': '파일',
+                        'download_url': '',
+                        'file_size': 0,
+                        'content_type': '',
+                        'original_filename': '파일'
+                    }
             elif attr.attributeType and attr.attributeType.name == 'datetime' and value:
                 # datetime 타입의 경우 날짜 포맷 적용
                 try:
@@ -1489,6 +1529,7 @@ def entry_table_partial(request):
             'values': row_values
         })
     
+    # 속성 리스트 생성 - 이미 메모리에 있는 데이터 활용
     attributes_list = [
         {
             'name': attr.name,
@@ -1627,9 +1668,9 @@ def duplicate_row(request):
             try:
                 original_row = Row.objects.get(id=original_id)
                 original_row.add_copied_row(new_row.id)
-                print(f"원본 행 {original_id}의 copied_row_ids 업데이트: {original_row.copied_row_ids}")
+                logger.debug(f"원본 행 {original_id}의 copied_row_ids 업데이트: {original_row.copied_row_ids}")
             except Row.DoesNotExist:
-                print(f"원본 행 {original_id}를 찾을 수 없습니다.")
+                logger.warning(f"원본 행 {original_id}를 찾을 수 없습니다.")
                 continue
         
         # 4. 소스 행의 모든 복제된 행들에도 새 행을 복제된 행으로 추가
@@ -1637,46 +1678,46 @@ def duplicate_row(request):
             try:
                 copied_row = Row.objects.get(id=copied_id)
                 copied_row.add_copied_row(new_row.id)
-                print(f"복제된 행 {copied_id}의 copied_row_ids 업데이트: {copied_row.copied_row_ids}")
+                logger.debug(f"복제된 행 {copied_id}의 copied_row_ids 업데이트: {copied_row.copied_row_ids}")
             except Row.DoesNotExist:
-                print(f"복제된 행 {copied_id}를 찾을 수 없습니다.")
+                logger.warning(f"복제된 행 {copied_id}를 찾을 수 없습니다.")
                 continue
         
         # 5. 새 행의 복제된 행 목록에 소스 행의 모든 복제된 행들 추가
         new_copied_ids = source_row.copied_row_ids.copy()
         new_row.copied_row_ids = new_copied_ids
         new_row.save()
-        print(f"새 행의 copied_row_ids 설정: {new_row.copied_row_ids}")
+        logger.debug(f"새 행의 copied_row_ids 설정: {new_row.copied_row_ids}")
         
         # 6. 새 행의 복제된 행 목록에 소스 행도 추가 (양방향 관계 완성)
         if source_row.id not in new_row.copied_row_ids:
             new_row.copied_row_ids.append(source_row.id)
             new_row.save()
-            print(f"새 행의 copied_row_ids에 소스 행 추가: {new_row.copied_row_ids}")
+            logger.debug(f"새 행의 copied_row_ids에 소스 행 추가: {new_row.copied_row_ids}")
         
         # 7. 소스 행의 원본 행 목록에 새 행 추가 (양방향 관계 완성)
         if new_row.id not in source_row.original_row_ids:
             source_row.original_row_ids.append(new_row.id)
             source_row.save()
-            print(f"소스 행의 original_row_ids에 새 행 추가: {source_row.original_row_ids}")
+            logger.debug(f"소스 행의 original_row_ids에 새 행 추가: {source_row.original_row_ids}")
         
         # 8. 소스 행을 다시 조회하여 최신 상태 확인 및 강제 업데이트
         source_row.refresh_from_db()
         if new_row.id not in source_row.copied_row_ids:
             source_row.copied_row_ids.append(new_row.id)
             source_row.save()
-            print(f"소스 행 강제 업데이트 후 copied_row_ids: {source_row.copied_row_ids}")
+            logger.debug(f"소스 행 강제 업데이트 후 copied_row_ids: {source_row.copied_row_ids}")
         
         # 9. 새 행도 다시 조회하여 최신 상태 확인 및 강제 업데이트
         new_row.refresh_from_db()
         if source_row.id not in new_row.copied_row_ids:
             new_row.copied_row_ids.append(source_row.id)
             new_row.save()
-            print(f"새 행 강제 업데이트 후 copied_row_ids: {new_row.copied_row_ids}")
+            logger.debug(f"새 행 강제 업데이트 후 copied_row_ids: {new_row.copied_row_ids}")
         
         # === AttributeValue 복사 ===
         source_values = AttributeValue.objects.filter(row=source_row)
-        print(f"복사할 AttributeValue 개수: {source_values.count()}")
+        logger.info(f"복사할 AttributeValue 개수: {source_values.count()}")
         
         for source_value in source_values:
             try:
@@ -1690,24 +1731,24 @@ def duplicate_row(request):
                     try:
                         # 기존 파일 정보 파싱
                         file_data = json.loads(source_value.value)
-                        print(f"파일 데이터 파싱 성공: {file_data}")
+                        logger.debug(f"파일 데이터 파싱 성공: {file_data}")
                         
                         original_filename = file_data.get('original_filename', '')
                         stored_filename = file_data.get('stored_filename', '')
                         s3_key = file_data.get('s3_key', '')
                         
-                        print(f"파일 정보 - 원본명: {original_filename}, 저장명: {stored_filename}, S3키: {s3_key}")
+                        logger.debug(f"파일 정보 - 원본명: {original_filename}, 저장명: {stored_filename}, S3키: {s3_key}")
                         
                         if s3_key and stored_filename:
                             # 새로운 파일명 생성 (UUID 사용)
                             file_extension = os.path.splitext(original_filename)[1] if original_filename else ''
                             new_filename = f"{uuid.uuid4()}{file_extension}"
-                            print(f"새 파일명 생성: {new_filename}")
+                            logger.debug(f"새 파일명 생성: {new_filename}")
                             
                             # S3에서 파일 복사
-                            print(f"S3 파일 복사 시작: {s3_key} -> {new_filename}")
+                            logger.debug(f"S3 파일 복사 시작: {s3_key} -> {new_filename}")
                             copy_result = copy_s3_file(s3_key, new_filename)
-                            print(f"S3 복사 결과: {copy_result}")
+                            logger.debug(f"S3 복사 결과: {copy_result}")
                             
                             if copy_result and isinstance(copy_result, dict) and copy_result.get('success'):
                                 # 새로운 파일 정보 생성 (upload_time 추가)
@@ -1724,7 +1765,7 @@ def duplicate_row(request):
                                     'upload_time': copy_result.get('upload_time', timezone.now().isoformat())  # copy_s3_file에서 반환된 시간 사용
                                 }
                                 
-                                print(f"새 파일 데이터 생성: {new_file_data}")
+                                logger.debug(f"새 파일 데이터 생성: {new_file_data}")
                                 
                                 # 새로운 파일 정보로 AttributeValue 생성
                                 new_attr_value = AttributeValue.objects.create(
@@ -1733,13 +1774,13 @@ def duplicate_row(request):
                                     value=json.dumps(new_file_data, ensure_ascii=False),
                                     copy_from=source_row.id  # 원본 행 ID 저장
                                 )
-                                print(f"새 AttributeValue 생성 완료: ID {new_attr_value.id}")
+                                logger.debug(f"새 AttributeValue 생성 완료: ID {new_attr_value.id}")
                             else:
                                 # S3 복사 실패 시 새로운 파일명으로 원본 파일 정보 복사
                                 error_msg = '알 수 없는 오류'
                                 if isinstance(copy_result, dict):
                                     error_msg = copy_result.get('error', '알 수 없는 오류')
-                                print(f"파일 복사 실패, 새로운 파일명으로 원본 정보 복사: {error_msg}")
+                                logger.warning(f"파일 복사 실패, 새로운 파일명으로 원본 정보 복사: {error_msg}")
                                 
                                 # 새로운 파일명으로 원본 파일 정보 복사
                                 new_file_data = {
@@ -1760,10 +1801,10 @@ def duplicate_row(request):
                                     value=json.dumps(new_file_data, ensure_ascii=False),
                                     copy_from=source_row.id  # 원본 행 ID 저장
                                 )
-                                print(f"원본 파일 정보로 새 AttributeValue 생성 완료")
+                                logger.debug(f"원본 파일 정보로 새 AttributeValue 생성 완료")
                         else:
                             # 파일 정보가 없거나 불완전한 경우 원본 그대로 복사
-                            print(f"파일 정보 불완전, 원본 그대로 복사")
+                            logger.warning(f"파일 정보 불완전, 원본 그대로 복사")
                             AttributeValue.objects.create(
                                 row=new_row,
                                 attribute=source_value.attribute,
@@ -1773,7 +1814,7 @@ def duplicate_row(request):
                             
                     except (json.JSONDecodeError, KeyError) as e:
                         # JSON 파싱 실패 시 원본 그대로 복사
-                        print(f"파일 정보 파싱 실패, 원본 그대로 복사: {e}")
+                        logger.error(f"파일 정보 파싱 실패, 원본 그대로 복사: {e}")
                         AttributeValue.objects.create(
                             row=new_row,
                             attribute=source_value.attribute,
@@ -1782,20 +1823,20 @@ def duplicate_row(request):
                         )
                 else:
                     # 파일이 아닌 경우 원본 그대로 복사
-                    print(f"일반 속성 복사: {source_value.attribute.name if source_value.attribute else 'None'}")
+                    logger.debug(f"일반 속성 복사: {source_value.attribute.name if source_value.attribute else 'None'}")
                     AttributeValue.objects.create(
                         row=new_row,
                         attribute=source_value.attribute,
                         value=source_value.value,
                         copy_from=source_row.id  # 원본 행 ID 저장
                     )
-                print(f"=== AttributeValue 복사 완료 ===")
+                logger.debug(f"=== AttributeValue 복사 완료 ===")
             except Exception as e:
                 # 개별 AttributeValue 복사 중 오류가 발생해도 계속 진행
-                print(f"AttributeValue 복사 중 오류 발생: {e}")
+                logger.error(f"AttributeValue 복사 중 오류 발생: {e}")
                 continue
         
-        print(f"복제 완료: 새 행 ID {new_row.id}")
+        logger.info(f"복제 완료: 새 행 ID {new_row.id}")
         
         return JsonResponse({
             'success': True, 
@@ -1810,41 +1851,41 @@ def duplicate_row(request):
 
 def copy_s3_file(source_s3_key, new_filename):
     """S3에서 파일을 복사하는 함수"""
-    print(f"=== S3 파일 복사 시작 ===")
-    print(f"소스 S3 키: {source_s3_key}")
-    print(f"새 파일명: {new_filename}")
+    logger.info(f"=== S3 파일 복사 시작 ===")
+    logger.info(f"소스 S3 키: {source_s3_key}")
+    logger.info(f"새 파일명: {new_filename}")
     
     try:
         # S3 클라이언트 생성
-        print("S3 클라이언트 생성 중...")
+        logger.debug("S3 클라이언트 생성 중...")
         s3_client = boto3.client(
             's3',
             aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
             aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
             region_name=settings.AWS_S3_REGION_NAME
         )
-        print("S3 클라이언트 생성 완료")
+        logger.debug("S3 클라이언트 생성 완료")
         
         # 새로운 S3 키 생성
         new_s3_key = f"{settings.AWS_LOCATION}/{new_filename}"
-        print(f"새 S3 키: {new_s3_key}")
+        logger.debug(f"새 S3 키: {new_s3_key}")
         
         # S3에서 파일 복사
-        print("S3 파일 복사 실행 중...")
+        logger.debug("S3 파일 복사 실행 중...")
         s3_client.copy_object(
             Bucket=settings.AWS_STORAGE_BUCKET_NAME,
             CopySource={'Bucket': settings.AWS_STORAGE_BUCKET_NAME, 'Key': source_s3_key},
             Key=new_s3_key
         )
-        print("S3 파일 복사 완료")
+        logger.debug("S3 파일 복사 완료")
         
         # 새로운 다운로드 URL 생성
         new_download_url = f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{new_s3_key}"
-        print(f"새 다운로드 URL: {new_download_url}")
+        logger.debug(f"새 다운로드 URL: {new_download_url}")
         
         # 새로운 서명된 다운로드 URL 생성
         try:
-            print("서명된 다운로드 URL 생성 중...")
+            logger.debug("서명된 다운로드 URL 생성 중...")
             new_signed_download_url = s3_client.generate_presigned_url(
                 'get_object',
                 Params={
@@ -1853,14 +1894,14 @@ def copy_s3_file(source_s3_key, new_filename):
                 },
                 ExpiresIn=300  # 5분
             )
-            print("서명된 다운로드 URL 생성 완료")
+            logger.debug("서명된 다운로드 URL 생성 완료")
         except Exception as e:
-            print(f"새로운 서명된 다운로드 URL 생성 실패: {e}")
+            logger.error(f"새로운 서명된 다운로드 URL 생성 실패: {e}")
             new_signed_download_url = new_download_url
         
         # 새로운 서명된 미리보기 URL 생성
         try:
-            print("서명된 미리보기 URL 생성 중...")
+            logger.debug("서명된 미리보기 URL 생성 중...")
             new_signed_preview_url = s3_client.generate_presigned_url(
                 'get_object',
                 Params={
@@ -1870,9 +1911,9 @@ def copy_s3_file(source_s3_key, new_filename):
                 },
                 ExpiresIn=300  # 5분
             )
-            print("서명된 미리보기 URL 생성 완료")
+            logger.debug("서명된 미리보기 URL 생성 완료")
         except Exception as e:
-            print(f"새로운 서명된 미리보기 URL 생성 실패: {e}")
+            logger.error(f"새로운 서명된 미리보기 URL 생성 실패: {e}")
             new_signed_preview_url = new_download_url
         
         # 현재 시간을 ISO 형식으로 생성
@@ -1886,11 +1927,11 @@ def copy_s3_file(source_s3_key, new_filename):
             'new_public_url': new_download_url,
             'upload_time': current_time  # upload_time 필드 추가
         }
-        print(f"S3 파일 복사 성공: {result}")
+        logger.info(f"S3 파일 복사 성공: {result}")
         return result
         
     except Exception as e:
-        print(f"S3 파일 복사 실패: {e}")
+        logger.error(f"S3 파일 복사 실패: {e}")
         return {
             'success': False,
             'error': str(e)
@@ -2000,9 +2041,9 @@ def get_dependent_rows(request):
             # Cascade가 활성화된 속성인지 확인
             try:
                 cascade_attribute = Attribute.objects.get(name=field, user=user, cascade=True)
-                print(f"Cascade 속성 찾음: {field}")
+                logger.debug(f"Cascade 속성 찾음: {field}")
             except Attribute.DoesNotExist:
-                print(f"Cascade 속성을 찾을 수 없습니다: {field}")
+                logger.debug(f"Cascade 속성을 찾을 수 없습니다: {field}")
                 # Cascade가 false인 속성이면 종속된 행들을 찾지 않음
                 return JsonResponse({
                     'success': True,
@@ -2018,7 +2059,7 @@ def get_dependent_rows(request):
                     original_row = Row.objects.get(id=original_id, user=user)
                     original_rows.append(original_row)
                 except Row.DoesNotExist:
-                    print(f"원본 행 {original_id}를 찾을 수 없습니다.")
+                    logger.warning(f"원본 행 {original_id}를 찾을 수 없습니다.")
                     continue
             
             # 2. 현재 행의 복제된 행들
@@ -2028,7 +2069,7 @@ def get_dependent_rows(request):
                     copied_row = Row.objects.get(id=copied_id, user=user)
                     copied_rows.append(copied_row)
                 except Row.DoesNotExist:
-                    print(f"복제된 행 {copied_id}를 찾을 수 없습니다.")
+                    logger.warning(f"복제된 행 {copied_id}를 찾을 수 없습니다.")
                     continue
             
             # 3. 원본 행들의 복제된 행들도 포함
@@ -2061,7 +2102,7 @@ def get_dependent_rows(request):
                     unique_related_rows.append(row)
                     seen_ids.add(row.id)
             
-            print(f"동기화할 관련 행들: {[row.id for row in unique_related_rows]}")
+            logger.debug(f"동기화할 관련 행들: {[row.id for row in unique_related_rows]}")
             
             # 각 관련 행에 대해 해당 필드의 값을 가져와서 종속된 행 목록에 추가
             for dep_row in unique_related_rows:
@@ -2073,7 +2114,7 @@ def get_dependent_rows(request):
                             'field': field,
                             'value': attr_value.value
                         })
-                        print(f"종속된 행 추가: {dep_row.id}, {field}, {attr_value.value}")
+                        logger.debug(f"종속된 행 추가: {dep_row.id}, {field}, {attr_value.value}")
                     else:
                         # 해당 속성의 값이 없으면 빈 값으로 설정
                         dependent_rows.append({
@@ -2081,7 +2122,7 @@ def get_dependent_rows(request):
                             'field': field,
                             'value': ''
                         })
-                        print(f"종속된 행 추가 (빈 값): {dep_row.id}, {field}")
+                        logger.debug(f"종속된 행 추가 (빈 값): {dep_row.id}, {field}")
                 except AttributeValue.DoesNotExist:
                     # 해당 속성의 값이 없으면 빈 값으로 설정
                     dependent_rows.append({
@@ -2089,7 +2130,7 @@ def get_dependent_rows(request):
                         'field': field,
                         'value': ''
                     })
-                    print(f"종속된 행 추가 (빈 값): {dep_row.id}, {field}")
+                    logger.debug(f"종속된 행 추가 (빈 값): {dep_row.id}, {field}")
             
             return JsonResponse({
                 'success': True,
@@ -2097,7 +2138,7 @@ def get_dependent_rows(request):
             })
             
         except Exception as e:
-            print(f"get_dependent_rows 오류: {str(e)}")
+            logger.error(f"get_dependent_rows 오류: {str(e)}")
             return JsonResponse({'success': False, 'error': str(e)})
     
     return JsonResponse({'success': False, 'error': 'POST 요청만 지원합니다'})
@@ -2152,9 +2193,9 @@ def get_dependent_rows(request):
             # Cascade가 활성화된 속성인지 확인
             try:
                 cascade_attribute = Attribute.objects.get(name=field, user=user, cascade=True)
-                print(f"Cascade 속성 찾음: {field}")
+                logger.debug(f"Cascade 속성 찾음: {field}")
             except Attribute.DoesNotExist:
-                print(f"Cascade 속성을 찾을 수 없습니다: {field}")
+                logger.debug(f"Cascade 속성을 찾을 수 없습니다: {field}")
                 # Cascade가 false인 속성이면 종속된 행들을 찾지 않음
                 return JsonResponse({
                     'success': True,
@@ -2170,7 +2211,7 @@ def get_dependent_rows(request):
                     original_row = Row.objects.get(id=original_id, user=user)
                     original_rows.append(original_row)
                 except Row.DoesNotExist:
-                    print(f"원본 행 {original_id}를 찾을 수 없습니다.")
+                    logger.warning(f"원본 행 {original_id}를 찾을 수 없습니다.")
                     continue
             
             # 2. 현재 행의 복제된 행들
@@ -2180,7 +2221,7 @@ def get_dependent_rows(request):
                     copied_row = Row.objects.get(id=copied_id, user=user)
                     copied_rows.append(copied_row)
                 except Row.DoesNotExist:
-                    print(f"복제된 행 {copied_id}를 찾을 수 없습니다.")
+                    logger.warning(f"복제된 행 {copied_id}를 찾을 수 없습니다.")
                     continue
             
             # 3. 원본 행들의 복제된 행들도 포함
@@ -2213,7 +2254,7 @@ def get_dependent_rows(request):
                     unique_related_rows.append(row)
                     seen_ids.add(row.id)
             
-            print(f"동기화할 관련 행들: {[row.id for row in unique_related_rows]}")
+            logger.debug(f"동기화할 관련 행들: {[row.id for row in unique_related_rows]}")
             
             # 각 관련 행에 대해 해당 필드의 값을 가져와서 종속된 행 목록에 추가
             for dep_row in unique_related_rows:
@@ -2225,7 +2266,7 @@ def get_dependent_rows(request):
                             'field': field,
                             'value': attr_value.value
                         })
-                        print(f"종속된 행 추가: {dep_row.id}, {field}, {attr_value.value}")
+                        logger.debug(f"종속된 행 추가: {dep_row.id}, {field}, {attr_value.value}")
                     else:
                         # 해당 속성의 값이 없으면 빈 값으로 설정
                         dependent_rows.append({
@@ -2233,7 +2274,7 @@ def get_dependent_rows(request):
                             'field': field,
                             'value': ''
                         })
-                        print(f"종속된 행 추가 (빈 값): {dep_row.id}, {field}")
+                        logger.debug(f"종속된 행 추가 (빈 값): {dep_row.id}, {field}")
                 except AttributeValue.DoesNotExist:
                     # 해당 속성의 값이 없으면 빈 값으로 설정
                     dependent_rows.append({
@@ -2241,7 +2282,7 @@ def get_dependent_rows(request):
                         'field': field,
                         'value': ''
                     })
-                    print(f"종속된 행 추가 (빈 값): {dep_row.id}, {field}")
+                    logger.debug(f"종속된 행 추가 (빈 값): {dep_row.id}, {field}")
             
             return JsonResponse({
                 'success': True,
@@ -2249,7 +2290,7 @@ def get_dependent_rows(request):
             })
             
         except Exception as e:
-            print(f"get_dependent_rows 오류: {str(e)}")
+            logger.error(f"get_dependent_rows 오류: {str(e)}")
             return JsonResponse({'success': False, 'error': str(e)})
     
     return JsonResponse({'success': False, 'error': 'POST 요청만 지원합니다'})
@@ -2526,197 +2567,6 @@ def convert_hwp_to_pdf(request):
         return JsonResponse({'success': False, 'error': f'오류가 발생했습니다: {str(e)}'})
 
 @csrf_exempt
-def test_libreoffice(request):
-    """LibreOffice 설치 상태를 확인하는 테스트 엔드포인트"""
-    try:
-        # LibreOffice 버전 확인
-        result = subprocess.run(['libreoffice', '--version'], 
-                              capture_output=True, text=True, timeout=10)
-        
-        if result.returncode == 0:
-            version = result.stdout.strip()
-            logger.info(f"LibreOffice 버전: {version}")
-            
-            # LibreOffice가 지원하는 파일 형식 확인
-            result2 = subprocess.run(['libreoffice', '--help'], 
-                                   capture_output=True, text=True, timeout=10)
-            
-            support_info = {
-                'version': version,
-                'hwp_support': 'LibreOffice는 HWP 파일을 제한적으로 지원합니다.',
-                'conversion_issues': [
-                    'HWP는 한글과컴퓨터의 독점 형식입니다',
-                    'LibreOffice는 HWP 파일을 완전히 지원하지 않습니다',
-                    '변환 시 레이아웃이나 서식이 깨질 수 있습니다',
-                    '복잡한 HWP 파일은 변환에 실패할 수 있습니다'
-                ],
-                'recommendations': [
-                    'HWP 파일은 원본 파일로 다운로드하여 한글 프로그램으로 열어주세요',
-                    '필요시 한글 프로그램에서 PDF로 변환 후 사용하세요'
-                ]
-            }
-            
-            return JsonResponse({
-                'success': True,
-                'libreoffice_available': True,
-                'version': version,
-                'support_info': support_info,
-                'message': 'LibreOffice는 설치되어 있지만 HWP 파일 변환은 제한적입니다.'
-            })
-        else:
-            return JsonResponse({
-                'success': False,
-                'libreoffice_available': False,
-                'error': result.stderr,
-                'message': 'LibreOffice가 설치되어 있지만 실행할 수 없습니다.'
-            })
-    except FileNotFoundError:
-        return JsonResponse({
-            'success': False,
-            'libreoffice_available': False,
-            'error': 'LibreOffice가 설치되어 있지 않습니다.',
-            'message': '서버에 LibreOffice를 설치해주세요.'
-        })
-    except subprocess.TimeoutExpired:
-        return JsonResponse({
-            'success': False,
-            'libreoffice_available': False,
-            'error': 'LibreOffice 응답 시간이 초과되었습니다.',
-            'message': 'LibreOffice가 응답하지 않습니다.'
-        })
-    except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'libreoffice_available': False,
-            'error': str(e),
-            'message': f'LibreOffice 확인 중 오류가 발생했습니다: {str(e)}'
-        })
-
-@csrf_exempt
-def test_hwp_conversion(request):
-    """HWP 파일 변환을 실제로 테스트하는 엔드포인트"""
-    try:
-        logger.info("=== HWP 변환 테스트 시작 ===")
-        
-        # 간단한 테스트 파일 생성 (실제 HWP 파일이 아닌 텍스트 파일)
-        with tempfile.TemporaryDirectory() as temp_dir:
-            test_file = os.path.join(temp_dir, "test.txt")
-            with open(test_file, 'w', encoding='utf-8') as f:
-                f.write("테스트 파일입니다.\n한글 텍스트입니다.")
-            
-            # LibreOffice로 텍스트 파일을 PDF로 변환 테스트
-            cmd = [
-                'libreoffice', '--headless', '--convert-to', 'pdf',
-                '--outdir', temp_dir, test_file
-            ]
-            
-            logger.info(f"LibreOffice 테스트 명령어: {' '.join(cmd)}")
-            
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=30
-            )
-            
-            logger.info(f"LibreOffice 테스트 결과: returncode={result.returncode}")
-            logger.info(f"LibreOffice stdout: {result.stdout}")
-            logger.info(f"LibreOffice stderr: {result.stderr}")
-            
-            # 결과 확인
-            pdf_files = [f for f in os.listdir(temp_dir) if f.endswith('.pdf')]
-            
-            test_results = {
-                'libreoffice_works': result.returncode == 0,
-                'pdf_created': len(pdf_files) > 0,
-                'stdout': result.stdout,
-                'stderr': result.stderr,
-                'pdf_files': pdf_files
-            }
-            
-            return JsonResponse({
-                'success': True,
-                'test_results': test_results,
-                'message': 'LibreOffice 기본 변환 테스트 완료'
-            })
-            
-    except Exception as e:
-        logger.error(f"HWP 변환 테스트 오류: {e}")
-        return JsonResponse({
-            'success': False,
-            'error': str(e),
-            'message': f'테스트 중 오류가 발생했습니다: {str(e)}'
-        })
-
-def cleanup_duplicate_attribute_values():
-    """
-    중복된 AttributeValue 레코드를 정리하는 함수
-    """
-    try:
-        with transaction.atomic():
-            # 중복된 레코드 찾기 (row_id, attribute_id, value가 동일한 레코드들)
-            from django.db import connection
-            
-            with connection.cursor() as cursor:
-                # 중복 레코드 찾기
-                cursor.execute("""
-                    SELECT row_id, attribute_id, value, COUNT(*) as count
-                    FROM diary_attributevalue
-                    GROUP BY row_id, attribute_id, value
-                    HAVING COUNT(*) > 1
-                """)
-                
-                duplicates = cursor.fetchall()
-                deleted_count = 0
-                
-                for row_id, attribute_id, value, count in duplicates:
-                    # 각 그룹에서 첫 번째 레코드를 제외하고 나머지 삭제
-                    cursor.execute("""
-                        DELETE FROM diary_attributevalue 
-                        WHERE row_id = %s AND attribute_id = %s AND value = %s
-                        AND id NOT IN (
-                            SELECT id FROM (
-                                SELECT id FROM diary_attributevalue 
-                                WHERE row_id = %s AND attribute_id = %s AND value = %s
-                                ORDER BY id ASC
-                                LIMIT 1
-                            ) AS keep_ids
-                        )
-                    """, [row_id, attribute_id, value, row_id, attribute_id, value])
-                    
-                    deleted_count += cursor.rowcount
-                
-                print(f"중복 AttributeValue 레코드 {deleted_count}개 정리 완료")
-                return deleted_count
-                
-    except Exception as e:
-        print(f"중복 레코드 정리 중 오류: {e}")
-        return 0
-
-@csrf_exempt
-def cleanup_duplicates_api(request):
-    """
-    중복 레코드 정리를 위한 API 엔드포인트
-    """
-    if request.method == 'POST':
-        try:
-            deleted_count = cleanup_duplicate_attribute_values()
-            return JsonResponse({
-                'success': True,
-                'deleted_count': deleted_count,
-                'message': f'중복 레코드 {deleted_count}개가 정리되었습니다.'
-            })
-        except Exception as e:
-            return JsonResponse({
-                'success': False,
-                'error': str(e)
-            })
-    
-    return JsonResponse({'success': False, 'error': 'POST 요청만 지원합니다'})
-
-
-
-@csrf_exempt
 def convert_hwp_to_pdf_board(request):
     """게시판용 HWP 파일을 LibreOffice를 사용하여 PDF로 변환하는 엔드포인트"""
     if request.method != 'POST':
@@ -2868,8 +2718,8 @@ def add_sample_row(request):
             data = json.loads(request.body)
             sample_data = data.get('sample_data', {})
             
-            print(f"=== 샘플 데이터 추가 요청 ===")
-            print(f"sample_data: {sample_data}")
+            logger.info(f"=== 샘플 데이터 추가 요청 ===")
+            logger.debug(f"sample_data: {sample_data}")
             
             user_id = request.session.get('diary_member_id')
             if not user_id:
@@ -2886,7 +2736,7 @@ def add_sample_row(request):
                 if options:
                     dropdown_data[attr.name] = options
             
-            print(f"사용자의 드롭다운 속성들: {dropdown_data}")
+            logger.debug(f"사용자의 드롭다운 속성들: {dropdown_data}")
             
             # 샘플 데이터에서 드롭다운 필드들을 사용자의 기존 옵션으로 교체
             final_sample_data = {}
@@ -2894,7 +2744,7 @@ def add_sample_row(request):
                 if field_name in dropdown_data and dropdown_data[field_name]:
                     # 드롭다운 필드인 경우 기존 옵션 중에서 랜덤 선택
                     final_sample_data[field_name] = random.choice(dropdown_data[field_name])
-                    print(f"드롭다운 필드 {field_name}: 기존 옵션 중 선택 - {final_sample_data[field_name]}")
+                    logger.debug(f"드롭다운 필드 {field_name}: 기존 옵션 중 선택 - {final_sample_data[field_name]}")
                 else:
                     # 일반 필드인 경우 원래 값 사용
                     final_sample_data[field_name] = field_value
@@ -2905,7 +2755,7 @@ def add_sample_row(request):
             
             # 새 행은 order=0으로 가장 위에 추가
             new_row = Row.objects.create(order=0, user=user)
-            print(f"새 샘플 행 생성됨: row_id={new_row.id}, order=0 (가장 위에 추가)")
+            logger.info(f"새 샘플 행 생성됨: row_id={new_row.id}, order=0 (가장 위에 추가)")
             
             # 각 필드별로 AttributeValue 생성
             for field_name, field_value in final_sample_data.items():
@@ -2926,7 +2776,7 @@ def add_sample_row(request):
                     )
                     
                     if created:
-                        print(f"새 속성 생성됨: {field_name}")
+                        logger.info(f"새 속성 생성됨: {field_name}")
                     
                     attr_type = attr.attributeType.name if attr.attributeType else 'text'
                     value_to_save = field_value
@@ -2944,9 +2794,9 @@ def add_sample_row(request):
                         )
                         
                         if created:
-                            print(f"새 드롭다운 옵션 생성됨: {field_name} = {field_value}")
+                            logger.info(f"새 드롭다운 옵션 생성됨: {field_name} = {field_value}")
                         else:
-                            print(f"기존 드롭다운 옵션 사용: {field_name} = {field_value}")
+                            logger.debug(f"기존 드롭다운 옵션 사용: {field_name} = {field_value}")
                         
                         value_to_save = str(dropdown_option.id)
                     
@@ -2956,13 +2806,13 @@ def add_sample_row(request):
                         attribute=attr,
                         value=value_to_save
                     )
-                    print(f"샘플 데이터 필드 설정: {field_name}={field_value}")
+                    logger.debug(f"샘플 데이터 필드 설정: {field_name}={field_value}")
                     
                 except Exception as e:
-                    print(f"필드 {field_name} 처리 중 오류: {e}")
+                    logger.error(f"필드 {field_name} 처리 중 오류: {e}")
                     continue
             
-            print(f"=== 샘플 데이터 추가 완료: row_id={new_row.id} ===")
+            logger.info(f"=== 샘플 데이터 추가 완료: row_id={new_row.id} ===")
             return JsonResponse({
                 'success': True, 
                 'id': new_row.id,
@@ -2970,12 +2820,12 @@ def add_sample_row(request):
             })
             
         except json.JSONDecodeError as e:
-            print(f"JSON 파싱 오류: {e}")
+            logger.error(f"JSON 파싱 오류: {e}")
             return JsonResponse({'success': False, 'error': 'JSON 파싱 오류'})
         except User.DoesNotExist:
             return JsonResponse({'success': False, 'error': '유효하지 않은 사용자'})
         except Exception as e:
-            print(f"샘플 데이터 추가 중 오류: {e}")
+            logger.error(f"샘플 데이터 추가 중 오류: {e}")
             return JsonResponse({'success': False, 'error': f'오류가 발생했습니다: {str(e)}'})
     
     return JsonResponse({'success': False, 'error': 'Invalid request method'})

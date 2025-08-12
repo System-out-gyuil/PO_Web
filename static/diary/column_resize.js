@@ -596,7 +596,6 @@ function reinitializeColumnResizer() {
                             cell.style.whiteSpace = 'nowrap';
                         });
                         
-                        console.log(`리랜더링 후 컬럼 너비 복원: ${attrName} = ${width}px`);
                     }
                 }
             });

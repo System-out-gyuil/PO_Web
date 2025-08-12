@@ -129,6 +129,18 @@ function addGlobalClickHandler(dropdown, triggerElement) {
             triggerContainsTarget: triggerElement && triggerElement.contains(e.target)
         });
         
+        // 드롭다운 내부의 컨트롤 버튼들 클릭 시에는 닫지 않음
+        const isControlButton = e.target.closest('input[type="color"]') || 
+                               e.target.closest('button[data-edit]') || 
+                               e.target.closest('button[data-del]') ||
+                               e.target.closest('.add-option-btn') ||
+                               e.target.closest('.new-option-input');
+        
+        if (isControlButton) {
+            console.log('컨트롤 버튼 클릭 감지, 드롭다운 유지');
+            return;
+        }
+        
         // 드롭다운이나 트리거 요소 내부 클릭이 아닌 경우에만 닫기
         if (dropdown && !dropdown.contains(e.target) && 
             (!triggerElement || !triggerElement.contains(e.target))) {
@@ -988,12 +1000,17 @@ function processModalDropdownOptions(data, rowId, fieldName, btn) {
     dropdown.querySelectorAll('input[data-color-edit]').forEach(function(colorInput) {
         colorInput.addEventListener('mousedown', function(e) {
             e.stopPropagation();
-            e.preventDefault();
+            // e.preventDefault() 제거 - 컬러피커가 열리도록 함
+            console.log('색상 변경 버튼 mousedown:', this.getAttribute('data-color-edit'));
+        });
+        
+        colorInput.addEventListener('click', function(e) {
+            e.stopPropagation();
+            console.log('색상 변경 버튼 click:', this.getAttribute('data-color-edit'));
         });
         
         colorInput.addEventListener('change', function(e) {
             e.stopPropagation();
-            e.preventDefault();
             const optionId = this.getAttribute('data-color-edit');
             const newColor = this.value;
             console.log('모달 색상 변경 요청:', optionId, newColor);
@@ -1006,6 +1023,7 @@ function processModalDropdownOptions(data, rowId, fieldName, btn) {
         editBtn.addEventListener('mousedown', function(e) {
             e.stopPropagation();
             e.preventDefault();
+            console.log('수정 버튼 mousedown:', this.getAttribute('data-edit'));
         });
         
         editBtn.addEventListener('click', function(e) {
@@ -1022,6 +1040,7 @@ function processModalDropdownOptions(data, rowId, fieldName, btn) {
         delBtn.addEventListener('mousedown', function(e) {
             e.stopPropagation();
             e.preventDefault();
+            console.log('삭제 버튼 mousedown:', this.getAttribute('data-del'));
         });
         
         delBtn.addEventListener('click', function(e) {
@@ -1049,18 +1068,31 @@ function processModalDropdownOptions(data, rowId, fieldName, btn) {
         addBtn.addEventListener('mousedown', function(e) {
             e.stopPropagation();
             e.preventDefault();
+            console.log('추가 버튼 mousedown');
         });
         
         addBtn.addEventListener('click', function(e) {
             e.stopPropagation();
             e.preventDefault();
+            console.log('추가 버튼 click');
             handleAddOption();
         });
         
-        inputField.addEventListener('keypress', function(e) {
+        inputField.addEventListener('mousedown', function(e) {
             e.stopPropagation();
+            console.log('입력 필드 mousedown');
+        });
+        
+        inputField.addEventListener('click', function(e) {
+            e.stopPropagation();
+            console.log('입력 필드 click');
+        });
+        
+        inputField.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
+                e.stopPropagation();
                 e.preventDefault();
+                console.log('입력 필드 Enter 키');
                 handleAddOption();
             }
         });
@@ -1740,30 +1772,33 @@ function selectModalDropdownOption(rowId, fieldName, optionId, optionText, btn, 
             addBtn.addEventListener('mousedown', function(e) {
                 e.stopPropagation();
                 e.preventDefault();
+                console.log('새 옵션 추가 버튼 mousedown');
             });
             
             addBtn.addEventListener('click', function(e) {
                 e.stopPropagation();
                 e.preventDefault();
+                console.log('새 옵션 추가 버튼 click');
                 handleAddOption();
+            });
+            
+            inputField.addEventListener('mousedown', function(e) {
+                e.stopPropagation();
+                console.log('새 옵션 입력 필드 mousedown');
+            });
+            
+            inputField.addEventListener('click', function(e) {
+                e.stopPropagation();
+                console.log('새 옵션 입력 필드 click');
             });
             
             inputField.addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') {
                     e.stopPropagation();
                     e.preventDefault();
+                    console.log('새 옵션 입력 필드 Enter 키');
                     handleAddOption();
                 }
-            });
-            
-            // 입력 필드 클릭 시 드롭다운이 닫히지 않도록
-            inputField.addEventListener('click', function(e) {
-                e.stopPropagation();
-            });
-            
-            // 입력 필드 mousedown 이벤트도 추가
-            inputField.addEventListener('mousedown', function(e) {
-                e.stopPropagation();
             });
         }
     }
@@ -1882,7 +1917,7 @@ function selectModalDropdownOption(rowId, fieldName, optionId, optionText, btn, 
                         // 새로운 값으로 data-value 업데이트
                         statusCell.setAttribute('data-value', optionId);
                         
-                        // 상태 필터 즉시 재적용
+                        // 상태 필터 즉시 재적용 (전체 테이블 리랜더링 없이)
                         setTimeout(() => {
                             if (typeof applyStatusFilter === 'function') {
                                 applyStatusFilter();
@@ -1936,9 +1971,12 @@ function selectModalDropdownOption(rowId, fieldName, optionId, optionText, btn, 
                         if (window.currentKanbanAttribute && window.currentKanbanAttribute === type) {
                             updateKanbanBoard(type);
                         }
-                        // 상태 속성인 경우 상태 탭 새로고침
+                        
+                        // 상태 속성인 경우 상태 탭만 새로고침 (전체 테이블 리랜더링 없이)
                         if (window.statusAttributeName && type === window.statusAttributeName && typeof refreshStatusTabs === 'function') {
-                            setTimeout(() => { refreshStatusTabs(); }, 100);
+                            setTimeout(() => { 
+                                refreshStatusTabs(); 
+                            }, 100);
                         }
                     } else {
                         throw new Error(data.error || '업데이트 실패');
@@ -1959,11 +1997,14 @@ function selectModalDropdownOption(rowId, fieldName, optionId, optionText, btn, 
     if (type !== 'region' && type !== 'region_detail') {
         // 색상 변경 버튼 이벤트
         currentDropdown.querySelectorAll('input[data-color-edit]').forEach(function(colorInput) {
+            colorInput.addEventListener('mousedown', function(e) {
+                e.stopPropagation();
+                console.log('색상 변경 버튼 mousedown:', this.getAttribute('data-color-edit'));
+            });
+            
             colorInput.addEventListener('click', function(e) {
                 e.stopPropagation();
-                // e.preventDefault() 제거 - 컬러피커가 열리도록 함
-                console.log('색상 변경 버튼 클릭됨:', this.getAttribute('data-color-edit'));
-                // 컬러피커가 자동으로 열림 (input type="color"의 기본 동작)
+                console.log('색상 변경 버튼 click:', this.getAttribute('data-color-edit'));
             });
             
             colorInput.addEventListener('change', function(e) {
@@ -1983,6 +2024,7 @@ function selectModalDropdownOption(rowId, fieldName, optionId, optionText, btn, 
             editBtn.addEventListener('mousedown', function(e) {
                 e.stopPropagation();
                 e.preventDefault();
+                console.log('수정 버튼 mousedown:', this.getAttribute('data-edit'));
             });
             
             editBtn.addEventListener('click', function(e) {
@@ -2002,6 +2044,7 @@ function selectModalDropdownOption(rowId, fieldName, optionId, optionText, btn, 
             delBtn.addEventListener('mousedown', function(e) {
                 e.stopPropagation();
                 e.preventDefault();
+                console.log('삭제 버튼 mousedown:', this.getAttribute('data-del'));
             });
             
             delBtn.addEventListener('click', function(e) {
@@ -2028,7 +2071,7 @@ function selectModalDropdownOption(rowId, fieldName, optionId, optionText, btn, 
         if (currentDropdown && td) {
             const rect = td.getBoundingClientRect();
             const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-            const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+            const scrollLeft = window.pageYOffset || document.documentElement.scrollLeft;
             
             const topPosition = rect.bottom + scrollTop + 2;
             const leftPosition = rect.left + scrollLeft;

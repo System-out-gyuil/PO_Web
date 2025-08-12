@@ -5,7 +5,7 @@ from django.contrib.sites.models import Site
 
 class StaticViewSitemap(Sitemap):
     protocol = 'https'
-    priority = 0.8
+    priority = 0.2
     changefreq = 'weekly'
 
     def items(self):
@@ -25,7 +25,7 @@ class StaticViewSitemap(Sitemap):
 class BizInfoSitemap(Sitemap):
     protocol = 'https'
     changefreq = 'daily'
-    priority = 0.8
+    priority = 0.2
     limit = 1000  # ✅ sitemap을 1000개 단위로 자동 분할
 
     def items(self):

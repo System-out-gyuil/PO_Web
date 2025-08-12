@@ -1,5 +1,7 @@
 User-agent: *
+Disallow: /board/*?page_index=
+
 User-agent: Yeti
-Allow: /
+Disallow: /board/*?page_index=
 
 Sitemap: https://namatji.com/sitemap.xml

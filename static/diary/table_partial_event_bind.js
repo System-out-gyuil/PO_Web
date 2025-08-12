@@ -222,6 +222,42 @@
         }, 50);
     }
     
+    // 드롭다운 모달 기능 재초기화
+    function initializeDropdownModals() {
+        console.log('드롭다운 모달 기능 재초기화 시작');
+        
+        // 드롭다운 옵션 데이터 확인
+        if (window.DROPDOWN_OPTIONS) {
+            console.log('드롭다운 옵션 데이터 로드됨:', Object.keys(window.DROPDOWN_OPTIONS));
+        } else {
+            console.warn('드롭다운 옵션 데이터가 로드되지 않음');
+        }
+        
+        // openDropdown 함수 사용 가능 여부 확인
+        if (typeof window.openDropdown === 'function') {
+            console.log('openDropdown 함수 사용 가능');
+        } else {
+            console.warn('openDropdown 함수를 찾을 수 없음');
+        }
+        
+        // dropdown_manager.js의 함수들 사용 가능 여부 확인
+        const requiredFunctions = [
+            'openDropdown', 'showModalDropdownOptions', 'showModalRegionDropdown', 
+            'showModalSubregionDropdown', 'openDetailDropdown'
+        ];
+        
+        requiredFunctions.forEach(funcName => {
+            if (typeof window[funcName] === 'function') {
+                console.log(`${funcName} 함수 사용 가능`);
+            } else {
+                console.warn(`${funcName} 함수를 찾을 수 없음`);
+            }
+        });
+    }
+    
+    // 드롭다운 모달 초기화 실행
+    setTimeout(initializeDropdownModals, 100);
+    
     // 드래그앤드롭 재초기화
     if (typeof reinitializeDragDrop === 'function') {
         setTimeout(() => {
@@ -326,13 +362,48 @@
             const fieldName = cell.getAttribute('data-field');
             const currentValue = cell.getAttribute('data-value') || '';
             
+            console.log('드롭다운 셀 클릭 감지:', {fieldName, rowId, currentValue});
+            
             // 이미 드롭다운이 열려있으면 무시
             if (document.querySelector('.dropdown-edit')) {
+                console.log('이미 드롭다운이 열려있음, 클릭 무시');
                 return;
             }
             
-            if (typeof openDropdown === 'function') {
+            // openDropdown 함수 사용 시도
+            if (typeof window.openDropdown === 'function') {
+                console.log('openDropdown 함수 호출:', fieldName, rowId, currentValue);
+                window.openDropdown(cell, fieldName, rowId, currentValue);
+            } else if (typeof openDropdown === 'function') {
+                console.log('전역 openDropdown 함수 호출:', fieldName, rowId, currentValue);
                 openDropdown(cell, fieldName, rowId, currentValue);
+            } else {
+                console.error('openDropdown 함수를 찾을 수 없음');
+                
+                // 대체 방법: 직접 드롭다운 옵션 로드
+                if (window.DROPDOWN_OPTIONS && window.DROPDOWN_OPTIONS[fieldName]) {
+                    console.log('캐시된 드롭다운 옵션 사용:', fieldName);
+                    const options = window.DROPDOWN_OPTIONS[fieldName];
+                    
+                    // 간단한 드롭다운 메뉴 생성
+                    createSimpleDropdown(cell, fieldName, options, currentValue);
+                } else {
+                    console.log('서버에서 드롭다운 옵션 로드 시도:', fieldName);
+                    // 서버에서 옵션 로드
+                    fetch('/sales/dropdown_options/?field=' + encodeURIComponent(fieldName))
+                        .then(r => r.json())
+                        .then(function(data) {
+                            if (data.options) {
+                                console.log('서버에서 드롭다운 옵션 로드됨:', data.options.length);
+                                createSimpleDropdown(cell, fieldName, data.options, currentValue);
+                            } else {
+                                console.error('드롭다운 옵션 로드 실패:', data.error);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('드롭다운 옵션 로드 중 오류:', error);
+                        });
+                }
             }
         }
         
@@ -455,3 +526,190 @@
     
     console.log('테이블 partial 로드 완료 - 모든 이벤트 재초기화됨');
   })();
+
+    // 간단한 드롭다운 메뉴 생성 함수 (대체 방법)
+    function createSimpleDropdown(cell, fieldName, options, currentValue) {
+        console.log('간단한 드롭다운 생성:', fieldName, options.length);
+        
+        // 기존 드롭다운 제거
+        const existingDropdown = document.querySelector('.dropdown-edit');
+        if (existingDropdown) {
+            existingDropdown.remove();
+        }
+        
+        // 드롭다운 메뉴 생성
+        const dropdown = document.createElement('div');
+        dropdown.className = 'dropdown-edit';
+        dropdown.id = 'simple-dropdown-' + Date.now();
+        
+        // 셀의 위치 정보 가져오기
+        const rect = cell.getBoundingClientRect();
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        const scrollLeft = window.pageYOffset || document.documentElement.scrollLeft;
+        
+        // 셀 바로 아래에 위치하도록 계산
+        const topPosition = rect.bottom + scrollTop + 2;
+        const leftPosition = rect.left + scrollLeft;
+        
+        // 스타일 설정
+        dropdown.setAttribute('style', `
+            position: absolute !important;
+            background: white !important;
+            border: 1px solid #ccc !important;
+            border-radius: 4px !important;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
+            z-index: 10000 !important;
+            min-width: ${Math.max(rect.width, 300)}px !important;
+            max-height: 200px !important;
+            overflow-y: auto !important;
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            font-size: 14px !important;
+            font-family: inherit !important;
+            top: ${topPosition}px !important;
+            left: ${leftPosition}px !important;
+            padding: 4px 0 !important;
+        `);
+        
+        // 드롭다운 항목들 생성
+        let html = '';
+        options.forEach(function(option) {
+            const label = option.option || option.name;
+            if (!label) return;
+            
+            const isSelected = String(option.id) === String(currentValue);
+            const backgroundColor = option.color ? hexToRgba(option.color, 0.18) : 'white';
+            
+            html += `
+                <div class="dropdown-option-container" style="padding: 6px 10px; border-bottom: 1px solid #f0f0f0;">
+                    <div class="dropdown-item" data-option-id="${option.id}" data-option-text="${label}" data-color="${option.color||''}"
+                         style="cursor: pointer; 
+                                background: ${backgroundColor}; 
+                                border-radius: 4px; 
+                                padding: 6px 8px; 
+                                margin-bottom: 4px;
+                                ${isSelected ? 'border: 2px solid #007bff; font-weight: bold;' : 'border: 1px solid #ddd;'}
+                                transition: all 0.2s;
+                                display: flex;
+                                align-items: center;
+                                justify-content: space-between;
+                                position: relative;">
+                        <div style="display: flex; align-items: center; flex: 1; min-width: 0;">
+                            <span style="flex: 1; word-wrap: break-word; word-break: break-all; color: #333; font-size: 14px; line-height: 1.4; padding: 2px 0;">${label}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        // "선택 없음" 옵션 추가
+        html += `
+            <div class="dropdown-option-container" style="padding: 6px 10px; border-bottom: 1px solid #f0f0f0;">
+                <div class="dropdown-item" data-option-id="" data-option-text="선택 없음" data-color=""
+                     style="cursor: pointer; 
+                            background: #f8f9fa; 
+                            border-radius: 4px; 
+                            padding: 6px 8px; 
+                            margin-bottom: 4px;
+                            border: 1px solid #ddd;
+                            transition: all 0.2s;
+                            display: flex;
+                            align-items: center;
+                            justify-content: space-between;
+                            position: relative;">
+                    <div style="display: flex; align-items: center; flex: 1; min-width: 0;">
+                        <span style="flex: 1; word-wrap: break-word; word-break: break-all; color: #999; font-style: italic; font-size: 14px; line-height: 1.4; padding: 2px 0;">선택 없음</span>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        dropdown.innerHTML = html;
+        document.body.appendChild(dropdown);
+        
+        // 전역 dropdown 변수에 저장
+        window.dropdown = dropdown;
+        
+        // 옵션 선택 이벤트 바인딩
+        dropdown.querySelectorAll('.dropdown-item[data-option-id]').forEach(function(item) {
+            item.addEventListener('click', function(e) {
+                e.stopPropagation();
+                e.preventDefault();
+                
+                const optionId = this.getAttribute('data-option-id');
+                const optionText = this.getAttribute('data-option-text');
+                const optionColor = this.getAttribute('data-color');
+                
+                console.log('간단한 드롭다운 옵션 선택됨:', {optionId, optionText, optionColor});
+                
+                // 드롭다운 닫기
+                if (dropdown && dropdown.parentNode) {
+                    dropdown.parentNode.removeChild(dropdown);
+                    window.dropdown = null;
+                }
+                
+                // 셀 업데이트
+                if (optionId === '') {
+                    cell.innerHTML = '<div class="dropdown-pill dropdown-pill-empty">선택 없음</div>';
+                    cell.setAttribute('data-value', '');
+                } else {
+                    const color = optionColor ? hexToRgba(optionColor, 0.18) : '#eee';
+                    cell.innerHTML = `<div class="dropdown-pill" style="background:${color}; color:#333; display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center;">${optionText}</div>`;
+                    cell.setAttribute('data-value', optionId);
+                }
+                
+                // 서버 업데이트
+                const rowId = cell.closest('tr').getAttribute('data-id');
+                if (rowId && !rowId.startsWith('temp_')) {
+                    console.log('서버 업데이트 요청:', rowId, fieldName, optionId);
+                    fetch('/sales/update_row_field/', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                        body: 'id='+rowId+'&field='+encodeURIComponent(fieldName)+'&value='+encodeURIComponent(optionId)
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            console.log('간단한 드롭다운 업데이트 성공');
+                        } else {
+                            console.error('간단한 드롭다운 업데이트 실패:', data.error);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('간단한 드롭다운 업데이트 요청 실패:', error);
+                    });
+                }
+            });
+        });
+        
+        // 전역 클릭 핸들러 추가
+        if (typeof addGlobalClickHandler === 'function') {
+            addGlobalClickHandler(dropdown, cell);
+        } else {
+            // 간단한 외부 클릭 핸들러
+            setTimeout(() => {
+                document.addEventListener('mousedown', function closeDropdown(e) {
+                    if (!dropdown.contains(e.target) && !cell.contains(e.target)) {
+                        if (dropdown && dropdown.parentNode) {
+                            dropdown.parentNode.removeChild(dropdown);
+                            window.dropdown = null;
+                        }
+                        document.removeEventListener('mousedown', closeDropdown);
+                    }
+                });
+            }, 100);
+        }
+        
+        console.log('간단한 드롭다운 생성 완료');
+    }
+    
+    // hexToRgba 헬퍼 함수 (없는 경우)
+    function hexToRgba(hex, alpha) {
+        if (!hex || hex === 'null' || hex === 'undefined') return 'rgba(0,0,0,0.1)';
+        
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        return `rgba(${r},${g},${b},${alpha})`;
+    }

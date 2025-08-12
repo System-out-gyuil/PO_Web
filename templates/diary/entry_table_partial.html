@@ -1,180 +1,13 @@
 {% load entry_extras %}
 {% load static %}
-{% comment %} <style>
-.dropdown-pill {
-  display: inline-block;
-  padding: 4px;
-  border-radius: 16px;
-  font-size: 13px;
-  font-weight: 500;
-  min-width: 48px;
-  text-align: center;
-  background: #eee;
-  color: #333;
-}
 
-/* 컬럼 리사이즈 핸들 스타일 */
-.column-resize-handle {
-    position: absolute;
-    right: -3px;
-    top: 0;
-    bottom: 0;
-    width: 6px;
-    cursor: col-resize;
-    background: transparent;
-    z-index: 10;
-    transition: background-color 0.2s ease, opacity 0.2s ease;
-    will-change: background-color, opacity;
-}
-
-.column-resize-handle:hover {
-    background: #007bff !important;
-    opacity: 0.5 !important;
-}
-
-/* 리사이즈 중인 컬럼 스타일 */
-th.resizing {
-    background-color: #f8f9fa !important;
-    border-right: 2px solid #007bff !important;
-    will-change: width;
-}
-
-/* 테이블 헤더 상대 위치 설정 */
-#entryTable thead th {
-    position: relative;
-    will-change: width;
-}
-
-/* 속성 추가 열은 리사이즈 제외 */
-.add-attribute-th {
-    position: relative !important;
-}
-
-.add-attribute-th .column-resize-handle {
-    display: none;
-}
-
-/* 테이블 성능 최적화 */
-#entryTable {
-    will-change: auto;
-}
-
-#entryTable.resizing {
-    will-change: layout;
-}
-
-/* 첫 번째 열 스타일 개선 */
-.drag-cell {
-    min-width: 140px !important;
-    width: 140px !important;
-    max-width: 140px !important;
-    padding: 8px 12px !important;
-    background-color: #f8f9fa;
-    border-right: 2px solid #dee2e6;
-}
-
-/* 헤더의 전체 선택 영역 */
-.select-all-container {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 4px 0;
-}
-
-.select-all-container label {
-    font-size: 12px;
-    color: #495057;
-    font-weight: 500;
-    margin: 0;
-    cursor: pointer;
-}
-
-/* 셀 내부 버튼 컨테이너 */
-.cell-button-container {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-wrap: nowrap;
-}
-
-/* 체크박스 스타일 */
-.row-checkbox, #selectAllCheckbox {
-    margin: 0;
-    cursor: pointer;
-}
-
-/* 액션 버튼 스타일 */
-.action-btn {
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: 14px;
-    color: #6c757d;
-    padding: 2px;
-    border-radius: 3px;
-    transition: all 0.2s;
-}
-
-.delete-row-btn {
-    color: #dc3545;
-}
-
-.delete-row-btn:hover {
-    background: #dc3545;
-    color: white;
-}
-
-.duplicate-row-btn {
-    color: #007bff;
-}
-
-.duplicate-row-btn:hover {
-    background: #007bff;
-    color: white;
-}
-
-.drag-handle {
-    color: #adb5bd;
-    cursor: grab;
-    font-size: 12px;
-    user-select: none;
-}
-
-.drag-handle:hover {
-    color: #6c757d;
-}
-
-/* 테이블 셀 스타일 통일 */
-#entryTable td.drag-cell {
-    min-width: 140px !important;
-    width: 140px !important;
-    max-width: 140px !important;
-}
-
-/* 속성 추가 열은 고정 너비 */
-#entryTable th.add-attribute-th,
-#entryTable td.add-attribute-cell {
-    min-width: 120px !important;
-    width: 120px !important;
-    max-width: 120px !important;
-}
-
-/* td 내용이 길어도 컬럼 너비를 강제로 유지 */
-#entryTable td[data-field] {
-    min-width: 150px !important;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    word-break: keep-all;
-}
-</style> {% endcomment %}
 <table id="entryTable" class="entry-table">
     <thead class="sticky">
     <tr>
         <th class="drag-cell">
             <div class="select-all-container">
                 <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this)" style="margin-right: 8px;">
-                <label for="selectAllCheckbox" style="font-size:12px; color: #666;">전체</label>
+                <label for="selectAllCheckbox" style="font-size:12px; color: #666;">ㄹ전체</label>
             </div>
         </th>
         {% for attr in attributes %}
@@ -320,4 +153,32 @@ th.resizing {
 <script>
 // 드롭다운 옵션 데이터를 전역 변수에 할당
 window.DROPDOWN_OPTIONS = JSON.parse('{{ dropdown_options_json|default:"{}"|escapejs }}');
+
+// 디버깅을 위한 로그 추가
+console.log('entry_table_partial.html 로드됨');
+console.log('드롭다운 옵션 데이터:', window.DROPDOWN_OPTIONS);
+console.log('드롭다운 옵션 키들:', Object.keys(window.DROPDOWN_OPTIONS));
+
+// 필수 함수들이 로드되었는지 확인
+function checkRequiredFunctions() {
+    const requiredFunctions = [
+        'openDropdown', 'showModalDropdownOptions', 'showModalRegionDropdown', 
+        'showModalSubregionDropdown', 'openDetailDropdown', 'addGlobalClickHandler'
+    ];
+    
+    console.log('필수 함수 확인:');
+    requiredFunctions.forEach(funcName => {
+        if (typeof window[funcName] === 'function') {
+            console.log(`✅ ${funcName}: 사용 가능`);
+        } else {
+            console.warn(`❌ ${funcName}: 사용 불가`);
+        }
+    });
+}
+
+// 페이지 로드 완료 후 함수 확인
+setTimeout(checkRequiredFunctions, 500);
+
+// 추가 안전장치: 1초 후 한 번 더 확인
+setTimeout(checkRequiredFunctions, 1000);
 </script>

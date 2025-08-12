@@ -109,9 +109,6 @@ urlpatterns = [
     path('toggle_cascade_attribute/', toggle_cascade_attribute, name='toggle_cascade_attribute'),
     path('get_cascade_attributes_list/', get_cascade_attributes_list, name='get_cascade_attributes_list'),
     
-    # 중복 레코드 정리 API
-    path('cleanup_duplicates/', views.cleanup_duplicates_api, name='cleanup_duplicates_api'),
-    
     # 엑셀 파일 처리 관련 API
     path('preview_excel/', preview_excel, name='preview_excel'),
     path('upload_excel/', upload_excel, name='upload_excel'),

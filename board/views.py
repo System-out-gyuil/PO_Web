@@ -4,6 +4,7 @@ from django.core.paginator import Paginator
 from board.models import BizInfo
 import ast
 from PO.management.commands.utils import update_count
+from django.shortcuts import redirect
 
 class BoardView(View):
     def get(self, request):
@@ -62,16 +63,17 @@ class BoardView(View):
         })
 
 
-
 class BoardDetailView(View):
     def get(self, request, pblanc_id):
+        # ✅ page_index가 GET 파라미터에 있으면 쿼리스트링 제거 후 리다이렉트
+        if 'page_index' in request.GET:
+            return redirect('board:detail', pblanc_id=pblanc_id)  # 302 기본
+            # return redirect('board:detail', pblanc_id=pblanc_id, permanent=True)  # 301 영구
+
         item = get_object_or_404(BizInfo, pblanc_id=pblanc_id)
 
         item.hashtag = item.hashtag.split(",")
-
         update_count(request, "board_detail")
-
-        print(item.hashtag)
 
         return render(request, "board/detail.html", {
             "item": item,
