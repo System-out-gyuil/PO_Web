@@ -34,7 +34,6 @@ function initializeUserSession() {
   .then(data => {
     if (data.success && data.user_id) {
       sessionStorage.setItem('currentUserId', data.user_id);
-      console.log('사용자 세션 초기화 완료:', data.user_id);
       return data.user_id;
     }
     return 'anonymous';
@@ -58,12 +57,10 @@ function saveTableState() {
     userId: userId
   };
   localStorage.setItem(stateKey, JSON.stringify(state));
-  console.log(`테이블 상태 저장: ${stateKey}`, state);
 }
 
 // 테이블 상태 복원 (개선된 버전)
 function restoreTableState(retryCount = 0) {
-  console.log('restoreTableState 호출됨, retryCount:', retryCount);
   
   try {
     // 사용자별 고유 키로 상태 조회
@@ -80,18 +77,15 @@ function restoreTableState(retryCount = 0) {
         window.currentSort = state.currentSort || { column: null, direction: null };
         window.filters = state.filters || {};
         
-        console.log('저장된 상태 로드됨:', state);
         
         // tbody가 없으면 100ms 후 재시도 (최대 10회)
         const tbody = document.getElementById('entryTbody');
         if (!tbody && retryCount < 10) {
-          console.log('tbody를 찾을 수 없음, 재시도:', retryCount);
           setTimeout(() => restoreTableState(retryCount + 1), 100);
           return;
         }
         
         if (tbody) {
-          console.log('tbody 찾음, 필터 및 정렬 복원 시작');
           // 저장된 필터 상태 복원
           restoreFilters();
           // 저장된 정렬 상태 복원 (필터 복원 후)
@@ -102,7 +96,6 @@ function restoreTableState(retryCount = 0) {
           console.log('최대 재시도 횟수 초과, tbody를 찾을 수 없음');
         }
       } else {
-        console.log('저장된 상태가 너무 오래되었거나 사용자가 다름, 무시됨');
         localStorage.removeItem(stateKey);
       }
     } else {
@@ -146,7 +139,6 @@ function restoreSort(retry = 0) {
     const entryTbody = document.querySelector('#entryTbody');
     if (!entryTbody || entryTbody.rows.length === 0) {
         if (retry < 5) {
-            console.log(`[restoreSort] tbody나 행이 없음, 재시도... (${retry})`);
             setTimeout(() => restoreSort(retry + 1), 100);
         } else {
             console.log('[restoreSort] 5회 재시도 후 포기');
@@ -154,9 +146,7 @@ function restoreSort(retry = 0) {
         return;
     }
     
-    console.log(`[restoreSort] ${entryTbody.rows.length}개 행에 정렬 적용, 현재 정렬:`, window.currentSort);
     if (!window.currentSort || !window.currentSort.column || !window.currentSort.direction) {
-        console.log('정렬 상태가 없어서 복원하지 않음');
         return;
     }
     
@@ -166,7 +156,6 @@ function restoreSort(retry = 0) {
     // 정렬하려는 컬럼이 실제로 표시되는지 확인
     const targetColumn = actualColumns.find(col => col.name === window.currentSort.column);
     if (!targetColumn) {
-        console.log(`restoreSort: 컬럼 "${window.currentSort.column}"이 실제 테이블에 표시되지 않음, 정렬 건너뜀`);
         return;
     }
     
@@ -194,11 +183,9 @@ function restoreSort(retry = 0) {
         return direction === 'asc' ? comparison : -comparison;
     });
     rows.forEach(row => entryTbody.appendChild(row));
-    console.log('[restoreSort] 정렬 적용 완료');
 }
 
 function sortTable(column, direction) {
-    console.log("sortTable 호출됨:", column, direction);
     
     // 실제 테이블 구조 검증
     const actualColumns = validateTableStructure();
@@ -206,19 +193,16 @@ function sortTable(column, direction) {
     // 정렬하려는 컬럼이 실제로 표시되는지 확인
     const targetColumn = actualColumns.find(col => col.name === column);
     if (!targetColumn) {
-        console.log(`sortTable: 컬럼 "${column}"이 실제 테이블에 표시되지 않음`);
         return;
     }
     
     const tbody = document.getElementById('entryTbody');
     if (!tbody) {
-        console.log('tbody를 찾을 수 없음');
         return;
     }
 
     // 토글 기능: 같은 컬럼과 방향을 다시 클릭하면 정렬 해제
     if (window.currentSort.column === column && window.currentSort.direction === direction) {
-        console.log('정렬 해제');
         // 정렬 해제
         window.currentSort = { column: null, direction: null };
         updateSortButtonStates();
@@ -226,14 +210,12 @@ function sortTable(column, direction) {
         // 원래 순서로 복원 (필터링된 행들만)
         restoreOriginalOrder();
     } else {
-        console.log('새로운 정렬 적용:', column, direction);
         // 새로운 정렬 적용
         window.currentSort = { column, direction };
         updateSortButtonStates(column, direction);
         
         const rows = Array.from(tbody.querySelectorAll('tr'));
         if (rows.length === 0) {
-            console.log('정렬할 행이 없음');
             return;
         }
 
@@ -273,12 +255,10 @@ function sortTable(column, direction) {
         
         // 정렬된 행들을 테이블에 다시 추가
         rows.forEach(row => tbody.appendChild(row));
-        console.log('정렬 완료');
     }
     
     // 상태 저장
     saveTableState();
-    console.log('정렬 상태 저장됨');
 }
 
 // 날짜 파싱 함수 추가
@@ -321,32 +301,26 @@ function getActualTableColumns() {
         }
     });
     
-    console.log('실제 테이블 컬럼 구조:', actualColumns);
     return actualColumns;
 }
 
 // 테이블 구조 상세 분석 함수
 function analyzeTableStructure() {
-    console.log('=== 테이블 구조 상세 분석 ===');
     
     // 전체 헤더 분석
     const allHeaders = document.querySelectorAll('#entryTable thead th');
-    console.log('전체 헤더 수:', allHeaders.length);
     
     allHeaders.forEach((header, index) => {
         const columnName = header.getAttribute('data-column');
         const headerText = header.textContent.trim();
-        console.log(`전체 헤더 ${index}: "${columnName}" (텍스트: "${headerText}")`);
     });
     
     // data-column 속성이 있는 헤더만 분석
     const dataColumnHeaders = document.querySelectorAll('#entryTable thead th[data-column]');
-    console.log('data-column 속성이 있는 헤더 수:', dataColumnHeaders.length);
     
     dataColumnHeaders.forEach((header, index) => {
         const columnName = header.getAttribute('data-column');
         const headerText = header.textContent.trim();
-        console.log(`data-column 헤더 ${index}: "${columnName}" (텍스트: "${headerText}")`);
     });
     
     // 첫 번째 행 분석
@@ -355,31 +329,25 @@ function analyzeTableStructure() {
         const firstRow = tbody.querySelector('tr');
         if (firstRow) {
             const cells = firstRow.querySelectorAll('td');
-            console.log('첫 번째 행의 셀 수:', cells.length);
             
             cells.forEach((cell, index) => {
                 const cellText = cell.textContent.trim();
                 const hasInput = cell.querySelector('input') !== null;
                 const hasSelect = cell.querySelector('select') !== null;
-                console.log(`셀 ${index}: "${cellText}" (입력필드: ${hasInput}, 선택필드: ${hasSelect})`);
             });
         }
     }
     
-    console.log('=== 테이블 구조 분석 완료 ===');
 }
 
 // 컬럼명으로 셀을 찾는 함수 추가 (실제 테이블 구조 기반)
 function getCellByColumn(row, column) {
-    console.log(`getCellByColumn 호출: column=${column}`);
     
     const cells = row.querySelectorAll('td');
-    console.log(`getCellByColumn: cells.length=${cells.length}`);
     
     // 실제 테이블 헤더에서 컬럼 인덱스 찾기
     const header = document.querySelector(`#entryTable thead th[data-column="${column}"]`);
     if (!header) {
-        console.log(`getCellByColumn: 헤더를 찾을 수 없음 - ${column}`);
         return null;
     }
     
@@ -394,34 +362,27 @@ function getCellByColumn(row, column) {
         }
     }
     
-    console.log(`getCellByColumn: 전체 헤더에서 찾은 actualColumnIndex=${actualColumnIndex}`);
     
     if (actualColumnIndex >= 0 && actualColumnIndex < cells.length) {
         const cell = cells[actualColumnIndex];
-        console.log(`getCellByColumn: 셀 찾음 - ${column}`);
         
         // 셀 내용 디버깅
         const cellText = cell.textContent.trim();
         const hasInput = cell.querySelector('input') !== null;
         const hasSelect = cell.querySelector('select') !== null;
-        console.log(`getCellByColumn: 셀 내용 - 텍스트: "${cellText}", 입력필드: ${hasInput}, 선택필드: ${hasSelect}`);
         
         return cell;
     }
-    console.log(`getCellByColumn: 셀을 찾을 수 없음 - ${column}`);
     return null;
 }
 
 function getCellValue(row, column) {
-    console.log(`getCellValue 호출: column=${column}`);
     
     const cells = row.querySelectorAll('td');
-    console.log(`getCellValue: cells.length=${cells.length}`);
     
     // 실제 테이블 헤더에서 컬럼 인덱스 찾기
     const header = document.querySelector(`#entryTable thead th[data-column="${column}"]`);
     if (!header) {
-        console.log(`getCellValue: 헤더를 찾을 수 없음 - ${column}`);
         return '';
     }
     
@@ -436,10 +397,8 @@ function getCellValue(row, column) {
         }
     }
     
-    console.log(`getCellValue: 전체 헤더에서 찾은 actualColumnIndex=${actualColumnIndex}`);
     
     if (actualColumnIndex >= 0 && actualColumnIndex < cells.length) {
-        console.log("getCellValue: 셀 찾음");
         const cell = cells[actualColumnIndex];
         
         // 셀 내용 상세 분석
@@ -450,7 +409,6 @@ function getCellValue(row, column) {
         // 매출 컬럼이면 data-raw 사용
         if (column === '매출' && cell.hasAttribute('data-raw')) {
             const value = cell.getAttribute('data-raw');
-            console.log(`getCellValue: 매출 컬럼 data-raw 값 = ${value}`);
             return value;
         }
         
@@ -458,7 +416,6 @@ function getCellValue(row, column) {
         const input = cell.querySelector('input[type="text"]');
         if (input) {
             const value = input.value || '';
-            console.log(`getCellValue: 텍스트 입력 필드 값 = ${value}`);
             return value;
         }
         
@@ -466,15 +423,12 @@ function getCellValue(row, column) {
         const select = cell.querySelector('select');
         if (select) {
             const value = select.selectedOptions[0]?.text || '';
-            console.log(`getCellValue: 선택 필드 값 = ${value}`);
             return value;
         }
         
         // 일반 텍스트인 경우
-        console.log(`getCellValue: 일반 텍스트 값 = "${cellText}"`);
         return cellText;
     }
-    console.log("getCellValue: 셀을 찾을 수 없음");
     return '';
 }
 
@@ -483,12 +437,6 @@ function validateTableStructure() {
     const actualColumns = getActualTableColumns();
     const expectedColumns = window.ATTR_FIELDS || [];
     
-    console.log('테이블 구조 검증:');
-    console.log('- 실제 표시되는 컬럼 수:', actualColumns.length);
-    console.log('- 전체 속성 수:', expectedColumns.length);
-    console.log('- 실제 컬럼명:', actualColumns.map(col => col.name));
-    console.log('- 전체 속성명:', expectedColumns.map(attr => attr.name));
-    
     // 테이블 구조 상세 분석 추가
     analyzeTableStructure();
     
@@ -496,7 +444,6 @@ function validateTableStructure() {
 }
 
 function filterTable(column, filterValue) {
-    console.log(`filterTable 호출됨: ${column} = ${filterValue}`);
     
     // 실제 테이블 구조 검증
     const actualColumns = validateTableStructure();
@@ -504,11 +451,9 @@ function filterTable(column, filterValue) {
     // 필터링하려는 컬럼이 실제로 표시되는지 확인
     const targetColumn = actualColumns.find(col => col.name === column);
     if (!targetColumn) {
-        console.log(`filterTable: 컬럼 "${column}"이 실제 테이블에 표시되지 않음`);
         return;
     }
     
-    console.log(`filterTable: 대상 컬럼 확인됨 - ${column} (인덱스: ${targetColumn.index})`);
     
     // 필터 상태 업데이트
     if (filterValue.trim() === '') {
@@ -519,26 +464,21 @@ function filterTable(column, filterValue) {
     
     const tbody = document.getElementById('entryTbody');
     if (!tbody) {
-        console.error('filterTable: tbody를 찾을 수 없음');
         return;
     }
 
     const rows = Array.from(tbody.querySelectorAll('tr'));
-    console.log(`filterTable: ${rows.length}개 행 처리 시작`);
     let visibleCount = 0;
 
     rows.forEach((row, index) => {
         const cell = getCellByColumn(row, column);
         if (!cell) {
-            console.log(`filterTable: 행 ${index}에서 셀을 찾을 수 없음 (컬럼: ${column})`);
             row.style.display = 'none';
             return;
         }
 
         const cellValue = getCellValue(row, column).toLowerCase();
         const filterLower = filterValue.toLowerCase();
-        
-        console.log(`filterTable: 행 ${index} - 셀값: "${cellValue}", 필터값: "${filterLower}"`);
         
         // 필터 조건 확인
         let shouldShow = false;
@@ -574,12 +514,10 @@ function filterTable(column, filterValue) {
             }
         }
         
-        console.log(`filterTable: 행 ${index} - 표시여부: ${shouldShow}`);
         row.style.display = shouldShow ? '' : 'none';
         if (shouldShow) visibleCount++;
     });
 
-    console.log(`filterTable: 필터링 완료 - ${visibleCount}개 행 표시됨`);
     
     // 필터 상태 업데이트
     updateFilterStatus();
@@ -589,7 +527,6 @@ function filterTable(column, filterValue) {
 }
 
 function clearAllFilters() {
-    console.log("clearAllFilters 호출됨");
     
     // 모든 필터 입력 필드 초기화
     const filterInputs = document.querySelectorAll('.filter-input');
@@ -621,7 +558,6 @@ function clearAllFilters() {
 }
 
 function updateSortButtonStates(activeColumn = null, activeDirection = null) {
-    console.log('updateSortButtonStates 호출됨:', activeColumn, activeDirection);
     
     // 모든 정렬 버튼 초기화
     const sortButtons = document.querySelectorAll('.sort-btn');
@@ -640,17 +576,14 @@ function updateSortButtonStates(activeColumn = null, activeDirection = null) {
             
             if (columnMatch && directionMatch) {
                 btn.classList.add('active');
-                console.log('정렬 버튼 활성화:', activeColumn, activeDirection, btn);
             }
         });
-        console.log('정렬 버튼 활성화 완료:', activeColumn, activeDirection);
     }
     
     // 정렬 상태가 변경되었을 때 실제 정렬 적용
     if (activeColumn && activeDirection && window.currentSort) {
         // 현재 정렬 상태와 다른 경우에만 정렬 적용
         if (window.currentSort.column !== activeColumn || window.currentSort.direction !== activeDirection) {
-            console.log('정렬 상태 변경됨, 실제 정렬 적용');
             window.currentSort = { column: activeColumn, direction: activeDirection };
             // 실제 정렬 적용
             const tbody = document.getElementById('entryTbody');
@@ -693,7 +626,6 @@ function updateSortButtonStates(activeColumn = null, activeDirection = null) {
                     
                     // 정렬된 행들을 테이블에 다시 추가
                     rows.forEach(row => tbody.appendChild(row));
-                    console.log('정렬 적용 완료');
                 }
             }
         } else {
@@ -760,78 +692,27 @@ function restoreOriginalOrder() {
 
 // 디버깅을 위한 상태 확인 함수
 function debugTableState() {
-  console.log('=== 테이블 상태 디버깅 ===');
-  console.log('window.currentSort:', window.currentSort);
-  console.log('window.filters:', window.filters);
   
   const tbody = document.getElementById('entryTbody');
   if (tbody) {
     const rows = tbody.querySelectorAll('tr');
-    console.log('tbody 행 수:', rows.length);
     
     // 정렬 버튼 상태 확인
     const sortButtons = document.querySelectorAll('.sort-btn');
     const activeButtons = document.querySelectorAll('.sort-btn.active');
-    console.log('전체 정렬 버튼 수:', sortButtons.length);
-    console.log('활성 정렬 버튼 수:', activeButtons.length);
     
     if (window.currentSort && window.currentSort.column) {
       const expectedButtons = document.querySelectorAll(`.sort-btn[onclick*="${window.currentSort.column}"][onclick*="${window.currentSort.direction}"]`);
-      console.log('예상 활성 버튼 수:', expectedButtons.length);
     }
   } else {
     console.log('tbody를 찾을 수 없음');
   }
-  console.log('=== 디버깅 완료 ===');
 }
 
-// 수동 테스트 함수 (브라우저 콘솔에서 호출 가능)
-function testSortingFunctionality() {
-  console.log('=== 정렬 기능 테스트 시작 ===');
-  
-  // 1. 현재 상태 확인
-  console.log('1. 현재 정렬 상태:', window.currentSort);
-  console.log('1. 현재 필터 상태:', window.filters);
-  
-  // 2. 테이블 구조 확인
-  const tbody = document.getElementById('entryTbody');
-  if (!tbody) {
-    console.error('tbody를 찾을 수 없음');
-    return;
-  }
-  
-  const rows = tbody.querySelectorAll('tr');
-  console.log('2. 테이블 행 수:', rows.length);
-  
-  // 3. 정렬 버튼 확인
-  const sortButtons = document.querySelectorAll('.sort-btn');
-  console.log('3. 정렬 버튼 수:', sortButtons.length);
-  
-  // 4. 첫 번째 컬럼으로 정렬 테스트
-  if (sortButtons.length > 0) {
-    const firstButton = sortButtons[0];
-    const onclick = firstButton.getAttribute('onclick');
-    console.log('4. 첫 번째 정렬 버튼 onclick:', onclick);
-    
-    // 정렬 실행
-    if (onclick && onclick.includes('sortTable')) {
-      console.log('5. 정렬 테스트 실행...');
-      eval(onclick);
-      
-      // 결과 확인
-      setTimeout(() => {
-        console.log('6. 정렬 후 상태:', window.currentSort);
-        debugTableState();
-      }, 100);
-    }
-  }
-  
-  console.log('=== 정렬 기능 테스트 완료 ===');
-}
+
 
 // 테이블 새로고침 후 상태 복원을 위한 함수
 function restoreTableStateAfterRefresh() {
-  console.log('테이블 상태 복원 시작 (새로고침 후)');
   
   // 약간의 지연 후 상태 복원 (DOM이 완전히 로드된 후)
   setTimeout(() => {
@@ -850,14 +731,12 @@ function restoreTableStateAfterRefresh() {
           window.currentSort = state.currentSort || { column: null, direction: null };
           window.filters = state.filters || {};
           
-          console.log('저장된 상태 복원:', state);
           
           // 저장된 필터 상태 복원
           restoreFilters();
           
           // 저장된 정렬 상태 복원 (필터 복원 후)
           setTimeout(() => {
-            console.log('정렬 상태 복원 시작:', window.currentSort);
             if (window.currentSort && window.currentSort.column && window.currentSort.direction) {
               // 정렬 버튼 상태 업데이트
               updateSortButtonStates(window.currentSort.column, window.currentSort.direction);
@@ -867,7 +746,6 @@ function restoreTableStateAfterRefresh() {
               if (tbody) {
                 const rows = Array.from(tbody.querySelectorAll('tr'));
                 if (rows.length > 0) {
-                  console.log('정렬 적용 시작:', window.currentSort.column, window.currentSort.direction, '행 수:', rows.length);
                   
                   // 행들을 정렬
                   rows.sort((a, b) => {
@@ -892,7 +770,6 @@ function restoreTableStateAfterRefresh() {
                   
                   // 정렬된 행들을 테이블에 다시 추가
                   rows.forEach(row => tbody.appendChild(row));
-                  console.log('정렬 적용 완료');
                 }
               }
             }
@@ -903,16 +780,13 @@ function restoreTableStateAfterRefresh() {
             }, 500);
           }, 500);
           
-          console.log('테이블 상태 복원 완료:', state);
         } else {
-          console.log('저장된 상태가 너무 오래되어 무시됨');
           localStorage.removeItem(stateKey);
         }
       } else {
         console.log('저장된 테이블 상태가 없음');
       }
     } catch (error) {
-      console.error('테이블 상태 복원 중 오류:', error);
       localStorage.removeItem('tableState'); // 이 부분은 사용자별 키로 변경되었으므로 제거
     }
   }, 500);
@@ -930,11 +804,9 @@ document.addEventListener('DOMContentLoaded', function() {
 // 테이블 리랜더링 후 상태 복원을 위한 전역 함수
 window.restoreTableStateAfterRefresh = restoreTableStateAfterRefresh;
 window.debugTableState = debugTableState;
-window.testSortingFunctionality = testSortingFunctionality;
 
 // 리랜더링 후 정렬/필터 상태 복원 함수
 function reinitializeTableFilters() {
-  console.log('리랜더링 후 정렬/필터 상태 복원 시작');
   
   // 테이블 데이터 초기화
   initializeTableData();
@@ -950,7 +822,6 @@ function reinitializeTableFilters() {
   // 필터 상태 업데이트
   updateFilterStatus();
   
-  console.log('리랜더링 후 정렬/필터 상태 복원 완료');
 }
 
 // 전역 함수로 노출

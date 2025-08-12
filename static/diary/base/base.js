@@ -64,7 +64,6 @@ function logout() {
                 }
             }
             keysToRemove.forEach(key => localStorage.removeItem(key));
-            console.log(`사용자 ${currentUserId}의 localStorage 데이터 정리 완료`);
         }
         
         // 브라우저 히스토리 조작 - 뒤로가기 방지
@@ -100,7 +99,6 @@ function logout() {
             }
         })
         .catch(error => {
-            console.error('로그아웃 오류:', error);
             alert('로그아웃 중 오류가 발생했습니다.');
             // 오류가 발생해도 로그인 페이지로 리다이렉트
             window.location.replace('/sales/login/');
@@ -120,7 +118,6 @@ function toBoard() {
 
 // 일반 게시판 이동 함수
 function toGeneralBoard() {
-    console.log('toGeneralBoard 함수 호출됨');
     try {
         window.location.href = '/sales/board_list/';
     } catch (error) {
@@ -142,17 +139,11 @@ function toggleNotificationPanel() {
                      panel.style.display === '';
     
     if (isHidden) {
-        console.log('패널 표시');
         // 숨김 클래스 제거 및 표시
         panel.classList.remove('notification-panel-hidden');
         panel.style.display = 'block';
-        console.log(panel.style.display);
         loadNotifications();
-        setTimeout(() => {
-            console.log('1초 후 display:', panel.style.display);
-        }, 1000);
     } else {
-        console.log('패널 숨김');
         // 숨김 클래스 추가 및 숨김
         panel.classList.add('notification-panel-hidden');
         panel.style.display = 'none';
@@ -199,7 +190,6 @@ function loadNotifications() {
 
 // 알림 표시 함수 (renderNotifications로 이름 변경)
 function renderNotifications(notifications) {
-    console.log('renderNotifications 함수 호출됨');
     const notificationList = document.getElementById('notificationList');
     
     if (notifications.length === 0) {
@@ -507,35 +497,22 @@ function submitInquiry() {
 
 // 메뉴 드롭다운 토글 함수
 function toggleMenuDropdown() {
-    console.log('메뉴 드롭다운 토글 함수 호출');
     const dropdown = document.getElementById('menuDropdown');
-    console.log('메뉴 드롭다운 요소:', dropdown);
     
     if (!dropdown) {
         console.error('메뉴 드롭다운 요소를 찾을 수 없습니다.');
         return;
     }
     
-    // 현재 상태 로그
-    console.log('토글 전 클래스 목록:', dropdown.classList.toString());
-    console.log('토글 전 computed style:', window.getComputedStyle(dropdown).display);
-    
     // 현재 드롭다운이 숨겨져 있는지 확인
     const isHidden = dropdown.classList.contains('menu-dropdown-hidden');
-    console.log('현재 숨김 상태:', isHidden);
     
     if (isHidden) {
         // 드롭다운 표시
-        console.log('메뉴 드롭다운 표시 중...');
         dropdown.classList.remove('menu-dropdown-hidden');
-        console.log('클래스 제거 후:', dropdown.classList.toString());
-        console.log('제거 후 computed style:', window.getComputedStyle(dropdown).display);
     } else {
         // 드롭다운 숨김
-        console.log('메뉴 드롭다운 숨김 중...');
         dropdown.classList.add('menu-dropdown-hidden');
-        console.log('클래스 추가 후:', dropdown.classList.toString());
-        console.log('추가 후 computed style:', window.getComputedStyle(dropdown).display);
     }
 }
 
@@ -543,7 +520,6 @@ function toggleMenuDropdown() {
 document.addEventListener('DOMContentLoaded', function() {
     // 이벤트 리스너 중복 등록 방지 플래그
     if (window.headerInitialized) {
-        console.log('헤더가 이미 초기화되었습니다.');
         return;
     }
     window.headerInitialized = true;
@@ -562,13 +538,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 메뉴 버튼 클릭 이벤트 추가
     const menuBtn = document.getElementById('menuBtn');
-    console.log('메뉴 버튼 요소:', menuBtn);
     if (menuBtn) {
-        console.log('메뉴 버튼 이벤트 리스너 추가됨');
         
         // 메뉴 클릭 핸들러 함수 정의
         const menuClickHandler = function(event) {
-            console.log('메뉴 버튼 클릭됨!');
             event.stopPropagation(); // 이벤트 버블링 방지
             event.preventDefault(); // 기본 동작 방지
             toggleMenuDropdown();
@@ -592,8 +565,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const notificationBtn = event.target.closest('.notification-btn');
         const menuBtn = event.target.closest('#menuBtn'); // 메뉴 버튼 클릭 감지 개선
         
-        console.log('외부 클릭 이벤트 발생, 클릭된 요소:', event.target);
-        console.log('메뉴 버튼 클릭 여부:', !!menuBtn);
         
         // 알림 패널이 현재 표시되어 있는지 확인 (CSS 클래스 또는 인라인 스타일 고려)
         const isPanelVisible = notificationPanel && 
@@ -617,7 +588,6 @@ document.addEventListener('DOMContentLoaded', function() {
             !menuContainer.contains(event.target) && 
             !menuBtn && // 메뉴 버튼 클릭이 아닌 경우만
             isMenuVisible) {
-            console.log('외부 클릭으로 메뉴 닫기');
             menuDropdown.classList.add('menu-dropdown-hidden');
         }
         

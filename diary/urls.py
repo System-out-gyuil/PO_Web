@@ -18,6 +18,7 @@ from .session_handlers import cleanup_session_cache_api, get_active_sessions_api
 from .board_views import board_list_view, board_list_api, board_create, board_detail_view, board_file_upload, board_file_preview, board_file_download, board_detail_api, board_edit
 from .funding_views import get_funding_recommendation, get_recommended_notices, update_debt_field, get_debt_details, save_debt_details
 
+from .attribute_handlers import get_hidden_attributes, add_attribute, delete_attribute, update_attribute_name, update_attribute_visibility, get_dropdown_attributes, get_all_attributes
 
 urlpatterns = [
     path('', DiaryMainView.as_view(), name='diary_main'),
@@ -47,7 +48,6 @@ urlpatterns = [
     path('reorder/', views.reorder_entries, name='reorder_entries'),
     path('statuses/', views.status_list, name='status_list'),
     path('board/', views.board_view, name='board_view'),
-    path('update/', views.update_entry, name='update_entry'),
     path('create_new_row/', views.create_new_row, name='create_new_row'),
     path('add_sample_row/', views.add_sample_row, name='add_sample_row'),
     path('update_row_field/', views.update_row_field, name='update_row_field'),
@@ -88,6 +88,7 @@ urlpatterns = [
     path('get_all_attributes/', get_all_attributes, name='get_all_attributes'),
     path('get_dropdown_attributes/', get_dropdown_attributes, name='get_dropdown_attributes'),
     path('update_attribute_name/', update_attribute_name, name='update_attribute_name'),
+    path('update_attribute_name/', update_attribute_name, name='update_attribute_name'),
     path('get_status_tabs/', views.get_status_tabs, name='get_status_tabs'),
     path('upload_note_file/', upload_note_file, name='upload_note_file'),
     path('delete_note_file/', delete_note_file, name='delete_note_file'),
@@ -125,6 +126,7 @@ urlpatterns = [
     path('get_dropdown_attributes_for_kanban/', get_dropdown_attributes_for_kanban, name='get_dropdown_attributes_for_kanban'),
 
     # 속성관리
+    path('get_all_attributes/', get_all_attributes, name='get_all_attributes'),
     path('get_all_attributes/', get_all_attributes, name='get_all_attributes'),
     path('update_attribute_visibility/', update_attribute_visibility, name='update_attribute_visibility'),
     path('get_dropdown_attributes/', get_dropdown_attributes, name='get_dropdown_attributes'),

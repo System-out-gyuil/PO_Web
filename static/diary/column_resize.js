@@ -26,20 +26,24 @@ class ColumnResizer {
         // 이벤트 리스너 등록
         this.bindEvents();
         
-        // 저장된 컬럼 너비 복원
+        // 서버에서 저장된 컬럼 너비 먼저 불러오기
+        this.loadServerColumnWidths();
+        
+        // 저장된 컬럼 너비 복원 (localStorage)
         this.restoreColumnWidths();
     }
     
     // 저장된 컬럼 너비 복원
     restoreColumnWidths() {
+        const userId = getCurrentUserId();
         const headers = this.table.querySelectorAll('thead th');
         headers.forEach((header, index) => {
             if (header.classList.contains('add-attribute-th')) return;
             
             const attrName = header.getAttribute('data-column');
             if (attrName) {
-                const savedWidth = localStorage.getItem(`column_width_${attrName}`);
-                const savedMaxWidth = localStorage.getItem(`column_max_width_${attrName}`);
+                const savedWidth = localStorage.getItem(`column_width_${attrName}_${userId}`);
+                const savedMaxWidth = localStorage.getItem(`column_max_width_${attrName}_${userId}`);
                 const dataWidth = header.getAttribute('data-width');
                 
                 // 우선순위: localStorage > data-width > 기본값
@@ -476,6 +480,53 @@ class ColumnResizer {
             }
         });
     }
+    
+    // 서버에서 저장된 컬럼 너비 불러오기
+    loadServerColumnWidths() {
+        fetch('/sales/get_column_widths/', {
+            method: 'GET',
+            headers: {
+                'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/)||[])[1] || ''
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success && data.widths) {
+                console.log('서버에서 컬럼 너비 로드:', data.widths);
+                const userId = getCurrentUserId();
+                
+                // 서버에서 가져온 너비를 localStorage에 저장하고 적용
+                Object.entries(data.widths).forEach(([attrName, width]) => {
+                    localStorage.setItem(`column_width_${attrName}_${userId}`, width.toString());
+                    
+                    // 테이블에 너비 적용
+                    const header = this.table.querySelector(`th[data-column="${attrName}"]`);
+                    if (header) {
+                        header.style.width = width + 'px';
+                        header.style.minWidth = width + 'px';
+                        header.style.maxWidth = width + 'px';
+                        
+                        // 셀에도 너비 적용
+                        const cells = this.table.querySelectorAll(`td[data-field="${attrName}"]`);
+                        cells.forEach(cell => {
+                            cell.style.width = width + 'px';
+                            cell.style.minWidth = width + 'px';
+                            cell.style.maxWidth = width + 'px';
+                            cell.style.overflow = 'hidden';
+                            cell.style.textOverflow = 'ellipsis';
+                            cell.style.whiteSpace = 'nowrap';
+                        });
+                        
+                    }
+                });
+            } else {
+                console.log('서버에서 저장된 컬럼 너비가 없습니다.');
+            }
+        })
+        .catch(err => {
+            console.error('서버에서 컬럼 너비 로드 오류:', err);
+        });
+    }
 }
 
 // 페이지 로드 시 컬럼 리사이저 초기화
@@ -515,14 +566,18 @@ function reinitializeColumnResizer() {
         if (table) {
             window.columnResizer = new ColumnResizer('entryTable');
             
-            // 저장된 너비 즉시 적용
+            // 서버에서 저장된 너비 먼저 불러오기
+            window.columnResizer.loadServerColumnWidths();
+            
+            // 저장된 너비 즉시 적용 (localStorage)
+            const userId = getCurrentUserId();
             const headers = table.querySelectorAll('thead th');
             headers.forEach((header, index) => {
                 if (header.classList.contains('add-attribute-th')) return;
                 
                 const attrName = header.getAttribute('data-column');
                 if (attrName) {
-                    const savedWidth = localStorage.getItem(`column_width_${attrName}`);
+                    const savedWidth = localStorage.getItem(`column_width_${attrName}_${userId}`);
                     if (savedWidth) {
                         const width = parseInt(savedWidth);
                         // 헤더에 너비 적용
