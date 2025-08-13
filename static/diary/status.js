@@ -897,3 +897,113 @@ function hexToRgba(hex, alpha = 1) {
     
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
+
+// 새로운 상태 옵션 추가 후 테이블 데이터 즉시 업데이트 함수
+function refreshTableAfterNewStatusOption() {
+  console.log('새로운 상태 옵션 추가 후 테이블 데이터 즉시 업데이트 시작');
+  
+  // 현재 활성 탭 상태 확인
+  const activeTab = document.querySelector('.status-tab.active');
+  if (!activeTab) {
+    console.log('활성 탭을 찾을 수 없음');
+    return;
+  }
+  
+  const currentStatusId = activeTab.getAttribute('data-status-id');
+  console.log('현재 활성 탭 ID:', currentStatusId);
+  
+  // 전체 탭이 아닌 경우에만 테이블 데이터 새로고침
+  if (currentStatusId !== 'all') {
+    console.log('특정 상태 탭이 활성화되어 있음, 테이블 데이터 새로고침 실행');
+    
+    // 서버에서 최신 테이블 데이터 가져오기
+    const url = new URL('/sales/entry_table_partial/', window.location.origin);
+    url.searchParams.set('status_id', currentStatusId);
+    
+    fetch(url)
+      .then(response => {
+        if (!response.ok) throw new Error('Network response was not ok');
+        return response.text();
+      })
+      .then(html => {
+        console.log('테이블 데이터 새로고침 완료');
+        
+        // 테이블 내용 업데이트
+        const currentTable = document.querySelector('#tableView');
+        if (currentTable) {
+          currentTable.innerHTML = html;
+          
+          // 테이블 이벤트 재바인딩
+          if (typeof bindTableCellEvents === 'function') {
+            bindTableCellEvents();
+          }
+          
+          // 드래그앤드롭 재초기화
+          if (typeof reinitializeDragDrop === 'function') {
+            reinitializeDragDrop();
+          }
+          
+          // 행 드래그앤드롭 재초기화
+          if (typeof reinitializeRowDragDrop === 'function') {
+            reinitializeRowDragDrop();
+          }
+          
+          // 컬럼 리사이저 재초기화
+          if (typeof reinitializeColumnResizer === 'function') {
+            reinitializeColumnResizer();
+          }
+          
+          // 상태 필터 즉시 적용
+          setTimeout(() => {
+            if (typeof applyStatusFilter === 'function') {
+              console.log('새로운 상태 옵션 추가 후 상태 필터 재적용');
+              applyStatusFilter();
+            }
+          }, 100);
+          
+          // 필터 상태 업데이트
+          if (typeof updateFilterStatus === 'function') {
+            updateFilterStatus();
+          }
+          
+          // 테이블 데이터 초기화
+          if (typeof initializeTableData === 'function') {
+            initializeTableData();
+          }
+        }
+      })
+      .catch(error => {
+        console.error('테이블 데이터 새로고침 오류:', error);
+      });
+  } else {
+    console.log('전체 탭이 활성화되어 있어 테이블 데이터 새로고침 불필요');
+  }
+}
+
+// 상태 탭 클릭 시 즉시 테이블 데이터 업데이트 함수
+function selectStatusTabWithImmediateUpdate(statusId) {
+  console.log('상태 탭 선택 및 즉시 테이블 업데이트:', statusId);
+  
+  // 기존 활성 탭 비활성화
+  document.querySelectorAll('.status-tab').forEach(tab => {
+    tab.classList.remove('active');
+  });
+  
+  // 클릭된 탭 활성화
+  event.target.classList.add('active');
+  
+  // 상태 필터 적용
+  window.currentStatusTab = statusId;
+  
+  // 로딩 표시
+  if (typeof showTableLoading === 'function') {
+    showTableLoading();
+  }
+  
+  // 서버에 요청하여 필터링된 데이터 가져오기
+  loadFilteredData(statusId);
+  
+  // URL을 기본 URL로 변경 (쿼리스트링 제거)
+  const baseUrl = window.location.origin + '/sales/diary/';
+  window.history.pushState({}, '', baseUrl);
+}

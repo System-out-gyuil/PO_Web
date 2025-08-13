@@ -2397,6 +2397,8 @@ function addDropdownOption(fieldName, optionName, td, currentDropdown) {
             
             // 상태 속성 변경 이벤트 발생
             if (window.statusAttributeName && fieldName === window.statusAttributeName) {
+                console.log('상태 속성에 새 옵션이 추가됨, 테이블 데이터 즉시 업데이트 시작');
+                
                 document.dispatchEvent(new CustomEvent('statusAttributeChanged', {
                     detail: { fieldName: fieldName, action: 'add', optionName: optionName }
                 }));
@@ -2405,6 +2407,13 @@ function addDropdownOption(fieldName, optionName, td, currentDropdown) {
                 if (typeof refreshStatusTabs === 'function') {
                     setTimeout(() => {
                         refreshStatusTabs();
+                        
+                        // 상태 탭 새로고침 후 테이블 데이터도 즉시 업데이트
+                        if (typeof refreshTableAfterNewStatusOption === 'function') {
+                            setTimeout(() => {
+                                refreshTableAfterNewStatusOption();
+                            }, 300);
+                        }
                     }, 100);
                 }
             }

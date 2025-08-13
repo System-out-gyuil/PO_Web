@@ -1345,9 +1345,16 @@ function addNewModalDropdownOption(rowId, fieldName, newOption, element) {
             
             // 상태 속성인 경우 상태 탭 새로고침
             if (fieldName === window.statusAttributeName) {
-                console.log('상태 속성 옵션 추가됨, 상태 탭 새로고침');
+                console.log('상태 속성 옵션 추가됨, 상태 탭 새로고침 및 테이블 데이터 즉시 업데이트');
                 setTimeout(() => {
                     refreshStatusTabs();
+                    
+                    // 상태 탭 새로고침 후 테이블 데이터도 즉시 업데이트
+                    if (typeof refreshTableAfterNewStatusOption === 'function') {
+                        setTimeout(() => {
+                            refreshTableAfterNewStatusOption();
+                        }, 300);
+                    }
                 }, 100);
             }
         } else {
@@ -3184,9 +3191,16 @@ function addNewModalDropdownOption(rowId, fieldName, newOption, element) {
             
             // 상태 속성인 경우 상태 탭 새로고침
             if (fieldName === window.statusAttributeName) {
-                console.log('상태 속성 옵션 추가됨, 상태 탭 새로고침');
+                console.log('상태 속성 옵션 추가됨, 상태 탭 새로고침 및 테이블 데이터 즉시 업데이트');
                 setTimeout(() => {
                     refreshStatusTabs();
+                    
+                    // 상태 탭 새로고침 후 테이블 데이터도 즉시 업데이트
+                    if (typeof refreshTableAfterNewStatusOption === 'function') {
+                        setTimeout(() => {
+                            refreshTableAfterNewStatusOption();
+                        }, 300);
+                    }
                 }, 100);
             }
         } else {
