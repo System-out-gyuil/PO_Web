@@ -882,7 +882,7 @@
                 padding-bottom: 20px;
             }
             .wmr-section-desc {
-                font-size: 16px;
+                font-size: 18px;
             }
 
             .wmr-benefits-grid {
@@ -924,6 +924,22 @@
 
             .wmr-ai-section {
                 padding: 12px
+            }
+
+            .wmr-barrier-card {
+                padding: 10px;
+            }
+
+            .wmr-instructor-card {
+                padding: 15px;
+            }
+
+            .wmr-instructor-desc {
+                font-size: 15px;
+            }
+
+            .wmr-urgency-box {
+                padding: 20px;
             }
 
         }
@@ -997,7 +1013,11 @@
                     </div>
                     <div class="wmr-experience-card">
                         <div class="wmr-experience-icon">🤯</div>
+                        {% if is_mobile %}
+                        <h3 class="wmr-experience-title">정책자금,<br> 결국 혼자서는 어렵다고 느끼셨나요?</h3>
+                        {% else %}
                         <h3 class="wmr-experience-title">정책자금, 결국 혼자서는 어렵다고 느끼셨나요?</h3>
+                        {% endif %}
                         
                     </div>
                 </div>
@@ -1006,25 +1026,48 @@
             <!-- 3가지 벽 섹션 - 세로 배치 -->
             <section class="wmr-section wmr-barriers">
                 <h2 class="wmr-section-title">월 천만원을 가로막는 3가지 벽</h2>
+                {% if is_mobile %}
+                <p class="wmr-section-desc" style="font-size: 14px;">대부분이 고수익 법인영업에 실패하는 이유를 명확히 파악하고,<br> 그 해결책을 제시합니다</p>
+                {% else %}
                 <p class="wmr-section-desc">대부분이 고수익 법인영업에 실패하는 이유를 명확히 파악하고, 그 해결책을 제시합니다</p>
+                {% endif %}
                 
                 <div class="wmr-barrier-list">
                     <div class="wmr-barrier-card">
                         <div class="wmr-barrier-number">1</div>
                         <div class="wmr-barrier-icon">👁️‍🗨️</div>
                         <h3 class="wmr-barrier-title">시야의 부족 - 보이지 않는 기회</h3>
+                        {% if is_mobile %}
+                        <p class="wmr-barrier-desc">
+                            월 천만원을 벌 수 있는 <br>법인영업의 황금 기회가 있다는 것 자체를 모릅니다.<br><br>
+                            정책자금 법인영업이라는 고수익 분야가 <br>존재한다는 것조차 모르는 분들이 대부분입니다. <br>
+                            경험이 없으니 기회가 보여도 그게 기회인지 판단할 수 없죠. <br>
+                            <span class="wmr-highlight">혼자서는 절대 극복하기 어려운 영역</span>입니다.
+                        </p>
+                        {% else %}
                         <p class="wmr-barrier-desc">
                             "월 천만원을 벌 수 있는 법인영업의 황금 기회가 있다는 것 자체를 모릅니다."<br><br>
                             정책자금 법인영업이라는 고수익 분야가 존재한다는 것조차 모르는 분들이 대부분입니다. 
                             경험이 없으니 기회가 보여도 그게 기회인지 판단할 수 없죠. <br>
                             <span class="wmr-highlight">혼자서는 절대 극복하기 어려운 영역</span>입니다.
                         </p>
+                        {% endif %}
+
                     </div>
                     
                     <div class="wmr-barrier-card">
                         <div class="wmr-barrier-number">2</div>
                         <div class="wmr-barrier-icon">🚀</div>
                         <h3 class="wmr-barrier-title">시도의 부족 - 막연한 두려움</h3>
+                        {% if is_mobile %}
+                        <p class="wmr-barrier-desc">
+                            돈 되는 방법은 알지만,<br> 어디서부터 시작해야 할지 몰라 미루기만 합니다.<br><br>
+                            정책자금이 있다는 건 알지만<br>
+                            복잡해 보이고, 어려워 보여서 시작을 못하는 경우입니다. <br>
+                            첫걸음이 가장 어렵죠.<br>
+                            하지만 <span class="wmr-highlight">방법만 명확히 알면 즉시 실행</span> 가능합니다.
+                        </p>
+                        {% else %}
                         <p class="wmr-barrier-desc">
                             "돈 되는 방법은 알지만, 어디서부터 시작해야 할지 몰라 미루기만 합니다."<br><br>
                             정책자금이 있다는 건 알지만<br>
@@ -1032,18 +1075,28 @@
                             첫걸음이 가장 어렵죠.<br>
                             하지만 <span class="wmr-highlight">방법만 명확히 알면 즉시 실행</span> 가능합니다.
                         </p>
+                        {% endif %}
                     </div>
                     
                     <div class="wmr-barrier-card">
                         <div class="wmr-barrier-number">3</div>
                         <div class="wmr-barrier-icon">🎯</div>
                         <h3 class="wmr-barrier-title">경험의 부족 - 끝없는 시행착오</h3>
+                        {% if is_mobile %}
+                        <p class="wmr-barrier-desc">
+                            "성공하는 법인영업은 수많은 경험과 노하우의 집약체입니다."<br><br>
+                            시도는 해봤지만 시행착오를 반복하며 포기하는 경우가 많습니다.<br> 
+                            혼자서 시행착오를 겪다 보면 시간과 비용만 낭비됩니다.<br> 
+                            검증된 경험을 통해 <br><span class="wmr-highlight">2-3년 걸릴 과정을 2-3개월로 단축</span>시켜 드립니다.
+                        </p>
+                        {% else %}
                         <p class="wmr-barrier-desc">
                             "성공하는 법인영업은 수많은 경험과 노하우의 집약체입니다."<br><br>
                             시도는 해봤지만 시행착오를 반복하며 포기하는 경우가 많습니다.<br> 
                             혼자서 시행착오를 겪다 보면 시간과 비용만 낭비됩니다.<br> 
                             검증된 경험을 통해 <span class="wmr-highlight">2-3년 걸릴 과정을 2-3개월로 단축</span>시켜 드립니다.
                         </p>
+                        {% endif %}
                     </div>
                 </div>
             </section>
@@ -1051,7 +1104,11 @@
             <!-- 혜택 섹션 -->
             <section class="wmr-section">
                 <h2 class="wmr-section-title">단 3시간, 월 수익을 뒤바꿀 핵심 가치</h2>
+                {% if is_mobile %}
+                <p class="wmr-section-desc">이론이 아닌 실제 고수익 달성!<br> 추상적 개념이 아닌 구체적이고 압도적인 성과를 약속합니다</p>
+                {% else %}
                 <p class="wmr-section-desc">이론이 아닌 실제 고수익 달성! 추상적 개념이 아닌 구체적이고 압도적인 성과를 약속합니다</p>
+                {% endif %}
                 
                 <div class="wmr-benefits-grid">
                     <div class="wmr-benefit-card">
@@ -1121,25 +1178,44 @@
                     </div>
                 </div>
                 
+                {% if is_mobile %}
+                <div class="wmr-iceberg-notice">
+                    진짜 월 천만원을 만드는 AI 활용법은 본강의에서만 공개됩니다!
+                </div>
+                {% else %}
                 <div class="wmr-iceberg-notice">
                     💎 진짜 월 천만원을 만드는 AI 활용법은 본강의에서만 공개됩니다!
                 </div>
+                {% endif %}
             </section>
     
             <!-- 강사 소개 섹션 -->
             <section class="wmr-section wmr-instructor">
+                {% if is_mobile %}
+                <h2 class="wmr-section-title">월 천만원 고수익,<br> 검증된 전문가와 함께하세요</h2>
+                {% else %}
                 <h2 class="wmr-section-title">월 천만원 고수익, 검증된 전문가와 함께하세요</h2>
+                {% endif %}
                 
                 <div class="wmr-instructor-card">
                     <div class="wmr-instructor-photo" style="background-image: url('https://namatji.com/static/images/%EC%98%A4%EC%9B%90%EC%84%9D.png');">
                     </div>
                     <h3 class="wmr-instructor-name">오원석</h3>
+                    {% if is_mobile %}
+                    <p class="wmr-instructor-title">10년차 기업 컨설턴트 | 정책자금·지원사업·법인영업 전문가</p>
+                    <p class="wmr-instructor-desc">
+                        10년 이상 수많은 기업의 <span class="wmr-highlight">정책자금 유치와 <br>법인영업 고수익 성과를 책임져 온 베테랑 컨설턴트</span>입니다. <br>
+                        나맞지·자금왕 AI 시스템을 직접 개발하여, <br> 실제 성공 사례와 검증된 시스템으로 <br>
+                        당신의 월 천만원 목표를 <br><span class="wmr-highlight">가장 빠르고 확실하게 현실로</span> 만들어 드립니다.
+                    </p>
+                    {% else %}
                     <p class="wmr-instructor-title">10년차 기업 컨설턴트 | 정책자금·지원사업·법인영업 전문가</p>
                     <p class="wmr-instructor-desc">
                         10년 이상 수많은 기업의 <span class="wmr-highlight">정책자금 유치와 법인영업 고수익 성과를 책임져 온 베테랑 컨설턴트</span>입니다. <br>
                         나맞지·자금왕 AI 시스템을 직접 개발하여, 실제 성공 사례와 검증된 시스템으로 <br>
                         당신의 <span class="wmr-highlight">월 천만원 목표를 가장 빠르고 확실하게 현실로</span> 만들어 드립니다.
                     </p>
+                    {% endif %}
                 </div>
             </section>
     
@@ -1184,7 +1260,12 @@
                     <p class="wmr-cta-subtext">월 천만원 법인영업 고수익, 더 이상 꿈이 아닙니다. 현실이 됩니다!</p>
                     
                     <div class="wmr-urgency-box">
+                        {% if is_mobile %}
+                        <h3 class="wmr-urgency-title">⚠️ 이 황금 기회를 놓치면<br> 안 되는 이유!</h3>
+                        {% else %}
                         <h3 class="wmr-urgency-title">⚠️ 이 황금 기회를 놓치면 안 되는 이유!</h3>
+                        {% endif %}
+                        
                         <p class="wmr-urgency-text">
                             <strong style="font-size: 24px;">단 10명만 모집합니다.</strong><br><br>
                             밀착 코칭과 압도적 성과를 위한 최적의 인원입니다.<br>
