@@ -3489,11 +3489,39 @@ function handleDropdownOptionChange(event) {
                 
                 // 상태 필터가 활성화되어 있고, 변경된 필드가 상태 속성인 경우에만 즉시 필터 적용
                 if (window.currentStatusTab !== null && fieldName === window.statusAttributeName) {
-                    setTimeout(() => {
-                        if (typeof applyStatusFilter === 'function') {
-                            applyStatusFilter();
+                    console.log('상태 속성 변경 감지, 안전한 필터 적용 시작');
+                    
+                    // 상태 셀 강제 업데이트
+                    if (typeof forceUpdateStatusCellValue === 'function') {
+                        const updateSuccess = forceUpdateStatusCellValue(rowId, fieldName, '');
+                        if (updateSuccess) {
+                            // 안전한 상태 필터 재적용
+                            if (typeof safeApplyStatusFilterAfterChange === 'function') {
+                                safeApplyStatusFilterAfterChange();
+                            } else {
+                                // fallback: 기존 방식 사용
+                                setTimeout(() => {
+                                    if (typeof applyStatusFilter === 'function') {
+                                        applyStatusFilter();
+                                    }
+                                }, 100);
+                            }
                         }
-                    }, 50);
+                    } else {
+                        // fallback: 기존 방식 사용
+                        const row = document.querySelector(`tr[data-id="${rowId}"]`);
+                        if (row) {
+                            const statusCell = row.querySelector(`td[data-field="${fieldName}"]`);
+                            if (statusCell) {
+                                statusCell.setAttribute('data-value', newValue);
+                                setTimeout(() => {
+                                    if (typeof applyStatusFilter === 'function') {
+                                        applyStatusFilter();
+                                    }
+                                }, 100);
+                            }
+                        }
+                    }
                 }
             } else {
                 console.error('드롭다운 옵션 삭제 실패:', data.error);

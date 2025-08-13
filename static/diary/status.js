@@ -172,30 +172,40 @@ function applyStatusFilter() {
   ) {
     statusTab = 'all';
   }
-  console.log('상태 필터 적용:', {
+  
+  console.log('상태 필터 적용 시작:', {
       statusAttributeName: window.statusAttributeName,
       currentStatusTab: statusTab,
-      totalRows: rows.length
+      totalRows: rows.length,
+      timestamp: new Date().toISOString()
   });
   
-  rows.forEach(row => {
+  let visibleRows = 0;
+  let hiddenRows = 0;
+  
+  rows.forEach((row, index) => {
       const statusCell = row.querySelector(`td[data-field="${window.statusAttributeName}"]`);
       if (!statusCell) {
-          console.log('상태 셀을 찾을 수 없음:', row);
+          console.log(`행 ${index}: 상태 셀을 찾을 수 없음 - 숨김 처리`, row);
           row.style.display = 'none';
+          hiddenRows++;
           return;
       }
       
       const statusValue = statusCell.getAttribute('data-value');
-      console.log('행 상태 값:', {
-          rowId: row.getAttribute('data-id'),
+      const rowId = row.getAttribute('data-id');
+      
+      console.log(`행 ${index} (ID: ${rowId}) 상태 값:`, {
           statusValue: statusValue,
-          expectedValue: window.currentStatusTab
+          expectedValue: window.currentStatusTab,
+          cellText: statusCell.textContent.trim()
       });
       
-      if (window.currentStatusTab === null) {
+      if (window.currentStatusTab === null || window.currentStatusTab === 'all') {
           // 전체 탭 선택 시 모든 행 표시
           row.style.display = '';
+          visibleRows++;
+          console.log(`행 ${index}: 전체 탭 - 표시됨`);
       } else {
           // 특정 상태 탭 선택 시 해당 상태의 행만 표시
           let shouldShow = false;
@@ -206,21 +216,38 @@ function applyStatusFilter() {
                   const parsedValue = JSON.parse(statusValue);
                   if (Array.isArray(parsedValue)) {
                       // 배열인 경우 해당 값이 포함되어 있는지 확인
-                      shouldShow = parsedValue.includes(window.currentStatusTab);
+                      shouldShow = parsedValue.some(val => String(val) === String(window.currentStatusTab));
+                      console.log(`행 ${index}: 배열 값 ${JSON.stringify(parsedValue)} - ${shouldShow ? '포함됨' : '포함되지 않음'}`);
                   } else {
-                      // 단일 값인 경우 직접 비교
-                      shouldShow = parsedValue === window.currentStatusTab;
+                      // 단일 값인 경우 문자열로 변환하여 비교
+                      shouldShow = String(parsedValue) === String(window.currentStatusTab);
+                      console.log(`행 ${index}: 단일 값 ${parsedValue} === ${window.currentStatusTab} = ${shouldShow}`);
                   }
               } catch (e) {
-                  // JSON이 아닌 경우 문자열로 직접 비교
-                  // 숫자와 문자열 모두 비교 시도
-                  shouldShow = statusValue === window.currentStatusTab.toString() || 
-                             statusValue === window.currentStatusTab;
+                  // JSON이 아닌 경우 문자열로 변환하여 비교
+                  shouldShow = String(statusValue) === String(window.currentStatusTab);
+                  console.log(`행 ${index}: 문자열 비교 ${statusValue} === ${window.currentStatusTab} = ${shouldShow}`);
               }
+          } else {
+              console.log(`행 ${index}: statusValue가 없음 - 숨김 처리`);
           }
           
           row.style.display = shouldShow ? '' : 'none';
+          if (shouldShow) {
+              visibleRows++;
+              console.log(`행 ${index}: 표시됨`);
+          } else {
+              hiddenRows++;
+              console.log(`행 ${index}: 숨김 처리됨`);
+          }
       }
+  });
+  
+  console.log('상태 필터 적용 완료:', {
+      totalRows: rows.length,
+      visibleRows: visibleRows,
+      hiddenRows: hiddenRows,
+      timestamp: new Date().toISOString()
   });
   
   // 필터 상태 업데이트
@@ -786,4 +813,87 @@ function setupStatusAttributeChangeListener() {
   });
   
   console.log('상태 속성 변경 이벤트 리스너 설정 완료');
+}
+
+// 드롭다운 옵션 변경 후 상태 필터 안전 재적용 함수
+function safeApplyStatusFilterAfterChange() {
+  console.log('드롭다운 옵션 변경 후 상태 필터 안전 재적용 시작');
+  
+  // 현재 상태 탭이 활성화되어 있는지 확인
+  if (window.currentStatusTab === null || window.currentStatusTab === 'all') {
+    console.log('전체 탭이 활성화되어 있어 필터 적용 불필요');
+    return;
+  }
+  
+  // 상태 속성이 설정되어 있는지 확인
+  if (!window.statusAttributeName) {
+    console.log('상태 속성이 설정되지 않음');
+    return;
+  }
+  
+  // 테이블이 로드되어 있는지 확인
+  const tbody = document.getElementById('entryTbody');
+  if (!tbody) {
+    console.log('테이블 본문을 찾을 수 없음');
+    return;
+  }
+  
+  // 약간의 지연 후 필터 적용 (DOM 업데이트 완료 대기)
+  setTimeout(() => {
+    console.log('지연 후 상태 필터 적용 실행');
+    if (typeof applyStatusFilter === 'function') {
+      applyStatusFilter();
+    } else {
+      console.error('applyStatusFilter 함수를 찾을 수 없음');
+    }
+  }, 100);
+}
+
+// 상태 셀의 data-value 속성 강제 업데이트 함수
+function forceUpdateStatusCellValue(rowId, fieldName, newValue) {
+  console.log(`상태 셀 강제 업데이트: 행 ID=${rowId}, 필드=${fieldName}, 값=${newValue}`);
+  
+  const row = document.querySelector(`tr[data-id="${rowId}"]`);
+  if (!row) {
+    console.error(`행을 찾을 수 없음: ${rowId}`);
+    return false;
+  }
+  
+  const statusCell = row.querySelector(`td[data-field="${fieldName}"]`);
+  if (!statusCell) {
+    console.error(`상태 셀을 찾을 수 없음: ${fieldName}`);
+    return false;
+  }
+  
+  // data-value 속성 업데이트
+  statusCell.setAttribute('data-value', newValue);
+  
+  // 셀 내용도 업데이트 (옵션명 표시)
+  if (window.statusOptions) {
+    const option = window.statusOptions.find(opt => String(opt.id) === String(newValue));
+    if (option) {
+      statusCell.innerHTML = `<div style="display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center; background-color:${option.color ? hexToRgba(option.color, 0.18) : '#f8f9fa'}; color:#333;">${option.name}</div>`;
+    }
+  }
+  
+  console.log(`상태 셀 업데이트 완료: ${fieldName} = ${newValue}`);
+  return true;
+}
+
+// 16진수 색상을 RGBA로 변환하는 헬퍼 함수
+function hexToRgba(hex, alpha = 1) {
+    // # 제거
+    hex = hex.replace('#', '');
+    
+    // 3자리인 경우 6자리로 확장
+    if (hex.length === 3) {
+        hex = hex.split('').map(char => char + char).join('');
+    }
+    
+    // RGB 값 추출
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+    
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }

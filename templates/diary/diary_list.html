@@ -1261,18 +1261,37 @@ function selectModalDropdownOption(rowId, fieldName, optionId, optionText, eleme
             
             // 상태 필터가 활성화되어 있고, 변경된 필드가 상태 속성인 경우에만 즉시 필터 적용
             if (window.currentStatusTab !== null && fieldName === window.statusAttributeName) {
-                // 해당 행의 상태 셀 업데이트
-                const row = document.querySelector(`tr[data-id="${rowId}"]`);
-                if (row) {
-                    const statusCell = row.querySelector(`td[data-field="${fieldName}"]`);
-                    if (statusCell) {
-                        // 새로운 값으로 data-value 업데이트
-                        statusCell.setAttribute('data-value', optionId);
-                        
-                        // 상태 필터 즉시 재적용
-                        setTimeout(() => {
-                            applyStatusFilter();
-                        }, 50);
+                console.log('상태 속성 변경 감지, 안전한 필터 적용 시작');
+                
+                // 상태 셀 강제 업데이트
+                if (typeof forceUpdateStatusCellValue === 'function') {
+                    const updateSuccess = forceUpdateStatusCellValue(rowId, fieldName, optionId);
+                    if (updateSuccess) {
+                        // 안전한 상태 필터 재적용
+                        if (typeof safeApplyStatusFilterAfterChange === 'function') {
+                            safeApplyStatusFilterAfterChange();
+                        } else {
+                            // fallback: 기존 방식 사용
+                            setTimeout(() => {
+                                if (typeof applyStatusFilter === 'function') {
+                                    applyStatusFilter();
+                                }
+                            }, 100);
+                        }
+                    }
+                } else {
+                    // fallback: 기존 방식 사용
+                    const row = document.querySelector(`tr[data-id="${rowId}"]`);
+                    if (row) {
+                        const statusCell = row.querySelector(`td[data-field="${fieldName}"]`);
+                        if (statusCell) {
+                            statusCell.setAttribute('data-value', optionId);
+                            setTimeout(() => {
+                                if (typeof applyStatusFilter === 'function') {
+                                    applyStatusFilter();
+                                }
+                            }, 100);
+                        }
                     }
                 }
             }
