@@ -19,7 +19,7 @@ from .board_views import board_list_view, board_list_api, board_create, board_de
 from .funding_views import get_funding_recommendation, get_recommended_notices, update_debt_field, save_debt_details, update_expected_loans, update_loan_amount, get_debt_details
 from .order import reorder_entries, save_column_order, update_detail_sort_order
 from .hwp_convert import convert_hwp_to_pdf_board, convert_hwp_to_pdf
-
+from .ai_class import ai_class
 from .attribute_handlers import get_hidden_attributes, add_attribute, delete_attribute, update_attribute_name, update_attribute_visibility, get_dropdown_attributes, get_all_attributes
 
 urlpatterns = [
@@ -202,4 +202,7 @@ urlpatterns = [
     path('company_info/', CompanyInfoView.as_view(), name='company_info'),
     path('personal_info/', PersonalInfoView.as_view(), name='personal_info'),
     path('terms_of_service/', TermsOfServiceView.as_view(), name='terms_of_service'),
+
+    # AI 법인영업 강의 관련 URL
+    path('class/', ai_class, name='ai_class'),
 ] 

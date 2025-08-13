@@ -2,8 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>AI 법인영업 강의</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700;800;900&display=swap');
         
@@ -768,14 +767,59 @@
         .wmr-cta-button:hover::before {
             left: 100%;
         }
+
+        .wmr-past-experience-hook {
+            height: 350px;
+        }
+
+        .wmr-experience-grid {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 60px;
+            width: 96%;
+            position: absolute;
+            left: 2%;
+        }
+        .wmr-experience-card {
+            background: var(--bg-white);
+            padding: 35px;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.08);
+            border: 2px solid #E2E8F0;
+            transition: all 0.3s ease;
+            width: 90%
+        }
+        .wmr-experience-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 45px rgba(0,0,0,0.12);
+            border-color: var(--accent-orange);
+        }
+        .wmr-experience-icon {
+            font-size: 50px;
+            margin-bottom: 20px;
+        }
+        .wmr-experience-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--primary-dark);
+            margin-bottom: 15px;
+        }
+        .wmr-experience-desc {
+            font-size: 16px;
+            color: var(--text-gray);
+            line-height: 1.6;
+        }
         
         /* 반응형 디자인 */
         @media (max-width: 768px) {
+            body {
+                margin: 0;
+            }
             .wmr-main-headline { font-size: 36px; }
             .wmr-sub-headline { font-size: 18px; }
-            .wmr-section-title { font-size: 32px; }
-            .wmr-stats-title { font-size: 28px; }
-            .wmr-cta-headline { font-size: 32px; }
+            .wmr-section-title { font-size: 26px; }
+            .wmr-stats-title { font-size: 25px; }
+            .wmr-cta-headline { font-size: 23px; }
             .wmr-cta-button { font-size: 20px; padding: 20px 40px; }
             .wmr-section { padding: 60px 20px; }
             .wmr-hero { padding: 60px 20px; }
@@ -785,7 +829,99 @@
             .wmr-comparison { flex-direction: column; gap: 20px; }
             .wmr-3d-visual { height: 220px; margin: 40px 0; }
             .wmr-money-visual { width: 120px; height: 120px; font-size: 50px; }
+            .wmr-past-experience-hook { padding: 50px 20px; }
+            .wmr-past-experience-hook .wmr-section-title { font-size: 32px; }
+            .wmr-past-experience-hook .wmr-section-desc { font-size: 18px; }
+            .wmr-experience-grid { grid-template-columns: 1fr; }
+            .wmr-past-experience-hook {
+                height: 700px;
+                padding: 0;
+                margin-top: 20px;
+            }
+            .wmr-experience-grid {
+                position: relative;
+                display: block;
+                width: 100%;
+                margin: 0;
+                left: 0;
+            }
+            .wmr-experience-card {
+                width: 100%;
+                margin-bottom: 20px;
+                text-align: center;
+                padding: 10px;
+
+            }
+            .wmr-benefit-card {
+                width: 350px;
+                padding: 20px;
+            }
+
+            .wmr-info-grid {
+                display: flex;
+                flex-direction: column;
+                gap: 20px;
+            }
+
+            .wmr-barrier-title {
+                font-size: 23px;
+            }
+
+            .wmr-barrier-desc {
+                font-size: 14px;
+            }
+
+            .wmr-section {
+                padding-bottom: 20px;
+            }
+            .wmr-section-desc {
+                font-size: 16px;
+            }
+
+            .wmr-benefits-grid {
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+            }
+
+            .wmr-benefit-desc, .wmr-section-desc {
+                font-size: 12px;
+            }
+
+            .wmr-section-title {
+                font-size: 22px;
+            }
+
+            .wmr-iceberg-notice {
+                font-size: 14px;
+                padding: 10px;
+                margin-bottom: 20px;
+            }
+
+            .wmr-instructor-title {
+                font-size: 15px;
+            }
+
+            .wmr-cta-subtext {
+                font-size: 14px;
+            }
+
+            .wmr-urgency-text {
+                font-size: 11px;
+            }
+
+            .wmr-cta-content {
+                padding-bottom: 40px;
+            }
+
+            .wmr-ai-section {
+                padding: 12px
+            }
+
         }
+
+        
     </style>
 </head>
 <body>
@@ -833,10 +969,30 @@
                             <div class="wmr-stat-desc">법인영업 고수익</div>
                         </div>
                     </div>
-                    <p style="font-size: 24px; font-weight: 700; margin-top: 30px;">
+                    <p style="font-size: 22px; font-weight: 700; margin-top: 30px;">
                         <strong>같은 시간 투자, 5배 다른 결과</strong><br>
                         이제 꿈이 아닌 현실로 만들 차례입니다
                     </p>
+                </div>
+            </section>
+
+            <section class="wmr-section wmr-past-experience-hook">
+                <div class="wmr-experience-grid">
+                    <div class="wmr-experience-card">
+                        <div class="wmr-experience-icon">📚</div>
+                        <h3 class="wmr-experience-title">이론만 배우고, 실전은 막막하셨나요?</h3>
+                        
+                    </div>
+                    <div class="wmr-experience-card">
+                        <div class="wmr-experience-icon">💸</div>
+                        <h3 class="wmr-experience-title">시간과 돈을 썼지만, 제자리걸음이었나요?</h3>
+                        
+                    </div>
+                    <div class="wmr-experience-card">
+                        <div class="wmr-experience-icon">🤯</div>
+                        <h3 class="wmr-experience-title">정책자금, 결국 혼자서는 어렵다고 느끼셨나요?</h3>
+                        
+                    </div>
                 </div>
             </section>
     
@@ -929,7 +1085,7 @@
                             <div class="wmr-tool-tagline">정책자금 지원사업 AI 서칭 & 추천</div>
                         </div>
                         <div class="wmr-tool-body">
-                            <div class="wmr-tool-screenshot" style="background-image: url('https://github-production-user-asset-6210df.s3.amazonaws.com/120631088/477403541-8df06461-18cc-46e3-ab98-230b25239929.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAVCODYLSA53PQK4ZA%2F20250813%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20250813T070412Z&X-Amz-Expires=300&X-Amz-Signature=0afa4dd9ced693f7a697fdc08bc8bdd3ec18564aaafb6f44d519018c7ccadc78&X-Amz-SignedHeaders=host');">
+                            <div class="wmr-tool-screenshot" style="background-image: url('https://namatji.com/static/images/%EB%82%98%EB%A7%9E%EC%A7%80ai.png');">
                             </div>
                             <ul class="wmr-tool-features">
                                 <li>업종별/규모별 맞춤 정책자금 자동 매칭</li>
@@ -946,7 +1102,7 @@
                             <div class="wmr-tool-tagline">자금 한도 즉시 확인 + CRM 영업관리</div>
                         </div>
                         <div class="wmr-tool-body">
-                            <div class="wmr-tool-screenshot" style="background-image: url('https://github-production-user-asset-6210df.s3.amazonaws.com/120631088/477404642-b14c186b-7d2a-4d33-b693-a2fd7d3cd353.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAVCODYLSA53PQK4ZA%2F20250813%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20250813T070640Z&X-Amz-Expires=300&X-Amz-Signature=6b93f95e0a380dd6fa70447e349b9a5ef040cdba40cf44736ca22e33d98fdc60&X-Amz-SignedHeaders=host');">
+                            <div class="wmr-tool-screenshot" style="background-image: url('https://namatji.com/static/images/%EC%9E%90%EA%B8%88%EC%99%95.png');">
                             </div>
                             <ul class="wmr-tool-features">
                                 <li>AI 기반 정확한 자금 한도 즉시 계산</li>
@@ -968,7 +1124,7 @@
                 <h2 class="wmr-section-title">월 천만원 고수익, 검증된 전문가와 함께하세요</h2>
                 
                 <div class="wmr-instructor-card">
-                    <div class="wmr-instructor-photo" style="background-image: url('https://github-production-user-asset-6210df.s3.amazonaws.com/120631088/477404873-21dcc7fd-598a-4da5-9de6-819c796da8d1.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAVCODYLSA53PQK4ZA%2F20250813%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20250813T070711Z&X-Amz-Expires=300&X-Amz-Signature=33ae7e2fa5408c5fbdfebaaa5f2d264ac0d60c8a6f01619d139fa3d7d098d4a2&X-Amz-SignedHeaders=host');">
+                    <div class="wmr-instructor-photo" style="background-image: url('https://namatji.com/static/images/%EC%98%A4%EC%9B%90%EC%84%9D.png');">
                     </div>
                     <h3 class="wmr-instructor-name">오원석</h3>
                     <p class="wmr-instructor-title">10년차 기업 컨설턴트 | 정책자금·지원사업·법인영업 전문가</p>
@@ -1030,7 +1186,7 @@
                         </p>
                     </div>
                     
-                    <a href="#" class="wmr-cta-button">지금 신청하고 월 천만원의 길 열기 ▶</a>
+                    <a href="https://naver.me/xjULVAUL" class="wmr-cta-button">지금 신청하고 월 천만원의 길 열기 ▶</a>
                 </div>
             </section>
         </div>
