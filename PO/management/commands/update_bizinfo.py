@@ -331,7 +331,8 @@ class Command(BaseCommand):
 
     def delete_bizinfo_by_date(self):
         # 오늘 00:00:00 기준 datetime 객체 생성
-        today_midnight = datetime.combine(date.today(), time.min)  # ✅ datetime.time.min
+        from datetime import time as dt_time  # time 모듈과 구분하기 위해 별칭 사용
+        today_midnight = datetime.combine(date.today(), dt_time.min)  # ✅ dt_time.min 사용
 
         # DB가 timezone-aware인 경우
         today_midnight = make_aware(today_midnight)
@@ -348,7 +349,15 @@ class Command(BaseCommand):
                 
                 region = cust_user.region
                 big_industry = cust_user.industry
-                sales = int(cust_user.sales_for_year.replace(",", ""))
+                
+                # sales_for_year 변환 시 에러 처리 추가
+                try:
+                    sales = int(cust_user.sales_for_year.replace(",", ""))
+                except (ValueError, AttributeError):
+                    # 숫자가 아닌 값이 저장된 경우 기본값 설정
+                    print(f"⚠️ 사용자 {cust_user.id}의 sales_for_year 값이 숫자가 아닙니다: {cust_user.sales_for_year}")
+                    sales = 0  # 기본값으로 0 설정
+                
                 period = cust_user.start_date
                 export = cust_user.export_experience
                 empl = int(cust_user.employee_count)

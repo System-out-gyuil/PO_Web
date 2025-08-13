@@ -2085,33 +2085,6 @@ function selectModalDropdownOption(rowId, fieldName, optionId, optionText, btn, 
     window.addEventListener('resize', scrollHandler);
 }
 
-// 중복 레코드 정리 유틸리티 함수
-function cleanupDuplicateRecords() {
-    console.log('중복 레코드 정리 시작...');
-    
-    fetch('/sales/cleanup_duplicates/', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCsrfToken()
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            console.log('중복 레코드 정리 완료:', data.message);
-            alert(`중복 레코드 정리 완료: ${data.deleted_count}개 레코드가 정리되었습니다.`);
-        } else {
-            console.error('중복 레코드 정리 실패:', data.error);
-            alert('중복 레코드 정리 실패: ' + data.error);
-        }
-    })
-    .catch(error => {
-        console.error('중복 레코드 정리 요청 오류:', error);
-        alert('중복 레코드 정리 중 오류가 발생했습니다.');
-    });
-}
-
 // CSRF 토큰 가져오기 함수 (이미 정의되어 있지 않은 경우)
 function getCsrfToken() {
     const name = 'csrftoken';
@@ -2223,6 +2196,13 @@ function updateDropdownOptionColor(fieldName, optionId, newColor, td, currentDro
                 document.dispatchEvent(new CustomEvent('statusAttributeChanged', {
                     detail: { fieldName: fieldName, action: 'colorUpdate', optionId: optionId, newColor: newColor }
                 }));
+                
+                // 상태 탭 새로고침
+                if (typeof refreshStatusTabs === 'function') {
+                    setTimeout(() => {
+                        refreshStatusTabs();
+                    }, 100);
+                }
             }
         } else {
             throw new Error(data.error || '색상 업데이트 실패');
@@ -2296,6 +2276,13 @@ function updateDropdownOptionName(fieldName, optionId, newName, oldName, td, cur
             if (typeof triggerKanbanRefreshIfNeeded === 'function') {
                 triggerKanbanRefreshIfNeeded(fieldName);
             }
+            
+            // 상태 속성인 경우 상태 탭 새로고침
+            if (window.statusAttributeName && fieldName === window.statusAttributeName && typeof refreshStatusTabs === 'function') {
+                setTimeout(() => {
+                    refreshStatusTabs();
+                }, 100);
+            }
         } else {
             throw new Error(data.error || '옵션 이름 업데이트 실패');
         }
@@ -2338,6 +2325,13 @@ function deleteDropdownOption(fieldName, optionId, td, currentDropdown) {
             // 칸반보드 리프레시
             if (typeof triggerKanbanRefreshIfNeeded === 'function') {
                 triggerKanbanRefreshIfNeeded(fieldName);
+            }
+            
+            // 상태 속성인 경우 상태 탭 새로고침
+            if (window.statusAttributeName && fieldName === window.statusAttributeName && typeof refreshStatusTabs === 'function') {
+                setTimeout(() => {
+                    refreshStatusTabs();
+                }, 100);
             }
         } else {
             throw new Error(data.error || '옵션 삭제 실패');
@@ -2389,6 +2383,13 @@ function addDropdownOption(fieldName, optionName, td, currentDropdown) {
                 document.dispatchEvent(new CustomEvent('statusAttributeChanged', {
                     detail: { fieldName: fieldName, action: 'add', optionName: optionName }
                 }));
+                
+                // 상태 탭 새로고침
+                if (typeof refreshStatusTabs === 'function') {
+                    setTimeout(() => {
+                        refreshStatusTabs();
+                    }, 100);
+                }
             }
         } else {
             throw new Error(data.error || '옵션 추가 실패');
@@ -2546,6 +2547,13 @@ function updateModalDropdownOptionName(fieldName, optionId, newName) {
             if (typeof triggerKanbanRefreshIfNeeded === 'function') {
                 triggerKanbanRefreshIfNeeded(fieldName);
             }
+            
+            // 상태 속성인 경우 상태 탭 새로고침
+            if (window.statusAttributeName && fieldName === window.statusAttributeName && typeof refreshStatusTabs === 'function') {
+                setTimeout(() => {
+                    refreshStatusTabs();
+                }, 100);
+            }
         } else {
             throw new Error(data.error || '옵션 이름 업데이트 실패');
         }
@@ -2589,6 +2597,13 @@ function deleteModalDropdownOption(fieldName, optionId) {
             }
             if (typeof triggerKanbanRefreshIfNeeded === 'function') {
                 triggerKanbanRefreshIfNeeded(fieldName);
+            }
+            
+            // 상태 속성인 경우 상태 탭 새로고침
+            if (window.statusAttributeName && fieldName === window.statusAttributeName && typeof refreshStatusTabs === 'function') {
+                setTimeout(() => {
+                    refreshStatusTabs();
+                }, 100);
             }
         } else {
             throw new Error(data.error || '옵션 삭제 실패');
@@ -2734,6 +2749,13 @@ function updateModalDropdownOptionColor(fieldName, optionId, newColor) {
             if (typeof triggerKanbanRefreshIfNeeded === 'function') {
                 triggerKanbanRefreshIfNeeded(fieldName);
             }
+            
+            // 상태 속성인 경우 상태 탭 새로고침
+            if (window.statusAttributeName && fieldName === window.statusAttributeName && typeof refreshStatusTabs === 'function') {
+                setTimeout(() => {
+                    refreshStatusTabs();
+                }, 100);
+            }
         } else {
             throw new Error(data.error || '색상 업데이트 실패');
         }
@@ -2783,6 +2805,13 @@ function addModalDropdownOption(fieldName, optionName) {
                 document.dispatchEvent(new CustomEvent('statusAttributeChanged', {
                     detail: { fieldName: fieldName, action: 'add', optionName: optionName }
                 }));
+                
+                // 상태 탭 새로고침
+                if (typeof refreshStatusTabs === 'function') {
+                    setTimeout(() => {
+                        refreshStatusTabs();
+                    }, 100);
+                }
             }
         } else {
             throw new Error(data.error || '옵션 추가 실패');
@@ -2792,4 +2821,12 @@ function addModalDropdownOption(fieldName, optionName) {
         console.error('모달 옵션 추가 실패:', error);
         alert('옵션 추가 중 오류가 발생했습니다: ' + error.message);
     });
+}
+
+// 드롭다운 옵션 변경 처리 함수
+function handleDropdownOptionChange(event) {
+    const { fieldName, newValue, rowId } = event.detail;
+    
+    console.log('드롭다운 옵션 변경 감지:', { fieldName, newValue, rowId });
+    
 }

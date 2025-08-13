@@ -3,7 +3,6 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_http_methods
 from django.utils import timezone
-from django.contrib.auth.models import User
 from django.db import models, transaction
 from django.conf import settings
 
@@ -13,7 +12,9 @@ from .models import (
     AttributeType, UserAlarm
 )
 from board.models import BizInfo
-
+from main.models import BizTop
+from django.utils import timezone
+from datetime import date, timedelta
 import json
 import random
 import time
@@ -27,18 +28,26 @@ from types import SimpleNamespace
 import boto3
 
 # 분리된 모듈들에서 함수들 import
-from .attribute_handlers import (
-    filter_attributes_by_status
-)
-
-from .data_utils import parse_korean_currency, parse_sales_amount, parse_business_data
+from .attribute_handlers import filter_attributes_by_status
 
 from .cascade_handlers import sync_cascade_attributes
-
 from .audio_handler import check_libreoffice_status
 from .data_utils import parse_korean_currency, parse_sales_amount, parse_business_data, calculate_business_years, formatToKoreanCurrency
 
 logger = logging.getLogger(__name__)
+
+def get_week_of_month(dt: date) -> int:
+    first_day = dt.replace(day=1)
+    first_monday = first_day + timedelta(days=(7 - first_day.weekday()) % 7)
+    
+    # 만약 1일이 월요일이라면 그게 첫째 주의 시작
+    if first_day.weekday() == 0:
+        first_monday = first_day
+    
+    delta_days = (dt - first_monday).days
+    if delta_days < 0:
+        return 1
+    return delta_days // 7 + 1
 
 # 세션 데이터 파싱을 위한 헬퍼 함수
 def parse_session_data(request, keys_with_defaults):
@@ -67,8 +76,6 @@ def check_login_status(request):
             # 로그인된 사용자의 ID 가져오기
             user_id = request.session.get('diary_member_id')
             if user_id:
-                from .models import User
-                from django.utils import timezone
                 
                 try:
                     user = User.objects.get(id=user_id)
@@ -320,6 +327,23 @@ def diary_list(request):
                 # 캐시에 없는 경우에만 쿼리 실행
                 dropdown_options[attr.name] = list(attr.dropdown_attributes.values('id', 'option', 'color', 'order').order_by('order'))
     
+    biz_list_10 = BizInfo.objects.all().order_by('-registered_at')[:15]
+
+    biz_top_10 = BizTop.objects.all().order_by('-update_date')[:15]
+
+    pblanc_ids = [biz.pblanc_id for biz in biz_top_10]
+
+    for i in biz_list_10:
+        print(i)
+
+
+    biz_top_10 = list(BizInfo.objects.filter(pblanc_id__in=pblanc_ids))
+
+    today = date.today()
+    month = today.month
+    week = get_week_of_month(today)
+    current_week_str = f"{month}월 {week}주차"
+
     context = {
         'rows': rows_data,
         'attributes': [
@@ -343,103 +367,19 @@ def diary_list(request):
         'show_detail': show_detail,
         'is_authenticated': True,  # 로그인 상태 추가
         'is_admin': user.is_admin,  # 관리자 상태 추가
-        'dropdown_options': dropdown_options  # 모든 드롭다운 옵션 추가
+        'dropdown_options': dropdown_options,  # 모든 드롭다운 옵션 추가
+        'biz_list': biz_list_10,
+        'biz_top': biz_top_10,
+        'current_week_str': current_week_str
     }
     context['attributes_json'] = json.dumps(context['attributes'], ensure_ascii=False)
     context['dropdown_options_json'] = json.dumps(dropdown_options, ensure_ascii=False)  # JSON 형태로도 추가
     
     return render(request, 'diary/diary_list.html', context)
 
-@require_GET
-def fu_events(request):
-    """이벤트 데이터를 반환하는 API"""
-    try:
-        # 사용자 정보 가져오기
-        user_id = request.session.get('diary_member_id')
-        user = User.objects.get(id=user_id)
-        
-        # 모든 행 데이터 가져오기 (쿼리 최적화)
-        rows = Row.objects.filter(user=user).select_related('user').prefetch_related(
-            'values__attribute__attributeType',
-            'values__attribute__dropdown_attributes'
-        ).order_by('order')
-        
-        events = []
-        for row in rows:
-            # 행의 속성값들을 딕셔너리로 미리 구성하여 N+1 쿼리 방지
-            row_values = {attr_value.attribute.name: attr_value.value for attr_value in row.values.all() if attr_value.attribute}
-            
-            # 이벤트 데이터 생성
-            event_data = {
-                'id': row.id,
-                'title': row_values.get('회사명', ''),
-                'start': row_values.get('TA일정', ''),
-                'end': row_values.get('TA일정', ''),
-                'color': '#3788d8'
-            }
-            events.append(event_data)
-        
-        return JsonResponse({'events': events})
-        
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
-
-@csrf_exempt
-@require_http_methods(["GET", "POST"])
-def fu_memo(request, entry_id):
-    try:
-        entry = DiaryEntry.objects.get(id=entry_id)
-    except DiaryEntry.DoesNotExist:
-        return JsonResponse({'success': False, 'error': 'Not found'}, status=404)
-    if request.method == 'GET':
-        return JsonResponse({'success': True, 'memo': entry.memo or ''})
-    elif request.method == 'POST':
-        memo = request.POST.get('memo', '')
-        entry.memo = memo
-        entry.save()
-        return JsonResponse({'success': True})
-
 def random_color():
     return "#" + ''.join([random.choice('0123456789ABCDEF') for _ in range(6)])
 
-@csrf_exempt
-def category_list(request):
-    if request.method == 'GET':
-        return JsonResponse({'categories': list(Category.objects.values('id', 'name', 'color'))})
-    elif request.method == 'POST':
-        name = request.POST.get('name', '').strip()
-        color = request.POST.get('color', '').strip()
-        if name:
-            if not color:
-                color = random_color()
-            cat, created = Category.objects.get_or_create(name=name, defaults={'color': color})
-            if not created and not cat.color:
-                cat.color = color
-                cat.save()
-            return JsonResponse({'id': cat.id, 'name': cat.name, 'color': cat.color, 'created': created})
-        return JsonResponse({'error': 'No name'}, status=400)
-    elif request.method == 'DELETE':
-        id = request.GET.get('id')
-        Category.objects.filter(id=id).delete()
-        return JsonResponse({'success': True})
-    elif request.method == 'PUT':
-        id = request.GET.get('id')
-        name = request.GET.get('name', '').strip()
-        color = request.GET.get('color', '').strip()
-        cat = Category.objects.filter(id=id).first()
-        updated = False
-        if cat:
-            if name:
-                cat.name = name
-                updated = True
-            if color:
-                cat.color = color
-                updated = True
-            if updated:
-                cat.save()
-                return JsonResponse({'success': True})
-        return JsonResponse({'error': 'Invalid'}, status=400)
-    return JsonResponse({'error': 'Invalid method'}, status=405)
 
 @csrf_exempt
 def region_list(request):
@@ -466,61 +406,7 @@ def region_list(request):
         return JsonResponse({'error': 'Invalid'}, status=400)
     return JsonResponse({'error': 'Invalid method'}, status=405)
 
-@csrf_exempt
-def create_entry(request):
-    if request.method == 'POST':
-        data = {field: request.POST.get(field, '') for field in [
-            'name', 'subregion', 'address', 'manager', 'phone', 'email',
-            'status', 'possibility', 'amount']}
-        for date_field in ['ta_date', 'meeting_date', 'fu_date']:
-            value = request.POST.get(date_field)
-            data[date_field] = value if value else None
-        cat_val = request.POST.get('category')
-        reg_val = request.POST.get('region')
-        status_val = request.POST.get('status')
-        # category 처리
-        if cat_val:
-            if cat_val.isdigit():
-                data['category'] = Category.objects.filter(id=cat_val).first()
-            else:
-                data['category'], _ = Category.objects.get_or_create(name=cat_val)
-        else:
-            data['category'] = None
-        # region 처리
-        if reg_val:
-            if reg_val.isdigit():
-                data['region'] = Region.objects.filter(id=reg_val).first()
-            else:
-                data['region'], _ = Region.objects.get_or_create(name=reg_val)
-        else:
-            data['region'] = None
-        # status 처리 (추가)
-        if status_val:
-            if status_val.isdigit():
-                data['status'] = SalesStatus.objects.filter(id=status_val).first()
-            else:
-                data['status'], _ = SalesStatus.objects.get_or_create(name=status_val)
-        else:
-            data['status'] = None
-        # order 값 지정: 가장 큰 order+1
-        max_order = DiaryEntry.objects.aggregate(max_order=models.Max('order'))['max_order']
-        data['order'] = (max_order + 1) if max_order is not None else 0
-        entry = DiaryEntry.objects.create(**data)
-        return JsonResponse({'success': True, 'id': entry.id})
-    return JsonResponse({'success': False, 'error': 'Invalid request'})
 
-@csrf_exempt
-def reorder_entries(request):
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            ids = data.get('order', [])
-            for idx, row_id in enumerate(ids):
-                Row.objects.filter(id=row_id).update(order=idx)
-            return JsonResponse({'success': True})
-        except Exception as e:
-            return JsonResponse({'success': False, 'error': str(e)})
-    return JsonResponse({'success': False, 'error': 'Invalid request'})
 
 @csrf_exempt
 def status_list(request):
@@ -560,75 +446,6 @@ def status_list(request):
                 return JsonResponse({'success': True})
         return JsonResponse({'error': 'Invalid'}, status=400)
     return JsonResponse({'error': 'Invalid method'}, status=405)
-
-def board_view(request):
-    # 로그인 상태 확인
-    if not request.session.get('diary_authenticated'):
-        return redirect('login')
-    
-    # 사용자 ID 확인
-    user_id = request.session.get('diary_member_id')
-    if not user_id:
-        return redirect('login')
-    
-    try:
-        user = User.objects.get(id=user_id)
-    except User.DoesNotExist:
-        # 사용자가 존재하지 않는 경우 세션 정리 후 로그인 페이지로 리다이렉트
-        request.session.flush()
-        return redirect('login')
-     
-    # "영업진행" 속성 가져오기 (쿼리 최적화)
-    sales_progress_attr = Attribute.objects.filter(user=user, name='영업진행').select_related('attributeType').first()
-    
-    if not sales_progress_attr:
-        # 영업진행 속성이 없으면 빈 보드 반환
-        return render(request, 'diary/diary_list.html', {'board': [], 'statuses': []})
-    
-    # 영업진행 속성의 드롭다운 옵션들 가져오기 (prefetch된 데이터 활용)
-    dropdown_options = sales_progress_attr.dropdown_attributes.all().order_by('id')
-    
-    board = []
-    for option in dropdown_options:
-        # 해당 영업진행 상태를 가진 행들 찾기 (쿼리 최적화)
-        rows = Row.objects.filter(
-            user=user,
-            values__attribute=sales_progress_attr,
-            values__value=str(option.id)
-        ).prefetch_related(
-            'values__attribute',
-            'values__attribute__dropdown_attributes'
-        ).order_by('order', 'id')
-        
-        # 각 행의 데이터를 entry 형태로 변환
-        entries = []
-        for row in rows:
-            # 행의 속성값들 가져오기 (prefetch된 데이터 활용)
-            row_values = {}
-            for attr_value in row.values.all():
-                if attr_value.attribute:
-                    row_values[attr_value.attribute.name] = attr_value.value
-            
-            # entry 객체 형태로 변환 (기존 DiaryEntry와 호환)
-            entry_data = {
-                'id': row.id,
-                'name': row_values.get('회사명', ''),
-            }
-            entries.append(entry_data)
-        
-        # 상태 정보를 SimpleNamespace로 변환
-        status_data = {
-            'id': option.id,
-            'name': option.option,
-            'color': option.color
-        }
-        
-        board.append({
-            'status': SimpleNamespace(**status_data),
-            'entries': entries
-        })
-    
-    return render(request, 'diary/diary_list.html', {'board': board, 'statuses': dropdown_options})
 
 @csrf_exempt
 def create_new_row(request):
@@ -1166,67 +983,9 @@ def get_user_attributes(request):
         })
 
 
-@csrf_exempt
-def update_detail_sort_order(request):
-    """상세보기 모달에서 속성 순서를 업데이트하는 API"""
-    if request.method != 'POST':
-        return JsonResponse({'success': False, 'error': 'POST method required'})
-    
-    try:
-        user_id = request.session.get('diary_member_id')
-        if not user_id:
-            return JsonResponse({'success': False, 'error': 'User not authenticated'})
 
-        user = User.objects.get(id=user_id)
-        data = json.loads(request.body)
-        attribute_orders = data.get('attribute_orders', [])
-        
-        # 트랜잭션으로 순서 업데이트
-        with transaction.atomic():
-            for order_data in attribute_orders:
-                attribute_id = order_data.get('id')
-                new_order = order_data.get('detail_sort_order')
-                
-                if attribute_id and new_order is not None:
-                    Attribute.objects.filter(id=attribute_id, user=user).update(
-                        detail_sort_order=new_order
-                    )
-        
-        return JsonResponse({'success': True})
-        
-    except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'error': str(e)
-        })
 
-@csrf_exempt
-def save_column_order(request):
-    """컬럼 순서 저장"""
-    if request.method != 'POST':
-        return JsonResponse({'success': False, 'error': 'POST method required'})
-    try:
-        data = json.loads(request.body)
-        column_order = data.get('column_order', [])
-        if not column_order:
-            return JsonResponse({'success': False, 'error': 'column_order is required'})
-         
-        user_id = request.session.get('diary_member_id')
 
-        user = User.objects.get(id=user_id)
-        with transaction.atomic():
-            for index, column_name in enumerate(column_order):
-                try:
-                    attribute = Attribute.objects.get(name=column_name, user=user)
-                    attribute.sort_order = index
-                    attribute.save()
-                except Attribute.DoesNotExist:
-                    continue
-        return JsonResponse({'success': True, 'message': '컬럼 순서가 저장되었습니다.'})
-    except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'error': 'Invalid JSON'})
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)})
 
 @csrf_exempt
 def delete_row(request):
@@ -2016,134 +1775,6 @@ def save_column_width(request):
         return JsonResponse({'success': False, 'error': str(e)})
 
 @csrf_exempt
-def get_dependent_rows(request):
-    """종속된 행들을 반환하는 API"""
-    if request.method == 'POST':
-        try:
-            row_id = request.POST.get('row_id')
-            field = request.POST.get('field')
-            
-            if not row_id or not field:
-                return JsonResponse({'success': False, 'error': 'row_id와 field가 필요합니다'})
-            
-            # 사용자 정보 가져오기
-            user_id = request.session.get('diary_member_id')
-            user = User.objects.get(id=user_id)
-            
-            # 현재 행 조회
-            try:
-                current_row = Row.objects.get(id=row_id, user=user)
-            except Row.DoesNotExist:
-                return JsonResponse({'success': False, 'error': '행을 찾을 수 없습니다'})
-            
-            dependent_rows = []
-            
-            # Cascade가 활성화된 속성인지 확인
-            try:
-                cascade_attribute = Attribute.objects.get(name=field, user=user, cascade=True)
-                logger.debug(f"Cascade 속성 찾음: {field}")
-            except Attribute.DoesNotExist:
-                logger.debug(f"Cascade 속성을 찾을 수 없습니다: {field}")
-                # Cascade가 false인 속성이면 종속된 행들을 찾지 않음
-                return JsonResponse({
-                    'success': True,
-                    'dependent_rows': []
-                })
-            
-            # === 새로운 행 복제 시스템을 사용한 종속된 행들 찾기 ===
-            
-            # 1. 현재 행의 원본 행들
-            original_rows = []
-            for original_id in current_row.original_row_ids:
-                try:
-                    original_row = Row.objects.get(id=original_id, user=user)
-                    original_rows.append(original_row)
-                except Row.DoesNotExist:
-                    logger.warning(f"원본 행 {original_id}를 찾을 수 없습니다.")
-                    continue
-            
-            # 2. 현재 행의 복제된 행들
-            copied_rows = []
-            for copied_id in current_row.copied_row_ids:
-                try:
-                    copied_row = Row.objects.get(id=copied_id, user=user)
-                    copied_rows.append(copied_row)
-                except Row.DoesNotExist:
-                    logger.warning(f"복제된 행 {copied_id}를 찾을 수 없습니다.")
-                    continue
-            
-            # 3. 원본 행들의 복제된 행들도 포함
-            for original_row in original_rows:
-                for copied_id in original_row.copied_row_ids:
-                    try:
-                        copied_row = Row.objects.get(id=copied_id, user=user)
-                        if copied_row not in copied_rows and copied_row.id != row_id:
-                            copied_rows.append(copied_row)
-                    except Row.DoesNotExist:
-                        continue
-            
-            # 4. 복제된 행들의 원본 행들도 포함
-            for copied_row in copied_rows:
-                for original_id in copied_row.original_row_ids:
-                    try:
-                        original_row = Row.objects.get(id=original_id, user=user)
-                        if original_row not in original_rows and original_row.id != row_id:
-                            original_rows.append(original_row)
-                    except Row.DoesNotExist:
-                        continue
-            
-            # 모든 관련 행들을 하나의 리스트로 합치기
-            all_related_rows = original_rows + copied_rows
-            unique_related_rows = []
-            seen_ids = set()
-            
-            for row in all_related_rows:
-                if row.id not in seen_ids and row.id != row_id:
-                    unique_related_rows.append(row)
-                    seen_ids.add(row.id)
-            
-            logger.debug(f"동기화할 관련 행들: {[row.id for row in unique_related_rows]}")
-            
-            # 각 관련 행에 대해 해당 필드의 값을 가져와서 종속된 행 목록에 추가
-            for dep_row in unique_related_rows:
-                try:
-                    attr_value = AttributeValue.objects.filter(row=dep_row, attribute=cascade_attribute).first()
-                    if attr_value:
-                        dependent_rows.append({
-                            'row_id': dep_row.id,
-                            'field': field,
-                            'value': attr_value.value
-                        })
-                        logger.debug(f"종속된 행 추가: {dep_row.id}, {field}, {attr_value.value}")
-                    else:
-                        # 해당 속성의 값이 없으면 빈 값으로 설정
-                        dependent_rows.append({
-                            'row_id': dep_row.id,
-                            'field': field,
-                            'value': ''
-                        })
-                        logger.debug(f"종속된 행 추가 (빈 값): {dep_row.id}, {field}")
-                except AttributeValue.DoesNotExist:
-                    # 해당 속성의 값이 없으면 빈 값으로 설정
-                    dependent_rows.append({
-                        'row_id': dep_row.id,
-                        'field': field,
-                        'value': ''
-                    })
-                    logger.debug(f"종속된 행 추가 (빈 값): {dep_row.id}, {field}")
-            
-            return JsonResponse({
-                'success': True,
-                'dependent_rows': dependent_rows
-            })
-            
-        except Exception as e:
-            logger.error(f"get_dependent_rows 오류: {str(e)}")
-            return JsonResponse({'success': False, 'error': str(e)})
-    
-    return JsonResponse({'success': False, 'error': 'POST 요청만 지원합니다'})
-
-@csrf_exempt
 def get_column_widths(request):
     # 컬럼 너비 조회
     if request.method != 'GET':
@@ -2426,409 +2057,6 @@ def mark_notification_read(request, notification_id):
         return JsonResponse({'success': False, 'message': '알림을 찾을 수 없습니다.'})
     except Exception as e:
         return JsonResponse({'success': False, 'message': f'알림 상태 변경 중 오류가 발생했습니다: {str(e)}'})
-
-@csrf_exempt
-def convert_hwp_to_pdf(request):
-    """HWP 파일을 LibreOffice를 사용하여 PDF로 변환하는 엔드포인트"""
-    if request.method != 'POST':
-        return JsonResponse({'success': False, 'error': 'POST 요청만 허용됩니다.'})
-    
-    try:
-        logger.info("=== HWP to PDF 변환 시작 ===")
-        data = json.loads(request.body)
-        row_id = data.get('row_id')
-        field_name = data.get('field_name')
-        file_id = data.get('file_id')
-        file_url = data.get('file_url')
-        file_name = data.get('file_name')
-        saved_name = data.get('saved_name')  # 게시판 파일용
-        
-        logger.info(f"요청 데이터: row_id={row_id}, field_name={field_name}, file_id={file_id}, file_name={file_name}")
-        
-        # 파일 URL에서 파일 다운로드
-        import requests
-        import tempfile
-        import os
-        
-        try:
-            # 파일 다운로드
-            response = requests.get(file_url, timeout=30)
-            response.raise_for_status()
-            
-            # 임시 디렉토리에 HWP 파일 저장
-            with tempfile.TemporaryDirectory() as temp_dir:
-                hwp_path = os.path.join(temp_dir, file_name)
-                with open(hwp_path, 'wb') as f:
-                    f.write(response.content)
-                
-                logger.info(f"HWP 파일 다운로드 완료: {hwp_path}")
-                
-                # LibreOffice로 PDF 변환
-                cmd = [
-                    'libreoffice', '--headless', '--convert-to', 'pdf',
-                    '--outdir', temp_dir, hwp_path
-                ]
-                
-                logger.info(f"LibreOffice 명령어: {' '.join(cmd)}")
-                
-                result = subprocess.run(
-                    cmd,
-                    capture_output=True,
-                    text=True,
-                    timeout=600  # 10분 타임아웃
-                )
-                
-                logger.info(f"LibreOffice 변환 결과: returncode={result.returncode}")
-                logger.info(f"LibreOffice stdout: {result.stdout}")
-                if result.stderr:
-                    logger.info(f"LibreOffice stderr: {result.stderr}")
-                
-                # 변환된 PDF 파일 확인
-                pdf_name = os.path.splitext(file_name)[0] + '.pdf'
-                pdf_path = os.path.join(temp_dir, pdf_name)
-                
-                if os.path.exists(pdf_path):
-                    # PDF 파일을 S3에 업로드
-                    from django.conf import settings
-                    import boto3
-                    
-                    s3_client = boto3.client(
-                        's3',
-                        aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-                        aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-                        region_name=settings.AWS_S3_REGION_NAME
-                    )
-                    
-                    # S3 키 생성
-                    pdf_s3_key = f"converted_pdfs/{file_id}_{pdf_name}"
-                    
-                    # PDF 파일을 S3에 업로드
-                    with open(pdf_path, 'rb') as pdf_file:
-                        s3_client.upload_fileobj(
-                            pdf_file,
-                            settings.AWS_STORAGE_BUCKET_NAME,
-                            pdf_s3_key,
-                            ExtraArgs={'ContentType': 'application/pdf'}
-                        )
-                    
-                    # S3 URL 생성
-                    pdf_url = f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/{pdf_s3_key}"
-                    
-                    logger.info(f"PDF 변환 및 업로드 성공: {pdf_url}")
-                    
-                    return JsonResponse({
-                        'success': True,
-                        'pdf_url': pdf_url,
-                        'message': 'HWP 파일이 PDF로 성공적으로 변환되었습니다.'
-                    })
-                else:
-                    logger.error(f"PDF 변환 실패: {pdf_path} 파일이 존재하지 않습니다.")
-                    return JsonResponse({
-                        'success': False,
-                        'error': 'HWP 파일 변환에 실패했습니다.',
-                        'original_file_url': file_url,
-                        'suggest_download': True,
-                        'message': 'LibreOffice가 HWP 파일을 변환할 수 없습니다. 원본 파일을 다운로드하여 사용해주세요.'
-                    })
-                    
-        except requests.RequestException as e:
-            logger.error(f"파일 다운로드 실패: {e}")
-            return JsonResponse({
-                'success': False,
-                'error': f'파일 다운로드 실패: {str(e)}',
-                'original_file_url': file_url,
-                'suggest_download': True,
-                'message': '파일을 다운로드할 수 없습니다.'
-            })
-        except subprocess.TimeoutExpired:
-            logger.error("LibreOffice 변환 타임아웃")
-            return JsonResponse({
-                'success': False,
-                'error': '변환 시간이 초과되었습니다.',
-                'original_file_url': file_url,
-                'suggest_download': True,
-                'message': '변환에 시간이 너무 오래 걸립니다. 원본 파일을 다운로드하여 사용해주세요.'
-            })
-        except Exception as e:
-            logger.error(f"HWP 변환 중 오류: {e}")
-            return JsonResponse({
-                'success': False,
-                'error': f'변환 중 오류가 발생했습니다: {str(e)}',
-                'original_file_url': file_url,
-                'suggest_download': True,
-                'message': '변환 중 오류가 발생했습니다. 원본 파일을 다운로드하여 사용해주세요.'
-            })
-        
-    except json.JSONDecodeError as e:
-        logger.error(f"JSON 파싱 오류: {e}")
-        return JsonResponse({'success': False, 'error': f'요청 데이터 파싱 오류: {str(e)}'})
-    except Exception as e:
-        logger.error(f"convert_hwp_to_pdf 함수에서 예상치 못한 오류: {e}")
-        return JsonResponse({'success': False, 'error': f'오류가 발생했습니다: {str(e)}'})
-
-@csrf_exempt
-def convert_hwp_to_pdf_board(request):
-    """게시판용 HWP 파일을 LibreOffice를 사용하여 PDF로 변환하는 엔드포인트"""
-    if request.method != 'POST':
-        return JsonResponse({'success': False, 'error': 'POST 요청만 허용됩니다.'})
-    
-    try:
-        logger.info("=== 게시판 HWP to PDF 변환 시작 ===")
-        data = json.loads(request.body)
-        file_url = data.get('file_url')
-        file_name = data.get('file_name')
-        saved_name = data.get('saved_name')
-        
-        logger.info(f"게시판 요청 데이터: file_name={file_name}, saved_name={saved_name}")
-        
-        if not file_url or not file_name:
-            return JsonResponse({'success': False, 'error': '필수 파라미터가 누락되었습니다.'})
-        
-        # LibreOffice 상태 확인
-        if not check_libreoffice_status():
-            return JsonResponse({'success': False, 'error': '파일 변환에 실패했습니다.'})
-        
-        # 파일 URL에서 파일 다운로드
-        import requests
-        import tempfile
-        import os
-        
-        try:
-            # 파일 다운로드
-            response = requests.get(file_url, timeout=30)
-            response.raise_for_status()
-            
-            # 임시 디렉토리에 HWP 파일 저장
-            with tempfile.TemporaryDirectory() as temp_dir:
-                hwp_path = os.path.join(temp_dir, file_name)
-                with open(hwp_path, 'wb') as f:
-                    f.write(response.content)
-                
-                logger.info(f"게시판 HWP 파일 다운로드 완료: {hwp_path}")
-                
-                # LibreOffice로 PDF 변환
-                cmd = [
-                    'libreoffice', '--headless', '--convert-to', 'pdf',
-                    '--outdir', temp_dir, hwp_path
-                ]
-                
-                logger.info(f"게시판 LibreOffice 명령어: {' '.join(cmd)}")
-                
-                result = subprocess.run(
-                    cmd,
-                    capture_output=True,
-                    text=True,
-                    timeout=600  # 10분 타임아웃
-                )
-                
-                logger.info(f"게시판 LibreOffice 변환 결과: returncode={result.returncode}")
-                logger.info(f"게시판 LibreOffice stdout: {result.stdout}")
-                if result.stderr:
-                    logger.info(f"게시판 LibreOffice stderr: {result.stderr}")
-                
-                # 변환된 PDF 파일 확인
-                pdf_name = os.path.splitext(file_name)[0] + '.pdf'
-                pdf_path = os.path.join(temp_dir, pdf_name)
-                
-                if os.path.exists(pdf_path):
-                    # PDF 파일을 S3에 업로드
-                    from django.conf import settings
-                    import boto3
-                    
-                    s3_client = boto3.client(
-                        's3',
-                        aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-                        aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-                        region_name=settings.AWS_S3_REGION_NAME
-                    )
-                    
-                    # S3 키 생성 (게시판용)
-                    pdf_s3_key = f"converted_pdfs/board_{saved_name}_{pdf_name}"
-                    
-                    # PDF 파일을 S3에 업로드
-                    with open(pdf_path, 'rb') as pdf_file:
-                        s3_client.upload_fileobj(
-                            pdf_file,
-                            settings.AWS_STORAGE_BUCKET_NAME,
-                            pdf_s3_key,
-                            ExtraArgs={'ContentType': 'application/pdf'}
-                        )
-                    
-                    # S3 미리보기 URL 생성
-                    pdf_preview_url = s3_client.generate_presigned_url(
-                        'get_object',
-                        Params={
-                            'Bucket': settings.AWS_STORAGE_BUCKET_NAME,
-                            'Key': pdf_s3_key,
-                            'ResponseContentDisposition': 'inline'
-                        },
-                        ExpiresIn=3600
-                    )
-                    
-                    logger.info(f"게시판 PDF 변환 및 업로드 성공: {pdf_preview_url}")
-                    
-                    return JsonResponse({
-                        'success': True,
-                        'url': pdf_preview_url,
-                        'message': 'HWP 파일이 PDF로 성공적으로 변환되었습니다.'
-                    })
-                else:
-                    logger.error(f"게시판 PDF 변환 실패: {pdf_path} 파일이 존재하지 않습니다.")
-                    return JsonResponse({
-                        'success': False,
-                        'error': 'HWP 파일 변환에 실패했습니다.',
-                        'message': 'LibreOffice가 HWP 파일을 변환할 수 없습니다.'
-                    })
-                    
-        except requests.RequestException as e:
-            logger.error(f"게시판 파일 다운로드 실패: {e}")
-            return JsonResponse({
-                'success': False,
-                'error': f'파일 다운로드 실패: {str(e)}',
-                'message': '파일을 다운로드할 수 없습니다.'
-            })
-        except subprocess.TimeoutExpired:
-            logger.error("게시판 LibreOffice 변환 타임아웃")
-            return JsonResponse({
-                'success': False,
-                'error': '변환 시간이 초과되었습니다.',
-                'message': '변환에 시간이 너무 오래 걸립니다.'
-            })
-        except Exception as e:
-            logger.error(f"게시판 HWP 변환 중 오류: {e}")
-            return JsonResponse({
-                'success': False,
-                'error': f'변환 중 오류가 발생했습니다: {str(e)}',
-                'message': '변환 중 오류가 발생했습니다.'
-            })
-        
-    except json.JSONDecodeError as e:
-        logger.error(f"게시판 JSON 파싱 오류: {e}")
-        return JsonResponse({'success': False, 'error': f'요청 데이터 파싱 오류: {str(e)}'})
-    except Exception as e:
-        logger.error(f"convert_hwp_to_pdf_board 함수에서 예상치 못한 오류: {e}")
-        return JsonResponse({'success': False, 'error': f'오류가 발생했습니다: {str(e)}'})
-
-
-@csrf_exempt
-def add_sample_row(request):
-    """샘플 데이터를 추가하는 엔드포인트"""
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            sample_data = data.get('sample_data', {})
-            
-            logger.info(f"=== 샘플 데이터 추가 요청 ===")
-            logger.debug(f"sample_data: {sample_data}")
-            
-            user_id = request.session.get('diary_member_id')
-            if not user_id:
-                return JsonResponse({'success': False, 'error': '로그인이 필요합니다.'})
-            
-            user = User.objects.get(id=user_id)
-            
-            # 사용자의 기존 드롭다운 속성들과 옵션들을 가져와서 샘플 데이터를 동적으로 생성
-            dropdown_data = {}
-            dropdown_attributes = Attribute.objects.filter(user=user, attributeType__name='dropdown')
-            
-            for attr in dropdown_attributes:
-                options = list(DropdownAttribute.objects.filter(attribute=attr).values_list('option', flat=True))
-                if options:
-                    dropdown_data[attr.name] = options
-            
-            logger.debug(f"사용자의 드롭다운 속성들: {dropdown_data}")
-            
-            # 샘플 데이터에서 드롭다운 필드들을 사용자의 기존 옵션으로 교체
-            final_sample_data = {}
-            for field_name, field_value in sample_data.items():
-                if field_name in dropdown_data and dropdown_data[field_name]:
-                    # 드롭다운 필드인 경우 기존 옵션 중에서 랜덤 선택
-                    final_sample_data[field_name] = random.choice(dropdown_data[field_name])
-                    logger.debug(f"드롭다운 필드 {field_name}: 기존 옵션 중 선택 - {final_sample_data[field_name]}")
-                else:
-                    # 일반 필드인 경우 원래 값 사용
-                    final_sample_data[field_name] = field_value
-            
-            # 새 Row 생성 (가장 위에 추가)
-            # 기존 모든 행들의 order를 1씩 증가
-            Row.objects.filter(user=user).update(order=models.F('order') + 1)
-            
-            # 새 행은 order=0으로 가장 위에 추가
-            new_row = Row.objects.create(order=0, user=user)
-            logger.info(f"새 샘플 행 생성됨: row_id={new_row.id}, order=0 (가장 위에 추가)")
-            
-            # 각 필드별로 AttributeValue 생성
-            for field_name, field_value in final_sample_data.items():
-                if not field_value:  # 빈 값은 건너뜀
-                    continue
-                    
-                try:
-                    # 속성 찾기 또는 생성
-                    attr, created = Attribute.objects.get_or_create(
-                        name=field_name,
-                        user=user,
-                        defaults={
-                            'attributeType': AttributeType.objects.get_or_create(name='text')[0],
-                            'assential': False,
-                            'view_select': True,
-                            'order': Attribute.objects.filter(user=user).count() + 1
-                        }
-                    )
-                    
-                    if created:
-                        logger.info(f"새 속성 생성됨: {field_name}")
-                    
-                    attr_type = attr.attributeType.name if attr.attributeType else 'text'
-                    value_to_save = field_value
-                    
-                    # Dropdown 속성인 경우 처리
-                    if attr_type == 'dropdown':
-                        # 드롭다운 옵션 찾기 또는 생성
-                        dropdown_option, created = DropdownAttribute.objects.get_or_create(
-                            attribute=attr,
-                            option=field_value,
-                            defaults={
-                                'color': f"#{random.randint(0, 0xFFFFFF):06x}",  # 랜덤 색상
-                                'order': DropdownAttribute.objects.filter(attribute=attr).count() + 1
-                            }
-                        )
-                        
-                        if created:
-                            logger.info(f"새 드롭다운 옵션 생성됨: {field_name} = {field_value}")
-                        else:
-                            logger.debug(f"기존 드롭다운 옵션 사용: {field_name} = {field_value}")
-                        
-                        value_to_save = str(dropdown_option.id)
-                    
-                    # AttributeValue 생성
-                    AttributeValue.objects.create(
-                        row=new_row,
-                        attribute=attr,
-                        value=value_to_save
-                    )
-                    logger.debug(f"샘플 데이터 필드 설정: {field_name}={field_value}")
-                    
-                except Exception as e:
-                    logger.error(f"필드 {field_name} 처리 중 오류: {e}")
-                    continue
-            
-            logger.info(f"=== 샘플 데이터 추가 완료: row_id={new_row.id} ===")
-            return JsonResponse({
-                'success': True, 
-                'id': new_row.id,
-                'company_name': final_sample_data.get('회사명', '샘플 회사')
-            })
-            
-        except json.JSONDecodeError as e:
-            logger.error(f"JSON 파싱 오류: {e}")
-            return JsonResponse({'success': False, 'error': 'JSON 파싱 오류'})
-        except User.DoesNotExist:
-            return JsonResponse({'success': False, 'error': '유효하지 않은 사용자'})
-        except Exception as e:
-            logger.error(f"샘플 데이터 추가 중 오류: {e}")
-            return JsonResponse({'success': False, 'error': f'오류가 발생했습니다: {str(e)}'})
-    
-    return JsonResponse({'success': False, 'error': 'Invalid request method'})
 
 
 

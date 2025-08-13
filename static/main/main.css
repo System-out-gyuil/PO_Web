@@ -736,6 +736,7 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
   margin-left: 10px;
+  cursor: pointer;
 }
 /* ------------------------------------------------------------------- */
 

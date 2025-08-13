@@ -133,29 +133,22 @@ function toggleNotificationPanel() {
     const panel = document.getElementById('notificationPanel');
     console.log(panel);
     
-    // 현재 패널이 숨겨져 있는지 확인 (CSS 클래스 또는 인라인 스타일 모두 고려)
-    const isHidden = panel.classList.contains('notification-panel-hidden') || 
-                     panel.style.display === 'none' || 
-                     panel.style.display === '';
-    
-    if (isHidden) {
-        // 숨김 클래스 제거 및 표시
-        panel.classList.remove('notification-panel-hidden');
+    // 알림 패널 토글
+    if (panel.style.display === 'none') {
+        console.log('패널 표시');
         panel.style.display = 'block';
+        console.log(panel.style.display);
         loadNotifications();
+        setTimeout(() => {
+            console.log('1초 후 display:', panel.style.display);
+          }, 1000);
     } else {
-        // 숨김 클래스 추가 및 숨김
-        panel.classList.add('notification-panel-hidden');
         panel.style.display = 'none';
     }
 }
 
-// 알림 목록 로드 함수
+// 알림 로드 함수
 function loadNotifications() {
-    if (window.isLoggingOut) {
-        return;
-    }
-    
     const notificationList = document.getElementById('notificationList');
     
     // 서버에서 알림 데이터를 가져오는 API 호출
@@ -166,12 +159,7 @@ function loadNotifications() {
             'X-CSRFToken': getCsrfToken()
         }
     })
-    .then(response => {
-        if (window.isLoggingOut) {
-            throw new Error('로그아웃 중');
-        }
-        return response.json();
-    })
+    .then(response => response.json())
     .then(data => {
         if (data.success) {
             renderNotifications(data.notifications);
@@ -181,10 +169,8 @@ function loadNotifications() {
         }
     })
     .catch(error => {
-        if (!window.isLoggingOut && error.message !== '로그아웃 중') {
-            console.error('알림 로드 오류:', error);
-            notificationList.innerHTML = '<div class="no-notifications">알림을 불러올 수 없습니다.</div>';
-        }
+        console.error('알림 로드 오류:', error);
+        notificationList.innerHTML = '<div class="no-notifications">알림을 불러올 수 없습니다.</div>';
     });
 }
 

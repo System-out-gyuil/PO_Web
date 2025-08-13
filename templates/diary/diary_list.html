@@ -332,7 +332,6 @@
         <div class="button-container-flex">
             <button id="addRowBtn" class="add-btn add-row-btn" onclick="addNewRow()">+ 새로 만들기</button>
             <button id="addExcelBtn" class="add-btn add-excel-btn" onclick="addNewRow()">📊 엑셀 추가</button>
-            <button id="addSampleBtn" class="add-btn add-sample-btn" onclick="addSampleData()" style="display: none;">🎯 샘플 추가하기</button>
         </div>
     </div>
 
@@ -380,6 +379,61 @@
         </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+
+    <hr>
+
+    <section>
+        <div class="bizinfo-container">
+          <div class="bizinfo-content-box">
+            <div class="bizinfo-contents">
+              <div class="bizinfo-content-1">
+                <div class="bizinfo-header">
+                  <div class="bizinfo-header-img"></div>
+                  <div class="bizinfo-header-title">최신 지원 사업</div>
+                </div>
+                <div class="bizinfo-line"></div>
+                <div class="bizinfo-content-title-box">
+                  <div class="bizinfo-content-title-box-date">공고일자</div>
+                  <div class="bizinfo-content-title-box-title">공 고 명</div>
+                </div>
+                <div class="bizinfo-contents-container">
+                  {% for biz in biz_list %}
+                    <div class="{% if forloop.counter|divisibleby:2 %}bizinfo-contents-container-items2{% else %}bizinfo-contents-container-items{% endif %}">
+                      <div class="bizinfo-contents-container-items-date">{{ biz.registered_at|date:"m.d" }}</div>
+                      <div class="bizinfo-contents-container-items-date-line">|</div>
+                      <div class="bizinfo-contents-container-items-title" onclick="window.location.href='{% url 'board:detail' biz.pblanc_id %}'">{{ biz.title }}</div>
+                    </div>
+                  {% endfor %}
+                </div>
+              </div>
+  
+              <div class="bizinfo-content-2">
+                <div class="bizinfo-header">
+                  <div class="bizinfo-header-img2"></div>
+                  <div class="bizinfo-header-title"><span class="red">인기</span> 지원 사업</div>
+                </div>
+                <div class="bizinfo-line"></div>
+                <div class="bizinfo-content-title-box">
+                  <div class="bizinfo-content-title-box-date">공고일자</div>
+                  <div class="bizinfo-content-title-box-title">공 고 명</div>
+                </div>
+                <div class="bizinfo-contents-container">
+                  {% for biz in biz_top %}
+                    <div class="{% if forloop.counter|divisibleby:2 %}bizinfo-contents-container-items2{% else %}bizinfo-contents-container-items{% endif %}">
+                    <div class="bizinfo-contents-container-items-date">{{ biz.registered_at|date:"m.d" }}</div>
+                    <div class="bizinfo-contents-container-items-date-line">|</div>
+                    <div class="bizinfo-contents-container-items-title" onclick="window.location.href='{% url 'board:detail' biz.pblanc_id %}'">{{ biz.title }}</div>
+                  </div>
+                  {% endfor %}
+                </div>
+              </div>
+  
+            </div>
+          </div>
+  
+        </div>
+      </section>
+
     <!-- 모달창 -->
     <div id="memoModal" class="memo-modal">
       <div class="memo-modal-content">
@@ -724,106 +778,8 @@
         </div>
     </div>
     
-    <style>
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        /* AI 메시지 스타일 */
-        .ai-message {
-            margin-bottom: 15px;
-            padding: 12px 16px;
-            border-radius: 8px;
-            line-height: 1.5;
-            word-wrap: break-word;
-        }
-        
-        .ai-message.user {
-            background: #007bff;
-            color: white;
-            margin-left: 20%;
-            margin-right: 5px;
-        }
-        
-        .ai-message.assistant {
-            background: #f8f9fa;
-            color: #333;
-            margin-right: 20%;
-            margin-left: 5px;
-            border: 1px solid #e9ecef;
-        }
-        
-        .ai-message.error {
-            background: #dc3545;
-            color: white;
-            margin-right: 20%;
-            margin-left: 5px;
-        }
-        
-        /* 마크다운 스타일 */
-        .ai-message.assistant h1, .ai-message.assistant h2, .ai-message.assistant h3, 
-        .ai-message.assistant h4, .ai-message.assistant h5, .ai-message.assistant h6 {
-            margin: 10px 0 5px 0;
-            font-weight: bold;
-        }
-        
-        .ai-message.assistant h1 { font-size: 1.5em; }
-        .ai-message.assistant h2 { font-size: 1.3em; }
-        .ai-message.assistant h3 { font-size: 1.1em; }
-        
-        .ai-message.assistant p {
-            margin: 8px 0;
-        }
-        
-        .ai-message.assistant ul, .ai-message.assistant ol {
-            margin: 8px 0;
-            padding-left: 20px;
-        }
-        
-        .ai-message.assistant li {
-            margin: 4px 0;
-        }
-        
-        .ai-message.assistant strong {
-            font-weight: bold;
-        }
-        
-        .ai-message.assistant em {
-            font-style: italic;
-        }
-        
-        .ai-message.assistant code {
-            background: #f1f3f4;
-            padding: 2px 4px;
-            border-radius: 3px;
-            font-family: monospace;
-            font-size: 0.9em;
-        }
-        
-        .ai-message.assistant pre {
-            background: #f8f9fa;
-            padding: 10px;
-            border-radius: 5px;
-            overflow-x: auto;
-            margin: 10px 0;
-        }
-        
-        .ai-message.assistant pre code {
-            background: none;
-            padding: 0;
-        }
-        
-        .ai-message.assistant blockquote {
-            border-left: 4px solid #007bff;
-            margin: 10px 0;
-            padding-left: 15px;
-            color: #6c757d;
-        }
-    </style>
-    
     <!-- 마크다운 렌더링 라이브러리 -->
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    {% comment %} <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script> {% endcomment %}
     
     <!-- 문의하기 모달 -->
     <div id="inquiryModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;justify-content:center;align-items:center;">
@@ -894,6 +850,7 @@
 <script src="{% static 'diary/detail_openai.js' %}"></script>
 <script src="{% static 'diary/diary_inquiry.js' %}"></script>
 <script src="{% static 'diary/base/base.js' %}"></script>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     bindTableCellEvents();
@@ -3144,11 +3101,11 @@ function refreshStatusTabs() {
                             window.currentStatusTab = currentStatusId === 'all' ? null : currentStatusId;
                             
                             // 테이블 새로고침
-                            if (typeof loadFilteredData === 'function') {
+                            {% comment %} if (typeof loadFilteredData === 'function') {
                                 loadFilteredData(currentStatusId === 'all' ? null : currentStatusId);
                             } else if (typeof refreshTable === 'function') {
                                 refreshTable();
-                            }
+                            } {% endcomment %}
                         } else {
                             // 이전 탭이 삭제된 경우 전체 탭으로 돌아가기
                             const allTab = document.querySelector('.status-tab[data-status-id="all"]');
@@ -3163,6 +3120,7 @@ function refreshStatusTabs() {
                                 if (typeof loadFilteredData === 'function') {
                                     loadFilteredData(null);
                                 } else if (typeof refreshTable === 'function') {
+                                    console.log('전체 데이터로 테이블 새로고침');
                                     refreshTable();
                                 }
                             }
@@ -3187,17 +3145,6 @@ function refreshStatusTabs() {
         .catch(error => {
             console.error('상태 탭 새로고침 오류:', error);
         });
-}
-
-// 랜덤 색상 생성 함수 추가
-function generateRandomColor() {
-    const colors = [
-        '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
-        '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
-        '#F8C471', '#82E0AA', '#F1948A', '#85C1E9', '#D7BDE2',
-        '#A9CCE3', '#F9E79F', '#D5A6BD', '#A3E4D7', '#FAD7A0'
-    ];
-    return colors[Math.floor(Math.random() * colors.length)];
 }
 
 // 모달용 새 드롭다운 옵션 추가 함수 (일반 드롭다운 속성용)
@@ -3229,281 +3176,6 @@ function addNewModalDropdownOption(rowId, fieldName, newOption, element) {
     });
 }
 
-// 로그아웃 함수
-function logout() {
-    if (confirm('로그아웃하시겠습니까?')) {
-        // 로그아웃 중임을 표시하는 플래그 설정
-        window.isLoggingOut = true;
-        
-        // 모든 진행 중인 fetch 요청을 중단하기 위한 AbortController 생성
-        if (window.currentAbortController) {
-            window.currentAbortController.abort();
-        }
-        
-        // 브라우저 캐시 정리
-        if ('caches' in window) {
-            caches.keys().then(function(names) {
-                for (let name of names) {
-                    caches.delete(name);
-                }
-            });
-        }
-        
-        // 세션 스토리지 정리
-        sessionStorage.clear();
-        
-        // 현재 사용자의 localStorage 데이터만 정리 (다른 사용자 데이터 보존)
-        const currentUserId = getCurrentUserId();
-        if (currentUserId && currentUserId !== 'anonymous') {
-            // 사용자별 키로 저장된 데이터들 정리
-            const keysToRemove = [];
-            for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                if (key && key.includes(`_${currentUserId}`)) {
-                    keysToRemove.push(key);
-                }
-            }
-            keysToRemove.forEach(key => localStorage.removeItem(key));
-            console.log(`사용자 ${currentUserId}의 localStorage 데이터 정리 완료`);
-        }
-        
-        // 브라우저 히스토리 조작 - 뒤로가기 방지
-        window.history.pushState(null, '', '/sales/login/');
-        window.history.replaceState(null, '', '/sales/login/');
-        
-        // 서버에 로그아웃 요청
-        fetch('/sales/logout/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCsrfToken()
-            }
-        })
-        .then(response => {
-            // 응답이 JSON이 아닌 경우를 처리
-            const contentType = response.headers.get('content-type');
-            if (contentType && contentType.includes('application/json')) {
-                return response.json();
-            } else {
-                // JSON이 아닌 경우 성공으로 처리하고 바로 리다이렉트
-                return { success: true };
-            }
-        })
-        .then(data => {
-            if (data.success) {
-                // 로그인 페이지로 리다이렉트
-                window.location.replace('/sales/login/');
-            } else {
-                alert('로그아웃 중 오류가 발생했습니다: ' + (data.error || ''));
-                // 오류가 발생해도 로그인 페이지로 리다이렉트
-                window.location.replace('/sales/login/');
-            }
-        })
-        .catch(error => {
-            console.error('로그아웃 오류:', error);
-            alert('로그아웃 중 오류가 발생했습니다.');
-            // 오류가 발생해도 로그인 페이지로 리다이렉트
-            window.location.replace('/sales/login/');
-        });
-    }
-}
-
-// 관리자 페이지 이동 함수
-function goToAdminPage() {
-    window.location.href = '/sales/diary_admin/board/';
-}
-
-// 게시판 이동 함수
-function toBoard() {
-    window.location.href = '/sales/diary_board/';
-}
-
-// 일반 게시판 이동 함수
-function toGeneralBoard() {
-    console.log('toGeneralBoard 함수 호출됨');
-    try {
-        window.location.href = '/sales/board_list/';
-    } catch (error) {
-        console.error('게시판 이동 중 오류:', error);
-        // 대안 방법
-        window.open('/sales/board_list/', '_self');
-    }
-}
-
-// 알림 패널 토글 함수
-function toggleNotificationPanel() {
-    console.log('알림 패널 토글 함수 호출');
-    const panel = document.getElementById('notificationPanel');
-    console.log(panel);
-    
-    // 알림 패널 토글
-    if (panel.style.display === 'none') {
-        console.log('패널 표시');
-        panel.style.display = 'block';
-        console.log(panel.style.display);
-        loadNotifications();
-        setTimeout(() => {
-            console.log('1초 후 display:', panel.style.display);
-          }, 1000);
-    } else {
-        panel.style.display = 'none';
-    }
-}
-
-// 알림 로드 함수
-function loadNotifications() {
-    const notificationList = document.getElementById('notificationList');
-    
-    // 서버에서 알림 데이터를 가져오는 API 호출
-    fetch('/sales/diary_board/notifications/', {
-        method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCsrfToken()
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            renderNotifications(data.notifications);
-            updateNotificationBadge(data.unread_count);
-        } else {
-            notificationList.innerHTML = '<div class="no-notifications">알림을 불러올 수 없습니다.</div>';
-        }
-    })
-    .catch(error => {
-        console.error('알림 로드 오류:', error);
-        notificationList.innerHTML = '<div class="no-notifications">알림을 불러올 수 없습니다.</div>';
-    });
-}
-
-// 알림 렌더링 함수
-function renderNotifications(notifications) {
-    const notificationList = document.getElementById('notificationList');
-    
-    if (notifications.length === 0) {
-        notificationList.innerHTML = '<div class="no-notifications">새로운 알림이 없습니다.</div>';
-        return;
-    }
-    
-    const notificationsHtml = notifications.map(notification => {
-        // 새로운 content 구조에서 text만 추출
-        let messageText = '';
-        if (notification.message && typeof notification.message === 'object' && notification.message.text) {
-            messageText = notification.message.text;
-        } else if (typeof notification.message === 'string') {
-            messageText = notification.message;
-        } else {
-            messageText = '내용 없음';
-        }
-        
-        return `
-            <div class="notification-item ${notification.is_read ? 'read' : 'unread'}" 
-                 data-id="${notification.id}" 
-                 data-alarm-id="${notification.alarm_id || ''}"
-                 onclick="handleNotificationClick(${notification.id}, this, ${notification.alarm_id || 'null'})">
-                <div class="notification-content">
-                    <div class="notification-title">${notification.title}</div>
-                    <div class="notification-message">${messageText}</div>
-                    <div class="notification-time">${formatNotificationTime(notification.created_at)}</div>
-                </div>
-                ${!notification.is_read ? '<div class="unread-indicator"></div>' : ''}
-            </div>
-        `;
-    }).join('');
-    
-    notificationList.innerHTML = notificationsHtml;
-}
-
-// 알림 배지 업데이트 함수
-function updateNotificationBadge(count) {
-    const badge = document.getElementById('notificationBadge');
-    if (count > 0) {
-        badge.textContent = count;
-        badge.style.display = 'flex';
-    } else {
-        badge.style.display = 'none';
-    }
-}
-
-// 알림 시간 포맷 함수
-function formatNotificationTime(timestamp) {
-    const now = new Date();
-    const notificationTime = new Date(timestamp);
-    const diffInMinutes = Math.floor((now - notificationTime) / (1000 * 60));
-    
-    if (diffInMinutes < 1) {
-        return '방금 전';
-    } else if (diffInMinutes < 60) {
-        return `${diffInMinutes}분 전`;
-    } else if (diffInMinutes < 1440) {
-        const hours = Math.floor(diffInMinutes / 60);
-        return `${hours}시간 전`;
-    } else {
-        const days = Math.floor(diffInMinutes / 1440);
-        return `${days}일 전`;
-    }
-}
-
-// 페이지 클릭 시 메뉴 닫기
-document.addEventListener('click', function(event) {
-    const notificationPanel = document.getElementById('notificationPanel');
-    const notificationBtn = event.target.closest('.notification-btn');
-    
-    if (!notificationBtn && notificationPanel.style.display === 'block') {
-        notificationPanel.style.display = 'none';
-    }
-});
-
-// 알림 읽음 상태로 표시 함수
-function markNotificationRead(notificationId, element) {
-    fetch(`/sales/diary_board/notifications/${notificationId}/read/`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCsrfToken()
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // UI 업데이트
-            element.classList.remove('unread');
-            element.classList.add('read');
-            const unreadIndicator = element.querySelector('.unread-indicator');
-            if (unreadIndicator) {
-                unreadIndicator.remove();
-            }
-            
-            // 배지 업데이트
-            const badge = document.getElementById('notificationBadge');
-            const currentCount = parseInt(badge.textContent || '0');
-            if (currentCount > 0) {
-                badge.textContent = currentCount - 1;
-                if (currentCount - 1 === 0) {
-                    badge.style.display = 'none';
-                }
-            }
-        }
-    })
-    .catch(error => {
-        console.error('알림 읽음 상태 변경 오류:', error);
-    });
-}
-
-// 알림 클릭 처리 함수
-function handleNotificationClick(notificationId, element, alarmId) {
-    // 먼저 읽음 상태로 표시
-    markNotificationRead(notificationId, element);
-    
-    // 공지 ID가 있으면 해당 공지 상세페이지로 이동
-    if (alarmId && alarmId !== 'null') {
-        // 잠시 후 페이지 이동 (읽음 상태 업데이트가 완료된 후)
-        setTimeout(() => {
-            window.location.href = `/sales/diary_board/announcement/${alarmId}/detail/`;
-        }, 300);
-    }
-}
 
 // 드롭다운 옵션 변경 이벤트 리스너 설정
 function setupDropdownUpdateListeners() {
@@ -3516,113 +3188,6 @@ function setupDropdownUpdateListeners() {
     console.log('드롭다운 업데이트 리스너 설정 완료');
 }
 
-{% comment %} if (window.innerWidth < 1000) {
-    document.querySelector('.row-checkbox').style.opacity = '1';
-    document.querySelector('.delete-row').style.opacity = '1';
-    document.querySelector('.duplicate-row').style.opacity = '1';
-    document.querySelector('.drag-handle').style.opacity = '1';
-} {% endcomment %}
-
-// 드롭다운 옵션 변경 처리 함수
-{% comment %} function handleDropdownOptionChange(event) {
-    const { fieldName, newValue, rowId } = event.detail;
-    
-    console.log('드롭다운 옵션 변경 감지:', { fieldName, newValue, rowId });
-    
-    // 빈 값인 경우 삭제 요청
-    if (newValue === '') {
-        fetch('/sales/delete_attribute_value/', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: 'id=' + encodeURIComponent(rowId) + '&field=' + encodeURIComponent(fieldName)
-        })
-        .then(r => r.json())
-        .then(function(data) {
-            if (data.success) {
-                console.log('드롭다운 옵션 삭제 성공');
-                
-                // 해당 셀을 "선택 없음"으로 업데이트
-                const row = document.querySelector(`tr[data-id="${rowId}"]`);
-                if (row) {
-                    const cell = row.querySelector(`td[data-field="${fieldName}"]`);
-                    if (cell) {
-                        cell.innerHTML = '<div style="display:inline-block; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:500; min-width:48px; text-align:center; color:#999;">선택 없음</div>';
-                        cell.setAttribute('data-value', '');
-                    }
-                }
-                
-                // 상태 필터가 활성화되어 있고, 변경된 필드가 상태 속성인 경우에만 즉시 필터 적용
-                if (window.currentStatusTab !== null && fieldName === window.statusAttributeName) {
-                    setTimeout(() => {
-                        if (typeof applyStatusFilter === 'function') {
-                            applyStatusFilter();
-                        }
-                    }, 50);
-                }
-            } else {
-                console.error('드롭다운 옵션 삭제 실패:', data.error);
-            }
-        })
-        .catch(function(error) {
-            console.error('드롭다운 옵션 삭제 중 오류:', error);
-        });
-        return;
-    }
-    
-    // 서버에 업데이트 요청
-    fetch('/sales/update_row_field/', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: 'id=' + encodeURIComponent(rowId) + '&field=' + encodeURIComponent(fieldName) + '&value=' + encodeURIComponent(newValue)
-    })
-    .then(r => r.json())
-    .then(function(data) {
-        if (data.success) {
-            console.log('드롭다운 옵션 업데이트 성공');
-            
-            // 상태 필터가 활성화되어 있고, 변경된 필드가 상태 속성인 경우에만 즉시 필터 적용
-            if (window.currentStatusTab !== null && fieldName === window.statusAttributeName) {
-                // 해당 행의 상태 셀 업데이트
-                const row = document.querySelector(`tr[data-id="${rowId}"]`);
-                if (row) {
-                    const statusCell = row.querySelector(`td[data-field="${fieldName}"]`);
-                    if (statusCell) {
-                        // 새로운 값으로 data-value 업데이트
-                        statusCell.setAttribute('data-value', newValue);
-                        
-                        // 상태 필터 즉시 재적용
-                        setTimeout(() => {
-                            if (typeof applyStatusFilter === 'function') {
-                                applyStatusFilter();
-                            }
-                        }, 50);
-                    }
-                }
-            }
-            
-            // 종속된 행들 찾아서 업데이트
-            if (typeof updateDependentRows === 'function') {
-                updateDependentRows(rowId, fieldName, newValue);
-            }
-            
-            // datetime 필드인 경우 캘린더 리렌더링
-            const fieldElement = document.querySelector(`td[data-field="${fieldName}"]`);
-            if (fieldElement && fieldElement.getAttribute('data-type') === 'datetime' && window.calendar) {
-                window.calendar.refetchEvents();
-            }
-            
-            // 필요시 테이블/보드 갱신
-            if (typeof refreshCalendarSettings === 'function') {
-                refreshCalendarSettings();
-            }
-        } else {
-            console.error('드롭다운 옵션 업데이트 실패:', data.error);
-        }
-    })
-    .catch(function(error) {
-        console.error('드롭다운 옵션 업데이트 중 오류:', error);
-    });
-} {% endcomment %}
 
 // refreshTable 함수를 window 객체에 바인딩
 window.refreshTable = refreshTable;
@@ -3647,151 +3212,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// 샘플 데이터 5개 미리 정의
-const sampleData = [
-    {
-        '회사명': '(주)회사명1',
-        '매출': '250000000',
-        'F/U일정': '2025-08-15',
-        '상태': '진행중',
-        '기관': '기술보증기금',
-        '진행사항': '서류 검토 중',
-        '계약여부': '검토중',
-        '메모': '다음주 추가 서류 제출 예정',
-        '지역': '서울',
-        '상세지역': '강남구',
-        '주소': '테헤란로',
-        '이메일': 'contact@company.co.kr',
-        '연락처': '02-1234-5678',
-        '담당자': '홍길동 팀장',
-        '미팅': '2025-08-10',
-        'TA': '2025-08-10'
-    },
-    {
-        '회사명': '회사명2',
-        '매출': '180000000',
-        'F/U일정': '2025-08-20',
-        '상태': '상담완료',
-        '기관': '신용보증기금',
-        '진행사항': '계약서 작성 중',
-        '계약여부': '진행중',
-        '메모': '금리 협상 필요',
-        '지역': '경기도',
-        '상세지역': '성남시',
-        '주소': '경기도 성남시 분당구',
-        '이메일': 'info@company.com',
-        '연락처': '031-9876-5432',
-        '담당자': '김민아 대리',
-        '미팅': '2025-08-12',
-        'TA': '2025-08-10'
-    },
-    {
-        '회사명': '회사명3',
-        '매출': '320000000',
-        'F/U일정': '2025-08-25',
-        '상태': '신청완료',
-        '기관': '중진공',
-        '진행사항': '심사 대기중',
-        '계약여부': '대기',
-        '메모': '친환경 인증서 준비 중',
-        '지역': '부산',
-        '상세지역': '해운대구',
-        '주소': '센텀로',
-        '이메일': 'green@company.co.kr',
-        '연락처': '051-5555-1234',
-        '담당자': '홍길동 과장',
-        '미팅': '2025-08-14',
-        'TA': '2025-08-12'
-    },
-    {
-        '회사명': '회사명4',
-        '매출': '420000000',
-        'F/U일정': '2025-03-01',
-        '상태': '계약완료',
-        '기관': '소진공-혁신성장',
-        '진행사항': '계약 체결 완료',
-        '계약여부': '완료',
-        '메모': '성공 사례로 활용 가능',
-        '지역': '대구',
-        '상세지역': '수성구',
-        '주소': '범어로',
-        '이메일': 'digital@company.kr',
-        '연락처': '053-7777-8888',
-        '담당자': '홍길동 부장',
-        '미팅': '2025-08-08',
-        'TA': '2025-08-06'
-    },
-    {
-        '회사명': '회사명5',
-        '매출': '290000000',
-        'F/U일정': '2025-08-18',
-        '상태': '검토중',
-        '기관': '신용보증재단',
-        '진행사항': '추가 자료 요청',
-        '계약여부': '보류',
-        '메모': '임상시험 결과 대기중',
-        '지역': '인천',
-        '상세지역': '연수구',
-        '주소': '컨벤시아대로',
-        '이메일': 'bio@company.com',
-        '연락처': '032-3333-9999',
-        '담당자': '홍길동 센터장',
-        '미팅': '2025-08-16',
-        'TA': '2025-08-14'
-    }
-];
-
-// 샘플 데이터 추가 함수
-function addSampleData() {
-    // 5개 중 랜덤으로 하나 선택
-    const randomIndex = Math.floor(Math.random() * sampleData.length);
-    const selectedSample = sampleData[randomIndex];
-    
-    console.log('선택된 샘플 데이터:', selectedSample);
-    
-    // 서버에 샘플 데이터 추가 요청
-    fetch('/sales/add_sample_row/', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCsrfToken()
-        },
-        body: JSON.stringify({
-            sample_data: selectedSample
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showNotification('샘플 데이터가 성공적으로 추가되었습니다! (' + selectedSample['회사명'] + ')', 'success');
-            
-            // 테이블 새로고침
-            refreshTable();
-            
-            // 칸반보드 새로고침 (필요한 경우)
-            if (window.kanbanAttribute) {
-                refreshKanban();
-            }
-            
-            // 캘린더 새로고침
-            refreshCalendar();
-            
-            // 상태 탭이 활성화된 경우 필터 재적용
-            if (window.currentStatusTab !== null && typeof applyStatusFilter === 'function') {
-                setTimeout(() => {
-                    applyStatusFilter();
-                }, 100);
-            }
-        } else {
-            showNotification('샘플 데이터 추가 실패: ' + (data.error || '알 수 없는 오류'), 'error');
-        }
-    })
-    .catch(error => {
-        console.error('샘플 데이터 추가 오류:', error);
-        showNotification('샘플 데이터 추가 중 오류가 발생했습니다.', 'error');
-    });
-}
-
 // closeDropdown 함수가 전역적으로 사용될 수 있도록 수정
 function closeDropdown() {
     if (window.dropdown) {
@@ -3804,6 +3224,7 @@ function closeDropdown() {
 function downloadExcelTemplate() {
     window.location.href = '/sales/download_excel_template/';
 }
+
 </script>
 
 <script src="{% static 'diary/auto_blog.js' %}"></script>

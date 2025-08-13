@@ -17,15 +17,22 @@ from .main_views import CompanyInfoView, PersonalInfoView, TermsOfServiceView
 from .session_handlers import cleanup_session_cache_api, get_active_sessions_api
 from .board_views import board_list_view, board_list_api, board_create, board_detail_view, board_file_upload, board_file_preview, board_file_download, board_detail_api, board_edit
 from .funding_views import get_funding_recommendation, get_recommended_notices, update_debt_field, save_debt_details, update_expected_loans, update_loan_amount, get_debt_details
+from .order import reorder_entries, save_column_order, update_detail_sort_order
+from .hwp_convert import convert_hwp_to_pdf_board, convert_hwp_to_pdf
 
 from .attribute_handlers import get_hidden_attributes, add_attribute, delete_attribute, update_attribute_name, update_attribute_visibility, get_dropdown_attributes, get_all_attributes
 
 urlpatterns = [
     path('', DiaryMainView.as_view(), name='diary_main'),
+
+    # 로그인 관련 URL
     path('login/', LoginView.as_view(), name='login'),
     path('logout/', LogoutView.as_view(), name='logout'),
     path('signup/', SignupView.as_view(), name='signup'),
     path('change_password/', ChangePasswordView.as_view(), name='change_password'),
+
+    path('check_login_status/', views.check_login_status, name='check_login_status'),
+    path('get_current_user_id/', views.get_current_user_id, name='get_current_user_id'),
     
     # 이메일 인증 관련 URL
     path('send_verification_email/', SendVerificationEmailView.as_view(), name='send_verification_email'),
@@ -37,29 +44,39 @@ urlpatterns = [
     path('forgot_password/', ForgotPasswordView.as_view(), name='forgot_password'),
     path('reset_password/', ResetPasswordView.as_view(), name='reset_password'),
     
-    path('check_login_status/', views.check_login_status, name='check_login_status'),
-    path('get_current_user_id/', views.get_current_user_id, name='get_current_user_id'),
+    # 테이블
     path('diary/', views.diary_list, name='diary_list'),
-    path('fu_events/', views.fu_events, name='fu_events'),
-    path('fu_memo/<int:entry_id>/', views.fu_memo, name='fu_memo'),
-    path('categories/', views.category_list, name='category_list'),
     path('regions/', views.region_list, name='region_list'),
-    path('create/', views.create_entry, name='create_entry'),
-    path('reorder/', views.reorder_entries, name='reorder_entries'),
+    path('reorder/', reorder_entries, name='reorder_entries'),
     path('statuses/', views.status_list, name='status_list'),
-    path('board/', views.board_view, name='board_view'),
     path('create_new_row/', views.create_new_row, name='create_new_row'),
-    path('add_sample_row/', views.add_sample_row, name='add_sample_row'),
     path('update_row_field/', views.update_row_field, name='update_row_field'),
-    path('get_dependent_rows/', views.get_dependent_rows, name='get_dependent_rows'),
     path('update_sales_field/', views.update_sales_field, name='update_sales_field'),
     path('dropdown_options/', views.dropdown_options, name='dropdown_options'),
     path('add_attribute/', add_attribute, name='add_attribute'),
     path('delete_attribute/', delete_attribute, name='delete_attribute'),
-    path('get_row_details/<int:row_id>/', views.get_row_details, name='get_row_details'),
     path('get_user_attributes/', views.get_user_attributes, name='get_user_attributes'),
-    path('update_detail_sort_order/', views.update_detail_sort_order, name='update_detail_sort_order'),
     path('get_kanban_data/', get_kanban_data, name='get_kanban_data'),
+    path('save_column_order/', save_column_order, name='save_column_order'),
+    path('delete_row/', views.delete_row, name='delete_row'),
+    path('delete_attribute_value/', delete_attribute_value, name='delete_attribute_value'),
+    path('entry_table_partial/', views.entry_table_partial, name='entry_table_partial'),
+    path('toggle_attribute_visibility/', toggle_attribute_visibility, name='toggle_attribute_visibility'),
+    path('get_hidden_attributes/', get_hidden_attributes, name='get_hidden_attributes'),
+    path('get_all_attributes/', get_all_attributes, name='get_all_attributes'),
+    path('get_dropdown_attributes/', get_dropdown_attributes, name='get_dropdown_attributes'),
+    path('update_attribute_name/', update_attribute_name, name='update_attribute_name'),
+    path('get_status_tabs/', views.get_status_tabs, name='get_status_tabs'),
+    
+    # hwp -> pdf 변환
+    path('convert_hwp_to_pdf/', convert_hwp_to_pdf, name='convert_hwp_to_pdf'),
+    path('convert_hwp_to_pdf_board/', convert_hwp_to_pdf_board, name='convert_hwp_to_pdf_board'),
+
+    # 복제행 처리
+    path('duplicate_row/', views.duplicate_row, name='duplicate_row'),
+    path('get_dependent_rows/', views.get_dependent_rows, name='get_dependent_rows'),
+
+    # 상세
     path('upload_file/', upload_file, name='upload_file'),
     path('download_file/<int:row_id>/<str:field_name>/<str:fileId>/', download_file, name='download_file'),
     path('delete_file/', delete_file, name='delete_file'),
@@ -76,29 +93,17 @@ urlpatterns = [
     path('save_debt_details/', save_debt_details, name='save_debt_details'),
     path('get_funding_recommendation/', get_funding_recommendation, name='get_funding_recommendation'),
     path('get_recommended_notices/', get_recommended_notices, name='get_recommended_notices'),
-    path('save_column_order/', views.save_column_order, name='save_column_order'),
-    path('delete_row/', views.delete_row, name='delete_row'),
-    path('delete_attribute_value/', delete_attribute_value, name='delete_attribute_value'),
-    path('duplicate_row/', views.duplicate_row, name='duplicate_row'),
+    path('get_row_details/<int:row_id>/', views.get_row_details, name='get_row_details'),
+    path('update_detail_sort_order/', update_detail_sort_order, name='update_detail_sort_order'),
     path('update_audio_text_notes/', update_audio_text_notes, name='update_audio_text_notes'),
     path('update_audio_file_order_and_notes/', update_audio_file_order_and_notes, name='update_audio_file_order_and_notes'),
-    path('entry_table_partial/', views.entry_table_partial, name='entry_table_partial'),
-    path('toggle_attribute_visibility/', toggle_attribute_visibility, name='toggle_attribute_visibility'),
-    path('get_hidden_attributes/', get_hidden_attributes, name='get_hidden_attributes'),
-    path('get_all_attributes/', get_all_attributes, name='get_all_attributes'),
-    path('get_dropdown_attributes/', get_dropdown_attributes, name='get_dropdown_attributes'),
-    path('update_attribute_name/', update_attribute_name, name='update_attribute_name'),
-    path('update_attribute_name/', update_attribute_name, name='update_attribute_name'),
-    path('get_status_tabs/', views.get_status_tabs, name='get_status_tabs'),
-    path('upload_note_file/', upload_note_file, name='upload_note_file'),
-    path('delete_note_file/', delete_note_file, name='delete_note_file'),
     path('update_note_order_and_notes/', update_note_order_and_notes, name='update_note_order_and_notes'),
     path('get_file_preview_url/<str:row_id>/<str:field_name>/', get_file_preview_url, name='get_file_preview_url'),
     path('get_file_preview_url_note/<str:file_id>/', get_file_preview_url_note, name='get_file_preview_url_note'),
     path('get_file_content_note/<str:file_id>/', get_file_content_note, name='get_file_content_note'),
-    path('convert_hwp_to_pdf/', convert_hwp_to_pdf, name='convert_hwp_to_pdf'),
-    path('convert_hwp_to_pdf_board/', views.convert_hwp_to_pdf_board, name='convert_hwp_to_pdf_board'),
-    
+    path('upload_note_file/', upload_note_file, name='upload_note_file'),
+    path('delete_note_file/', delete_note_file, name='delete_note_file'),
+
     # 캘린더 설정 관련 API
     path('get_datetime_attributes/', get_datetime_attributes, name='get_datetime_attributes'),
     path('get_calendar_settings/', get_calendar_settings, name='get_calendar_settings'),

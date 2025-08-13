@@ -96,6 +96,7 @@ function selectStatusTab(statusId) {
 
 // 필터링된 데이터 로드
 function loadFilteredData(statusId) {
+    console.log('loadFilteredData 함수 호출됨');
   const url = new URL('/sales/entry_table_partial/', window.location.origin);
   if (statusId !== null) {
       url.searchParams.set('status_id', statusId);
@@ -463,6 +464,7 @@ function saveSingleAttributeSetting(attrId, statusId, isVisible) {
 
 // 상태 필터를 고려한 테이블 새로고침
 function refreshTableWithStatusFilter() {
+  console.log('refreshTableWithStatusFilter 함수 호출됨');
   // 현재 속성 설정 백업
   const currentAttributeSettings = {};
   if (window.allAttributes) {
