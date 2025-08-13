@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700;800;900&display=swap');
+        
+        .wmr-container * { box-sizing: border-box; }
+        
+        /* 색상 변수 - 심리학적 욕망 자극 최적화 */
+        .wmr-container {
+            --primary-dark: #1B365D;
+            --primary-light: #2C5282;
+            --accent-cyan: #19C5C5;
+            --accent-gold: #FFD700;
+            --accent-orange: #FF6B35;
+            --money-green: #22C55E;
+            --text-white: #FFFFFF;
+            --text-dark: #333333;
+            --text-gray: #666666;
+            --bg-light: #F8FAFC;
+            --bg-white: #FFFFFF;
+        }
+        
+        /* 메인 헤로 섹션 - 욕망 자극 강화 */
+        .wmr-hero {
+            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-light) 70%, var(--accent-cyan) 100%);
+            color: var(--text-white);
+            padding: 80px 30px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .wmr-hero::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="money" width="20" height="20" patternUnits="userSpaceOnUse"><text x="10" y="15" text-anchor="middle" font-size="12" fill="rgba(255,215,0,0.08)">💰</text></pattern></defs><rect width="100" height="100" fill="url(%23money)"/></svg>');
+            animation: wmr-money-flow 20s linear infinite;
+        }
+        
+        @keyframes wmr-money-flow {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(50px); }
+        }
+        
+        .wmr-hero-content { position: relative; z-index: 2; }
+        
+        .wmr-money-visual {
+            width: 140px;
+            height: 140px;
+            margin: 0 auto 30px;
+            background: linear-gradient(135deg, var(--money-green), var(--accent-gold));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 60px;
+            box-shadow: 0 20px 40px rgba(34, 197, 94, 0.4);
+            animation: wmr-money-pulse 3s infinite;
+        }
+        
+        @keyframes wmr-money-pulse {
+            0%, 100% { 
+                transform: scale(1); 
+                box-shadow: 0 20px 40px rgba(34, 197, 94, 0.4);
+            }
+            50% { 
+                transform: scale(1.1); 
+                box-shadow: 0 25px 50px rgba(34, 197, 94, 0.6);
+            }
+        }
+        
+        .wmr-badge {
+            display: inline-block;
+            background: var(--accent-gold);
+            color: var(--primary-dark);
+            padding: 12px 25px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 800;
+            margin-bottom: 25px;
+            animation: wmr-pulse 3s infinite;
+            box-shadow: 0 10px 20px rgba(255, 215, 0, 0.3);
+        }
+        
+        @keyframes wmr-pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        .wmr-main-headline {
+            font-size: 50px;
+            font-weight: 900;
+            line-height: 1.1;
+            margin-bottom: 25px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .wmr-money-highlight {
+            color: var(--accent-gold);
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
+            font-size: 1.2em;
+            animation: wmr-glow 2s ease-in-out infinite alternate;
+        }
+        
+        @keyframes wmr-glow {
+            from { text-shadow: 0 0 20px rgba(255, 215, 0, 0.6); }
+            to { text-shadow: 0 0 30px rgba(255, 215, 0, 0.9); }
+        }
+        
+        .wmr-sub-headline {
+            font-size: 22px;
+            font-weight: 400;
+            opacity: 0.95;
+            margin-bottom: 40px;
+            line-height: 1.5;
+            max-width: 650px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .wmr-ai-preview {
+            display: flex;
+            justify-content: center;
+            gap: 25px;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+        }
+        
+        .wmr-ai-badge {
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 15px;
+            padding: 18px 28px;
+            backdrop-filter: blur(10px);
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+        
+        .wmr-ai-badge:hover {
+            transform: translateY(-5px);
+        }
+        
+        .wmr-ai-name {
+            font-size: 18px;
+            font-weight: 800;
+            margin-bottom: 8px;
+            color: var(--accent-gold);
+        }
+        
+        .wmr-ai-desc {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        /* 3D 이미지 플레이스홀더 */
+        .wmr-3d-visual {
+            width: 100%;
+            height: 280px;
+            background: linear-gradient(135deg, #f0f0f0, #e0e0e0);
+            border-radius: 20px;
+            margin: 50px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: #666;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .wmr-3d-visual::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.1) 50%, transparent 70%);
+            animation: wmr-shine 4s infinite;
+        }
+        
+        @keyframes wmr-shine {
+            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+            100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+        }
+        
+        /* 욕망 자극 통계 섹션 */
+        .wmr-desire-stats {
+            background: linear-gradient(135deg, var(--money-green) 0%, #16A34A 100%);
+            color: var(--text-white);
+            padding: 60px 30px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .wmr-desire-stats::before {
+            content: '💰💎💰💎💰💎💰💎💰💎💰💎💰💎💰💎💰💎💰💎';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 200%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            font-size: 24px;
+            opacity: 0.1;
+            animation: wmr-money-scroll 25s linear infinite;
+        }
+        
+        @keyframes wmr-money-scroll {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(50%); }
+        }
+        
+        .wmr-stats-content {
+            position: relative;
+            z-index: 2;
+        }
+        
+        .wmr-stats-title {
+            font-size: 36px;
+            font-weight: 900;
+            margin-bottom: 40px;
+        }
+        
+        .wmr-comparison {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 40px;
+            margin: 40px 0;
+            flex-wrap: wrap;
+        }
+        
+        .wmr-stat-box {
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.2);
+            min-width: 180px;
+        }
+        
+        .wmr-stat-number {
+            font-size: 32px;
+            font-weight: 900;
+            color: var(--accent-gold);
+            margin-bottom: 10px;
+        }
+        
+        .wmr-stat-desc {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        
+        .wmr-vs {
+            font-size: 24px;
+            font-weight: 900;
+            color: var(--accent-orange);
+        }
+        
+        /* 섹션 공통 스타일 */
+        .wmr-section {
+            padding: 70px 10px;
+        }
+        
+        .wmr-section-title {
+            font-size: 38px;
+            font-weight: 800;
+            color: var(--primary-dark);
+            margin-bottom: 25px;
+            text-align: center;
+        }
+        
+        .wmr-section-desc {
+            font-size: 20px;
+            color: var(--text-gray);
+            text-align: center;
+            margin-bottom: 50px;
+            max-width: 750px;
+            margin-left: auto;
+            margin-right: auto;
+            line-height: 1.6;
+        }
+        
+        /* 3가지 벽 섹션 - 세로 배치 */
+        .wmr-barriers {
+            background: var(--bg-light);
+        }
+        
+        .wmr-barrier-list {
+            max-width: 650px;
+            margin: 0 auto;
+        }
+        
+        .wmr-barrier-card {
+            background: var(--bg-white);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            margin-bottom: 40px;
+            text-align: center;
+            transition: transform 0.3s ease;
+            border-left: 6px solid var(--accent-orange);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .wmr-barrier-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(135deg, var(--accent-orange), transparent);
+            opacity: 0.1;
+            border-radius: 0 0 0 100px;
+        }
+        
+        .wmr-barrier-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 25px 45px rgba(0,0,0,0.15);
+        }
+        
+        .wmr-barrier-number {
+            position: absolute;
+            top: 25px;
+            right: 25px;
+            width: 45px;
+            height: 45px;
+            background: var(--accent-orange);
+            color: var(--text-white);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            font-size: 20px;
+        }
+        
+        .wmr-barrier-icon {
+            font-size: 60px;
+            margin-bottom: 25px;
+        }
+        
+        .wmr-barrier-title {
+            font-size: 26px;
+            font-weight: 800;
+            color: var(--primary-dark);
+            margin-bottom: 20px;
+            margin-top: 10px;
+        }
+        
+        .wmr-barrier-desc {
+            color: var(--text-gray);
+            line-height: 1.7;
+            font-size: 17px;
+        }
+        
+        .wmr-highlight {
+            color: var(--accent-orange);
+            font-weight: 700;
+            background: rgba(255, 107, 53, 0.1);
+            padding: 3px 8px;
+            border-radius: 5px;
+        }
+        
+        /* 혜택 섹션 */
+        .wmr-benefits-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+            gap: 35px;
+            margin-bottom: 40px;
+        }
+        
+        .wmr-benefit-card {
+            background: var(--bg-white);
+            padding: 24px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            border-left: 6px solid var(--accent-cyan);
+            text-align: center;
+            width: 420px;
+        }
+        
+        .wmr-benefit-card:hover {
+            transform: translateY(-12px);
+            box-shadow: 0 30px 60px rgba(0,0,0,0.15);
+        }
+        
+        .wmr-benefit-icon {
+            font-size: 50px;
+            margin-bottom: 25px;
+        }
+        
+        .wmr-benefit-title {
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--primary-dark);
+            margin-bottom: 20px;
+        }
+        
+        .wmr-benefit-desc {
+            color: var(--text-gray);
+            line-height: 1.7;
+            font-size: 16px;
+        }
+        
+        /* AI 툴 섹션 */
+        .wmr-ai-section {
+            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-light) 100%);
+            color: var(--text-white);
+        }
+        
+        .wmr-ai-section .wmr-section-title {
+            color: var(--text-white);
+        }
+        
+        .wmr-ai-section .wmr-section-desc {
+            color: rgba(255,255,255,0.9);
+        }
+        
+        .wmr-ai-tools-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+            gap: 15px;
+            margin-bottom: 40px;
+        }
+        
+        .wmr-ai-tool-card {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(15px);
+            border-radius: 20px;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: transform 0.3s ease;
+        }
+        
+        .wmr-ai-tool-card:hover {
+            transform: translateY(-15px);
+        }
+        
+        .wmr-tool-header {
+            padding: 30px;
+            text-align: center;
+            background: rgba(25, 197, 197, 0.2);
+        }
+        
+        .wmr-tool-logo {
+            font-size: 28px;
+            font-weight: 900;
+            margin-bottom: 15px;
+            color: var(--accent-gold);
+        }
+        
+        .wmr-tool-tagline {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        
+        .wmr-tool-body {
+            padding: 30px;
+        }
+        
+        .wmr-tool-screenshot {
+            width: 100%;
+            height: 220px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: rgba(255,255,255,0.7);
+            border: 2px dashed rgba(255,255,255,0.3);
+            background-size: cover;
+            background-position: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .wmr-tool-screenshot::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            animation: wmr-loading 3s infinite;
+        }
+        
+        @keyframes wmr-loading {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+        
+        .wmr-tool-features {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .wmr-tool-features li {
+            padding: 10px 0;
+            position: relative;
+            padding-left: 30px;
+            color: rgba(255,255,255,0.9);
+            font-size: 16px;
+        }
+        
+        .wmr-tool-features li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: var(--accent-gold);
+            font-weight: bold;
+            font-size: 18px;
+        }
+        
+        .wmr-iceberg-notice {
+            background: linear-gradient(135deg, var(--accent-orange), #E65A2C);
+            color: var(--text-white);
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            font-weight: 700;
+            font-size: 20px;
+            margin-top: 40px;
+            animation: wmr-iceberg-glow 3s ease-in-out infinite alternate;
+            box-shadow: 0 15px 30px rgba(255, 107, 53, 0.3);
+        }
+        
+        @keyframes wmr-iceberg-glow {
+            from { box-shadow: 0 15px 30px rgba(255, 107, 53, 0.3); }
+            to { box-shadow: 0 20px 40px rgba(255, 107, 53, 0.6); }
+        }
+        
+        /* 강사 소개 섹션 */
+        .wmr-instructor {
+            background: var(--bg-light);
+            text-align: center;
+        }
+        
+        .wmr-instructor-card {
+            background: var(--bg-white);
+            border-radius: 25px;
+            padding: 20px;
+            max-width: 680px;
+            margin: 0 auto;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .wmr-instructor-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, var(--accent-cyan), var(--accent-gold), var(--accent-orange));
+        }
+        
+        .wmr-instructor-photo {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-light), var(--accent-cyan));
+            margin: 0 auto 25px;
+            border: 6px solid var(--accent-gold);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: var(--text-white);
+            overflow: hidden;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.2);
+            background-size: cover;
+            background-position: center;
+        }
+        
+        .wmr-instructor-name {
+            font-size: 32px;
+            font-weight: 900;
+            color: var(--primary-dark);
+            margin-bottom: 15px;
+        }
+        
+        .wmr-instructor-title {
+            font-size: 20px;
+            color: var(--accent-cyan);
+            margin-bottom: 25px;
+            font-weight: 700;
+        }
+        
+        .wmr-instructor-desc {
+            color: var(--text-gray);
+            line-height: 1.8;
+            font-size: 16px;
+        }
+        
+        /* 강의 정보 섹션 */
+        .wmr-info-grid {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+        
+        .wmr-info-card {
+            background: var(--bg-white);
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            border: 2px solid #E2E8F0;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            width: 300px;
+            height: 250px;
+            margin-bottom: 20px;
+        }
+        
+        .wmr-info-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--accent-cyan);
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+        
+        .wmr-info-card:hover {
+            border-color: var(--accent-cyan);
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        
+        .wmr-info-card:hover::before {
+            transform: scaleX(1);
+        }
+        
+        .wmr-info-icon {
+            font-size: 40px;
+            margin-bottom: 20px;
+        }
+        
+        .wmr-info-title {
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--primary-dark);
+            margin-bottom: 15px;
+        }
+        
+        .wmr-info-desc {
+            color: var(--text-gray);
+            font-size: 16px;
+            line-height: 1.6;
+        }
+        
+        /* CTA 섹션 강화 */
+        .wmr-cta {
+            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-light) 100%);
+            color: var(--text-white);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .wmr-cta::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="money-pattern" width="25" height="25" patternUnits="userSpaceOnUse"><text x="12" y="18" text-anchor="middle" font-size="14" fill="rgba(255,215,0,0.05)">💰</text></pattern></defs><rect width="100" height="100" fill="url(%23money-pattern)"/></svg>');
+        }
+        
+        .wmr-cta-content {
+            position: relative;
+            z-index: 2;
+        }
+        
+        .wmr-cta-headline {
+            font-size: 46px;
+            font-weight: 900;
+            margin-bottom: 25px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .wmr-cta-subtext {
+            font-size: 22px;
+            opacity: 0.95;
+            margin-bottom: 50px;
+        }
+        
+        .wmr-urgency-box {
+            background: rgba(255, 107, 53, 0.9);
+            border-radius: 20px;
+            padding: 40px;
+            margin-bottom: 50px;
+            border: 3px solid var(--accent-orange);
+            box-shadow: 0 20px 40px rgba(255, 107, 53, 0.3);
+        }
+        
+        .wmr-urgency-title {
+            font-size: 28px;
+            font-weight: 900;
+            margin-bottom: 20px;
+        }
+        
+        .wmr-urgency-text {
+            font-size: 18px;
+            line-height: 1.7;
+        }
+        
+        .wmr-cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--accent-gold), #FFA500);
+            color: var(--primary-dark);
+            font-size: 26px;
+            font-weight: 900;
+            padding: 25px 60px;
+            border-radius: 50px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            box-shadow: 0 15px 35px rgba(255, 215, 0, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .wmr-cta-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s;
+        }
+        
+        .wmr-cta-button:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 50px rgba(255, 215, 0, 0.6);
+            color: var(--primary-dark);
+            text-decoration: none;
+        }
+        
+        .wmr-cta-button:hover::before {
+            left: 100%;
+        }
+        
+        /* 반응형 디자인 */
+        @media (max-width: 768px) {
+            .wmr-main-headline { font-size: 36px; }
+            .wmr-sub-headline { font-size: 18px; }
+            .wmr-section-title { font-size: 32px; }
+            .wmr-stats-title { font-size: 28px; }
+            .wmr-cta-headline { font-size: 32px; }
+            .wmr-cta-button { font-size: 20px; padding: 20px 40px; }
+            .wmr-section { padding: 60px 20px; }
+            .wmr-hero { padding: 60px 20px; }
+            .wmr-desire-stats { padding: 50px 20px; }
+            .wmr-ai-preview { flex-direction: column; gap: 15px; }
+            .wmr-benefits-grid, .wmr-ai-tools-grid, .wmr-info-grid { grid-template-columns: 1fr; }
+            .wmr-comparison { flex-direction: column; gap: 20px; }
+            .wmr-3d-visual { height: 220px; margin: 40px 0; }
+            .wmr-money-visual { width: 120px; height: 120px; font-size: 50px; }
+        }
+    </style>
+</head>
+<body>
+    <div style="width: 100%; max-width: 860px; margin: 0 auto; font-family: 'Pretendard', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, system-ui, sans-serif; line-height: 1.6; color: #333; background: #fff;">
+        
+    
+        <div class="wmr-container">
+            <!-- 메인 헤로 섹션 - 욕망 자극 -->
+            <section class="wmr-hero">
+                <div class="wmr-hero-content">
+                    <div class="wmr-money-visual">💰</div>
+                    <div class="wmr-badge">🔥 월 천만원 목표! 선착순 10명 한정</div>
+                    <h1 class="wmr-main-headline">
+                        <span class="wmr-money-highlight">월 천만원</span> 법인영업<br>
+                        AI와 함께라면<br>
+                        당신도 가능합니다
+                    </h1>
+                    <p class="wmr-sub-headline">시야·시도·경험 부족으로 포기했던 법인영업<br>이제 AI 시스템과 10년 전문가가 당신의 고수익을 현실로 만듭니다</p>
+                    
+                    <div class="wmr-ai-preview">
+                        <div class="wmr-ai-badge">
+                            <div class="wmr-ai-name">나맞지 AI</div>
+                            <div class="wmr-ai-desc">맞춤 지원사업 추천</div>
+                        </div>
+                        <div class="wmr-ai-badge">
+                            <div class="wmr-ai-name">자금왕 AI</div>
+                            <div class="wmr-ai-desc">자금 한도 + CRM 영업관리</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+    
+            <!-- 욕망 자극 통계 섹션 -->
+            <section class="wmr-desire-stats">
+                <div class="wmr-stats-content">
+                    <h2 class="wmr-stats-title">당신은 지금 얼마를 벌고 있습니까?</h2>
+                    <div class="wmr-comparison">
+                        <div class="wmr-stat-box">
+                            <div class="wmr-stat-number">월 200만원</div>
+                            <div class="wmr-stat-desc">현재 평균 수입</div>
+                        </div>
+                        <div class="wmr-vs">VS</div>
+                        <div class="wmr-stat-box">
+                            <div class="wmr-stat-number">월 1,000만원</div>
+                            <div class="wmr-stat-desc">법인영업 고수익</div>
+                        </div>
+                    </div>
+                    <p style="font-size: 24px; font-weight: 700; margin-top: 30px;">
+                        <strong>같은 시간 투자, 5배 다른 결과</strong><br>
+                        이제 꿈이 아닌 현실로 만들 차례입니다
+                    </p>
+                </div>
+            </section>
+    
+            <!-- 3가지 벽 섹션 - 세로 배치 -->
+            <section class="wmr-section wmr-barriers">
+                <h2 class="wmr-section-title">월 천만원을 가로막는 3가지 벽</h2>
+                <p class="wmr-section-desc">대부분이 고수익 법인영업에 실패하는 이유를 명확히 파악하고, 그 해결책을 제시합니다</p>
+                
+                <div class="wmr-barrier-list">
+                    <div class="wmr-barrier-card">
+                        <div class="wmr-barrier-number">1</div>
+                        <div class="wmr-barrier-icon">👁️‍🗨️</div>
+                        <h3 class="wmr-barrier-title">시야의 부족 - 보이지 않는 기회</h3>
+                        <p class="wmr-barrier-desc">
+                            "월 천만원을 벌 수 있는 법인영업의 황금 기회가 있다는 것 자체를 모릅니다."<br><br>
+                            정책자금 법인영업이라는 고수익 분야가 존재한다는 것조차 모르는 분들이 대부분입니다. 
+                            경험이 없으니 기회가 보여도 그게 기회인지 판단할 수 없죠. <br>
+                            <span class="wmr-highlight">혼자서는 절대 극복하기 어려운 영역</span>입니다.
+                        </p>
+                    </div>
+                    
+                    <div class="wmr-barrier-card">
+                        <div class="wmr-barrier-number">2</div>
+                        <div class="wmr-barrier-icon">🚀</div>
+                        <h3 class="wmr-barrier-title">시도의 부족 - 막연한 두려움</h3>
+                        <p class="wmr-barrier-desc">
+                            "돈 되는 방법은 알지만, 어디서부터 시작해야 할지 몰라 미루기만 합니다."<br><br>
+                            정책자금이 있다는 건 알지만<br>
+                            복잡해 보이고, 어려워 보여서 시작을 못하는 경우입니다. 
+                            첫걸음이 가장 어렵죠.<br>
+                            하지만 <span class="wmr-highlight">방법만 명확히 알면 즉시 실행</span> 가능합니다.
+                        </p>
+                    </div>
+                    
+                    <div class="wmr-barrier-card">
+                        <div class="wmr-barrier-number">3</div>
+                        <div class="wmr-barrier-icon">🎯</div>
+                        <h3 class="wmr-barrier-title">경험의 부족 - 끝없는 시행착오</h3>
+                        <p class="wmr-barrier-desc">
+                            "성공하는 법인영업은 수많은 경험과 노하우의 집약체입니다."<br><br>
+                            시도는 해봤지만 시행착오를 반복하며 포기하는 경우가 많습니다.<br> 
+                            혼자서 시행착오를 겪다 보면 시간과 비용만 낭비됩니다.<br> 
+                            검증된 경험을 통해 <span class="wmr-highlight">2-3년 걸릴 과정을 2-3개월로 단축</span>시켜 드립니다.
+                        </p>
+                    </div>
+                </div>
+            </section>
+    
+            <!-- 혜택 섹션 -->
+            <section class="wmr-section">
+                <h2 class="wmr-section-title">단 3시간, 월 수익을 뒤바꿀 핵심 가치</h2>
+                <p class="wmr-section-desc">이론이 아닌 실제 고수익 달성! 추상적 개념이 아닌 구체적이고 압도적인 성과를 약속합니다</p>
+                
+                <div class="wmr-benefits-grid">
+                    <div class="wmr-benefit-card">
+                        <div class="wmr-benefit-icon">💰</div>
+                        <h3 class="wmr-benefit-title">월 천만원 실제 성공 사례 전격 공개</h3>
+                        <p class="wmr-benefit-desc">1인 기업부터 보험 영업직까지,<br> 실제로 월 천만원 이상을 달성한 생생한 고수익 사례와<br> 그들의 전략을 투명하게 공개합니다.</p>
+                    </div>
+                    
+                    <div class="wmr-benefit-card">
+                        <div class="wmr-benefit-icon">🤖</div>
+                        <h3 class="wmr-benefit-title">나맞지 AI: 맞춤 지원사업 추천 시연</h3>
+                        <p class="wmr-benefit-desc">AI가 5분 만에 우리 회사에 딱 맞는 정책자금을 찾아주는<br> 나맞지 AI를 직접 체험해보세요. <br><span class="wmr-highlight">기존 2-3일 걸리던 탐색 시간을 황금 시간으로 바꿉니다.</span></p>
+                    </div>
+                    
+                    <div class="wmr-benefit-card">
+                        <div class="wmr-benefit-icon">⚡</div>
+                        <h3 class="wmr-benefit-title">자금왕 AI: 자금 한도 & CRM 관리</h3>
+                        <p class="wmr-benefit-desc">AI가 정확한 자금 한도를 계산하고, 고객사와의 접점을<br> 지속적으로 유지하는 자금왕 CRM을 보여드립니다. <br><span class="wmr-highlight">스마트한 영업관리로 수익을 극대화하세요.</span></p>
+                    </div>
+                    
+                    <div class="wmr-benefit-card">
+                        <div class="wmr-benefit-icon">📋</div>
+                        <h3 class="wmr-benefit-title">30일 고수익 실행 액션플랜 제공</h3>
+                        <p class="wmr-benefit-desc">강의 후 즉시 월 천만원을 향한 첫 발을 뗄 수 있는<br> 체계적인 30일 로드맵과 체크리스트를 드립니다.<br> <span class="wmr-highlight">망설임 없는 고속 성장을 시작하세요.</span></p>
+                    </div>
+                </div>
+            </section>
+    
+            <!-- AI 툴 섹션 -->
+            <section class="wmr-section wmr-ai-section">
+                <h2 class="wmr-section-title">차원이 다른 AI 시스템, 미리 경험하세요</h2>
+                <p class="wmr-section-desc">다른 강의에서는 꿈도 못 꿀, 실제 월 천만원을 만드는 AI 툴을 직접 시연합니다</p>
+                
+                <div class="wmr-ai-tools-grid">
+                    <div class="wmr-ai-tool-card">
+                        <div class="wmr-tool-header">
+                            <div class="wmr-tool-logo">나맞지 AI</div>
+                            <div class="wmr-tool-tagline">정책자금 지원사업 AI 서칭 & 추천</div>
+                        </div>
+                        <div class="wmr-tool-body">
+                            <div class="wmr-tool-screenshot" style="background-image: url('https://github-production-user-asset-6210df.s3.amazonaws.com/120631088/477403541-8df06461-18cc-46e3-ab98-230b25239929.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAVCODYLSA53PQK4ZA%2F20250813%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20250813T070412Z&X-Amz-Expires=300&X-Amz-Signature=0afa4dd9ced693f7a697fdc08bc8bdd3ec18564aaafb6f44d519018c7ccadc78&X-Amz-SignedHeaders=host');">
+                            </div>
+                            <ul class="wmr-tool-features">
+                                <li>업종별/규모별 맞춤 정책자금 자동 매칭</li>
+                                <li>복잡한 공고문을 AI가 3줄 핵심 요약</li>
+                                <li>우리 회사 적합도 AI 분석 및 추천</li>
+                                <li>실시간 신청 가능 프로그램 알림</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="wmr-ai-tool-card">
+                        <div class="wmr-tool-header">
+                            <div class="wmr-tool-logo">자금왕 AI</div>
+                            <div class="wmr-tool-tagline">자금 한도 즉시 확인 + CRM 영업관리</div>
+                        </div>
+                        <div class="wmr-tool-body">
+                            <div class="wmr-tool-screenshot" style="background-image: url('https://github-production-user-asset-6210df.s3.amazonaws.com/120631088/477404642-b14c186b-7d2a-4d33-b693-a2fd7d3cd353.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAVCODYLSA53PQK4ZA%2F20250813%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20250813T070640Z&X-Amz-Expires=300&X-Amz-Signature=6b93f95e0a380dd6fa70447e349b9a5ef040cdba40cf44736ca22e33d98fdc60&X-Amz-SignedHeaders=host');">
+                            </div>
+                            <ul class="wmr-tool-features">
+                                <li>AI 기반 정확한 자금 한도 즉시 계산</li>
+                                <li>고객사와의 지속적 접점 관리</li>
+                                <li>영업 활동 자동 관리 시스템</li>
+                                <li>성과 분석 및 개선 제안</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="wmr-iceberg-notice">
+                    💎 진짜 월 천만원을 만드는 AI 활용법은 본강의에서만 공개됩니다!
+                </div>
+            </section>
+    
+            <!-- 강사 소개 섹션 -->
+            <section class="wmr-section wmr-instructor">
+                <h2 class="wmr-section-title">월 천만원 고수익, 검증된 전문가와 함께하세요</h2>
+                
+                <div class="wmr-instructor-card">
+                    <div class="wmr-instructor-photo" style="background-image: url('https://github-production-user-asset-6210df.s3.amazonaws.com/120631088/477404873-21dcc7fd-598a-4da5-9de6-819c796da8d1.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAVCODYLSA53PQK4ZA%2F20250813%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20250813T070711Z&X-Amz-Expires=300&X-Amz-Signature=33ae7e2fa5408c5fbdfebaaa5f2d264ac0d60c8a6f01619d139fa3d7d098d4a2&X-Amz-SignedHeaders=host');">
+                    </div>
+                    <h3 class="wmr-instructor-name">오원석</h3>
+                    <p class="wmr-instructor-title">10년차 기업 컨설턴트 | 정책자금·지원사업·법인영업 전문가</p>
+                    <p class="wmr-instructor-desc">
+                        10년 이상 수많은 기업의 <span class="wmr-highlight">정책자금 유치와 법인영업 고수익 성과를 책임져 온 베테랑 컨설턴트</span>입니다. <br>
+                        나맞지·자금왕 AI 시스템을 직접 개발하여, 실제 성공 사례와 검증된 시스템으로 <br>
+                        당신의 <span class="wmr-highlight">월 천만원 목표를 가장 빠르고 확실하게 현실로</span> 만들어 드립니다.
+                    </p>
+                </div>
+            </section>
+    
+            <!-- 강의 정보 섹션 -->
+            <section class="wmr-section">
+                <h2 class="wmr-section-title">월 천만원 고수익을 위한 원데이 클래스 정보</h2>
+                
+                <div class="wmr-info-grid">
+                    <div>
+                        <div class="wmr-info-card">
+                            <div class="wmr-info-icon">📅</div>
+                            <h3 class="wmr-info-title">일정</h3>
+                            <p class="wmr-info-desc">8월 23일(토)<br>오후 1시~4시 (3시간)</p>
+                        </div>
+                        
+                        <div class="wmr-info-card">
+                            <div class="wmr-info-icon">🏢</div>
+                            <h3 class="wmr-info-title">진행방식</h3>
+                            <p class="wmr-info-desc">대면 강의<br>구로디지털단지역 인근</p>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="wmr-info-card">
+                            <div class="wmr-info-icon">👥</div>
+                            <h3 class="wmr-info-title">정원</h3>
+                            <p class="wmr-info-desc">선착순 10명 한정<br>밀도 높은 Q&A 및 개별 조언</p>
+                        </div>
+                        
+                        <div class="wmr-info-card">
+                            <div class="wmr-info-icon">🎯</div>
+                            <h3 class="wmr-info-title">특별혜택</h3>
+                            <p class="wmr-info-desc">AI 법인영업 무료 툴 제공</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+    
+            <!-- CTA 섹션 -->
+            <section class="wmr-section wmr-cta">
+                <div class="wmr-cta-content">
+                    <h2 class="wmr-cta-headline">당신의 월 천만원, 지금 바로 시작하세요</h2>
+                    <p class="wmr-cta-subtext">월 천만원 법인영업 고수익, 더 이상 꿈이 아닙니다. 현실이 됩니다!</p>
+                    
+                    <div class="wmr-urgency-box">
+                        <h3 class="wmr-urgency-title">⚠️ 이 황금 기회를 놓치면 안 되는 이유!</h3>
+                        <p class="wmr-urgency-text">
+                            <strong style="font-size: 24px;">단 10명만 모집합니다.</strong><br><br>
+                            밀착 코칭과 압도적 성과를 위한 최적의 인원입니다.<br>
+                            <strong>지금 망설이면, 4분기 고수익 시즌을 놓치고 내년까지 기다려야 합니다.</strong><br>
+                            선택은 당신의 몫이지만, 이 기회는 당신을 기다려주지 않습니다.
+                        </p>
+                    </div>
+                    
+                    <a href="#" class="wmr-cta-button">지금 신청하고 월 천만원의 길 열기 ▶</a>
+                </div>
+            </section>
+        </div>
+    </div>
+</body>
+</html>
+
