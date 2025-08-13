@@ -8,5 +8,5 @@ cd /home/ubuntu/PO_Web
 
 # 명령 실행
 echo "[`date '+%Y-%m-%d %H:%M:%S'`] 🚀 BizInfo update 시작" >> /home/ubuntu/cron.log
-python cron.py >> /home/ubuntu/cron.log 2>&1
+python manage.py update_bizinfo >> /home/ubuntu/cron.log 2>&1
 echo "[`date '+%Y-%m-%d %H:%M:%S'`] ✅ BizInfo update 완료" >> /home/ubuntu/cron.log
