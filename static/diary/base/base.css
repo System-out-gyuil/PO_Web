@@ -563,12 +563,9 @@
 /* 비즈인포 스타일 */
 .bizinfo-container {
   width: 100%;
-  height: 900px;
 }
 
 .bizinfo-content-box {
-  width: 85%;
-  height: 900px;
   margin: 0 auto;
 }
 
@@ -579,13 +576,13 @@
 
 .bizinfo-content-1,
 .bizinfo-content-2 {
-  width: 50%;
+  width: 55%;
   height: 100%;
 }
 
 .bizinfo-header {
   width: 100%;
-  height: 100px;
+  height: 60px;
   display: flex;
   flex-direction: row;
   align-items: flex-end;
