@@ -312,6 +312,13 @@ def diary_list(request):
     # 캐시 무효화를 위한 타임스탬프
     cache_timestamp = int(time.time())
     
+    # 모바일 디바이스 감지
+    user_agent = request.META.get('HTTP_USER_AGENT', '').lower()
+    is_mobile = any(mobile_device in user_agent for mobile_device in [
+        'mobile', 'android', 'iphone', 'ipad', 'ipod', 'blackberry', 
+        'windows phone', 'opera mini', 'mobile safari'
+    ])
+    
     # 모든 드롭다운 옵션을 한 번에 수집 (캐시 활용)
     dropdown_options = {}
     for attr in user_attributes:
@@ -353,6 +360,7 @@ def diary_list(request):
         'is_authenticated': True,  # 로그인 상태 추가
         'is_admin': user.is_admin,  # 관리자 상태 추가
         'dropdown_options': dropdown_options,  # 모든 드롭다운 옵션 추가
+        'is_mobile': is_mobile,  # 모바일 여부 추가
     }
     context['attributes_json'] = json.dumps(context['attributes'], ensure_ascii=False)
     context['dropdown_options_json'] = json.dumps(dropdown_options, ensure_ascii=False)  # JSON 형태로도 추가

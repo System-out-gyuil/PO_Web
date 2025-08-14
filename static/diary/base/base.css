@@ -388,6 +388,7 @@
   .header-btn.board-btn,
   .header-btn.inquiry-btn,
   .header-btn.admin-btn,
+  .header-btn.biz_btn,
   .diary-btn {
     display: none !important;
   }
@@ -780,22 +781,25 @@
 
 /* 반응형 디자인 */
 @media (max-width: 768px) {
+  .bizinfo-contents {
+    flex-direction: column;
+  }
+
+  .bizinfo-content-1, .bizinfo-content-2 {
+    width: 100%;
+  }
+  .bizinfo-content-title-box, .bizinfo-contents-container-items, .bizinfo-contents-container-items2 {
+    width: 98%;
+  }
+
   .bizinfo-modal-content {
-      width: 95%;
-      margin: 10% auto;
-      max-height: 85vh;
+    margin: 5% auto;
+    width: 95%;
+    height: 95%;
   }
   
-  .bizinfo-modal-header {
-      padding: 15px 20px;
-  }
-  
-  .bizinfo-modal-body {
-      padding: 20px;
-  }
-  
-  .bizinfo-modal-title {
-      font-size: 1.3rem;
+  .diary-btn-container {
+    display: none;
   }
 }
 
@@ -815,3 +819,26 @@
   font-style: italic;
 }
 
+.bizinfo-contents-m {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.bizinfo-content-title-box-m {
+  display: flex;
+  flex-direction: row;
+  text-align: center;
+  background-color: #75b8ff91;
+  width: 98%;
+  height: 35px;
+  margin: 30px auto 20px auto;
+  border-radius: 6px;
+  border-left: 4px solid #007bff;
+}
+.bizinfo-contents-m > .bizinfo-content-1, .bizinfo-content-2 {
+  width: 98%;
+}
+.bizinfo-contents-container-m > .bizinfo-contents-container-items, .bizinfo-contents-container-items2 {
+  width: 98%;
+}

@@ -141,8 +141,11 @@
     
 </head>
 <body>
+{% if is_mobile %}
+{% include 'diary/header_m.html' %}
+{% else %}
 {% include 'diary/header.html' %}
-
+{% endif %}
 <section class="main-section" style="display: none;">
     <div class="main-section-container">
         <div class="main-section-item1 main-section-item"></div>
