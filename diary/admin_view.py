@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
-from django.db.models import Q, F
+from django.db.models import Q, F, Sum
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 import json
@@ -11,7 +11,7 @@ import uuid
 import boto3
 from django.conf import settings
 from botocore.exceptions import ClientError
-from .models import Inquiry, Alarm, UserAlarm, User
+from .models import Inquiry, Alarm, UserAlarm, User, Diary_main_count, Diary_diary_count
 from django.core.paginator import Paginator
 from django.core.serializers import serialize
 from django.forms.models import model_to_dict
@@ -139,6 +139,15 @@ def admin_dashboard(request):
     unread_inquiries = Inquiry.objects.filter(created_at__gte=timezone.now() - timezone.timedelta(days=7)).count()
     user_count = User.objects.count()
     
+    # 조회수 통계 추가
+    # 메인 페이지 총 조회수
+    total_main_count = Diary_main_count.objects.aggregate(total=Sum('count'))['total'] or 0
+    # 다이어리 페이지 총 조회수
+    total_diary_count = Diary_diary_count.objects.aggregate(total=Sum('count'))['total'] or 0
+    # 총 IP 수
+    total_main_ips = Diary_main_count.objects.count()
+    total_diary_ips = Diary_diary_count.objects.count()
+    
     context = {
         'recent_inquiries': recent_inquiries,
         'recent_alarms': recent_alarms,
@@ -146,6 +155,10 @@ def admin_dashboard(request):
         'total_alarms': total_alarms,
         'unread_inquiries': unread_inquiries,
         'user_count': user_count,
+        'total_main_count': total_main_count,
+        'total_diary_count': total_diary_count,
+        'total_main_ips': total_main_ips,
+        'total_diary_ips': total_diary_ips,
         'is_authenticated': True,  # 로그인 상태 추가
         'is_admin': user.is_admin,  # 관리자 상태 추가
         'user': user,  # 사용자 정보 추가
@@ -815,3 +828,118 @@ def user_update_use_date(request, user_id):
             return JsonResponse({'success': False, 'message': f'사용 기간 수정 중 오류가 발생했습니다: {str(e)}'})
     
     return JsonResponse({'success': False, 'message': '잘못된 요청입니다.'})
+
+def diary_count_list(request):
+    """다이어리 조회수 목록 API"""
+    user_id = request.session.get('diary_member_id')
+    
+    if not user_id:
+        return JsonResponse({'success': False, 'message': '로그인이 필요합니다.'})
+    
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'message': '사용자를 찾을 수 없습니다.'})
+
+    if not user.is_admin:
+        return JsonResponse({'success': False, 'message': '권한이 없습니다.'})
+    
+    # 검색 및 정렬 파라미터
+    search_query = request.GET.get('search', '')
+    sort_by = request.GET.get('sort', '-count')
+    page = request.GET.get('page', 1)
+    count_type = request.GET.get('type', 'main')  # 'main' 또는 'diary'
+    
+    # 모델 선택
+    if count_type == 'diary':
+        count_model = Diary_diary_count
+    else:
+        count_model = Diary_main_count
+    
+    # 조회수 쿼리셋
+    counts = count_model.objects.all()
+    
+    # 검색 필터링
+    if search_query:
+        counts = counts.filter(ip__icontains=search_query)
+    
+    # 정렬
+    if sort_by:
+        counts = counts.order_by(sort_by)
+    else:
+        # 기본값: 조회수 높은 순
+        counts = counts.order_by('-count')
+    
+    # 페이지네이션
+    paginator = Paginator(counts, 20)  # 페이지당 20개
+    try:
+        counts_page = paginator.page(page)
+    except:
+        counts_page = paginator.page(1)
+    
+    # 조회수 데이터 직렬화
+    counts_data = []
+    for count in counts_page:
+        count_dict = {
+            'id': count.id,
+            'ip': count.ip,
+            'count': count.count,
+            'created_at': count.created_at.isoformat(),
+            'updated_at': count.updated_at.isoformat(),
+        }
+        counts_data.append(count_dict)
+    
+    # 페이지네이션 정보
+    pagination = {
+        'number': counts_page.number,
+        'num_pages': counts_page.paginator.num_pages,
+        'has_previous': counts_page.has_previous(),
+        'has_next': counts_page.has_next(),
+        'previous_page_number': counts_page.previous_page_number() if counts_page.has_previous() else None,
+        'next_page_number': counts_page.next_page_number() if counts_page.has_next() else None,
+    }
+    
+    # 총계 정보
+    total_count = counts.aggregate(total=Sum('count'))['total'] or 0
+    total_ips = counts.count()
+    
+    return JsonResponse({
+        'success': True,
+        'counts': counts_data,
+        'pagination': pagination,
+        'total_count': total_count,
+        'total_ips': total_ips,
+        'count_type': count_type
+    })
+
+@csrf_exempt
+def diary_count_delete(request, count_id):
+    """다이어리 조회수 삭제"""
+    admin_user_id = request.session.get('diary_member_id')
+    
+    if not admin_user_id:
+        return JsonResponse({'success': False, 'message': '로그인이 필요합니다.'})
+    
+    try:
+        admin_user = User.objects.get(id=admin_user_id)
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'message': '관리자를 찾을 수 없습니다.'})
+
+    if not admin_user.is_admin:
+        return JsonResponse({'success': False, 'message': '권한이 없습니다.'})
+    
+    try:
+        # count_type 파라미터로 어떤 모델에서 삭제할지 결정
+        count_type = request.GET.get('type', 'main')
+        if count_type == 'diary':
+            count_to_delete = Diary_diary_count.objects.get(id=count_id)
+        else:
+            count_to_delete = Diary_main_count.objects.get(id=count_id)
+        
+        count_to_delete.delete()
+        
+        return JsonResponse({'success': True, 'message': '조회수 기록이 삭제되었습니다.'})
+    except (Diary_main_count.DoesNotExist, Diary_diary_count.DoesNotExist):
+        return JsonResponse({'success': False, 'message': '삭제할 조회수 기록을 찾을 수 없습니다.'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'조회수 기록 삭제 중 오류가 발생했습니다: {str(e)}'})

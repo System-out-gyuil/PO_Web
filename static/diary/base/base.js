@@ -658,7 +658,7 @@ function updateBizInfoModal(bizList, bizTop) {
                 bizItem.innerHTML = `
                     <div class="bizinfo-contents-container-items-date">${formatDate(biz.registered_at)}</div>
                     <div class="bizinfo-contents-container-items-date-line">|</div>
-                    <div class="bizinfo-contents-container-items-title" onclick="window.location.href='/sales/board/detail/${biz.pblanc_id}/'">${biz.title}</div>
+                    <div class="bizinfo-contents-container-items-title" onclick="window.location.href='https://namatji.com/board/detail/${biz.pblanc_id}/'">${biz.title}</div>
                 `;
                 bizListContainer.appendChild(bizItem);
             });
@@ -676,7 +676,7 @@ function updateBizInfoModal(bizList, bizTop) {
                 bizItem.innerHTML = `
                     <div class="bizinfo-contents-container-items-date">${formatDate(biz.registered_at)}</div>
                     <div class="bizinfo-contents-container-items-date-line">|</div>
-                    <div class="bizinfo-contents-container-items-title" onclick="window.location.href='/sales/board/detail/${biz.pblanc_id}/'">${biz.title}</div>
+                    <div class="bizinfo-contents-container-items-title" onclick="window.location.href='https://namatji.com/board/detail/${biz.pblanc_id}/'">${biz.title}</div>
                 `;
                 bizTopContainer.appendChild(bizItem);
             });

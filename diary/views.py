@@ -9,7 +9,7 @@ from django.conf import settings
 from .models import (
     DiaryEntry, Category, Region, SalesStatus,
     Attribute, AttributeValue, User, DropdownAttribute, Row, 
-    AttributeType, UserAlarm
+    AttributeType, UserAlarm, Diary_diary_count
 )
 from board.models import BizInfo
 from main.models import BizTop
@@ -145,6 +145,27 @@ def diary_list(request):
     host = request.get_host()
     if 'namatji.com' in host:
         return redirect('login')
+
+    # IP 주소 가져오기
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0].strip()
+    else:
+        ip = request.META.get('REMOTE_ADDR', 'unknown')
+    
+    # IP 카운트 업데이트
+    try:
+        ip_count, created = Diary_diary_count.objects.get_or_create(
+            ip=ip,
+            defaults={'count': 1}
+        )
+        if not created:
+            ip_count.count += 1
+            ip_count.updated_at = timezone.now()
+            ip_count.save()
+    except Exception as e:
+        # 에러 발생 시 로그 기록 (선택사항)
+        print(f"IP 카운트 업데이트 중 오류 발생: {e}")
 
     # 로그인 상태 확인 강화
     if not request.session.get('diary_authenticated'):

@@ -5,6 +5,7 @@ let currentInquiryId = null;
 let currentAlarmId = null;
 let currentUserSort = { field: null, direction: null }; // 정렬이 설정되지 않은 상태
 let isSortingInProgress = false; // 정렬 진행 중 플래그
+let currentCountType = 'main'; // 현재 조회수 타입 (main 또는 diary)
 
 // 페이지 로드 시 초기화
 document.addEventListener('DOMContentLoaded', function() {
@@ -26,6 +27,10 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     initializeEventListeners();
+    
+    // 조회수 타입 초기 표시 설정
+    updateCountTypeDisplay();
+    
     showDashboard();
 });
 
@@ -37,6 +42,7 @@ function initializeEventListeners() {
     const inquirySearch = document.getElementById('inquiry-search');
     const alarmSearch = document.getElementById('alarm-search');
     const userSearch = document.getElementById('user-search');
+    const countSearch = document.getElementById('count-search');
     
     if (inquirySearch) {
         inquirySearch.addEventListener('input', debounce(loadInquiries, 500));
@@ -47,11 +53,15 @@ function initializeEventListeners() {
     if (userSearch) {
         userSearch.addEventListener('input', debounce(loadUsers, 500));
     }
+    if (countSearch) {
+        countSearch.addEventListener('input', debounce(loadViewCounts, 500));
+    }
     
     // 정렬 이벤트
     const inquirySort = document.getElementById('inquiry-sort');
     const alarmSort = document.getElementById('alarm-sort');
     const userSort = document.getElementById('user-sort');
+    const countSort = document.getElementById('count-sort');
     
     if (inquirySort) {
         inquirySort.addEventListener('change', loadInquiries);
@@ -62,6 +72,21 @@ function initializeEventListeners() {
     if (userSort) {
         userSort.addEventListener('change', loadUsers);
     }
+    if (countSort) {
+        countSort.addEventListener('change', loadViewCounts);
+    }
+    
+    // 조회수 타입 변경 이벤트
+    const countTypeRadios = document.querySelectorAll('input[name="count-type"]');
+    countTypeRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            console.log('Count type changed from', currentCountType, 'to', this.value);
+            currentCountType = this.value;
+            // 탭 변경 시 즉시 데이터 로드
+            loadViewCounts(1); // 첫 페이지부터 로드
+            updateCountTypeDisplay(); // 조회수 타입 표시 업데이트
+        });
+    });
     
     // 사용자 테이블 정렬 헤더 이벤트 리스너
     initializeUserTableSorting();
@@ -82,6 +107,18 @@ function initializeEventListeners() {
         deleteInquiryBtn.addEventListener('click', function() {
             if (currentInquiryId) {
                 deleteInquiry(currentInquiryId);
+            }
+        });
+    }
+    
+    // 조회수 삭제 확인 버튼 이벤트
+    const confirmCountDeleteBtn = document.getElementById('confirm-count-delete-btn');
+    if (confirmCountDeleteBtn) {
+        confirmCountDeleteBtn.addEventListener('click', function() {
+            const countId = this.getAttribute('data-count-id');
+            const countType = this.getAttribute('data-count-type');
+            if (countId && countType) {
+                deleteViewCount(countId, countType);
             }
         });
     }
@@ -106,7 +143,7 @@ function showDashboard() {
     hideAllContent();
     const dashboardContent = document.getElementById('dashboard-content');
     if (dashboardContent) {
-        dashboardContent.setAttribute('style', 'display: block !important; visibility: visible !important; opacity: 1 !important;');
+        dashboardContent.style.display = 'block';
     }
     updateActiveNav('dashboard');
 }
@@ -116,7 +153,7 @@ function showInquiries() {
     hideAllContent();
     const inquiriesContent = document.getElementById('inquiries-content');
     if (inquiriesContent) {
-        inquiriesContent.setAttribute('style', 'display: block !important; visibility: visible !important; opacity: 1 !important;');
+        inquiriesContent.style.display = 'block';
         loadInquiries();
     }
     updateActiveNav('inquiries');
@@ -127,7 +164,7 @@ function showAlarms() {
     hideAllContent();
     const alarmsContent = document.getElementById('alarms-content');
     if (alarmsContent) {
-        alarmsContent.setAttribute('style', 'display: block !important; visibility: visible !important; opacity: 1 !important;');
+        alarmsContent.style.display = 'block';
         loadAlarms();
     }
     updateActiveNav('alarms');
@@ -141,13 +178,8 @@ function showCreateAlarm() {
     console.log('create-alarm-content element:', createAlarmContent);
     
     if (createAlarmContent) {
-        // 여러 방법으로 display를 설정
+        // 간단하게 display만 설정
         createAlarmContent.style.display = 'block';
-        createAlarmContent.style.visibility = 'visible';
-        createAlarmContent.style.opacity = '1';
-        
-        // 인라인 스타일도 직접 설정
-        createAlarmContent.setAttribute('style', 'display: block !important; visibility: visible !important; opacity: 1 !important;');
         
         console.log('Create alarm content displayed');
         console.log('Current display style:', createAlarmContent.style.display);
@@ -169,21 +201,28 @@ function showCreateAlarm() {
 }
 
 function showUsers() {
-    console.log('Showing users');
     hideAllContent();
     const usersContent = document.getElementById('users-content');
     if (usersContent) {
-        usersContent.setAttribute('style', 'display: block !important; visibility: visible !important; opacity: 1 !important;');
+        usersContent.style.display = 'block';
     }
+    document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
+    document.querySelector('a[onclick="showUsers(); return false;"]').classList.add('active');
     updateActiveNav('users');
-    
-    // 사용자 테이블 정렬 초기화 (한 번만)
-    if (!document.querySelector('.sortable')._sortClickHandler) {
-        initializeUserTableSorting();
-    }
-    
-    // 기본 정렬 상태는 설정하지 않음 (사용자가 선택할 때까지)
     loadUsers();
+}
+
+function showViewCounts() {
+    hideAllContent();
+    const viewCountsContent = document.getElementById('view-counts-content');
+    if (viewCountsContent) {
+        viewCountsContent.style.display = 'block';
+    }
+    document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
+    document.querySelector('a[onclick="showViewCounts(); return false;"]').classList.add('active');
+    updateActiveNav('view-counts');
+    updateCountTypeDisplay(); // 조회수 타입 표시 업데이트
+    loadViewCounts();
 }
 
 // 모든 콘텐츠 숨기기
@@ -194,14 +233,15 @@ function hideAllContent() {
         'inquiries-content', 
         'alarms-content',
         'create-alarm-content',
-        'users-content'
+        'users-content',
+        'view-counts-content'
     ];
     
     contents.forEach(id => {
         const element = document.getElementById(id);
         console.log(`Element ${id}:`, element);
         if (element) {
-            element.setAttribute('style', 'display: none !important; visibility: hidden !important; opacity: 0 !important;');
+            element.style.display = 'none';
             console.log(`Hidden ${id}`);
         } else {
             console.warn(`Element ${id} not found`);
@@ -232,6 +272,9 @@ function updateActiveNav(activeSection) {
             break;
         case 'users':
             targetLink = document.querySelector('.nav-link[onclick*="showUsers"]');
+            break;
+        case 'view-counts':
+            targetLink = document.querySelector('.nav-link[onclick*="showViewCounts"]');
             break;
     }
     
@@ -361,6 +404,39 @@ async function loadUsers(page = 1) {
         console.error('Error loading users:', error);
         showAlert('사용자 목록을 불러오는데 실패했습니다.', 'danger');
     }
+}
+
+function loadViewCounts(page = 1) {
+    const searchQuery = document.getElementById('count-search')?.value || '';
+    const sortBy = document.getElementById('count-sort')?.value || '-count';
+    
+    console.log('Loading view counts with:', { currentCountType, searchQuery, sortBy, page });
+    
+    const url = `/sales/diary_admin/diary_counts/?search=${encodeURIComponent(searchQuery)}&sort=${encodeURIComponent(sortBy)}&page=${page}&type=${currentCountType}`;
+    
+    console.log('Requesting URL:', url);
+    
+    fetch(url)
+        .then(response => {
+            console.log('Response status:', response.status);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Received data:', data);
+            if (data.success) {
+                displayViewCounts(data.counts);
+                displayViewCountPagination(data.pagination);
+                updateViewCountSummary(data.total_count, data.total_ips);
+            } else {
+                console.error('조회수 로드 실패:', data.message);
+            }
+        })
+        .catch(error => {
+            console.error('조회수 로드 중 오류:', error);
+        });
 }
 
 // 문의사항 테이블 렌더링
@@ -1142,5 +1218,192 @@ function updateUserTableSortVisuals() {
         }
     } else {
         console.log('No active sort - all buttons deactivated');
+    }
+}
+
+function displayUsers(users) {
+    const tbody = document.getElementById('users-table-body');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '';
+    
+    users.forEach(user => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${user.id}</td>
+            <td>${user.name || '-'}</td>
+            <td>${user.email}</td>
+            <td>${user.company_name || '-'}</td>
+            <td>${user.phone_number || '-'}</td>
+            <td>${formatDate(user.created_at)}</td>
+            <td>${user.use_date ? formatDate(user.use_date) : '무제한'}</td>
+            <td>
+                <button class="btn btn-sm ${user.is_admin ? 'btn-success' : 'btn-secondary'} admin-toggle-btn ${user.is_admin ? 'admin' : 'user'}" 
+                        onclick="toggleAdminStatus(${user.id}, ${!user.is_admin})" 
+                        ${user.id == 1 ? 'disabled' : ''}>
+                    ${user.is_admin ? '관리자' : '일반사용자'}
+                </button>
+            </td>
+            <td>
+                <div class="btn-group" role="group">
+                    <button class="btn btn-sm btn-outline-primary" onclick="editUseDate(${user.id}, '${user.name}', '${user.email}', '${user.use_date || ''}')">
+                        <i class="fas fa-calendar"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteUser(${user.id}, '${user.name}', '${user.email}')" ${user.id == 1 ? 'disabled' : ''}>
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+function displayViewCounts(counts) {
+    console.log('Displaying view counts:', counts);
+    const tbody = document.getElementById('counts-table-body');
+    if (!tbody) {
+        console.error('counts-table-body not found');
+        return;
+    }
+    
+    tbody.innerHTML = '';
+    
+    if (counts.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">조회수 기록이 없습니다.</td></tr>';
+        return;
+    }
+    
+    counts.forEach(count => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${count.id}</td>
+            <td>${count.ip}</td>
+            <td><span class="badge bg-primary">${count.count}</span></td>
+            <td>${formatDate(count.created_at)}</td>
+            <td>${formatDate(count.updated_at)}</td>
+            <td>
+                <button class="btn btn-sm btn-outline-danger" onclick="deleteViewCountConfirm(${count.id}, '${count.ip}', ${count.count})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+function displayViewCountPagination(pagination) {
+    const paginationElement = document.getElementById('counts-pagination');
+    if (!paginationElement) return;
+    
+    paginationElement.innerHTML = '';
+    
+    // 이전 페이지 버튼
+    if (pagination.has_previous) {
+        const prevLi = document.createElement('li');
+        prevLi.className = 'page-item';
+        prevLi.innerHTML = `<a class="page-link" href="javascript:void(0)" onclick="loadViewCounts(${pagination.previous_page_number})">이전</a>`;
+        paginationElement.appendChild(prevLi);
+    }
+    
+    // 페이지 번호들
+    for (let i = 1; i <= pagination.num_pages; i++) {
+        const li = document.createElement('li');
+        li.className = `page-item ${i === pagination.number ? 'active' : ''}`;
+        li.innerHTML = `<a class="page-link" href="javascript:void(0)" onclick="loadViewCounts(${i})">${i}</a>`;
+        paginationElement.appendChild(li);
+    }
+    
+    // 다음 페이지 버튼
+    if (pagination.has_next) {
+        const nextLi = document.createElement('li');
+        nextLi.className = 'page-item';
+        nextLi.innerHTML = `<a class="page-link" href="javascript:void(0)" onclick="loadViewCounts(${pagination.next_page_number})">다음</a>`;
+        paginationElement.appendChild(nextLi);
+    }
+}
+
+function updateViewCountSummary(totalCount, totalIps) {
+    console.log('Updating view count summary:', { totalCount, totalIps, currentCountType });
+    
+    const totalCountDisplay = document.getElementById('total-count-display');
+    const totalIpsDisplay = document.getElementById('total-ips-display');
+    
+    if (totalCountDisplay) {
+        totalCountDisplay.textContent = totalCount.toLocaleString();
+        console.log('Updated total count display:', totalCount.toLocaleString());
+    } else {
+        console.error('total-count-display element not found');
+    }
+    
+    if (totalIpsDisplay) {
+        totalIpsDisplay.textContent = totalIps.toLocaleString();
+        console.log('Updated total IPs display:', totalIps.toLocaleString());
+    } else {
+        console.error('total-ips-display element not found');
+    }
+}
+
+function deleteViewCountConfirm(countId, ip, count) {
+    // 조회수 삭제 확인 모달 표시
+    const modal = new bootstrap.Modal(document.getElementById('countDeleteModal'));
+    const countDeleteInfo = document.getElementById('count-delete-info');
+    
+    if (countDeleteInfo) {
+        countDeleteInfo.innerHTML = `
+            <p><strong>IP 주소:</strong> ${ip}</p>
+            <p><strong>조회수:</strong> ${count}</p>
+        `;
+    }
+    
+    // 삭제 확인 버튼에 조회수 ID와 타입 설정
+    const confirmBtn = document.getElementById('confirm-count-delete-btn');
+    if (confirmBtn) {
+        confirmBtn.setAttribute('data-count-id', countId);
+        confirmBtn.setAttribute('data-count-type', currentCountType);
+    }
+    
+    modal.show();
+}
+
+function deleteViewCount(countId, countType) {
+    const url = `/sales/diary_admin/diary_count/${countId}/delete/?type=${countType}`;
+    
+    fetch(url, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // 모달 닫기
+            const modal = bootstrap.Modal.getInstance(document.getElementById('countDeleteModal'));
+            if (modal) {
+                modal.hide();
+            }
+            
+            // 성공 메시지 표시
+            showAlert(data.message, 'success');
+            
+            // 조회수 목록 새로고침
+            loadViewCounts();
+        } else {
+            showAlert(data.message, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('조회수 삭제 중 오류:', error);
+        showAlert('조회수 삭제 중 오류가 발생했습니다.', 'danger');
+    });
+}
+
+function updateCountTypeDisplay() {
+    const countTypeDisplay = document.getElementById('count-type-display');
+    if (countTypeDisplay) {
+        const displayText = currentCountType === 'main' ? '메인 페이지' : '다이어리 페이지';
+        countTypeDisplay.textContent = displayText;
+        console.log('Updated count type display:', displayText);
     }
 }

@@ -282,6 +282,9 @@
                         <a class="nav-link" href="javascript:void(0)" onclick="showCreateAlarm(); return false;">
                             <i class="fas fa-plus me-2"></i> 공지사항 작성
                         </a>
+                        <a class="nav-link" href="javascript:void(0)" onclick="showViewCounts(); return false;" style="display: none;">
+                            <i class="fas fa-chart-line me-2"></i> 조회수 관리
+                        </a>
                         <a class="nav-link" href="javascript:void(0)" onclick="showUsers(); return false;">
                             <i class="fas fa-users me-2"></i> 사용자
                         </a>
@@ -338,6 +341,46 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- View Count Statistics Cards -->
+                        {% comment %} <div class="row mb-4">
+                            <div class="col-md-3">
+                                <div class="card stat-card">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-chart-line fa-2x mb-2"></i>
+                                        <h4>{{ total_main_count|default:0 }}</h4>
+                                        <p class="mb-0">메인 페이지 조회수</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card stat-card">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-chart-bar fa-2x mb-2"></i>
+                                        <h4>{{ total_diary_count|default:0 }}</h4>
+                                        <p class="mb-0">다이어리 페이지 조회수</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card stat-card">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-globe fa-2x mb-2"></i>
+                                        <h4>{{ total_main_ips|default:0 }}</h4>
+                                        <p class="mb-0">메인 페이지 IP 수</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card stat-card">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-network-wired fa-2x mb-2"></i>
+                                        <h4>{{ total_diary_ips|default:0 }}</h4>
+                                        <p class="mb-0">다이어리 페이지 IP 수</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div> {% endcomment %}
 
                         <!-- Recent Inquiries -->
                         <div class="row">
@@ -633,6 +676,111 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- View Counts Content -->
+                    <div id="view-counts-content" style="display: none;">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h2><i class="fas fa-chart-line"></i> 조회수 관리</h2>
+                        </div>
+
+                        <!-- Count Type Selection -->
+                        <div class="card mb-4">
+                            <div class="card-body">
+                                <h5 class="card-title mb-3">조회수 타입 선택</h5>
+                                <div class="btn-group" role="group" aria-label="조회수 타입 선택">
+                                    <input type="radio" class="btn-check" name="count-type" id="main-count" value="main" checked>
+                                    <label class="btn btn-outline-primary" for="main-count">
+                                        <i class="fas fa-home me-2"></i>메인 페이지
+                                    </label>
+                                    <input type="radio" class="btn-check" name="count-type" id="diary-count" value="diary">
+                                    <label class="btn btn-outline-primary" for="diary-count">
+                                        <i class="fas fa-book me-2"></i>다이어리 페이지
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Search and Sort Controls -->
+                        <div class="card mb-4">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <label for="count-search" class="form-label">IP 검색</label>
+                                        <input type="text" class="form-control" id="count-search" placeholder="IP 주소를 입력하세요...">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="count-sort" class="form-label">정렬 기준</label>
+                                        <select class="form-select" id="count-sort">
+                                            <option value="-count">조회수 높은순</option>
+                                            <option value="count">조회수 낮은순</option>
+                                            <option value="-created_at">최신순</option>
+                                            <option value="created_at">오래된순</option>
+                                            <option value="ip">IP순</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Summary Cards -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="card border-primary">
+                                    <div class="card-body text-center">
+                                        <h5 class="card-title text-primary">
+                                            <i class="fas fa-chart-bar me-2"></i>총 조회수
+                                        </h5>
+                                        <h3 class="text-primary" id="total-count-display">0</h3>
+                                        <p class="text-muted mb-0" id="count-type-display">메인 페이지</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card border-success">
+                                    <div class="card-body text-center">
+                                        <h5 class="card-title text-success">
+                                            <i class="fas fa-globe me-2"></i>총 IP 수
+                                        </h5>
+                                        <h3 class="text-success" id="total-ips-display">0</h3>
+                                        <p class="text-muted mb-0">고유 방문자</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Data Table -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">
+                                    <i class="fas fa-table me-2"></i>조회수 상세 목록
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>번호</th>
+                                                <th>IP 주소</th>
+                                                <th>조회수</th>
+                                                <th>최초 방문</th>
+                                                <th>마지막 방문</th>
+                                                <th>관리</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="counts-table-body">
+                                            <!-- JavaScript로 동적 로드 -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <nav aria-label="조회수 페이지네이션">
+                                    <ul class="pagination justify-content-center" id="counts-pagination">
+                                        <!-- JavaScript로 동적 생성 -->
+                                    </ul>
+                                </nav>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -783,6 +931,34 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-primary" id="save-use-date-btn">
                         <i class="fas fa-save"></i> 저장
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 조회수 삭제 확인 모달 -->
+    <div class="modal fade" id="countDeleteModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">조회수 기록 삭제 확인</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>정말로 이 조회수 기록을 삭제하시겠습니까?</p>
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>주의:</strong> 삭제된 조회수 기록은 복구할 수 없습니다.
+                    </div>
+                    <div id="count-delete-info">
+                        <!-- 삭제할 조회수 기록 정보가 여기에 표시됩니다 -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger" id="confirm-count-delete-btn">
+                        <i class="fas fa-trash"></i> 삭제
                     </button>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
                 </div>

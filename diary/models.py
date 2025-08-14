@@ -412,4 +412,34 @@ class BoardFile(models.Model):
     def __str__(self):
         return f"{self.board.title} - {self.original_name}"
     
+class Diary_main_count(models.Model):
+    ip = models.CharField(max_length=50)
+    count = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
+    class Meta:
+        indexes = [
+            models.Index(fields=['ip']),
+            models.Index(fields=['created_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.ip} - {self.count}"
+
+
+    
+class Diary_diary_count(models.Model):
+    ip = models.CharField(max_length=50)
+    count = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        indexes = [
+            models.Index(fields=['ip']),
+            models.Index(fields=['created_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.ip} - {self.count}"
