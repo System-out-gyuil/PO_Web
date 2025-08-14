@@ -327,22 +327,7 @@ def diary_list(request):
                 # 캐시에 없는 경우에만 쿼리 실행
                 dropdown_options[attr.name] = list(attr.dropdown_attributes.values('id', 'option', 'color', 'order').order_by('order'))
     
-    biz_list_10 = BizInfo.objects.all().order_by('-registered_at')[:15]
-
-    biz_top_10 = BizTop.objects.all().order_by('-update_date')[:15]
-
-    pblanc_ids = [biz.pblanc_id for biz in biz_top_10]
-
-    for i in biz_list_10:
-        print(i)
-
-
-    biz_top_10 = list(BizInfo.objects.filter(pblanc_id__in=pblanc_ids))
-
-    today = date.today()
-    month = today.month
-    week = get_week_of_month(today)
-    current_week_str = f"{month}월 {week}주차"
+    
 
     context = {
         'rows': rows_data,
@@ -368,9 +353,6 @@ def diary_list(request):
         'is_authenticated': True,  # 로그인 상태 추가
         'is_admin': user.is_admin,  # 관리자 상태 추가
         'dropdown_options': dropdown_options,  # 모든 드롭다운 옵션 추가
-        'biz_list': biz_list_10,
-        'biz_top': biz_top_10,
-        'current_week_str': current_week_str
     }
     context['attributes_json'] = json.dumps(context['attributes'], ensure_ascii=False)
     context['dropdown_options_json'] = json.dumps(dropdown_options, ensure_ascii=False)  # JSON 형태로도 추가
@@ -380,6 +362,86 @@ def diary_list(request):
 def random_color():
     return "#" + ''.join([random.choice('0123456789ABCDEF') for _ in range(6)])
 
+@csrf_exempt
+def bizinfo(request):
+    if request.method == 'GET':
+        try:
+            biz_list_10 = BizInfo.objects.all().order_by('-registered_at')[:15]
+            biz_top_10 = BizTop.objects.all().order_by('-update_date')[:15]
+
+            pblanc_ids = [biz.pblanc_id for biz in biz_top_10]
+            biz_top_10 = list(BizTop.objects.filter(pblanc_id__in=pblanc_ids))
+
+            # 데이터를 직렬화 가능한 형태로 변환
+            biz_list_data = []
+            for biz in biz_list_10:
+                biz_list_data.append({
+                    'pblanc_id': biz.pblanc_id,
+                    'title': biz.title,
+                    'registered_at': biz.registered_at,
+                    # 필요한 다른 필드들도 추가
+                })
+
+            biz_top_data = []
+            for biz in biz_top_10:
+                biz_top_data.append({
+                    'pblanc_id': biz.pblanc_id,
+                    'title': biz.title,
+                    'registered_at': biz.update_date,
+                    # 필요한 다른 필드들도 추가
+                })
+
+            response_data = {
+                'success': True,
+                'biz_list': biz_list_data,
+                'biz_top': biz_top_data,
+                'message': '데이터를 성공적으로 가져왔습니다.'
+            }
+            
+            return JsonResponse(response_data, safe=False)
+            
+        except Exception as e:
+            error_data = {
+                'success': False,
+                'error': str(e),
+                'message': '데이터를 가져오는 중 오류가 발생했습니다.'
+            }
+            return JsonResponse(error_data, status=500, safe=False)
+    
+    elif request.method == 'POST':
+        # POST 요청 처리 (필요한 경우)
+        try:
+            data = json.loads(request.body)
+            # POST 데이터 처리 로직
+            response_data = {
+                'success': True,
+                'message': 'POST 요청이 성공적으로 처리되었습니다.'
+            }
+            return JsonResponse(response_data, safe=False)
+        
+        except json.JSONDecodeError:
+            error_data = {
+                'success': False,
+                'error': '잘못된 JSON 형식입니다.',
+                'message': '요청 데이터를 파싱할 수 없습니다.'
+            }
+            return JsonResponse(error_data, status=400, safe=False)
+        except Exception as e:
+            error_data = {
+                'success': False,
+                'error': str(e),
+                'message': 'POST 요청 처리 중 오류가 발생했습니다.'
+            }
+            return JsonResponse(error_data, status=500, safe=False)
+    
+    else:
+        # 지원하지 않는 HTTP 메서드
+        error_data = {
+            'success': False,
+            'error': '지원하지 않는 HTTP 메서드입니다.',
+            'message': 'GET 또는 POST 메서드만 지원합니다.'
+        }
+        return JsonResponse(error_data, status=405, safe=False)
 
 @csrf_exempt
 def region_list(request):

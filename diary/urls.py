@@ -205,4 +205,7 @@ urlpatterns = [
 
     # AI 법인영업 강의 관련 URL
     path('class/', ai_class, name='ai_class'),
+
+    # 기업마당 공고
+    path('bizinfo/', views.bizinfo, name='bizinfo'),
 ] 

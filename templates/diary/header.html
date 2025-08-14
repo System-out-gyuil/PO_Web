@@ -27,13 +27,17 @@
                     </div>
                 </div>
                 
-                <!-- 게시판 버튼 -->
                 <button id="generalBoardBtn" class="header-btn board-btn">
                     게시판
                 </button>
                 
+                
                 <button class="header-btn board-btn" onclick="toBoard()">
                     공지사항
+                </button>
+
+                <button class="header-btn biz_btn" onclick="openBizInfoModal()">
+                    지원사업
                 </button>
 
                 <button class="header-btn inquiry-btn" onclick="openInquiryModal()">
@@ -105,3 +109,54 @@
         </div>
     </div>
 </header>
+
+<section>
+    <!-- 지원사업 모달 -->
+    <div id="bizInfoModal" class="bizinfo-modal">
+        <div class="bizinfo-modal-content">
+            <div class="bizinfo-modal-header">
+                <h3 class="bizinfo-modal-title">지원사업 정보</h3>
+                <button class="bizinfo-modal-close" onclick="closeBizInfoModal()">×</button>
+            </div>
+            <div class="bizinfo-modal-body">
+                <div class="bizinfo-container">
+                    <div class="bizinfo-content-box">
+                        <div class="bizinfo-contents">
+                            <div class="bizinfo-content-1">
+                                <div class="bizinfo-header">
+                                    <div class="bizinfo-header-img"></div>
+                                    <div class="bizinfo-header-title">최신 지원 사업</div>
+                                </div>
+                                <div class="bizinfo-line"></div>
+                                <div class="bizinfo-content-title-box">
+                                    <div class="bizinfo-content-title-box-date">공고일자</div>
+                                    <div class="bizinfo-content-title-box-title">공 고 명</div>
+                                </div>
+                                <div class="bizinfo-contents-container">
+                                    <!-- API에서 데이터를 동적으로 가져와서 여기에 표시 -->
+                                    <div class="loading-message">데이터를 불러오는 중...</div>
+                                </div>
+                            </div>
+
+                            <div class="bizinfo-content-2">
+                                <div class="bizinfo-header">
+                                    <div class="bizinfo-header-img2"></div>
+                                    <div class="bizinfo-header-title"><span class="red">인기</span> 지원 사업</div>
+                                </div>
+                                <div class="bizinfo-line"></div>
+                                <div class="bizinfo-content-title-box">
+                                    <div class="bizinfo-content-title-box-date">공고일자</div>
+                                    <div class="bizinfo-content-title-box-title">공 고 명</div>
+                                </div>
+                                <div class="bizinfo-contents-container">
+                                    <!-- API에서 데이터를 동적으로 가져와서 여기에 표시 -->
+                                    <div class="loading-message">데이터를 불러오는 중...</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

@@ -600,3 +600,123 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+
+
+// 지원사업 모달 관련 함수들
+function openBizInfoModal() {
+    console.log('openBizInfoModal 함수 호출됨');
+    const modal = document.getElementById('bizInfoModal');
+    console.log('모달 엘리먼트:', modal);
+    if (modal) {
+        // API에서 데이터 가져오기
+        fetchBizInfoData();
+        
+        modal.classList.add('show');
+        console.log('show 클래스 추가됨');
+        document.body.style.overflow = 'hidden'; // 배경 스크롤 방지
+        console.log('모달 열기 완료');
+    } else {
+        console.error('bizInfoModal을 찾을 수 없습니다');
+    }
+}
+
+// API에서 지원사업 데이터 가져오기
+function fetchBizInfoData() {
+    fetch('/sales/bizinfo/', {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('API 응답:', data);
+        if (data.success) {
+            updateBizInfoModal(data.biz_list, data.biz_top);
+        } else {
+            console.error('API 오류:', data.message);
+            alert('지원사업 정보를 가져오는데 실패했습니다: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('API 호출 오류:', error);
+        alert('지원사업 정보를 가져오는데 실패했습니다.');
+    });
+}
+
+// 모달 내용 업데이트
+function updateBizInfoModal(bizList, bizTop) {
+    const bizListContainer = document.querySelector('.bizinfo-content-1 .bizinfo-contents-container');
+    const bizTopContainer = document.querySelector('.bizinfo-content-2 .bizinfo-contents-container');
+    
+    if (bizListContainer) {
+        bizListContainer.innerHTML = '';
+        if (bizList && bizList.length > 0) {
+            bizList.forEach((biz, index) => {
+                const bizItem = document.createElement('div');
+                bizItem.className = index % 2 === 1 ? 'bizinfo-contents-container-items2' : 'bizinfo-contents-container-items';
+                bizItem.innerHTML = `
+                    <div class="bizinfo-contents-container-items-date">${formatDate(biz.registered_at)}</div>
+                    <div class="bizinfo-contents-container-items-date-line">|</div>
+                    <div class="bizinfo-contents-container-items-title" onclick="window.location.href='/sales/board/detail/${biz.pblanc_id}/'">${biz.title}</div>
+                `;
+                bizListContainer.appendChild(bizItem);
+            });
+        } else {
+            bizListContainer.innerHTML = '<div class="no-data-message">표시할 최신 지원사업이 없습니다.</div>';
+        }
+    }
+    
+    if (bizTopContainer) {
+        bizTopContainer.innerHTML = '';
+        if (bizTop && bizTop.length > 0) {
+            bizTop.forEach((biz, index) => {
+                const bizItem = document.createElement('div');
+                bizItem.className = index % 2 === 1 ? 'bizinfo-contents-container-items2' : 'bizinfo-contents-container-items';
+                bizItem.innerHTML = `
+                    <div class="bizinfo-contents-container-items-date">${formatDate(biz.registered_at)}</div>
+                    <div class="bizinfo-contents-container-items-date-line">|</div>
+                    <div class="bizinfo-contents-container-items-title" onclick="window.location.href='/sales/board/detail/${biz.pblanc_id}/'">${biz.title}</div>
+                `;
+                bizTopContainer.appendChild(bizItem);
+            });
+        } else {
+            bizTopContainer.innerHTML = '<div class="no-data-message">표시할 인기 지원사업이 없습니다.</div>';
+        }
+    }
+}
+
+// 날짜 포맷팅 함수
+function formatDate(dateString) {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    return `${month}.${day}`;
+}
+
+function closeBizInfoModal() {
+    console.log('closeBizInfoModal 함수 호출됨');
+    const modal = document.getElementById('bizInfoModal');
+    if (modal) {
+        modal.classList.remove('show');
+        console.log('show 클래스 제거됨');
+        document.body.style.overflow = ''; // 배경 스크롤 복원
+        console.log('모달 닫기 완료');
+    }
+}
+
+// ESC 키로 모달 닫기
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        closeBizInfoModal();
+    }
+});
+
+// 모달 외부 클릭시 닫기
+document.addEventListener('click', function(event) {
+    const modal = document.getElementById('bizInfoModal');
+    if (modal && event.target === modal) {
+        closeBizInfoModal();
+    }
+});

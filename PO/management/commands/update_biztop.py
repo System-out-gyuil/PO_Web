@@ -115,7 +115,7 @@ class Command(BaseCommand):
                 pblanc_id=api_id,
                 defaults={
                     "title": item.get("pblancNm", ""),
-                    "update_date": item.get("registered_at", ""),
+                    "update_date": item.get("creatPnttm", ""),
                 },
             )
 
