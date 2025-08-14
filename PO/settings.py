@@ -120,7 +120,7 @@ MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/{AWS_LOCATION}/'
 
 # 매일 18시마다 bizinfo api data update, * * * * * 순서대로 분, 시, 일, 월, 요일
 CRONJOBS = [
-    ('0 18 * * *', 'django.core.management.call_command', ['update_bizinfo']), #매일 18시
+    ('30 18 * * *', 'django.core.management.call_command', ['update_bizinfo']), #매일 18시 30분
     
     ('0 8 * * 1', 'django.core.management.call_command', ['update_biztop']), #매주 월요일 08시
 ]
