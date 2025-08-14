@@ -836,9 +836,9 @@
   border-radius: 6px;
   border-left: 4px solid #007bff;
 }
-.bizinfo-contents-m > .bizinfo-content-1, .bizinfo-content-2 {
+.bizinfo-contents-m > .bizinfo-content-1, .bizinfo-contents-m > .bizinfo-content-2 {
   width: 98%;
 }
-.bizinfo-contents-container-m > .bizinfo-contents-container-items, .bizinfo-contents-container-items2 {
+.bizinfo-contents-container-m > .bizinfo-contents-container-items, .bizinfo-contents-container-m > .bizinfo-contents-container-items2 {
   width: 98%;
 }
