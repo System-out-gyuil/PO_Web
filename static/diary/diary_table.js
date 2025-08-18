@@ -3749,6 +3749,9 @@ function makeCompanyNameSticky() {
         return;
     }
     
+    // CSS 스타일 추가
+    addStickyBorderStyles();
+    
     // 헤더의 회사명 컬럼 찾기
     const headerRow = table.querySelector('thead tr');
     if (headerRow) {
@@ -3784,6 +3787,45 @@ function makeCompanyNameSticky() {
     console.log(`회사명 컬럼 ${companyNameCells.length}개 sticky 설정 완료`);
 }
 
+// sticky 상태에 따른 테두리 스타일을 추가하는 함수
+function addStickyBorderStyles() {
+    // 이미 스타일이 추가되었는지 확인
+    if (document.getElementById('sticky-border-styles')) {
+        return;
+    }
+    
+    const style = document.createElement('style');
+    style.id = 'sticky-border-styles';
+    style.textContent = `
+        /* 기본 상태: 기본 테두리 */
+        .company-name-sticky {
+            border-right: 1px solid #dee2e6 !important;
+        }
+        
+        .company-name-header-sticky {
+            border-right: 1px solid #dee2e6 !important;
+        }
+        
+        /* sticky 상태: 진한 테두리 */
+        .company-name-sticky.sticky {
+            border-right: 2px solid #666 !important;
+        }
+        
+        .company-name-header-sticky.sticky {
+            border-right: 2px solid #666 !important;
+        }
+        
+        /* 테이블이 스크롤 중일 때 sticky 상태로 간주 */
+        .company-name-sticky[style*="position: sticky"],
+        .company-name-header-sticky[style*="position: sticky"] {
+            border-right: 2px solid #666 !important;
+        }
+    `;
+    
+    document.head.appendChild(style);
+    console.log('Sticky 테두리 스타일 추가 완료');
+}
+
 // 테이블 스크롤 시 sticky 효과 유지
 function maintainStickyOnScroll() {
     const tableView = document.getElementById('tableView');
@@ -3798,8 +3840,16 @@ function maintainStickyOnScroll() {
                 // 스크롤 위치에 따라 z-index 조정
                 if (tableView.scrollLeft > 0) {
                     cell.style.zIndex = '997';
+                    // sticky 상태일 때 진한 테두리 적용
+                    if (cell.classList.contains('company-name-sticky') || cell.classList.contains('company-name-header-sticky')) {
+                        cell.style.borderRight = '2px solid #666';
+                    }
                 } else {
                     cell.style.zIndex = '997';
+                    // 기본 상태일 때 기본 테두리 적용
+                    if (cell.classList.contains('company-name-sticky') || cell.classList.contains('company-name-header-sticky')) {
+                        cell.style.borderRight = '1px solid #dee2e6';
+                    }
                 }
             });
         }

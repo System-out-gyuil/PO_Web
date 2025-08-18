@@ -1079,7 +1079,6 @@ def get_biz_recommendations(request):
                 (Q(possible_industry__contains=biz_industry) | Q(possible_industry__contains='무관')) &
                 (Q(revenue__contains=biz_revenue) | Q(revenue__contains='무관')) &
                 (Q(business_period__contains=biz_business_months) | Q(business_period__contains='무관')) &
-                (Q(target__contains=biz_employees) | Q(target__contains='무관')) &
                 (
                     # 상세지역이 포함된 경우만
                     Q(noti_summary__contains=biz_region_detail) | 
@@ -1097,8 +1096,7 @@ def get_biz_recommendations(request):
                     (Q(region__contains=biz_region) | Q(region__contains="전국") | Q(hashtag__contains=biz_region)) &
                     (Q(possible_industry__contains=biz_industry) | Q(possible_industry__contains='무관')) &
                     (Q(revenue__contains=biz_revenue) | Q(revenue__contains='무관')) &
-                    (Q(business_period__contains=biz_business_months) | Q(business_period__contains='무관')) &
-                    (Q(target__contains=biz_employees) | Q(target__contains='무관'))
+                    (Q(business_period__contains=biz_business_months) | Q(business_period__contains='무관'))
                 ).exclude(
                     # detail_region이 포함된 데이터 제외
                     Q(noti_summary__contains=biz_region_detail) | 
@@ -1129,11 +1127,9 @@ def get_biz_recommendations(request):
             final_data = list(BizInfo.objects.filter(
                 (Q(possible_industry__contains=biz_industry) | Q(possible_industry__contains='무관')) &
                 (Q(revenue__contains=biz_revenue) | Q(revenue__contains='무관')) &
-                (Q(business_period__contains=biz_business_months) | Q(business_period__contains='무관')) &
-                (Q(target__contains=biz_employees) | Q(target__contains='무관'))
+                (Q(business_period__contains=biz_business_months) | Q(business_period__contains='무관'))
             )[:10])
         
-
         # 결과 데이터 포맷팅
         result_data = []
         pblanc_ids = []

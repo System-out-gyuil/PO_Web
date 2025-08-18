@@ -673,19 +673,19 @@ function generateDetailModalContent(attributes, rowData, rowId) {
                     console.log('alerts:', alerts);
                     
                     if (pblancIds.length > 0) {
-                        supportDisplay = `저장된 공고: ${pblancIds.length}개`;
+                        supportDisplay = `신규 추천 공고: ${pblancIds.length}개`;
                         if (alerts.length > 0) {
-                            supportDisplay += ` (새 공고: ${alerts.length}개)`;
+                            supportDisplay += ` (새로운 공고: ${alerts.length}개)`;
                         }
                     } else {
-                        supportDisplay = '저장된 공고 없음';
+                        supportDisplay = '신규 추천 공고 없음';
                     }
                 } catch (e) {
                     console.error('supportValue 파싱 오류:', e);
                     supportDisplay = '데이터 오류';
                 }
             } else {
-                supportDisplay = '저장된 공고 없음';
+                supportDisplay = '신규 추천 공고 없음';
             }
             
             inputHtml = `
@@ -4288,6 +4288,11 @@ function openRecommendModal(rowId, type) {
 }
 
 function getBizRecommendations(rowId) {
+    // 추천받기 전에 필수 필드 유효성 검사 수행
+    if (!validateRequiredFieldsForBizRecommendation(rowId)) {
+        return;
+    }
+    
     // 로딩 표시
     showRecommendModal('추천 지원사업', '데이터를 조회하고 있습니다...', true);
     
@@ -4313,6 +4318,281 @@ function getBizRecommendations(rowId) {
         console.error('Error:', error);
         showRecommendModal('오류', '네트워크 오류가 발생했습니다.', false);
     });
+}
+
+// 추천 지원사업을 위한 필수 필드 유효성 검사 함수
+function validateRequiredFieldsForBizRecommendation(rowId) {
+    console.log('=== 추천 지원사업 필수 필드 유효성 검사 시작 ===');
+    
+    const requiredFields = ['지역', '상세지역', '업종', '매출', '개업년월'];
+    const missingFields = [];
+    
+    const detailModal = document.getElementById('detailModal');
+    
+    if (detailModal && detailModal.style.display !== 'none') {
+        console.log('모달이 열려있음 - 모달 내 검증 시작');
+        
+        // 각 필수 필드 검증
+        for (const fieldName of requiredFields) {
+            console.log(`\n--- ${fieldName} 필드 검증 시작 ---`);
+            
+            if (fieldName === '지역' || fieldName === '상세지역') {
+                // 지역과 상세지역은 특별한 버튼 형태로 처리
+                const regionButtons = detailModal.querySelectorAll('button[onclick*="지역"], button[onclick*="상세지역"]');
+                let hasValidRegion = false;
+                
+                regionButtons.forEach(btn => {
+                    const buttonText = btn.textContent.trim();
+                    if (buttonText && buttonText !== '선택') {
+                        hasValidRegion = true;
+                    }
+                });
+                
+                if (!hasValidRegion) {
+                    console.log(`${fieldName} - 누락됨`);
+                    missingFields.push(fieldName);
+                    // 지역 관련 버튼들에 빨간 테두리 표시
+                    regionButtons.forEach(btn => {
+                        highlightRequiredField(btn, true);
+                    });
+                } else {
+                    console.log(`${fieldName} - 정상`);
+                    // 정상인 경우 원래 스타일로 복원
+                    regionButtons.forEach(btn => {
+                        highlightRequiredField(btn, false);
+                    });
+                }
+                
+            } else if (fieldName === '업종') {
+                const industrySelect = detailModal.querySelector('select[onchange*="업종"]');
+                console.log('업종 select 요소:', {
+                    found: !!industrySelect,
+                    value: industrySelect ? industrySelect.value : 'N/A'
+                });
+                
+                if (industrySelect && (!industrySelect.value || industrySelect.value === '')) {
+                    console.log('업종 - 누락됨');
+                    missingFields.push(fieldName);
+                    // 빨간 테두리 표시
+                    highlightRequiredField(industrySelect, true);
+                } else if (industrySelect) {
+                    console.log('업종 - 정상');
+                    // 정상인 경우 원래 스타일로 복원
+                    highlightRequiredField(industrySelect, false);
+                } else {
+                    console.log('업종 select를 찾을 수 없음');
+                    missingFields.push(fieldName);
+                }
+                
+            } else if (fieldName === '매출') {
+                console.log('매출 필드 특별 처리 시작');
+                
+                // sales-field-container를 직접 찾기
+                const salesContainer = detailModal.querySelector('.sales-field-container[data-field="매출"]');
+                const salesInput = detailModal.querySelector('input[data-field="매출"]');
+                
+                console.log('매출 필드 검색 결과:', {
+                    salesContainer: !!salesContainer,
+                    salesInput: !!salesInput
+                });
+                
+                if (salesContainer) {
+                    const rawValue = salesContainer.getAttribute('data-raw');
+                    const displayText = salesContainer.textContent.trim();
+                    
+                    console.log('매출 컨테이너 검증 디버깅:', {
+                        rawValue: rawValue,
+                        displayText: displayText,
+                        hasDataRaw: salesContainer.hasAttribute('data-raw'),
+                        containerHTML: salesContainer.innerHTML
+                    });
+                    
+                    // 더 정확한 검증 로직
+                    const hasValidValue = (
+                        rawValue && 
+                        rawValue !== '' && 
+                        !isNaN(parseInt(rawValue, 10)) && 
+                        parseInt(rawValue, 10) >= 0 &&
+                        !displayText.includes('클릭하여 입력') &&
+                        displayText !== ''
+                    );
+                    
+                    console.log('매출 컨테이너 유효성 검사 결과:', hasValidValue);
+                    
+                    if (!hasValidValue) {
+                        console.log('매출 - 누락됨 (컨테이너)');
+                        missingFields.push(fieldName);
+                        // 빨간 테두리 표시
+                        highlightRequiredField(salesContainer, true);
+                    } else {
+                        console.log('매출 - 정상 (컨테이너)');
+                        // 정상인 경우 원래 스타일로 복원
+                        highlightRequiredField(salesContainer, false);
+                    }
+                } else if (salesInput) {
+                    // input 형태의 매출 필드 처리
+                    const inputValue = salesInput.value.trim();
+                    console.log('매출 input 검증 디버깅:', {
+                        inputValue: inputValue,
+                        inputType: salesInput.type
+                    });
+                    
+                    const hasValidInputValue = (
+                        inputValue && 
+                        inputValue !== '0' && 
+                        inputValue !== '' && 
+                        !isNaN(parseInt(inputValue.replace(/[^\d]/g, ''), 10)) && 
+                        parseInt(inputValue.replace(/[^\d]/g, ''), 10) > 0
+                    );
+                    
+                    console.log('매출 input 유효성 검사 결과:', hasValidInputValue);
+                    
+                    if (!hasValidInputValue) {
+                        console.log('매출 - 누락됨 (input)');
+                        missingFields.push(fieldName);
+                        // 빨간 테두리 표시
+                        highlightRequiredField(salesInput, true);
+                    } else {
+                        console.log('매출 - 정상 (input)');
+                        // 정상인 경우 원래 스타일로 복원
+                        highlightRequiredField(salesInput, false);
+                    }
+                } else {
+                    console.log('매출 필드를 찾을 수 없음');
+                    missingFields.push(fieldName);
+                }
+                
+            } else if (fieldName === '개업년월') {
+                const businessElement = detailModal.querySelector('[data-field="개업년월"]');
+                if (businessElement) {
+                    try {
+                        const currentValue = businessElement.dataset.currentValue;
+                        let businessData = {};
+                        
+                        if (currentValue) {
+                            businessData = JSON.parse(currentValue);
+                        }
+                        
+                        const hasValidValue = (
+                            businessData.opening_date || 
+                            businessData.years_ago
+                        );
+                        
+                        if (!hasValidValue) {
+                            console.log('개업년월 - 누락됨');
+                            missingFields.push(fieldName);
+                            // 빨간 테두리 표시
+                            highlightRequiredField(businessElement, true);
+                        } else {
+                            console.log('개업년월 - 정상');
+                            // 정상인 경우 원래 스타일로 복원
+                            highlightRequiredField(businessElement, false);
+                        }
+                    } catch (e) {
+                        console.log('개업년월 데이터 파싱 오류:', e);
+                        missingFields.push(fieldName);
+                        highlightRequiredField(businessElement, true);
+                    }
+                } else {
+                    console.log('개업년월 필드를 찾을 수 없음');
+                    missingFields.push(fieldName);
+                }
+            }
+        }
+        
+        console.log('\n=== 모달 내 검증 완료 ===');
+        console.log('누락된 필드들:', missingFields);
+        
+    } else {
+        console.log('모달이 닫혀있음 - 서버에서 데이터 가져와서 검증');
+        
+        // 모달이 닫혀있는 경우 서버에서 데이터를 가져와서 확인
+        return new Promise((resolve) => {
+            fetch(`/sales/get_row_details/${rowId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    console.log('서버 응답:', data);
+                    
+                    if (data.success) {
+                        const rowData = data.row_data;
+                        console.log('행 데이터:', rowData);
+                        
+                        // 필수값 확인
+                        if (!rowData['지역'] || rowData['지역'] === '') {
+                            missingFields.push('지역');
+                        }
+                        if (!rowData['상세지역'] || rowData['상세지역'] === '') {
+                            missingFields.push('상세지역');
+                        }
+                        if (!rowData['업종'] || rowData['업종'] === '') {
+                            missingFields.push('업종');
+                        }
+                        
+                        // 매출 검증
+                        const revenueValue = rowData['매출'];
+                        const hasValidRevenue = (
+                            revenueValue && 
+                            revenueValue !== '' && 
+                            !isNaN(parseInt(revenueValue, 10)) && 
+                            parseInt(revenueValue, 10) >= 0
+                        );
+                        
+                        if (!hasValidRevenue) {
+                            missingFields.push('매출');
+                        }
+                        
+                        // 개업년월 검증
+                        const businessValue = rowData['개업년월'];
+                        let hasValidBusiness = false;
+                        
+                        if (businessValue) {
+                            try {
+                                const businessData = JSON.parse(businessValue);
+                                hasValidBusiness = (businessData.opening_date || businessData.years_ago);
+                            } catch (e) {
+                                hasValidBusiness = false;
+                            }
+                        }
+                        
+                        if (!hasValidBusiness) {
+                            missingFields.push('개업년월');
+                        }
+                        
+                        console.log('서버 검증 결과 - 누락된 필드들:', missingFields);
+                        
+                        // 필수값이 누락된 경우 알림 표시
+                        if (missingFields.length > 0) {
+                            showNotification(`다음 필수 항목을 입력해주세요: ${missingFields.join(', ')}`, 'error');
+                            resolve(false);
+                            return;
+                        }
+                        
+                        resolve(true);
+                    } else {
+                        showNotification('데이터를 가져올 수 없습니다.', 'error');
+                        resolve(false);
+                    }
+                })
+                .catch(error => {
+                    console.error('필수값 검증 중 오류:', error);
+                    showNotification('필수값 검증 중 오류가 발생했습니다.', 'error');
+                    resolve(false);
+                });
+        });
+    }
+    
+    // 모달이 열려있는 경우 즉시 검증
+    console.log('\n=== 최종 검증 결과 ===');
+    console.log('누락된 필드들:', missingFields);
+    
+    if (missingFields.length > 0) {
+        console.log('필수값 누락 - 알림 표시');
+        showNotification(`다음 필수 항목을 입력해주세요: ${missingFields.join(', ')}`, 'error');
+        return false;
+    }
+    
+    console.log('모든 필수값 확인됨 - 추천 요청 진행');
+    return true;
 }
 
 function getSavedBizRecommendations(rowId) {
