@@ -57,7 +57,7 @@
           {% if errors.phone %}
             <div class="field-error">{{ errors.phone }}</div>
           {% endif %}
-          <input type="text" name="phone" placeholder="연락처를 입력해주세요. (-없이 번호만 입력)" value="{{ phone|default:'' }}" {% if errors.phone %}class="error-input"{% endif %}>
+          <input type="text" name="phone" placeholder="연락처를 입력해주세요. (예: 01012341234, 010-1234-1234, 010 1234 1234)" value="{{ phone|default:'' }}" {% if errors.phone %}class="error-input"{% endif %}>
         </div>
       </div>
 

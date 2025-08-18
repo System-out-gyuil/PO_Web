@@ -40,8 +40,8 @@ def class_form(request: HttpRequest):
         
         if not phone:
             errors['phone'] = '연락처를 입력해주세요.'
-        elif not re.match(r'^01[0-9]{8,9}$', phone):
-            errors['phone'] = '올바른 휴대폰 번호를 입력해주세요.'
+        elif not is_valid_phone_format(phone):
+            errors['phone'] = '올바른 휴대폰 번호 형식을 입력해주세요. (예: 01012341234, 010-1234-1234, 010 1234 1234)'
         
         if errors:
             context = {
@@ -51,7 +51,7 @@ def class_form(request: HttpRequest):
             }
             return render(request, 'ai_class/class_form.html', context)
         
-        # 전화번호 형식 변환 (01012341234 -> 010-1234-1234)
+        # 전화번호 형식 변환 (다양한 형식을 010-1234-1234로 통일)
         formatted_phone = format_phone_number(phone)
         
         try:
@@ -63,7 +63,7 @@ def class_form(request: HttpRequest):
             
             # 성공 메시지와 함께 리다이렉트
             messages.success(request, '클래스 신청이 완료되었습니다!')
-            return redirect('class_form_end')
+            return redirect('class_form')
             
         except Exception as e:
             errors['general'] = '저장 중 오류가 발생했습니다. 다시 시도해주세요.'
@@ -75,6 +75,19 @@ def class_form(request: HttpRequest):
             return render(request, 'ai_class/class_form.html', context)
     
     return render(request, 'ai_class/class_form.html')
+
+def is_valid_phone_format(phone):
+    """전화번호 형식이 유효한지 검사 (다양한 형식 허용)"""
+    # 공백, 하이픈, 점 제거 후 숫자만 추출
+    numbers = re.sub(r'[^0-9]', '', phone)
+    
+    # 010으로 시작하는 10-11자리 숫자인지 확인
+    if len(numbers) == 11 and numbers.startswith('01'):
+        return True
+    elif len(numbers) == 10 and numbers.startswith('01'):
+        return True
+    
+    return False
 
 def format_phone_number(phone):
     """전화번호를 010-1234-1234 형식으로 변환"""
