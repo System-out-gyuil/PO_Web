@@ -11,7 +11,7 @@ import uuid
 import boto3
 from django.conf import settings
 from botocore.exceptions import ClientError
-from .models import Inquiry, Alarm, UserAlarm, User, Diary_main_count, Diary_diary_count
+from .models import Inquiry, Alarm, UserAlarm, User, Diary_main_count, Diary_diary_count, ClassForm
 from django.core.paginator import Paginator
 from django.core.serializers import serialize
 from django.forms.models import model_to_dict
@@ -943,3 +943,105 @@ def diary_count_delete(request, count_id):
         return JsonResponse({'success': False, 'message': '삭제할 조회수 기록을 찾을 수 없습니다.'})
     except Exception as e:
         return JsonResponse({'success': False, 'message': f'조회수 기록 삭제 중 오류가 발생했습니다: {str(e)}'})
+
+def class_form_list(request):
+    """클래스 신청 목록 API"""
+    user_id = request.session.get('diary_member_id')
+    
+    if not user_id:
+        return JsonResponse({'success': False, 'message': '로그인이 필요합니다.'})
+    
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'message': '사용자를 찾을 수 없습니다.'})
+
+    if not user.is_admin:
+        return JsonResponse({'success': False, 'message': '권한이 없습니다.'})
+    
+    # 검색 및 정렬 파라미터
+    search_query = request.GET.get('search', '')
+    sort_by = request.GET.get('sort', '-created_at')
+    page = request.GET.get('page', 1)
+    
+    # 클래스 신청 쿼리셋
+    class_forms = ClassForm.objects.all()
+    
+    # 검색 필터링
+    if search_query:
+        class_forms = class_forms.filter(
+            Q(name__icontains=search_query) |
+            Q(phone__icontains=search_query)
+        )
+    
+    # 정렬
+    if sort_by:
+        class_forms = class_forms.order_by(sort_by)
+    else:
+        # 기본값: 최신순
+        class_forms = class_forms.order_by('-created_at')
+    
+    # 페이지네이션
+    paginator = Paginator(class_forms, 20)  # 페이지당 20개
+    try:
+        class_forms_page = paginator.page(page)
+    except:
+        class_forms_page = paginator.page(1)
+    
+    # 클래스 신청 데이터 직렬화
+    class_forms_data = []
+    for class_form in class_forms_page:
+        class_form_dict = {
+            'id': class_form.id,
+            'name': class_form.name,
+            'phone': class_form.phone,
+            'created_at': class_form.created_at.isoformat(),
+            'updated_at': class_form.updated_at.isoformat(),
+        }
+        class_forms_data.append(class_form_dict)
+    
+    # 페이지네이션 정보
+    pagination = {
+        'number': class_forms_page.number,
+        'num_pages': class_forms_page.paginator.num_pages,
+        'has_previous': class_forms_page.has_previous(),
+        'has_next': class_forms_page.has_next(),
+        'previous_page_number': class_forms_page.previous_page_number() if class_forms_page.has_previous() else None,
+        'next_page_number': class_forms_page.next_page_number() if class_forms_page.has_next() else None,
+    }
+    
+    # 총계 정보
+    total_count = class_forms.count()
+    
+    return JsonResponse({
+        'success': True,
+        'class_forms': class_forms_data,
+        'pagination': pagination,
+        'total_count': total_count
+    })
+
+@csrf_exempt
+def class_form_delete(request, class_form_id):
+    """클래스 신청 삭제"""
+    admin_user_id = request.session.get('diary_member_id')
+    
+    if not admin_user_id:
+        return JsonResponse({'success': False, 'message': '로그인이 필요합니다.'})
+    
+    try:
+        admin_user = User.objects.get(id=admin_user_id)
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'message': '관리자를 찾을 수 없습니다.'})
+
+    if not admin_user.is_admin:
+        return JsonResponse({'success': False, 'message': '권한이 없습니다.'})
+    
+    try:
+        class_form_to_delete = ClassForm.objects.get(id=class_form_id)
+        class_form_to_delete.delete()
+        
+        return JsonResponse({'success': True, 'message': '클래스 신청이 삭제되었습니다.'})
+    except ClassForm.DoesNotExist:
+        return JsonResponse({'success': False, 'message': '삭제할 클래스 신청을 찾을 수 없습니다.'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'클래스 신청 삭제 중 오류가 발생했습니다: {str(e)}'})

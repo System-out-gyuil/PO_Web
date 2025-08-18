@@ -11,7 +11,7 @@ from .audio_handler import upload_audio_file, get_audio_files_by_date, delete_au
 from .cascade_handlers import toggle_cascade_attribute, get_cascade_attributes_list
 from .auto_blog import upload_blog_file, get_blog_files, get_blog_status, debug_redis_status
 from .detail_openai import ai_chat, ai_chat_cache_clear, file_cache_management, performance_monitoring
-from .admin_view import admin_dashboard, inquiry_list, inquiry_detail, alarm_list, alarm_create, alarm_edit, alarm_delete, inquiry_delete, admin_api, user_list, user_delete, user_toggle_admin, user_update_use_date, diary_count_list, diary_count_delete
+from .admin_view import admin_dashboard, inquiry_list, inquiry_detail, alarm_list, alarm_create, alarm_edit, alarm_delete, inquiry_delete, admin_api, user_list, user_delete, user_toggle_admin, user_update_use_date, diary_count_list, diary_count_delete, class_form_list, class_form_delete
 from .diary_board import diary_board, get_announcements, get_announcement_detail, mark_as_read, download_announcement_file, announcement_detail_page, create_announcement, upload_announcement_file, get_announcement_file_url, get_announcement_download_url
 from .main_views import CompanyInfoView, PersonalInfoView, TermsOfServiceView
 from .session_handlers import cleanup_session_cache_api, get_active_sessions_api
@@ -19,7 +19,7 @@ from .board_views import board_list_view, board_list_api, board_create, board_de
 from .funding_views import get_funding_recommendation, get_recommended_notices, update_debt_field, save_debt_details, update_expected_loans, update_loan_amount, get_debt_details, get_biz_recommendations, get_saved_biz_recommendations, save_biz_recommendations
 from .order import reorder_entries, save_column_order, update_detail_sort_order
 from .hwp_convert import convert_hwp_to_pdf_board, convert_hwp_to_pdf
-from .ai_class import ai_class
+from .ai_class import ai_class, class_form
 from .attribute_handlers import get_hidden_attributes, add_attribute, delete_attribute, update_attribute_name, update_attribute_visibility, get_dropdown_attributes, get_all_attributes
 
 urlpatterns = [
@@ -210,6 +210,11 @@ urlpatterns = [
 
     # AI 법인영업 강의 관련 URL
     path('class/', ai_class, name='ai_class'),
+    path('class_form/', class_form, name='class_form'),
+
+    # 원데이 클래스 관리 관련 URL
+    path('diary_admin/class_forms/', class_form_list, name='admin_class_forms'),
+    path('diary_admin/class_form/<int:class_form_id>/delete/', class_form_delete, name='admin_class_form_delete'),
 
     # 기업마당 공고
     path('bizinfo/', views.bizinfo, name='bizinfo'),
@@ -217,4 +222,7 @@ urlpatterns = [
     # 일별 조회수 관련 API
     path('api/daily_view_counts/', views.get_daily_view_counts, name='daily_view_counts'),
     path('api/daily_view_details/', views.get_daily_view_details, name='daily_view_details'),
+
+
+
 ] 

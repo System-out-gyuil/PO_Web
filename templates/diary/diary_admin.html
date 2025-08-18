@@ -288,6 +288,9 @@
                         <a class="nav-link" href="javascript:void(0)" onclick="showUsers(); return false;">
                             <i class="fas fa-users me-2"></i> 사용자
                         </a>
+                        <a class="nav-link" href="javascript:void(0)" onclick="showClassForms(); return false;">
+                            <i class="fas fa-graduation-cap me-2"></i> 원데이 클래스
+                        </a>
                     </nav>
                 </div>
             </div>
@@ -853,6 +856,63 @@
                                 </div>
                                 <nav aria-label="조회수 페이지네이션">
                                     <ul class="pagination justify-content-center" id="counts-pagination">
+                                        <!-- JavaScript로 동적 생성 -->
+                                    </ul>
+                                </nav>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Class Forms Content -->
+                    <div id="class-forms-content" style="display: none;">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h2><i class="fas fa-graduation-cap"></i> 원데이 클래스 신청 관리</h2>
+                            <div class="d-flex gap-2">
+                                <input type="text" class="form-control search-box" id="class-form-search" placeholder="이름 또는 연락처로 검색...">
+                                <select class="form-select" id="class-form-sort" style="width: auto;">
+                                    <option value="-created_at">최신순</option>
+                                    <option value="created_at">오래된순</option>
+                                    <option value="name">이름순</option>
+                                    <option value="phone">연락처순</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Summary Card -->
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <div class="card border-primary">
+                                    <div class="card-body text-center">
+                                        <h5 class="card-title text-primary">
+                                            <i class="fas fa-users me-2"></i>총 신청자 수
+                                        </h5>
+                                        <h3 class="text-primary" id="total-class-forms-display">0</h3>
+                                        <p class="text-muted mb-0">클래스 신청 완료</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>번호</th>
+                                                <th>이름</th>
+                                                <th>연락처</th>
+                                                <th>신청일</th>
+                                                <th>관리</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="class-forms-table-body">
+                                            <!-- JavaScript로 동적 로드 -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <nav aria-label="클래스 신청 페이지네이션">
+                                    <ul class="pagination justify-content-center" id="class-forms-pagination">
                                         <!-- JavaScript로 동적 생성 -->
                                     </ul>
                                 </nav>

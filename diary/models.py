@@ -467,3 +467,20 @@ class DailyViewRecord(models.Model):
     
     def __str__(self):
         return f"{self.ip} - {self.date} - {self.page_type} ({self.count}회)"
+
+class ClassForm(models.Model):
+    name = models.CharField(max_length=50)
+    phone = models.CharField(max_length=20)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['created_at']),
+        ]
+
+    def __str__(self):
+        return f"{self.name} - {self.phone}"
+
+
+

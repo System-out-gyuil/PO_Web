@@ -7,6 +7,181 @@ let currentUserSort = { field: null, direction: null }; // 정렬이 설정되�
 let isSortingInProgress = false; // 정렬 진행 중 플래그
 let currentCountType = 'main'; // 현재 조회수 타입 (main 또는 diary)
 
+// 원데이 클래스 신청 목록 로드 (먼저 정의)
+async function loadClassForms(page = 1) {
+    try {
+        const searchQuery = document.getElementById('class-form-search')?.value || '';
+        const sortBy = document.getElementById('class-form-sort')?.value || '-created_at';
+        
+        const params = new URLSearchParams({
+            search: searchQuery,
+            sort: sortBy,
+            page: page
+        });
+        
+        const response = await fetch(`/sales/diary_admin/class_forms/?${params}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            renderClassFormsTable(data.class_forms);
+            renderPagination(data.pagination, 'class-forms-pagination', loadClassForms);
+            updateClassFormsSummary(data.total_count);
+        } else {
+            showAlert('클래스 신청 목록을 불러오는데 실패했습니다.', 'danger');
+        }
+    } catch (error) {
+        console.error('Error loading class forms:', error);
+        showAlert('클래스 신청 목록을 불러오는데 실패했습니다.', 'danger');
+    }
+}
+
+// 원데이 클래스 신청 테이블 렌더링
+function renderClassFormsTable(classForms) {
+    const tbody = document.getElementById('class-forms-table-body');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '';
+    
+    if (classForms.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">클래스 신청이 없습니다.</td></tr>';
+        return;
+    }
+    
+    classForms.forEach(classForm => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${classForm.id}</td>
+            <td>${classForm.name}</td>
+            <td>${classForm.phone}</td>
+            <td>${formatDate(classForm.created_at)}</td>
+            <td>
+                <button class="btn btn-sm btn-outline-danger" onclick="deleteClassForm(${classForm.id})">
+                    <i class="fas fa-trash"></i> 삭제
+                </button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+// 원데이 클래스 신청 삭제
+async function deleteClassForm(classFormId) {
+    if (!confirm('정말로 이 클래스 신청을 삭제하시겠습니까?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/sales/diary_admin/class_form/${classFormId}/delete/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showAlert(data.message, 'success');
+            loadClassForms();
+        } else {
+            showAlert(data.message, 'danger');
+        }
+    } catch (error) {
+        console.error('Error deleting class form:', error);
+        showAlert('클래스 신청 삭제에 실패했습니다.', 'danger');
+    }
+}
+
+// 원데이 클래스 요약 정보 업데이트
+function updateClassFormsSummary(totalCount) {
+    const totalClassFormsDisplay = document.getElementById('total-class-forms-display');
+    if (totalClassFormsDisplay) {
+        totalClassFormsDisplay.textContent = totalCount.toLocaleString();
+    }
+}
+
+// 유틸리티 함수들
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('ko-KR', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+function showAlert(message, type = 'info') {
+    // Bootstrap alert 생성
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(alertDiv);
+    
+    // 5초 후 자동 제거
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.parentNode.removeChild(alertDiv);
+        }
+    }, 5000);
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// 페이지네이션 렌더링
+function renderPagination(pagination, containerId, loadFunction) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (pagination.num_pages <= 1) return;
+    
+    // 이전 페이지
+    if (pagination.has_previous) {
+        const prevLi = document.createElement('li');
+        prevLi.className = 'page-item';
+        prevLi.innerHTML = `<a class="page-link" href="#" onclick="event.preventDefault(); ${loadFunction.name}(${pagination.previous_page_number})">이전</a>`;
+        container.appendChild(prevLi);
+    }
+    
+    // 페이지 번호들
+    for (let i = 1; i <= pagination.num_pages; i++) {
+        const li = document.createElement('li');
+        li.className = `page-item ${i === pagination.number ? 'active' : ''}`;
+        li.innerHTML = `<a class="page-link" href="#" onclick="event.preventDefault(); ${loadFunction.name}(${i})">${i}</a>`;
+        container.appendChild(li);
+    }
+    
+    // 다음 페이지
+    if (pagination.has_next) {
+        const nextLi = document.createElement('li');
+        nextLi.className = 'page-item';
+        nextLi.innerHTML = `<a class="page-link" href="#" onclick="event.preventDefault(); ${loadFunction.name}(${pagination.next_page_number})">다음</a>`;
+        container.appendChild(nextLi);
+    }
+}
+
 // 페이지 로드 시 초기화
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Admin page loaded');
@@ -43,6 +218,7 @@ function initializeEventListeners() {
     const alarmSearch = document.getElementById('alarm-search');
     const userSearch = document.getElementById('user-search');
     const countSearch = document.getElementById('count-search');
+    const classFormSearch = document.getElementById('class-form-search');
     
     if (inquirySearch) {
         inquirySearch.addEventListener('input', debounce(loadInquiries, 500));
@@ -56,12 +232,16 @@ function initializeEventListeners() {
     if (countSearch) {
         countSearch.addEventListener('input', debounce(loadViewCounts, 500));
     }
+    if (classFormSearch) {
+        classFormSearch.addEventListener('input', debounce(loadClassForms, 500));
+    }
     
     // 정렬 이벤트
     const inquirySort = document.getElementById('inquiry-sort');
     const alarmSort = document.getElementById('alarm-sort');
     const userSort = document.getElementById('user-sort');
     const countSort = document.getElementById('count-sort');
+    const classFormSort = document.getElementById('class-form-sort');
     
     if (inquirySort) {
         inquirySort.addEventListener('change', loadInquiries);
@@ -74,6 +254,9 @@ function initializeEventListeners() {
     }
     if (countSort) {
         countSort.addEventListener('change', loadViewCounts);
+    }
+    if (classFormSort) {
+        classFormSort.addEventListener('change', loadClassForms);
     }
     
     // 조회수 타입 변경 이벤트
@@ -225,6 +408,18 @@ function showViewCounts() {
     loadViewCounts();
 }
 
+function showClassForms() {
+    hideAllContent();
+    const classFormsContent = document.getElementById('class-forms-content');
+    if (classFormsContent) {
+        classFormsContent.style.display = 'block';
+    }
+    document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
+    document.querySelector('a[onclick="showClassForms(); return false;"]').classList.add('active');
+    updateActiveNav('class-forms');
+    loadClassForms();
+}
+
 // 모든 콘텐츠 숨기기
 function hideAllContent() {
     console.log('Hiding all content');
@@ -234,7 +429,8 @@ function hideAllContent() {
         'alarms-content',
         'create-alarm-content',
         'users-content',
-        'view-counts-content'
+        'view-counts-content',
+        'class-forms-content'
     ];
     
     contents.forEach(id => {
@@ -275,6 +471,9 @@ function updateActiveNav(activeSection) {
             break;
         case 'view-counts':
             targetLink = document.querySelector('.nav-link[onclick*="showViewCounts"]');
+            break;
+        case 'class-forms':
+            targetLink = document.querySelector('.nav-link[onclick*="showClassForms"]');
             break;
     }
     
@@ -669,40 +868,6 @@ async function deleteUser(userId) {
     }
 }
 
-// 페이지네이션 렌더링
-function renderPagination(pagination, containerId, loadFunction) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-    
-    container.innerHTML = '';
-    
-    if (pagination.num_pages <= 1) return;
-    
-    // 이전 페이지
-    if (pagination.has_previous) {
-        const prevLi = document.createElement('li');
-        prevLi.className = 'page-item';
-        prevLi.innerHTML = `<a class="page-link" href="#" onclick="event.preventDefault(); ${loadFunction.name}(${pagination.previous_page_number})">이전</a>`;
-        container.appendChild(prevLi);
-    }
-    
-    // 페이지 번호들
-    for (let i = 1; i <= pagination.num_pages; i++) {
-        const li = document.createElement('li');
-        li.className = `page-item ${i === pagination.number ? 'active' : ''}`;
-        li.innerHTML = `<a class="page-link" href="#" onclick="event.preventDefault(); ${loadFunction.name}(${i})">${i}</a>`;
-        container.appendChild(li);
-    }
-    
-    // 다음 페이지
-    if (pagination.has_next) {
-        const nextLi = document.createElement('li');
-        nextLi.className = 'page-item';
-        nextLi.innerHTML = `<a class="page-link" href="#" onclick="event.preventDefault(); ${loadFunction.name}(${pagination.next_page_number})">다음</a>`;
-        container.appendChild(nextLi);
-    }
-}
-
 // 문의사항 상세보기
 async function viewInquiryDetail(inquiryId) {
     try {
@@ -993,17 +1158,6 @@ async function deleteAlarm(alarmId) {
 }
 
 // 유틸리티 함수들
-function formatDate(dateString) {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('ko-KR', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
-}
-
 function formatDateOnly(dateString) {
     const date = new Date(dateString);
     const formattedDate = date.toLocaleDateString('ko-KR', {
@@ -1030,41 +1184,6 @@ function safeEmojiText(text) {
     return text.replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, function(match) {
         return match;
     });
-}
-
-function showAlert(message, type = 'info') {
-    // Bootstrap alert 생성
-    const alertDiv = document.createElement('div');
-    alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
-    alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
-    alertDiv.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
-    
-    document.body.appendChild(alertDiv);
-    
-    // 5초 후 자동 제거
-    setTimeout(() => {
-        if (alertDiv.parentNode) {
-            alertDiv.parentNode.removeChild(alertDiv);
-        }
-    }, 5000);
-}
-
-function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-            }
-        }
-    }
-    return cookieValue;
 }
 
 // 사용 기간 수정
