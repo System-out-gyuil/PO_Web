@@ -648,8 +648,44 @@ function generateDetailModalContent(attributes, rowData, rowId) {
             const displayText = selectedValues.length > 0 ? selectedValues.join(', ') : '선택';
             inputHtml = `<button type="button" class="add-btn" style="width:100%;background:#f8f9fa;color:#333;border:1px solid #eee;" onclick="openDetailDropdown('${rowId}','${attr.name}',this)">${displayText}</button>`;
         } else if (attr.type === 'recommend_biz') {
+            // 지원사업 속성 값 가져오기
+            const supportValue = attr.value;
+            let supportDisplay = '';
+            let hasNewAlerts = false;
+            
+            if (supportValue) {
+                try {
+                    let supportData;
+                    if (typeof supportValue === 'string') {
+                        // 기존 문자열 형태 (하위 호환성)
+                        supportData = { pblanc_ids: supportValue.split(',').filter(id => id.trim()) };
+                    } else {
+                        // dict 형태
+                        supportData = supportValue;
+                    }
+                    
+                    const pblancIds = supportData.pblanc_ids || [];
+                    const alerts = supportData.알림 || [];
+                    
+                    if (pblancIds.length > 0) {
+                        supportDisplay = `저장된 공고: ${pblancIds.length}개`;
+                        if (alerts.length > 0) {
+                            hasNewAlerts = true;
+                            supportDisplay += ` (새 공고: ${alerts.length}개)`;
+                        }
+                    } else {
+                        supportDisplay = '저장된 공고 없음';
+                    }
+                } catch (e) {
+                    supportDisplay = '데이터 오류';
+                }
+            } else {
+                supportDisplay = '저장된 공고 없음';
+            }
+            
             inputHtml = `
                 <div style="display: flex; gap: 10px; align-items: center;">
+                    
                     <button type="button" class="btn btn-primary" onclick="openRecommendModal('${rowId}', 'view')" style="background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
                         추천 지원사업 공고 보기
                     </button>
@@ -4282,11 +4318,17 @@ function showRecommendModal(title, message, isLoading, data = null, rowId = null
     } else if (data && data.length > 0) {
         modalContent = `
             <div style="max-height: 70vh; overflow-y: auto;">
+                <div style="margin-bottom: 20px;">
+                    <h5 style="color: #333; margin-bottom: 15px;">총 ${data.length}개의 지원사업이 추천되었습니다</h5>
+                    ${type === 'recommend' ? '<p style="color: #28a745; font-size: 14px; font-weight: bold;">✓ 추천된 지원사업이 자동으로 저장되었습니다!</p>' : ''}
+                    ${type === 'view' && data.some(biz => biz.isNew) ? '<p style="color: #dc3545; font-size: 14px; font-weight: bold;">🔔 새로 추가된 공고가 있습니다!</p>' : ''}
+                </div>
                 <div style="display: grid; gap: 15px;">
                     ${data.map((biz, index) => `
-                        <div class="biz-card" style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; background: #fafafa;">
+                        <div class="biz-card" style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; background: #fafafa; ${biz.isNew ? 'border-left: 4px solid #dc3545;' : ''}">
                             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; cursor: pointer;" onclick="window.open('https://namatji.com/board/detail/${biz.pblanc_id}/', '_blank')">
                                 <h6 style="margin: 0; color: #007bff; font-weight: 600;" >${biz.title || '제목 없음'}</h6>
+                                ${biz.isNew ? '<span style="color: #dc3545; font-weight: bold; font-size: 12px;">NEW</span>' : ''}
                             </div>
                             <div style="display: none; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 13px;">
                                 <div><strong>지역:</strong> ${biz.region || '정보 없음'}</div>

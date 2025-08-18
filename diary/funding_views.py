@@ -1245,14 +1245,30 @@ def get_saved_biz_recommendations(request):
             })
         
         try:
-            # 쉼표로 구분된 ID들을 파싱
-            pblanc_ids = [id.strip() for id in saved_recommendations.split(',') if id.strip()]
+            # dict 형태로 저장된 경우 pblanc_ids에서 ID들 추출
+            if isinstance(saved_recommendations, dict):
+                pblanc_ids = saved_recommendations.get('pblanc_ids', [])
+            else:
+                # 기존 문자열 형태로 저장된 경우 (하위 호환성)
+                pblanc_ids = [id.strip() for id in saved_recommendations.split(',') if id.strip()]
+            
+            if not pblanc_ids:
+                return JsonResponse({
+                    'success': False, 
+                    'error': '저장된 공고 ID가 없습니다.'
+                })
             
             # BizInfo에서 해당 ID들로 데이터 조회
             biz_data = BizInfo.objects.filter(pblanc_id__in=pblanc_ids)
             
             result_data = []
             for biz in biz_data:
+                # 새로 추가된 공고인지 확인
+                is_new = False
+                if isinstance(saved_recommendations, dict):
+                    alerts = saved_recommendations.get('알림', [])
+                    is_new = str(biz.pblanc_id) in alerts
+                
                 result_data.append({
                     'pblanc_id': biz.pblanc_id,
                     'title': biz.title,
@@ -1263,7 +1279,8 @@ def get_saved_biz_recommendations(request):
                     'target': biz.target,
                     'noti_summary': biz.noti_summary,
                     'content': biz.content,
-                    'hashtag': biz.hashtag
+                    'hashtag': biz.hashtag,
+                    'isNew': is_new
                 })
             
             return JsonResponse({
@@ -1342,11 +1359,17 @@ def save_biz_recommendations(request):
         pblanc_ids_str = ','.join(pblanc_ids)
         logger.info(f"저장할 pblanc_ids_str: {pblanc_ids_str}")
         
+        # dict 형태로 데이터 구성
+        support_data = {
+            'pblanc_ids': pblanc_ids,
+            '알림': []  # 새로 추가된 공고가 없으므로 빈 배열
+        }
+        
         # AttributeValue 업데이트 또는 생성
         try:
             attr_value = AttributeValue.objects.get(attribute=recommend_attr, row=row)
             logger.info(f"기존 AttributeValue 찾음: {attr_value}")
-            attr_value.value = pblanc_ids_str
+            attr_value.value = support_data
             attr_value.save()
             logger.info(f"AttributeValue 업데이트 완료: {attr_value.value}")
         except AttributeValue.DoesNotExist:
@@ -1354,7 +1377,7 @@ def save_biz_recommendations(request):
             new_attr_value = AttributeValue.objects.create(
                 attribute=recommend_attr,
                 row=row,
-                value=pblanc_ids_str
+                value=support_data
             )
             logger.info(f"새로 생성된 AttributeValue: {new_attr_value}")
         

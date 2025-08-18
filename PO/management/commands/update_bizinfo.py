@@ -22,6 +22,7 @@ from django.utils.timezone import make_aware
 from po_admin.models import CustUser
 from django.db.models import Q
 from django.db.models import Max
+from diary.models import Attribute, AttributeValue
 
 # 지원사업 정보 업데이트
 # 화면구성 X
@@ -120,6 +121,9 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS(f"{len(items)}건 처리 완료."))
 
             self.update_cust_user_product()
+            
+            # diary 추천 지원사업 자동 업데이트
+            self.update_diary_recommendations()
 
         except Exception as e:
             self.stderr.write(self.style.ERROR(f"실패: {e}"))
@@ -432,4 +436,288 @@ class Command(BaseCommand):
                     cust_user.alarm = ''  # 조회 결과가 없을 때 처리(필요 시)
 
                 cust_user.save()
+
+    def update_diary_recommendations(self):
+        """
+        모든 diary 행의 데이터를 조회하여 각 행마다 해당하는 공고를 지원사업 속성에 자동으로 추가
+        """
+        from diary.models import User, Row, Attribute, AttributeValue, AttributeType
+        
+        print("=== diary 추천 지원사업 자동 업데이트 시작 ===")
+        
+        # 모든 사용자 조회
+        users = User.objects.all()
+        total_updated = 0
+        
+        for user in users:
+            print(f"사용자 {user.id} ({user.name}) 처리 중...")
+            
+            # 사용자의 모든 행 조회
+            rows = Row.objects.filter(user=user)
+            
+            for row in rows:
+                try:
+                    # 행의 속성 값들 가져오기
+                    biz_region = self._get_attribute_value(user, row, '지역')
+                    biz_region_detail = self._get_attribute_value(user, row, '상세지역')
+                    biz_industry = self._get_attribute_value(user, row, '업종')
+                    biz_revenue = self._get_attribute_value(user, row, '매출')
+                    biz_business_months = self._get_attribute_value(user, row, '개업년월')
+                    biz_employees = self._get_attribute_value(user, row, '직원수')
+                    
+                    # 매출액 카테고리 분류
+                    if biz_revenue:
+                        revenue_num = self._parse_number(biz_revenue, 0)
+                        if revenue_num == 0:
+                            biz_revenue = "매출 없음"
+                        elif revenue_num <= 100000000:
+                            biz_revenue = "1억 이하"
+                        elif revenue_num <= 500000000:
+                            biz_revenue = "1~5억"
+                        elif revenue_num <= 1000000000:
+                            biz_revenue = "5~10억"
+                        elif revenue_num <= 3000000000:
+                            biz_revenue = "10~30억"
+                        else:
+                            biz_revenue = "30억 이상"
+                    else:
+                        biz_revenue = "무관"
+                    
+                    # 업력 계산
+                    if biz_business_months:
+                        months = self._calculate_business_months(biz_business_months)
+                        if months == 0:
+                            biz_business_months = "사업자 등록 전"
+                        elif months < 36:
+                            biz_business_months = "3년 미만"
+                        else:
+                            biz_business_months = "3년 이상"
+                    else:
+                        biz_business_months = "무관"
+                    
+                    # 직원수 카테고리
+                    if biz_employees:
+                        emp_num = self._parse_number(biz_employees, 0)
+                        if emp_num == 0:
+                            biz_employees = "직원 없음"
+                        elif emp_num <= 4:
+                            biz_employees = "1~4인"
+                        else:
+                            biz_employees = "5인 이상"
+                        
+                        # 업종별 직원수 분류
+                        if biz_employees in ["1~4인", "5~9인"] and biz_industry in ["광업", "제조업", "건설업", "운수업"]:
+                            biz_employees = "소상공인"
+                        elif biz_employees == "1~4인":
+                            biz_employees = "소상공인"
+                        elif biz_employees in ["10인 이상", "5~9인"]:
+                            biz_employees = "중소기업"
+                    else:
+                        biz_employees = "무관"
+                    
+                    # 업종이 없으면 무관으로 설정
+                    if not biz_industry:
+                        biz_industry = "무관"
+                    
+                    print(f"  행 {row.id}: 지역={biz_region}, 업종={biz_industry}, 매출={biz_revenue}, 업력={biz_business_months}, 직원수={biz_employees}")
+                    
+                    # BizInfo에서 해당하는 공고 조회
+                    if biz_region:
+                        # 상세지역이 정확히 포함된 데이터만 검색
+                        data_with_detail = BizInfo.objects.filter(
+                            (Q(region__contains=biz_region) | Q(region__contains="전국") | Q(hashtag__contains=biz_region)) &
+                            (Q(possible_industry__contains=biz_industry) | Q(possible_industry__contains='무관')) &
+                            (Q(revenue__contains=biz_revenue) | Q(revenue__contains='무관')) &
+                            (Q(business_period__contains=biz_business_months) | Q(business_period__contains='무관')) &
+                            (Q(target__contains=biz_employees) | Q(target__contains='무관')) &
+                            (
+                                # 상세지역이 포함된 경우만
+                                Q(noti_summary__contains=biz_region_detail) | 
+                                Q(hashtag__contains=biz_region_detail) | 
+                                Q(content__contains=biz_region_detail) | 
+                                Q(title__contains=biz_region_detail) |
+                                Q(region__contains=biz_region_detail)
+                            )
+                        )
+                        
+                        # 상세지역이 포함된 데이터가 10개 미만인 경우, 포함되지 않은 데이터도 추가
+                        if data_with_detail.count() < 10:
+                            needed_count = 10 - data_with_detail.count()
+                            additional_data = BizInfo.objects.filter(
+                                (Q(region__contains=biz_region) | Q(region__contains="전국") | Q(hashtag__contains=biz_region)) &
+                                (Q(possible_industry__contains=biz_industry) | Q(possible_industry__contains='무관')) &
+                                (Q(revenue__contains=biz_revenue) | Q(revenue__contains='무관')) &
+                                (Q(business_period__contains=biz_business_months) | Q(business_period__contains='무관')) &
+                                (Q(target__contains=biz_employees) | Q(target__contains='무관'))
+                            ).exclude(
+                                # detail_region이 포함된 데이터 제외
+                                Q(noti_summary__contains=biz_region_detail) | 
+                                Q(hashtag__contains=biz_region_detail) | 
+                                Q(content__contains=biz_region_detail) | 
+                                Q(title__contains=biz_region_detail) |
+                                Q(region__contains=biz_region_detail)
+                            )[:needed_count]
+                            
+                            # 두 결과를 합치고 중복 제거
+                            combined_data = list(data_with_detail) + list(additional_data)
+                            # pblanc_id 기준으로 중복 제거
+                            seen_ids = set()
+                            unique_data = []
+                            for item in combined_data:
+                                if item.pblanc_id not in seen_ids:
+                                    seen_ids.add(item.pblanc_id)
+                                    unique_data.append(item)
+                            
+                            final_data = unique_data[:10]
+                        else:
+                            final_data = list(data_with_detail[:10])
+                    else:
+                        # 지역이 없는 경우 기본 조건으로만 검색
+                        final_data = list(BizInfo.objects.filter(
+                            (Q(possible_industry__contains=biz_industry) | Q(possible_industry__contains='무관')) &
+                            (Q(revenue__contains=biz_revenue) | Q(revenue__contains='무관')) &
+                            (Q(business_period__contains=biz_business_months) | Q(business_period__contains='무관')) &
+                            (Q(target__contains=biz_employees) | Q(target__contains='무관'))
+                        )[:10])
+                    
+                    # pblanc_id 목록 생성
+                    pblanc_ids = [biz.pblanc_id for biz in final_data]
+                    pblanc_ids_str = ','.join(pblanc_ids)
+                    
+                    print(f"    추천된 공고 수: {len(final_data)}개")
+                    print(f"    pblanc_ids: {pblanc_ids_str}")
+                    
+                    # 지원사업 속성 찾기 (없으면 생성)
+                    try:
+                        recommend_attr = Attribute.objects.get(name='지원사업', user=user)
+                    except Attribute.DoesNotExist:
+                        # recommend_biz 타입의 AttributeType 가져오기 또는 생성
+                        recommend_biz_type, _ = AttributeType.objects.get_or_create(name='recommend_biz')
+                        recommend_attr = Attribute.objects.create(
+                            name='지원사업',
+                            attributeType=recommend_biz_type,
+                            user=user
+                        )
+                        print(f"    새로운 '지원사업' 속성 생성: {recommend_attr.id}")
+                    
+                    # 기존 값 가져오기
+                    existing_value = None
+                    try:
+                        attr_value = AttributeValue.objects.get(attribute=recommend_attr, row=row)
+                        existing_value = attr_value.value
+                    except AttributeValue.DoesNotExist:
+                        pass
+                    
+                    # dict 형태로 데이터 구성
+                    support_data = {
+                        'pblanc_ids': pblanc_ids,
+                        '알림': []
+                    }
+                    
+                    # 기존 값이 있으면 기존 pblanc_ids와 비교하여 새로 추가된 것들 찾기
+                    if existing_value:
+                        try:
+                            if isinstance(existing_value, str):
+                                # 기존에 문자열로 저장된 경우 JSON으로 파싱 시도
+                                import json
+                                existing_data = json.loads(existing_value)
+                            else:
+                                existing_data = existing_value
+                            
+                            if isinstance(existing_data, dict) and 'pblanc_ids' in existing_data:
+                                existing_ids = existing_data.get('pblanc_ids', [])
+                                if isinstance(existing_ids, str):
+                                    existing_ids = [id.strip() for id in existing_ids.split(',') if id.strip()]
+                                
+                                # 새로 추가된 공고 ID들 찾기
+                                new_ids = [id for id in pblanc_ids if id not in existing_ids]
+                                if new_ids:
+                                    support_data['알림'] = new_ids
+                                    print(f"    새로 추가된 공고: {new_ids}")
+                        except Exception as e:
+                            print(f"    기존 값 파싱 오류: {e}")
+                            # 기존 값이 잘못된 형태인 경우 빈 알림으로 시작
+                            support_data['알림'] = []
+                    
+                    # AttributeValue 업데이트 또는 생성
+                    try:
+                        attr_value = AttributeValue.objects.get(attribute=recommend_attr, row=row)
+                        attr_value.value = support_data
+                        attr_value.save()
+                        print(f"    기존 AttributeValue 업데이트: {attr_value.id}")
+                    except AttributeValue.DoesNotExist:
+                        new_attr_value = AttributeValue.objects.create(
+                            attribute=recommend_attr,
+                            row=row,
+                            value=support_data
+                        )
+                        print(f"    새로운 AttributeValue 생성: {new_attr_value.id}")
+                    
+                    total_updated += 1
+                    
+                except Exception as e:
+                    print(f"    행 {row.id} 처리 중 오류 발생: {e}")
+                    continue
+        
+        print(f"=== diary 추천 지원사업 자동 업데이트 완료 ===")
+        print(f"총 {total_updated}개 행이 업데이트되었습니다.")
+        return total_updated
+    
+    def _get_attribute_value(self, user, row, attribute_name):
+        """속성 값을 가져오는 헬퍼 함수"""
+        try:
+            attribute = Attribute.objects.get(user=user, name=attribute_name)
+            attr_value = AttributeValue.objects.filter(row=row, attribute=attribute).first()
+            return attr_value.value if attr_value else None
+        except (Attribute.DoesNotExist, AttributeValue.DoesNotExist):
+            return None
+    
+    def _parse_number(self, value, default=0):
+        """문자열이나 숫자를 정수로 변환하는 헬퍼 함수"""
+        if value is None:
+            return default
+        
+        if isinstance(value, (int, float)):
+            return int(value)
+        
+        if isinstance(value, str):
+            # 숫자가 아닌 문자 제거 후 변환
+            numbers_only = re.sub(r'[^\d.]', '', value)
+            try:
+                return int(float(numbers_only)) if numbers_only else default
+            except ValueError:
+                return default
+        
+        return default
+    
+    def _calculate_business_months(self, opening_date_str):
+        """개업년월로부터 업력(개월수) 계산하는 헬퍼 함수"""
+        if not opening_date_str:
+            return 12  # 기본값
+        
+        try:
+            # 다양한 날짜 형식 처리
+            if isinstance(opening_date_str, str):
+                # YYYY-MM-DD 형식
+                if '-' in opening_date_str and len(opening_date_str) >= 7:
+                    opening_date = datetime.strptime(opening_date_str[:7], '%Y-%m')
+                # YYYY년 MM월 형식
+                elif '년' in opening_date_str and '월' in opening_date_str:
+                    # 예: "2023년 5월"
+                    match = re.search(r'(\d{4})년\s*(\d{1,2})월', opening_date_str)
+                    if match:
+                        year, month = int(match.group(1)), int(match.group(2))
+                        opening_date = datetime(year, month, 1)
+                    else:
+                        return 12
+                else:
+                    return 12
+            
+            # 현재 날짜와의 차이 계산
+            now = datetime.now()
+            months_diff = (now.year - opening_date.year) * 12 + (now.month - opening_date.month)
+            return max(1, months_diff)  # 최소 1개월
+            
+        except (ValueError, AttributeError):
+            return 12  # 파싱 실패 시 기본값
 
