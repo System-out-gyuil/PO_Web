@@ -647,6 +647,63 @@ function processDropdownOptions(options, value, cell) {
                       td.appendChild(input);
                       input.focus();
                       input.select();
+                  } else if (type === '연락처') {
+                      // 연락처 필드 특별 처리
+                      td.style.width = td.offsetWidth + 'px';
+                      const oldValue = td.innerText.trim();
+                      const id = td.parentElement.getAttribute('data-id');
+                    
+                      const input = document.createElement('input');
+                      input.type = 'text';
+                      input.value = oldValue;
+                      input.className = 'table-edit-input';
+                      input.style.position = 'absolute';
+                      input.style.left = '0';
+                      input.style.top = '0';
+                      input.style.width = 'max-content';
+                      input.style.minWidth = '100%';
+                      input.style.background = '#fffbe6';
+                      input.style.zIndex = '10';
+                      input.style.border = 'none';
+                      input.style.fontSize = 'inherit';
+                      input.style.fontFamily = 'inherit';
+                      input.style.lineHeight = 'inherit';
+                      input.style.padding = '0';
+                      input.style.margin = '0';
+                    
+                      td.appendChild(input);
+                      input.focus();
+                      input.select();
+                    
+                      // 실시간 중복값 체크
+                      input.addEventListener('input', function () {
+                          checkContactDuplicateInRealTime(td, this.value);
+                      });
+                    
+                      input.onblur = function () {
+                          const newValue = input.value.trim();
+                          finalizeContactFieldEdit(td, newValue);
+                        
+                          // 새 행인 경우
+                          if (id && id.startsWith('temp_')) {
+                              saveNewRowField(td.parentElement, type, newValue);
+                          } else {
+                              // 기존 행인 경우
+                              updateCellValue(id, type, newValue, td);
+                          }
+                      };
+                    
+                      input.onkeydown = function (e) {
+                          if (e.key === 'Enter') {
+                              input.blur();
+                          } else if (e.key === 'Escape') {
+                              td.innerText = oldValue;
+                              td.style.width = '';
+                              setTableEditingState(false);
+                              // ESC 시 하이라이트 제거
+                              updateContactDuplicateHighlight(td);
+                          }
+                      };
                   } else {
                       // 일반 텍스트 필드 처리
                       const oldValue = td.innerText.trim();
@@ -757,6 +814,16 @@ function processDropdownOptions(options, value, cell) {
       });
       
       console.log('bindTableCellEvents 완료');
+      
+      // 회사명 컬럼 sticky 재적용
+    reapplyStickyAfterRefresh();
+
+    // 연락처 중복값 하이라이트 적용
+    highlightDuplicateContactValues();
+
+    // 연락처 필드 하이라이트 설정
+    setupContactFieldHighlighting();
+    setupContactFieldEditing();
   }
   
   // 부분 업데이트 함수 - 특정 셀만 업데이트
@@ -940,12 +1007,14 @@ function processDropdownOptions(options, value, cell) {
           }
       }
       
-      // 셀 업데이트 후 시각적 피드백 (선택적)
-      cell.style.transition = 'background-color 0.3s ease';
-      cell.style.backgroundColor = '#e3f2fd';
-      setTimeout(() => {
-          cell.style.backgroundColor = '';
-      }, 500);
+      // 셀 업데이트 후 시각적 피드백 (연락처 필드는 제외)
+      if (field !== '연락처') {
+          cell.style.transition = 'background-color 0.3s ease';
+          cell.style.backgroundColor = '#e3f2fd';
+          setTimeout(() => {
+              cell.style.backgroundColor = '';
+          }, 500);
+      }
       
       // 실시간 동기화 (캘린더만)
       if (field === 'F/U 일정' && window.calendar) {
@@ -962,6 +1031,13 @@ function processDropdownOptions(options, value, cell) {
           refreshCalendar();
       }
       
+      // 연락처 필드가 변경된 경우 중복값 하이라이트 업데이트 (마지막에 적용)
+      if (field === '연락처') {
+          // 약간의 지연 후 중복값 하이라이트 적용 (시각적 피드백과 충돌 방지)
+          setTimeout(() => {
+              updateContactDuplicateHighlight(cell);
+          }, 100);
+      }
       
       // 최종 확인: 셀이 실제로 업데이트되었는지 검증
       setTimeout(() => {
@@ -3662,3 +3738,261 @@ function formatSalesValue(value) {
 }
 
 // 회사명과 매출 필드를 강제로 업데이트하는 함수
+
+// 회사명 컬럼을 sticky하게 만드는 함수
+function makeCompanyNameSticky() {
+    console.log('회사명 컬럼 sticky 설정 시작');
+    
+    const table = document.getElementById('entryTable');
+    if (!table) {
+        console.error('테이블을 찾을 수 없습니다.');
+        return;
+    }
+    
+    // 헤더의 회사명 컬럼 찾기
+    const headerRow = table.querySelector('thead tr');
+    if (headerRow) {
+        const companyNameHeader = headerRow.querySelector('th[data-column="회사명"]');
+        if (companyNameHeader) {
+            companyNameHeader.classList.add('company-name-header-sticky');
+            console.log('회사명 헤더 sticky 클래스 추가 완료');
+        }
+        
+        // 드래그 핸들 컬럼 헤더도 sticky하게
+        const dragHeader = headerRow.querySelector('.drag-cell');
+        if (dragHeader) {
+            dragHeader.classList.add('drag-cell-header-sticky');
+            console.log('드래그 핸들 헤더 sticky 클래스 추가 완료');
+        }
+    }
+    
+    // 본문의 회사명 컬럼들 찾기
+    const companyNameCells = table.querySelectorAll('td[data-field="회사명"]');
+    companyNameCells.forEach((cell, index) => {
+        cell.classList.add('company-name-sticky');
+        
+        // 드래그 핸들 셀도 sticky하게
+        const row = cell.closest('tr');
+        if (row) {
+            const dragCell = row.querySelector('.drag-cell');
+            if (dragCell) {
+                dragCell.classList.add('drag-cell-sticky');
+            }
+        }
+    });
+    
+    console.log(`회사명 컬럼 ${companyNameCells.length}개 sticky 설정 완료`);
+}
+
+// 테이블 스크롤 시 sticky 효과 유지
+function maintainStickyOnScroll() {
+    const tableView = document.getElementById('tableView');
+    if (!tableView) return;
+    
+    tableView.addEventListener('scroll', function() {
+        // 가로 스크롤 시 sticky 효과 유지
+        const table = document.getElementById('entryTable');
+        if (table) {
+            const stickyCells = table.querySelectorAll('.company-name-sticky, .drag-cell-sticky');
+            stickyCells.forEach(cell => {
+                // 스크롤 위치에 따라 z-index 조정
+                if (tableView.scrollLeft > 0) {
+                    cell.style.zIndex = '997';
+                } else {
+                    cell.style.zIndex = '997';
+                }
+            });
+        }
+    });
+}
+
+// 테이블 새로고침 후 sticky 재적용
+function reapplyStickyAfterRefresh() {
+    // 약간의 지연 후 sticky 적용 (DOM 업데이트 완료 후)
+    setTimeout(() => {
+        makeCompanyNameSticky();
+    }, 100);
+}
+
+// 연락처 속성의 동일한 값에 배경색 적용하는 함수
+function highlightDuplicateContactValues() {
+    console.log('연락처 중복값 하이라이트 시작');
+    
+    const table = document.getElementById('entryTable');
+    if (!table) {
+        console.error('테이블을 찾을 수 없습니다.');
+        return;
+    }
+    
+    // 연락처 컬럼의 모든 셀 찾기
+    const contactCells = table.querySelectorAll('td[data-field="연락처"]');
+    if (contactCells.length === 0) {
+        console.log('연락처 컬럼을 찾을 수 없습니다.');
+        return;
+    }
+    
+    // 값별로 그룹화
+    const valueGroups = {};
+    contactCells.forEach(cell => {
+        const value = cell.textContent.trim() || cell.innerText.trim();
+        if (value && value !== '') {
+            if (!valueGroups[value]) {
+                valueGroups[value] = [];
+            }
+            valueGroups[value].push(cell);
+        }
+    });
+    
+    // 중복값이 있는 그룹만 하이라이트
+    Object.entries(valueGroups).forEach(([value, cells]) => {
+        if (cells.length > 1) {
+            console.log(`연락처 중복값 발견: "${value}" (${cells.length}개)`);
+            cells.forEach(cell => {
+                cell.style.backgroundColor = '#e9ecef';
+                cell.style.transition = 'background-color 0.3s ease';
+                cell.setAttribute('data-duplicate-contact', 'true');
+            });
+        }
+    });
+    
+    console.log('연락처 중복값 하이라이트 완료');
+}
+
+// 연락처 값이 변경될 때 중복값 하이라이트 업데이트
+function updateContactDuplicateHighlight(changedCell) {
+    const table = document.getElementById('entryTable');
+    if (!table) return;
+    
+    // 기존 하이라이트 제거
+    const highlightedCells = table.querySelectorAll('td[data-duplicate-contact="true"]');
+    highlightedCells.forEach(cell => {
+        cell.style.backgroundColor = '';
+        cell.removeAttribute('data-duplicate-contact');
+    });
+    
+    // 모든 연락처 셀을 다시 검사하여 중복값 하이라이트 적용
+    const allContactCells = table.querySelectorAll('td[data-field="연락처"]');
+    const valueGroups = {};
+    
+    // 값별로 그룹화
+    allContactCells.forEach(cell => {
+        const value = cell.textContent.trim() || cell.innerText.trim();
+        if (value && value !== '') {
+            if (!valueGroups[value]) {
+                valueGroups[value] = [];
+            }
+            valueGroups[value].push(cell);
+        }
+    });
+    
+    // 중복값이 있는 그룹만 하이라이트
+    Object.entries(valueGroups).forEach(([value, cells]) => {
+        if (cells.length > 1) {
+            console.log(`연락처 중복값 발견: "${value}" (${cells.length}개)`);
+            cells.forEach(cell => {
+                cell.style.backgroundColor = '#e9ecef';
+                cell.style.transition = 'background-color 0.3s ease';
+                cell.setAttribute('data-duplicate-contact', 'true');
+            });
+        }
+    });
+    
+    console.log('연락처 중복값 하이라이트 업데이트 완료');
+}
+
+// 연락처 필드 입력 완료 시 중복값 하이라이트 즉시 업데이트
+function handleContactFieldUpdate(cell, newValue) {
+    // 셀 내용 업데이트
+    cell.textContent = newValue;
+    cell.setAttribute('data-value', newValue);
+    
+    // 즉시 중복값 하이라이트 업데이트
+    updateContactDuplicateHighlight(cell);
+    
+    // 시각적 피드백
+    cell.style.transition = 'background-color 0.3s ease';
+    cell.style.backgroundColor = '#e3f2fd';
+    setTimeout(() => {
+        cell.style.backgroundColor = '';
+    }, 500);
+}
+
+// 연락처 필드 편집 완료 시 중복값 하이라이트 즉시 적용
+function setupContactFieldHighlighting() {
+    const table = document.getElementById('entryTable');
+    if (!table) return;
+    
+    // 연락처 필드의 모든 셀에 이벤트 리스너 추가
+    const contactCells = table.querySelectorAll('td[data-field="연락처"]');
+    contactCells.forEach(cell => {
+        // 기존 이벤트 리스너 제거 (중복 방지)
+        cell.removeEventListener('contactUpdated', cell._contactUpdateHandler);
+        
+        // 새로운 이벤트 리스너 추가
+        const updateHandler = function(e) {
+            const newValue = e.detail.value;
+            handleContactFieldUpdate(cell, newValue);
+        };
+        
+        cell._contactUpdateHandler = updateHandler;
+        cell.addEventListener('contactUpdated', updateHandler);
+    });
+}
+
+// 연락처 필드 편집 시 실시간 중복값 체크
+function setupContactFieldEditing() {
+    document.addEventListener('input', function(e) {
+        if (e.target.closest('td[data-field="연락처"]')) {
+            const cell = e.target.closest('td[data-field="연락처"]');
+            const inputValue = e.target.value;
+            
+            // 실시간으로 중복값 체크
+            checkContactDuplicateInRealTime(cell, inputValue);
+        }
+    });
+}
+
+// 실시간 중복값 체크 함수
+function checkContactDuplicateInRealTime(cell, inputValue) {
+    if (!inputValue || inputValue.trim() === '') return;
+    
+    const table = document.getElementById('entryTable');
+    if (!table) return;
+    
+    // 현재 입력 중인 값을 제외한 다른 연락처 셀들 찾기
+    const otherContactCells = Array.from(table.querySelectorAll('td[data-field="연락처"]'))
+        .filter(otherCell => otherCell !== cell);
+    
+    // 중복값이 있는지 확인
+    const hasDuplicate = otherContactCells.some(otherCell => {
+        const otherValue = otherCell.textContent.trim() || otherCell.innerText.trim();
+        return otherValue === inputValue.trim() && otherValue !== '';
+    });
+    
+    // 중복값이 있으면 미리 하이라이트 표시
+    if (hasDuplicate) {
+        cell.style.backgroundColor = '#e9ecef';
+        cell.style.transition = 'background-color 0.3s ease';
+    } else {
+        cell.style.backgroundColor = '';
+    }
+}
+
+// 연락처 필드 편집 완료 시 최종 중복값 하이라이트 적용
+function finalizeContactFieldEdit(cell, newValue) {
+    // 입력 필드 제거
+    const input = cell.querySelector('input');
+    if (input) {
+        input.remove();
+    }
+    
+    // 셀 내용 업데이트
+    cell.textContent = newValue;
+    cell.setAttribute('data-value', newValue);
+    
+    // 즉시 중복값 하이라이트 업데이트
+    updateContactDuplicateHighlight(cell);
+    
+    // 편집 상태 해제
+    setTableEditingState(false);
+}

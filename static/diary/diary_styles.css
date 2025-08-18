@@ -89,6 +89,72 @@ thead.sticky th {
     z-index: 999 !important;
 }
 
+/* 회사명 컬럼 sticky 스타일 */
+.company-name-sticky {
+    position: sticky !important;
+    left: 0 !important;
+    z-index: 997 !important;
+    background: #fff !important;
+    box-shadow: 2px 0 4px rgba(0,0,0,0.1) !important;
+}
+
+.company-name-sticky::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 1px;
+    background: #e9ecef;
+    box-shadow: 1px 0 2px rgba(0,0,0,0.1);
+}
+
+/* 회사명 컬럼 헤더도 sticky하게 */
+.company-name-header-sticky {
+    position: sticky !important;
+    left: 0 !important;
+    z-index: 999 !important;
+    background: #f1f3f6 !important;
+    box-shadow: 2px 0 4px rgba(0,0,0,0.1) !important;
+}
+
+.company-name-header-sticky::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 1px;
+    background: #e9ecef;
+    box-shadow: 1px 0 2px rgba(0,0,0,0.1);
+}
+
+/* 드래그 핸들 컬럼도 sticky하게 */
+.drag-cell-sticky {
+    position: sticky !important;
+    left: 0 !important;
+    z-index: 997 !important;
+    background: #fff !important;
+    box-shadow: 2px 0 4px rgba(0,0,0,0.1) !important;
+}
+
+.drag-cell-header-sticky {
+    position: sticky !important;
+    left: 0 !important;
+    z-index: 999 !important;
+    background: #f1f3f6 !important;
+    box-shadow: 2px 0 4px rgba(0,0,0,0.1) !important;
+}
+
+/* 회사명 컬럼이 sticky일 때 hover 효과 */
+.company-name-sticky:hover {
+    background: #f8f9fa !important;
+}
+
+.company-name-header-sticky:hover {
+    background: #e9ecef !important;
+}
+
 thead::after {
     content: '';
     position: absolute;

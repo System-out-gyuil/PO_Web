@@ -1007,7 +1007,8 @@ def get_biz_recommendations(request):
         
         # 매출액 카테고리 분류
         
-
+        if not biz_region:
+            biz_region = "무관"
 
         if biz_revenue:
             revenue_num = _parse_number(biz_revenue, 0)
