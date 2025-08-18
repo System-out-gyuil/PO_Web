@@ -63,7 +63,7 @@ def class_form(request: HttpRequest):
             
             # 성공 메시지와 함께 리다이렉트
             messages.success(request, '클래스 신청이 완료되었습니다!')
-            return redirect('class_form')
+            return redirect('class_form_end')
             
         except Exception as e:
             errors['general'] = '저장 중 오류가 발생했습니다. 다시 시도해주세요.'
