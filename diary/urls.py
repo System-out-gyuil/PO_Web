@@ -19,7 +19,7 @@ from .board_views import board_list_view, board_list_api, board_create, board_de
 from .funding_views import get_funding_recommendation, get_recommended_notices, update_debt_field, save_debt_details, update_expected_loans, update_loan_amount, get_debt_details, get_biz_recommendations, get_saved_biz_recommendations, save_biz_recommendations
 from .order import reorder_entries, save_column_order, update_detail_sort_order
 from .hwp_convert import convert_hwp_to_pdf_board, convert_hwp_to_pdf
-from .ai_class import ai_class, class_form
+from .ai_class import ai_class, class_form, class_form_end
 from .attribute_handlers import get_hidden_attributes, add_attribute, delete_attribute, update_attribute_name, update_attribute_visibility, get_dropdown_attributes, get_all_attributes
 
 urlpatterns = [
@@ -215,6 +215,7 @@ urlpatterns = [
     # 원데이 클래스 관리 관련 URL
     path('diary_admin/class_forms/', class_form_list, name='admin_class_forms'),
     path('diary_admin/class_form/<int:class_form_id>/delete/', class_form_delete, name='admin_class_form_delete'),
+    path('class_form_end/', class_form_end, name='class_form_end'),
 
     # 기업마당 공고
     path('bizinfo/', views.bizinfo, name='bizinfo'),

@@ -4,20 +4,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Document</title>
+  <title>법인영업 클래스</title>
   <link rel="stylesheet" href="{% static 'ai_class/class_form.css' %}">
 </head>
 <body>
   <div class="container">
-    <!-- 성공 메시지 표시 -->
-    {% if messages %}
-      {% for message in messages %}
-        <div class="message {% if message.tags %}{{ message.tags }}{% endif %}">
-          {{ message }}
-        </div>
-      {% endfor %}
-    {% endif %}
-
+    
     <div class="explain">
       <div class="explain_text">
         <span class="explain_title">법인영업 원데이 클래스</span><br>
