@@ -649,9 +649,12 @@ function generateDetailModalContent(attributes, rowData, rowId) {
             inputHtml = `<button type="button" class="add-btn" style="width:100%;background:#f8f9fa;color:#333;border:1px solid #eee;" onclick="openDetailDropdown('${rowId}','${attr.name}',this)">${displayText}</button>`;
         } else if (attr.type === 'recommend_biz') {
             // 지원사업 속성 값 가져오기
-            const supportValue = attr.value;
+            const supportValue = rowData[attr.name] || attr.value;
             let supportDisplay = '';
-            let hasNewAlerts = false;
+            console.log('attr.name:', attr.name);
+            console.log('rowData[attr.name]:', rowData[attr.name]);
+            console.log('attr.value:', attr.value);
+            console.log('supportValue:', supportValue);
             
             if (supportValue) {
                 try {
@@ -665,18 +668,20 @@ function generateDetailModalContent(attributes, rowData, rowId) {
                     }
                     
                     const pblancIds = supportData.pblanc_ids || [];
+                    console.log('pblancIds:', pblancIds);
                     const alerts = supportData.알림 || [];
+                    console.log('alerts:', alerts);
                     
                     if (pblancIds.length > 0) {
                         supportDisplay = `저장된 공고: ${pblancIds.length}개`;
                         if (alerts.length > 0) {
-                            hasNewAlerts = true;
                             supportDisplay += ` (새 공고: ${alerts.length}개)`;
                         }
                     } else {
                         supportDisplay = '저장된 공고 없음';
                     }
                 } catch (e) {
+                    console.error('supportValue 파싱 오류:', e);
                     supportDisplay = '데이터 오류';
                 }
             } else {
@@ -685,7 +690,26 @@ function generateDetailModalContent(attributes, rowData, rowId) {
             
             inputHtml = `
                 <div style="display: flex; gap: 10px; align-items: center;">
-                    
+                    <div style="flex: 1; padding: 8px 12px; background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 4px; color: #333;">
+                        ${supportDisplay}
+                        ${(() => {
+                            if (supportValue) {
+                                try {
+                                    let supportData;
+                                    if (typeof supportValue === 'string') {
+                                        supportData = { pblanc_ids: supportValue.split(',').filter(id => id.trim()) };
+                                    } else {
+                                        supportData = supportValue;
+                                    }
+                                    const alerts = supportData.알림 || [];
+                                    return alerts.length > 0 ? '<span style="color: #dc3545; font-weight: bold; margin-left: 8px;">🔔</span>' : '';
+                                } catch (e) {
+                                    return '';
+                                }
+                            }
+                            return '';
+                        })()}
+                    </div>
                     <button type="button" class="btn btn-primary" onclick="openRecommendModal('${rowId}', 'view')" style="background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
                         추천 지원사업 공고 보기
                     </button>
@@ -725,7 +749,29 @@ function generateDetailModalContent(attributes, rowData, rowId) {
             html += `
                 <div class="attribute-row" data-attribute-id="${attr.id}" data-attribute-name="${attr.name}" style="display:flex;align-items:center;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #eee;position:relative;">
                     <div class="drag-handle" style="position:absolute;left:-15px;top:50%;transform:translateY(-50%);color:#ccc;cursor:move;">⋮⋮</div>
-                    <label class="attribute-label" style="width:120px;font-weight:bold;color:${labelColor};cursor:move;user-select:none;">${attr.name}:</label>
+                    <label class="attribute-label" style="width:120px;font-weight:bold;color:${labelColor};cursor:move;user-select:none;">
+                        ${attr.name}
+                        ${(() => {
+                            if (attr.type === 'recommend_biz') {
+                                const supportValue = rowData[attr.name] || attr.value;
+                                if (supportValue) {
+                                    try {
+                                        let supportData;
+                                        if (typeof supportValue === 'string') {
+                                            supportData = { pblanc_ids: supportValue.split(',').filter(id => id.trim()) };
+                                        } else {
+                                            supportData = supportValue;
+                                        }
+                                        const alerts = supportData.알림 || [];
+                                        return alerts.length > 0 ? '<span style="color: #dc3545; font-size: 14px; margin-left: 5px;">⚠️</span>' : '';
+                                    } catch (e) {
+                                        return '';
+                                    }
+                                }
+                            }
+                            return '';
+                        })()}
+                    </label>
                     <div style="flex:1;">${inputHtml}</div>
                 </div>
             `;
@@ -4319,8 +4365,6 @@ function showRecommendModal(title, message, isLoading, data = null, rowId = null
         modalContent = `
             <div style="max-height: 70vh; overflow-y: auto;">
                 <div style="margin-bottom: 20px;">
-                    <h5 style="color: #333; margin-bottom: 15px;">총 ${data.length}개의 지원사업이 추천되었습니다</h5>
-                    ${type === 'recommend' ? '<p style="color: #28a745; font-size: 14px; font-weight: bold;">✓ 추천된 지원사업이 자동으로 저장되었습니다!</p>' : ''}
                     ${type === 'view' && data.some(biz => biz.isNew) ? '<p style="color: #dc3545; font-size: 14px; font-weight: bold;">🔔 새로 추가된 공고가 있습니다!</p>' : ''}
                 </div>
                 <div style="display: grid; gap: 15px;">

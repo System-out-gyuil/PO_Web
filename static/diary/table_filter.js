@@ -4,10 +4,80 @@ function initializeTableData() {
   const tbody = document.getElementById('entryTbody');
   if (tbody) {
       window.originalRows = Array.from(tbody.querySelectorAll('tr'));
+      // 지원사업 필드의 알림 표시 처리
+      processSupportBusinessAlerts();
   }
   
   // 저장된 상태 복원
   restoreTableState();
+}
+
+// 지원사업 필드의 알림을 표시하는 함수
+function processSupportBusinessAlerts() {
+  const tbody = document.getElementById('entryTbody');
+  if (!tbody) return;
+  
+  const rows = tbody.querySelectorAll('tr');
+  rows.forEach(row => {
+    const cells = row.querySelectorAll('td');
+    cells.forEach((cell, index) => {
+      // 헤더의 컬럼명을 가져와서 지원사업 컬럼인지 확인
+      const headerRow = document.querySelector('thead tr');
+      if (headerRow) {
+        const headers = headerRow.querySelectorAll('th');
+        if (headers[index] && headers[index].textContent.trim() === '지원사업') {
+          const value = cell.getAttribute('data-value') || cell.textContent;
+          if (value) {
+            try {
+              let supportData;
+              let hasAlerts = false;
+
+              if (typeof value === 'string') {
+                // 기존 문자열 형태 (하위 호환성)
+                supportData = { pblanc_ids: value.split(',').filter(id => id.trim()) };
+              } else if (typeof value === 'object' && value !== null) {
+                // dict 형태
+                supportData = value;
+                hasAlerts = supportData.알림 && supportData.알림.length > 0;
+              } else {
+                supportData = { pblanc_ids: [] };
+              }
+
+              const pblancIds = supportData.pblanc_ids || [];
+              let displayText = '';
+
+              if (pblancIds.length > 0) {
+                displayText = `저장된 공고: ${pblancIds.length}개`;
+                if (hasAlerts) {
+                  displayText += ` (새 공고: ${supportData.알림.length}개)`;
+                }
+              } else {
+                displayText = '저장된 공고 없음';
+              }
+
+              // 알림이 있으면 느낌표 아이콘 추가
+              if (hasAlerts) {
+                cell.innerHTML = `
+                  <div style="display: flex; align-items: center; gap: 5px;">
+                    <span>${displayText}</span>
+                    <span style="color: #dc3545; font-size: 16px; cursor: pointer;" title="새로 추가된 공고가 있습니다">⚠️</span>
+                  </div>
+                `;
+              } else {
+                cell.textContent = displayText;
+              }
+
+              cell.setAttribute('data-value', JSON.stringify(supportData));
+            } catch (e) {
+              console.error('지원사업 필드 처리 오류:', e);
+              cell.textContent = value || '';
+              cell.setAttribute('data-value', value);
+            }
+          }
+        }
+      }
+    });
+  });
 }
 
 // 현재 사용자 ID 가져오기 (동기적 처리)
@@ -183,6 +253,9 @@ function restoreSort(retry = 0) {
         return direction === 'asc' ? comparison : -comparison;
     });
     rows.forEach(row => entryTbody.appendChild(row));
+    
+    // 지원사업 필드의 알림 표시 처리
+    processSupportBusinessAlerts();
 }
 
 function sortTable(column, direction) {
@@ -255,6 +328,9 @@ function sortTable(column, direction) {
         
         // 정렬된 행들을 테이블에 다시 추가
         rows.forEach(row => tbody.appendChild(row));
+        
+        // 지원사업 필드의 알림 표시 처리
+        processSupportBusinessAlerts();
     }
     
     // 상태 저장
@@ -626,6 +702,9 @@ function updateSortButtonStates(activeColumn = null, activeDirection = null) {
                     
                     // 정렬된 행들을 테이블에 다시 추가
                     rows.forEach(row => tbody.appendChild(row));
+                    
+                    // 지원사업 필드의 알림 표시 처리
+                    processSupportBusinessAlerts();
                 }
             }
         } else {
@@ -688,6 +767,9 @@ function restoreOriginalOrder() {
     
     // 정렬된 행들을 테이블에 다시 추가
     visibleRows.forEach(row => tbody.appendChild(row));
+    
+    // 지원사업 필드의 알림 표시 처리
+    processSupportBusinessAlerts();
 }
 
 // 디버깅을 위한 상태 확인 함수
@@ -770,6 +852,9 @@ function restoreTableStateAfterRefresh() {
                   
                   // 정렬된 행들을 테이블에 다시 추가
                   rows.forEach(row => tbody.appendChild(row));
+                  
+                  // 지원사업 필드의 알림 표시 처리
+                  processSupportBusinessAlerts();
                 }
               }
             }
@@ -804,6 +889,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // 테이블 리랜더링 후 상태 복원을 위한 전역 함수
 window.restoreTableStateAfterRefresh = restoreTableStateAfterRefresh;
 window.debugTableState = debugTableState;
+window.processSupportBusinessAlerts = processSupportBusinessAlerts;
 
 // 리랜더링 후 정렬/필터 상태 복원 함수
 function reinitializeTableFilters() {

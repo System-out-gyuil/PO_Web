@@ -2175,17 +2175,22 @@ def get_daily_view_counts(request):
         
         # 날짜 범위 설정
         if start_date and end_date:
+            # 특정 기간 조회
             start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
             end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+            date_filter = {'date__range': [start_date, end_date]}
+            print(f"Specific date range - start_date: {start_date}, end_date: {end_date}")
         else:
-            # 기본값: 최근 30일
-            end_date = timezone.now().date()
-            start_date = end_date - timedelta(days=29)
-        
+            # 전체 기간 조회 (날짜 필터 없음)
+            start_date = None
+            end_date = None
+            date_filter = {}
+            print("Loading all data (no date filter)")
+
         # 일별 조회수 집계
         daily_counts = DailyViewRecord.objects.filter(
             page_type=page_type,
-            date__range=[start_date, end_date]
+            **date_filter
         ).values('date').annotate(
             total_count=Sum('count'),
             unique_ips=Count('ip', distinct=True)
@@ -2202,20 +2207,25 @@ def get_daily_view_counts(request):
         # 전체 기간 통계
         total_stats = DailyViewRecord.objects.filter(
             page_type=page_type,
-            date__range=[start_date, end_date]
+            **date_filter
         ).aggregate(
             total_count=Sum('count'),
             total_unique_ips=Count('ip', distinct=True)
         )
         
-        return JsonResponse({
+        response_data = {
             'success': True,
             'page_type': page_type,
-            'start_date': start_date.isoformat(),
-            'end_date': end_date.isoformat(),
             'daily_data': date_data,
             'total_stats': total_stats
-        })
+        }
+        
+        # 날짜 범위가 지정된 경우에만 start_date, end_date 포함
+        if start_date and end_date:
+            response_data['start_date'] = start_date.isoformat()
+            response_data['end_date'] = end_date.isoformat()
+        
+        return JsonResponse(response_data)
         
     except Exception as e:
         return JsonResponse({

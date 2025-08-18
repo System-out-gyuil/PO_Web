@@ -703,7 +703,7 @@
                         <!-- Date Range Selection -->
                         <div class="card mb-4">
                             <div class="card-body">
-                                <h5 class="card-title mb-3">날짜 범위 선택</h5>
+                                <h5 class="card-title mb-3">날짜 범위 선택 (선택사항)</h5>
                                 <div class="row">
                                     <div class="col-md-4">
                                         <label for="start-date" class="form-label">시작 날짜</label>
@@ -713,11 +713,17 @@
                                         <label for="end-date" class="form-label">종료 날짜</label>
                                         <input type="date" class="form-control" id="end-date">
                                     </div>
-                                    <div class="col-md-4 d-flex align-items-end">
+                                    <div class="col-md-4 d-flex align-items-end gap-2">
                                         <button type="button" class="btn btn-primary" onclick="loadDailyViewCounts()">
-                                            <i class="fas fa-search"></i> 조회
+                                            <i class="fas fa-search"></i> 기간 조회
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary" onclick="loadAllViewCounts()">
+                                            <i class="fas fa-globe"></i> 전체 기간
                                         </button>
                                     </div>
+                                </div>
+                                <div class="form-text mt-2">
+                                    <i class="fas fa-info-circle"></i> 날짜를 선택하지 않으면 전체 기간의 데이터가 표시됩니다.
                                 </div>
                             </div>
                         </div>
@@ -1096,21 +1102,47 @@
         // 페이지 로드 시 기본 날짜 설정
         document.addEventListener('DOMContentLoaded', function() {
             const today = new Date();
-            const thirtyDaysAgo = new Date();
-            thirtyDaysAgo.setDate(today.getDate() - 30);
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(today.getDate() - 7);
             
             document.getElementById('end-date').value = today.toISOString().split('T')[0];
-            document.getElementById('start-date').value = thirtyDaysAgo.toISOString().split('T')[0];
+            document.getElementById('start-date').value = sevenDaysAgo.toISOString().split('T')[0];
             
             // 조회수 타입 변경 시 자동 로드
             document.querySelectorAll('input[name="count-type"]').forEach(radio => {
                 radio.addEventListener('change', function() {
-                    loadDailyViewCounts();
+                    loadAllViewCounts(); // 기본적으로 전체 기간 로드
                 });
             });
+            
+            // 페이지 로드 시 기본 데이터 로드 (전체 기간)
+            loadAllViewCounts();
         });
         
-        // 일별 조회수 로드 함수
+        // 전체 기간 조회수 로드 함수
+        function loadAllViewCounts() {
+            const pageType = document.querySelector('input[name="count-type"]:checked').value;
+            
+            fetch(`/sales/api/daily_view_counts/?page_type=${pageType}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        updateDailyViewChart(data);
+                        updateDailyDetailsTable(data);
+                        updateSummaryCards(data);
+                        // 전체 기간 로드 시 날짜 입력란 비우기
+                        document.getElementById('start-date').value = '';
+                        document.getElementById('end-date').value = '';
+                    } else {
+                        console.error('전체 기간 조회수 로드 실패:', data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('전체 기간 조회수 로드 오류:', error);
+                });
+        }
+        
+        // 일별 조회수 로드 함수 (기간 지정)
         function loadDailyViewCounts() {
             const pageType = document.querySelector('input[name="count-type"]:checked').value;
             const startDate = document.getElementById('start-date').value;
@@ -1192,7 +1224,11 @@
                             title: {
                                 display: true,
                                 text: '총 조회수'
-                            }
+                            },
+                            beginAtZero: true,
+                            grid: {
+                                drawOnChartArea: true,
+                            },
                         },
                         y1: {
                             type: 'linear',
@@ -1202,9 +1238,18 @@
                                 display: true,
                                 text: '고유 IP 수'
                             },
+                            beginAtZero: true,
                             grid: {
                                 drawOnChartArea: false,
                             },
+                            // 왼쪽 Y축과 동일한 스케일 사용
+                            min: 0,
+                            max: Math.max(...counts, ...uniqueIPs),
+                            ticks: {
+                                callback: function(value) {
+                                    return value;
+                                }
+                            }
                         }
                     }
                 }
@@ -1215,6 +1260,24 @@
         function updateDailyDetailsTable(data) {
             const tbody = document.getElementById('daily-details-table-body');
             tbody.innerHTML = '';
+            
+            // 전체 기간 요약 행 추가 (날짜 범위가 지정되지 않은 경우)
+            if (!data.start_date || !data.end_date) {
+                const summaryRow = document.createElement('tr');
+                summaryRow.className = 'table-info';
+                summaryRow.innerHTML = `
+                    <td><strong>전체 기간</strong></td>
+                    <td><strong>${data.total_stats.total_count.toLocaleString()}</strong></td>
+                    <td><strong>${data.total_stats.total_unique_ips.toLocaleString()}</strong></td>
+                    <td><strong>${(data.total_stats.total_count / data.total_stats.total_unique_ips).toFixed(1)}</strong></td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="showDailyDetail('all')">
+                            <i class="fas fa-eye"></i> 전체 상세보기
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(summaryRow);
+            }
             
             const dates = Object.keys(data.daily_data).sort();
             
@@ -1242,7 +1305,13 @@
         function updateSummaryCards(data) {
             document.getElementById('total-count-display').textContent = data.total_stats.total_count.toLocaleString();
             document.getElementById('total-ips-display').textContent = data.total_stats.total_unique_ips.toLocaleString();
-            document.getElementById('date-range-display').textContent = `${data.start_date} ~ ${data.end_date}`;
+            
+            // 날짜 범위 표시
+            if (data.start_date && data.end_date) {
+                document.getElementById('date-range-display').textContent = `${data.start_date} ~ ${data.end_date}`;
+            } else {
+                document.getElementById('date-range-display').textContent = '전체 기간';
+            }
             
             const pageTypeText = data.page_type === 'main' ? '메인 페이지' : '다이어리 페이지';
             document.getElementById('count-type-display').textContent = pageTypeText;
@@ -1252,37 +1321,73 @@
         function showDailyDetail(date) {
             const pageType = document.querySelector('input[name="count-type"]:checked').value;
             
-            fetch(`/sales/api/daily_view_details/?page_type=${pageType}&date=${date}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        document.getElementById('detail-date').textContent = new Date(date).toLocaleDateString('ko-KR');
-                        document.getElementById('detail-page-type').textContent = data.page_type === 'main' ? '메인 페이지' : '다이어리 페이지';
-                        document.getElementById('detail-total-count').textContent = data.stats.total_count.toLocaleString();
-                        document.getElementById('detail-unique-ips').textContent = data.stats.unique_ips.toLocaleString();
-                        
-                        const tbody = document.getElementById('detail-table-body');
-                        tbody.innerHTML = '';
-                        
-                        data.records.forEach(record => {
-                            const row = document.createElement('tr');
-                            row.innerHTML = `
-                                <td>${record.ip}</td>
-                                <td>${record.count.toLocaleString()}</td>
-                                <td>${new Date(record.created_at).toLocaleString('ko-KR')}</td>
-                                <td>${new Date(record.updated_at).toLocaleString('ko-KR')}</td>
-                            `;
-                            tbody.appendChild(row);
-                        });
-                        
-                        new bootstrap.Modal(document.getElementById('dailyDetailModal')).show();
-                    } else {
-                        console.error('상세 정보 로드 실패:', data.error);
-                    }
-                })
-                .catch(error => {
-                    console.error('상세 정보 로드 오류:', error);
-                });
+            // 날짜가 'all'인 경우 전체 기간 상세 정보 표시
+            if (date === 'all') {
+                fetch(`/sales/api/daily_view_details/?page_type=${pageType}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            document.getElementById('detail-date').textContent = '전체 기간';
+                            document.getElementById('detail-page-type').textContent = data.page_type === 'main' ? '메인 페이지' : '다이어리 페이지';
+                            document.getElementById('detail-total-count').textContent = data.stats.total_count.toLocaleString();
+                            document.getElementById('detail-unique-ips').textContent = data.stats.unique_ips.toLocaleString();
+                            
+                            const tbody = document.getElementById('detail-table-body');
+                            tbody.innerHTML = '';
+                            
+                            data.records.forEach(record => {
+                                const row = document.createElement('tr');
+                                row.innerHTML = `
+                                    <td>${record.ip}</td>
+                                    <td>${record.count.toLocaleString()}</td>
+                                    <td>${new Date(record.created_at).toLocaleString('ko-KR')}</td>
+                                    <td>${new Date(record.updated_at).toLocaleString('ko-KR')}</td>
+                                `;
+                                tbody.appendChild(row);
+                            });
+                            
+                            new bootstrap.Modal(document.getElementById('dailyDetailModal')).show();
+                        } else {
+                            console.error('전체 기간 상세 정보 로드 실패:', data.error);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('전체 기간 상세 정보 로드 오류:', error);
+                    });
+            } else {
+                // 특정 날짜 상세 정보 표시
+                fetch(`/sales/api/daily_view_details/?page_type=${pageType}&date=${date}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            document.getElementById('detail-date').textContent = new Date(date).toLocaleDateString('ko-KR');
+                            document.getElementById('detail-page-type').textContent = data.page_type === 'main' ? '메인 페이지' : '다이어리 페이지';
+                            document.getElementById('detail-total-count').textContent = data.stats.total_count.toLocaleString();
+                            document.getElementById('detail-unique-ips').textContent = data.stats.unique_ips.toLocaleString();
+                            
+                            const tbody = document.getElementById('detail-table-body');
+                            tbody.innerHTML = '';
+                            
+                            data.records.forEach(record => {
+                                const row = document.createElement('tr');
+                                row.innerHTML = `
+                                    <td>${record.ip}</td>
+                                    <td>${record.count.toLocaleString()}</td>
+                                    <td>${new Date(record.created_at).toLocaleString('ko-KR')}</td>
+                                    <td>${new Date(record.updated_at).toLocaleString('ko-KR')}</td>
+                                `;
+                                tbody.appendChild(row);
+                            });
+                            
+                            new bootstrap.Modal(document.getElementById('dailyDetailModal')).show();
+                        } else {
+                            console.error('상세 정보 로드 실패:', data.error);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('상세 정보 로드 오류:', error);
+                    });
+            }
         }
     </script>
 </body>

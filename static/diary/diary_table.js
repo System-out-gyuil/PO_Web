@@ -833,6 +833,55 @@ function processDropdownOptions(options, value, cell) {
               }
           }, 50);
           
+      } else if (field === '지원사업') {
+          // 지원사업 필드 특별 처리 - 알림이 있을 때 느낌표 표시
+          try {
+              let supportData;
+              let hasAlerts = false;
+              
+              if (typeof value === 'string') {
+                  // 기존 문자열 형태 (하위 호환성)
+                  supportData = { pblanc_ids: value.split(',').filter(id => id.trim()) };
+              } else if (typeof value === 'object' && value !== null) {
+                  // dict 형태
+                  supportData = value;
+                  hasAlerts = supportData.알림 && supportData.알림.length > 0;
+              } else {
+                  supportData = { pblanc_ids: [] };
+              }
+              
+              const pblancIds = supportData.pblanc_ids || [];
+              let displayText = '';
+              
+              if (pblancIds.length > 0) {
+                  displayText = `저장된 공고: ${pblancIds.length}개`;
+                  if (hasAlerts) {
+                      displayText += ` (새 공고: ${supportData.알림.length}개)`;
+                  }
+              } else {
+                  displayText = '저장된 공고 없음';
+              }
+              
+              // 알림이 있으면 느낌표 아이콘 추가
+              if (hasAlerts) {
+                  cell.innerHTML = `
+                      <div style="display: flex; align-items: center; gap: 5px;">
+                          <span>${displayText}</span>
+                          <span style="color: #dc3545; font-size: 16px; cursor: pointer;" title="새로 추가된 공고가 있습니다">⚠️</span>
+                      </div>
+                  `;
+              } else {
+                  cell.textContent = displayText;
+              }
+              
+              cell.setAttribute('data-value', JSON.stringify(supportData));
+              
+          } catch (e) {
+              console.error('지원사업 필드 처리 오류:', e);
+              cell.textContent = value || '';
+              cell.setAttribute('data-value', value);
+          }
+          
       } else {
           // 드롭다운 필드인지 확인
           const dropdownFields = (window.ATTR_FIELDS || [])
@@ -2596,6 +2645,13 @@ function processDropdownOptions(options, value, cell) {
       // setTimeout(() => {
       //     cleanupExistingData();
       // }, 1000);
+      
+      // 지원사업 필드의 알림 표시 처리
+      setTimeout(() => {
+          if (typeof window.processSupportBusinessAlerts === 'function') {
+              window.processSupportBusinessAlerts();
+          }
+      }, 500);
   });
 
   // === 다중선택 드롭다운 셀을 옵션명 pill로 변환하는 함수 ===

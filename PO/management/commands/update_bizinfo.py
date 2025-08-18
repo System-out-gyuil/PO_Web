@@ -638,6 +638,13 @@ class Command(BaseCommand):
                             print(f"    기존 값 파싱 오류: {e}")
                             # 기존 값이 잘못된 형태인 경우 빈 알림으로 시작
                             support_data['알림'] = []
+                    else:
+                        # 첫 번째 실행인 경우, 처음 3개 공고를 알림으로 표시
+                        if len(pblanc_ids) > 0:
+                            support_data['알림'] = pblanc_ids[:3]
+                            print(f"    첫 번째 실행 - 처음 3개 공고를 알림으로 설정: {support_data['알림']}")
+                    
+                    print(f"    최종 support_data: {support_data}")
                     
                     # AttributeValue 업데이트 또는 생성
                     try:
