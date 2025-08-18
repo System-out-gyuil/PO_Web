@@ -16,7 +16,7 @@ from .diary_board import diary_board, get_announcements, get_announcement_detail
 from .main_views import CompanyInfoView, PersonalInfoView, TermsOfServiceView
 from .session_handlers import cleanup_session_cache_api, get_active_sessions_api
 from .board_views import board_list_view, board_list_api, board_create, board_detail_view, board_file_upload, board_file_preview, board_file_download, board_detail_api, board_edit
-from .funding_views import get_funding_recommendation, get_recommended_notices, update_debt_field, save_debt_details, update_expected_loans, update_loan_amount, get_debt_details
+from .funding_views import get_funding_recommendation, get_recommended_notices, update_debt_field, save_debt_details, update_expected_loans, update_loan_amount, get_debt_details, get_biz_recommendations, get_saved_biz_recommendations, save_biz_recommendations
 from .order import reorder_entries, save_column_order, update_detail_sort_order
 from .hwp_convert import convert_hwp_to_pdf_board, convert_hwp_to_pdf
 from .ai_class import ai_class
@@ -93,6 +93,9 @@ urlpatterns = [
     path('save_debt_details/', save_debt_details, name='save_debt_details'),
     path('get_funding_recommendation/', get_funding_recommendation, name='get_funding_recommendation'),
     path('get_recommended_notices/', get_recommended_notices, name='get_recommended_notices'),
+    path('get_biz_recommendations/', get_biz_recommendations, name='get_biz_recommendations'),
+    path('get_saved_biz_recommendations/', get_saved_biz_recommendations, name='get_saved_biz_recommendations'),
+    path('save_biz_recommendations/', save_biz_recommendations, name='save_biz_recommendations'),
     path('get_row_details/<int:row_id>/', views.get_row_details, name='get_row_details'),
     path('update_detail_sort_order/', update_detail_sort_order, name='update_detail_sort_order'),
     path('update_audio_text_notes/', update_audio_text_notes, name='update_audio_text_notes'),
@@ -210,4 +213,8 @@ urlpatterns = [
 
     # 기업마당 공고
     path('bizinfo/', views.bizinfo, name='bizinfo'),
+    
+    # 일별 조회수 관련 API
+    path('api/daily_view_counts/', views.get_daily_view_counts, name='daily_view_counts'),
+    path('api/daily_view_details/', views.get_daily_view_details, name='daily_view_details'),
 ] 

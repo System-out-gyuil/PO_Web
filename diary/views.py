@@ -9,7 +9,7 @@ from django.conf import settings
 from .models import (
     DiaryEntry, Category, Region, SalesStatus,
     Attribute, AttributeValue, User, DropdownAttribute, Row, 
-    AttributeType, UserAlarm, Diary_diary_count
+    AttributeType, UserAlarm, Diary_diary_count, Diary_main_count, DailyViewRecord
 )
 from board.models import BizInfo
 from main.models import BizTop
@@ -26,6 +26,7 @@ import subprocess
 from datetime import datetime
 from types import SimpleNamespace
 import boto3
+from django.db.models import Sum, Count
 
 # 분리된 모듈들에서 함수들 import
 from .attribute_handlers import filter_attributes_by_status
@@ -155,6 +156,9 @@ def diary_list(request):
     
     # IP 카운트 업데이트
     try:
+        current_date = timezone.now().date()
+        
+        # 기존 IP 카운트 업데이트
         ip_count, created = Diary_diary_count.objects.get_or_create(
             ip=ip,
             defaults={'count': 1}
@@ -163,6 +167,18 @@ def diary_list(request):
             ip_count.count += 1
             ip_count.updated_at = timezone.now()
             ip_count.save()
+        
+        # 일별 상세 기록 추가
+        daily_record, created = DailyViewRecord.objects.get_or_create(
+            ip=ip,
+            date=current_date,
+            page_type='diary',
+            defaults={'count': 1}
+        )
+        if not created:
+            daily_record.count += 1
+            daily_record.save()
+            
     except Exception as e:
         # 에러 발생 시 로그 기록 (선택사항)
         print(f"IP 카운트 업데이트 중 오류 발생: {e}")
@@ -2148,6 +2164,112 @@ def mark_notification_read(request, notification_id):
         return JsonResponse({'success': False, 'message': '알림을 찾을 수 없습니다.'})
     except Exception as e:
         return JsonResponse({'success': False, 'message': f'알림 상태 변경 중 오류가 발생했습니다: {str(e)}'})
+
+@require_GET
+def get_daily_view_counts(request):
+    """일별 조회수 통계를 반환하는 API"""
+    try:
+        page_type = request.GET.get('page_type', 'diary')  # main 또는 diary
+        start_date = request.GET.get('start_date')
+        end_date = request.GET.get('end_date')
+        
+        # 날짜 범위 설정
+        if start_date and end_date:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+        else:
+            # 기본값: 최근 30일
+            end_date = timezone.now().date()
+            start_date = end_date - timedelta(days=29)
+        
+        # 일별 조회수 집계
+        daily_counts = DailyViewRecord.objects.filter(
+            page_type=page_type,
+            date__range=[start_date, end_date]
+        ).values('date').annotate(
+            total_count=Sum('count'),
+            unique_ips=Count('ip', distinct=True)
+        ).order_by('date')
+        
+        # 날짜별로 데이터 구성
+        date_data = {}
+        for record in daily_counts:
+            date_data[record['date'].isoformat()] = {
+                'total_count': record['total_count'],
+                'unique_ips': record['unique_ips']
+            }
+        
+        # 전체 기간 통계
+        total_stats = DailyViewRecord.objects.filter(
+            page_type=page_type,
+            date__range=[start_date, end_date]
+        ).aggregate(
+            total_count=Sum('count'),
+            total_unique_ips=Count('ip', distinct=True)
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'page_type': page_type,
+            'start_date': start_date.isoformat(),
+            'end_date': end_date.isoformat(),
+            'daily_data': date_data,
+            'total_stats': total_stats
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })
+
+
+@require_GET
+def get_daily_view_details(request):
+    """특정 날짜의 상세 조회수 정보를 반환하는 API"""
+    try:
+        page_type = request.GET.get('page_type', 'diary')
+        date_str = request.GET.get('date')
+        
+        if not date_str:
+            return JsonResponse({'success': False, 'error': '날짜가 필요합니다.'})
+        
+        target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        
+        # 해당 날짜의 상세 정보
+        daily_records = DailyViewRecord.objects.filter(
+            page_type=page_type,
+            date=target_date
+        ).order_by('-count', 'ip')
+        
+        records_data = []
+        for record in daily_records:
+            records_data.append({
+                'ip': record.ip,
+                'count': record.count,
+                'created_at': record.created_at.isoformat(),
+                'updated_at': record.updated_at.isoformat()
+            })
+        
+        # 해당 날짜 통계
+        date_stats = daily_records.aggregate(
+            total_count=Sum('count'),
+            unique_ips=Count('ip', distinct=True)
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'date': date_str,
+            'page_type': page_type,
+            'records': records_data,
+            'stats': date_stats
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })
 
 
 

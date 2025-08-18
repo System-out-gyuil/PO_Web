@@ -968,3 +968,404 @@ def build_detail_region_exclude_query(region, detail_region):
         
         # 해당 지역의 상세지역 정보가 없으면 빈 쿼리 반환
         return Q()
+
+@csrf_exempt
+def get_biz_recommendations(request):
+    """
+    지원사업 속성에 따른 BizInfo 추천 데이터 조회
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': '잘못된 요청 방법입니다.'})
+    
+    try:
+        data = json.loads(request.body)
+        row_id = data.get('row_id')
+        
+        if not row_id:
+            return JsonResponse({'success': False, 'error': 'row_id가 누락되었습니다.'})
+        
+        # 사용자 정보 가져오기
+        try:
+            user_id = request.session.get('diary_member_id')
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '사용자를 찾을 수 없습니다.'})
+        
+        # Row 객체 가져오기
+        try:
+            row = Row.objects.get(id=row_id, user=user)
+        except Row.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '해당 행을 찾을 수 없습니다.'})
+        
+        # 지원사업 속성 값들 가져오기
+        biz_region = _get_attribute_value(user, row, '지역')
+        biz_region_detail = _get_attribute_value(user, row, '상세지역')
+        biz_industry = _get_attribute_value(user, row, '업종')
+        biz_revenue = _get_attribute_value(user, row, '매출')
+        biz_business_months = _get_attribute_value(user, row, '개업년월')
+        biz_employees = _get_attribute_value(user, row, '직원수')
+        
+        # 매출액 카테고리 분류
+        
+
+
+        if biz_revenue:
+            revenue_num = _parse_number(biz_revenue, 0)
+            if revenue_num == 0:
+                biz_revenue = "매출 없음"
+            elif revenue_num <= 100000000:
+                biz_revenue = "1억 이하"
+            elif revenue_num <= 500000000:
+                biz_revenue = "1~5억"
+            elif revenue_num <= 1000000000:
+                biz_revenue = "5~10억"
+            elif revenue_num <= 3000000000:
+                biz_revenue = "10~30억"
+            else:
+                biz_revenue = "30억 이상"
+        else:
+            biz_revenue = "무관"
+        
+        # 업력 계산
+        if biz_business_months:
+            months = _calculate_business_months(biz_business_months)
+            if months == 0:
+                biz_business_months = "사업자 등록 전"
+            elif months < 36:
+                biz_business_months = "3년 미만"
+            else:
+                biz_business_months = "3년 이상"
+        else:
+            biz_business_months = "무관"
+
+
+        
+        # 직원수 카테고리
+        if biz_employees:
+            emp_num = _parse_number(biz_employees, 0)
+            if emp_num == 0:
+                biz_employees = "직원 없음"
+            elif emp_num <= 4:
+                biz_employees = "1~4인"
+            else:
+                biz_employees = "5인 이상"
+        else:
+            biz_employees = "무관"
+
+        if biz_employees in ["1~4인", "5~9인"] and biz_industry in ["광업", "제조업", "건설업", "운수업"] :
+            biz_employees = "소상공인"
+        elif biz_employees == "1~4인":
+            biz_employees = "소상공인"
+        elif biz_employees in ["10인 이상", "5~9인"]:
+            biz_employees = "중소기업"
+        
+        # 업종이 없으면 무관으로 설정
+        if not biz_industry:
+            biz_industry = "무관"
+
+        print(f'biz_region: {biz_region}')
+        print(f'biz_region_detail: {biz_region_detail}')
+        print(f'biz_industry: {biz_industry}')
+        print(f'biz_revenue: {biz_revenue}')
+        print(f'biz_business_months: {biz_business_months}')
+        print(f'biz_employees: {biz_employees}')
+        
+        # region이 None이 아닐 경우에만 지역 조건 포함
+        if biz_region:
+            # 상세지역이 정확히 포함된 데이터만 검색
+            data_with_detail = BizInfo.objects.filter(
+                (Q(region__contains=biz_region) | Q(region__contains="전국") | Q(hashtag__contains=biz_region)) &
+                (Q(possible_industry__contains=biz_industry) | Q(possible_industry__contains='무관')) &
+                (Q(revenue__contains=biz_revenue) | Q(revenue__contains='무관')) &
+                (Q(business_period__contains=biz_business_months) | Q(business_period__contains='무관')) &
+                (Q(target__contains=biz_employees) | Q(target__contains='무관')) &
+                (
+                    # 상세지역이 포함된 경우만
+                    Q(noti_summary__contains=biz_region_detail) | 
+                    Q(hashtag__contains=biz_region_detail) | 
+                    Q(content__contains=biz_region_detail) | 
+                    Q(title__contains=biz_region_detail) |
+                    Q(region__contains=biz_region_detail)
+                )
+            )
+            
+            # 상세지역이 포함된 데이터가 10개 미만인 경우, 포함되지 않은 데이터도 추가
+            if data_with_detail.count() < 10:
+                needed_count = 10 - data_with_detail.count()
+                additional_data = BizInfo.objects.filter(
+                    (Q(region__contains=biz_region) | Q(region__contains="전국") | Q(hashtag__contains=biz_region)) &
+                    (Q(possible_industry__contains=biz_industry) | Q(possible_industry__contains='무관')) &
+                    (Q(revenue__contains=biz_revenue) | Q(revenue__contains='무관')) &
+                    (Q(business_period__contains=biz_business_months) | Q(business_period__contains='무관')) &
+                    (Q(target__contains=biz_employees) | Q(target__contains='무관'))
+                ).exclude(
+                    # detail_region이 포함된 데이터 제외
+                    Q(noti_summary__contains=biz_region_detail) | 
+                    Q(hashtag__contains=biz_region_detail) | 
+                    Q(content__contains=biz_region_detail) | 
+                    Q(title__contains=biz_region_detail) |
+                    Q(region__contains=biz_region_detail)
+                ).exclude(
+                    build_detail_region_exclude_query(biz_region, biz_region_detail)
+                )[:needed_count]
+                
+                # 두 결과를 합치고 중복 제거
+                combined_data = list(data_with_detail) + list(additional_data)
+                # pblanc_id 기준으로 중복 제거
+                seen_ids = set()
+                unique_data = []
+                for item in combined_data:
+                    if item.pblanc_id not in seen_ids:
+                        seen_ids.add(item.pblanc_id)
+                        unique_data.append(item)
+                
+                final_data = unique_data[:10]
+            else:
+                final_data = list(data_with_detail[:10])
+
+        else:
+            # 지역이 없는 경우 기본 조건으로만 검색
+            final_data = list(BizInfo.objects.filter(
+                (Q(possible_industry__contains=biz_industry) | Q(possible_industry__contains='무관')) &
+                (Q(revenue__contains=biz_revenue) | Q(revenue__contains='무관')) &
+                (Q(business_period__contains=biz_business_months) | Q(business_period__contains='무관')) &
+                (Q(target__contains=biz_employees) | Q(target__contains='무관'))
+            )[:10])
+        
+
+        # 결과 데이터 포맷팅
+        result_data = []
+        pblanc_ids = []
+        for biz in final_data:
+            print(f'biz.pblanc_id: {biz.pblanc_id}')
+            pblanc_ids.append(biz.pblanc_id)
+            result_data.append({
+                'pblanc_id': biz.pblanc_id,
+                'title': biz.title,
+                'region': biz.region,
+                'possible_industry': biz.possible_industry,
+                'revenue': biz.revenue,
+                'business_period': biz.business_period,
+                'target': biz.target,
+                'noti_summary': biz.noti_summary,
+                'content': biz.content,
+                'hashtag': biz.hashtag
+            })
+        
+        # 자동으로 지원사업 속성에 저장
+        try:
+            # 지원사업 속성 찾기 (없으면 생성)
+            try:
+                recommend_attr = Attribute.objects.get(name='지원사업', user=user)
+                logger.info(f"기존 지원사업 속성 찾음: {recommend_attr}")
+            except Attribute.DoesNotExist:
+                logger.info("지원사업 속성이 없어서 새로 생성합니다.")
+                # recommend_biz 타입의 AttributeType 가져오기 또는 생성
+                recommend_biz_type, _ = AttributeType.objects.get_or_create(name='recommend_biz')
+                recommend_attr = Attribute.objects.create(
+                    name='지원사업',
+                    attributeType=recommend_biz_type,
+                    user=user
+                )
+                logger.info(f"새로 생성된 지원사업 속성: {recommend_attr}")
+            
+            # 쉼표로 구분된 문자열로 변환
+            pblanc_ids_str = ','.join(pblanc_ids)
+            logger.info(f"자동 저장할 pblanc_ids_str: {pblanc_ids_str}")
+            
+            # AttributeValue 업데이트 또는 생성
+            try:
+                attr_value = AttributeValue.objects.get(attribute=recommend_attr, row=row)
+                logger.info(f"기존 AttributeValue 찾음: {attr_value}")
+                attr_value.value = pblanc_ids_str
+                attr_value.save()
+                logger.info(f"AttributeValue 업데이트 완료: {attr_value.value}")
+            except AttributeValue.DoesNotExist:
+                logger.info("AttributeValue가 없어서 새로 생성합니다.")
+                new_attr_value = AttributeValue.objects.create(
+                    attribute=recommend_attr,
+                    row=row,
+                    value=pblanc_ids_str
+                )
+                logger.info(f"새로 생성된 AttributeValue: {new_attr_value}")
+            
+            logger.info(f"=== 자동 저장 완료: {len(pblanc_ids)}개의 지원사업 ID 저장됨 ===")
+            
+        except Exception as e:
+            logger.error(f"자동 저장 중 오류 발생: {str(e)}")
+            logger.error(traceback.format_exc())
+        
+        return JsonResponse({
+            'success': True,
+            'data': result_data,
+            'count': len(result_data),
+            'message': f'{len(result_data)}개의 추천 지원사업이 자동으로 저장되었습니다.'
+        })
+        
+    except Exception as e:
+        logger.error(f"BizInfo 추천 조회 중 오류 발생: {str(e)}")
+        logger.error(traceback.format_exc())
+        return JsonResponse({'success': False, 'error': f'추천 조회 중 오류가 발생했습니다: {str(e)}'})
+
+@csrf_exempt
+def get_saved_biz_recommendations(request):
+    """
+    저장된 추천 지원사업 ID로 BizInfo 데이터 조회
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': '잘못된 요청 방법입니다.'})
+    
+    try:
+        data = json.loads(request.body)
+        row_id = data.get('row_id')
+        
+        if not row_id:
+            return JsonResponse({'success': False, 'error': 'row_id가 누락되었습니다.'})
+        
+        # 사용자 정보 가져오기
+        try:
+            user_id = request.session.get('diary_member_id')
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '사용자를 찾을 수 없습니다.'})
+        
+        # Row 객체 가져오기
+        try:
+            row = Row.objects.get(id=row_id, user=user)
+        except Row.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '해당 행을 찾을 수 없습니다.'})
+        
+        # 저장된 추천 지원사업 ID 가져오기
+        saved_recommendations = _get_attribute_value(user, row, '지원사업')
+        
+        if not saved_recommendations:
+            return JsonResponse({
+                'success': False, 
+                'error': '저장된 추천 지원사업이 없습니다. 먼저 추천받기를 진행해주세요.'
+            })
+        
+        try:
+            # 쉼표로 구분된 ID들을 파싱
+            pblanc_ids = [id.strip() for id in saved_recommendations.split(',') if id.strip()]
+            
+            # BizInfo에서 해당 ID들로 데이터 조회
+            biz_data = BizInfo.objects.filter(pblanc_id__in=pblanc_ids)
+            
+            result_data = []
+            for biz in biz_data:
+                result_data.append({
+                    'pblanc_id': biz.pblanc_id,
+                    'title': biz.title,
+                    'region': biz.region,
+                    'possible_industry': biz.possible_industry,
+                    'revenue': biz.revenue,
+                    'business_period': biz.business_period,
+                    'target': biz.target,
+                    'noti_summary': biz.noti_summary,
+                    'content': biz.content,
+                    'hashtag': biz.hashtag
+                })
+            
+            return JsonResponse({
+                'success': True,
+                'data': result_data,
+                'count': len(result_data)
+            })
+            
+        except Exception as e:
+            logger.error(f"저장된 BizInfo 조회 중 오류 발생: {str(e)}")
+            return JsonResponse({'success': False, 'error': f'저장된 데이터 조회 중 오류가 발생했습니다: {str(e)}'})
+        
+    except Exception as e:
+        logger.error(f"저장된 추천 지원사업 조회 중 오류 발생: {str(e)}")
+        logger.error(traceback.format_exc())
+        return JsonResponse({'success': False, 'error': f'저장된 추천 지원사업 조회 중 오류가 발생했습니다: {str(e)}'})
+
+@csrf_exempt
+def save_biz_recommendations(request):
+    """
+    추천받은 지원사업 ID들을 저장
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': '잘못된 요청 방법입니다.'})
+    
+    try:
+        data = json.loads(request.body)
+        row_id = data.get('row_id')
+        pblanc_ids = data.get('pblanc_ids', [])
+        
+        logger.info(f"=== save_biz_recommendations 호출됨 ===")
+        logger.info(f"row_id: {row_id}")
+        logger.info(f"pblanc_ids: {pblanc_ids}")
+        logger.info(f"request.body: {request.body}")
+        
+        if not row_id:
+            return JsonResponse({'success': False, 'error': 'row_id가 누락되었습니다.'})
+        
+        if not pblanc_ids:
+            return JsonResponse({'success': False, 'error': '저장할 지원사업 ID가 없습니다.'})
+        
+        # 사용자 정보 가져오기
+        try:
+            user_id = request.session.get('diary_member_id')
+            logger.info(f"user_id: {user_id}")
+            user = User.objects.get(id=user_id)
+            logger.info(f"user: {user}")
+        except User.DoesNotExist:
+            logger.error(f"사용자를 찾을 수 없음: {user_id}")
+            return JsonResponse({'success': False, 'error': '사용자를 찾을 수 없습니다.'})
+        
+        # Row 객체 가져오기
+        try:
+            row = Row.objects.get(id=row_id, user=user)
+            logger.info(f"row: {row}")
+        except Row.DoesNotExist:
+            logger.error(f"행을 찾을 수 없음: {row_id}")
+            return JsonResponse({'success': False, 'error': '해당 행을 찾을 수 없습니다.'})
+        
+        # 지원사업 속성 찾기 (없으면 생성)
+        try:
+            recommend_attr = Attribute.objects.get(name='지원사업', user=user)
+            logger.info(f"기존 지원사업 속성 찾음: {recommend_attr}")
+        except Attribute.DoesNotExist:
+            logger.info("지원사업 속성이 없어서 새로 생성합니다.")
+            # text 타입의 AttributeType 가져오기 또는 생성
+            text_type, _ = AttributeType.objects.get_or_create(name='recommend_biz')
+            recommend_attr = Attribute.objects.create(
+                name='지원사업',
+                attributeType=text_type,
+                user=user
+            )
+            logger.info(f"새로 생성된 지원사업 속성: {recommend_attr}")
+        
+        # 쉼표로 구분된 문자열로 변환
+        pblanc_ids_str = ','.join(pblanc_ids)
+        logger.info(f"저장할 pblanc_ids_str: {pblanc_ids_str}")
+        
+        # AttributeValue 업데이트 또는 생성
+        try:
+            attr_value = AttributeValue.objects.get(attribute=recommend_attr, row=row)
+            logger.info(f"기존 AttributeValue 찾음: {attr_value}")
+            attr_value.value = pblanc_ids_str
+            attr_value.save()
+            logger.info(f"AttributeValue 업데이트 완료: {attr_value.value}")
+        except AttributeValue.DoesNotExist:
+            logger.info("AttributeValue가 없어서 새로 생성합니다.")
+            new_attr_value = AttributeValue.objects.create(
+                attribute=recommend_attr,
+                row=row,
+                value=pblanc_ids_str
+            )
+            logger.info(f"새로 생성된 AttributeValue: {new_attr_value}")
+        
+        logger.info(f"=== 저장 완료: {len(pblanc_ids)}개의 지원사업 ID 저장됨 ===")
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'{len(pblanc_ids)}개의 추천 지원사업이 저장되었습니다.'
+        })
+        
+    except Exception as e:
+        logger.error(f"추천 지원사업 저장 중 오류 발생: {str(e)}")
+        logger.error(traceback.format_exc())
+        return JsonResponse({'success': False, 'error': f'추천 지원사업 저장 중 오류가 발생했습니다: {str(e)}'})

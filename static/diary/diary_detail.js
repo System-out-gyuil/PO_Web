@@ -647,7 +647,20 @@ function generateDetailModalContent(attributes, rowData, rowId) {
             
             const displayText = selectedValues.length > 0 ? selectedValues.join(', ') : '선택';
             inputHtml = `<button type="button" class="add-btn" style="width:100%;background:#f8f9fa;color:#333;border:1px solid #eee;" onclick="openDetailDropdown('${rowId}','${attr.name}',this)">${displayText}</button>`;
-        } else {
+        } else if (attr.type === 'recommend_biz') {
+            inputHtml = `
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <button type="button" class="btn btn-primary" onclick="openRecommendModal('${rowId}', 'view')" style="background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
+                        추천 지원사업 공고 보기
+                    </button>
+                    <button type="button" class="btn btn-success" onclick="openRecommendModal('${rowId}', 'recommend')" style="background: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
+                        추천받기
+                    </button>
+                </div>
+            `;
+        }
+        
+        else {
             // 기본 텍스트 필드
             if (attr.name === '신용점수') {
                 // 신용점수 필드는 실시간 검증 추가
@@ -4179,4 +4192,262 @@ async function checkKanbanAndRefresh(fieldName) {
             refreshKanban();
         }
     }
+}
+
+// 추천 지원사업 모달 관련 함수들
+function openRecommendModal(rowId, type) {
+    if (type === 'recommend') {
+        // 추천받기 - 새로운 데이터 조회
+        getBizRecommendations(rowId);
+    } else {
+        // 저장된 데이터 보기
+        getSavedBizRecommendations(rowId);
+    }
+}
+
+function getBizRecommendations(rowId) {
+    // 로딩 표시
+    showRecommendModal('추천 지원사업', '데이터를 조회하고 있습니다...', true);
+    
+    fetch('/sales/get_biz_recommendations/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            row_id: rowId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showRecommendModal('추천 지원사업', '', false, data.data, rowId, 'recommend');
+        } else {
+            showRecommendModal('오류', data.error || '추천 데이터를 가져오는데 실패했습니다.', false);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showRecommendModal('오류', '네트워크 오류가 발생했습니다.', false);
+    });
+}
+
+function getSavedBizRecommendations(rowId) {
+    // 로딩 표시
+    showRecommendModal('저장된 추천 지원사업', '데이터를 조회하고 있습니다...', true);
+    
+    fetch('/sales/get_saved_biz_recommendations/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            row_id: rowId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showRecommendModal('저장된 추천 지원사업', '', false, data.data, rowId, 'view');
+        } else {
+            showRecommendModal('오류', data.error || '저장된 데이터를 가져오는데 실패했습니다.', false);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showRecommendModal('오류', '네트워크 오류가 발생했습니다.', false);
+    });
+}
+
+function showRecommendModal(title, message, isLoading, data = null, rowId = null, type = null) {
+    // 기존 모달이 있으면 제거
+    const existingModal = document.getElementById('recommendModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    let modalContent = '';
+    
+    if (isLoading) {
+        modalContent = `
+            <div style="text-align: center; padding: 40px;">
+                <div class="spinner-border" role="status" style="width: 3rem; height: 3rem;">
+                    <span class="sr-only">Loading...</span>
+                </div>
+                <p style="margin-top: 20px; color: #666;">${message}</p>
+            </div>
+        `;
+    } else if (data && data.length > 0) {
+        modalContent = `
+            <div style="max-height: 70vh; overflow-y: auto;">
+                <div style="display: grid; gap: 15px;">
+                    ${data.map((biz, index) => `
+                        <div class="biz-card" style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; background: #fafafa;">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; cursor: pointer;" onclick="window.open('https://namatji.com/board/detail/${biz.pblanc_id}/', '_blank')">
+                                <h6 style="margin: 0; color: #007bff; font-weight: 600;" >${biz.title || '제목 없음'}</h6>
+                            </div>
+                            <div style="display: none; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 13px;">
+                                <div><strong>지역:</strong> ${biz.region || '정보 없음'}</div>
+                                <div><strong>업종:</strong> ${biz.possible_industry || '정보 없음'}</div>
+                                <div><strong>매출:</strong> ${biz.revenue || '정보 없음'}</div>
+                                <div><strong>업력:</strong> ${biz.business_period || '정보 없음'}</div>
+                                <div><strong>대상:</strong> ${biz.target || '정보 없음'}</div>
+                            </div>
+                            ${biz.noti_summary ? `
+                                <div style="margin-top: 10px; padding: 10px; background: white; border-radius: 4px; border-left: 3px solid #007bff;">
+                                    <strong>요약:</strong> ${biz.noti_summary}
+                                </div>
+                            ` : ''}
+                            ${biz.hashtag ? `
+                                <div style="margin-top: 8px;">
+                                    <span style="color: #666; font-size: 12px;">태그: ${biz.hashtag}</span>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `).join('')}
+                </div>
+                ${type === 'recommend' ? `
+                    <div style="margin-top: 20px; text-align: center;">
+                        <button type="button" class="btn btn-primary" onclick="closeRecommendModal()" 
+                                style="background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">
+                            확인
+                        </button>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    } else {
+        modalContent = `
+            <div style="text-align: center; padding: 40px;">
+                <p style="color: #666; font-size: 16px;">${message}</p>
+            </div>
+        `;
+    }
+    
+    // 모달 HTML 생성
+    const modalHTML = `
+        <div id="recommendModal" class="modal" style="display: flex; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center;">
+            <div class="modal-content" style="background-color: #fefefe; margin: auto; padding: 0; border-radius: 8px; width: 90%; max-width: 800px; max-height: 90vh; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                <div class="modal-header" style="padding: 20px; border-bottom: 1px solid #e0e0e0; display: flex; justify-content: space-between; align-items: center;">
+                    <h4 style="margin: 0; color: #333;">${title}</h4>
+                    <span class="close" onclick="closeRecommendModal()" style="color: #aaa; font-size: 28px; font-weight: bold; cursor: pointer; line-height: 1;">&times;</span>
+                </div>
+                <div class="modal-body" style="padding: 20px;">
+                    ${modalContent}
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // 모달을 body에 추가
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // 모달 표시
+    document.getElementById('recommendModal').style.display = 'flex';
+}
+
+function closeRecommendModal() {
+    const modal = document.getElementById('recommendModal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+function saveSelectedRecommendations(rowId) {
+    const selectedCheckboxes = document.querySelectorAll('#recommendModal input[type="checkbox"]:checked');
+    const selectedIds = Array.from(selectedCheckboxes).map(cb => cb.value);
+    
+    if (selectedIds.length === 0) {
+        alert('저장할 지원사업을 선택해주세요.');
+        return;
+    }
+    
+    // 로딩 표시
+    const modalBody = document.querySelector('#recommendModal .modal-body');
+    modalBody.innerHTML = `
+        <div style="text-align: center; padding: 40px;">
+            <div class="spinner-border" role="status" style="width: 3rem; height: 3rem;">
+                <span class="sr-only">Loading...</span>
+            </div>
+            <p style="margin-top: 20px; color: #666;">선택한 지원사업을 저장하고 있습니다...</p>
+        </div>
+    `;
+    
+    fetch('/sales/save_biz_recommendations/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            row_id: rowId,
+            pblanc_ids: selectedIds
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            modalBody.innerHTML = `
+                <div style="text-align: center; padding: 40px;">
+                    <div style="color: #28a745; font-size: 48px; margin-bottom: 20px;">✓</div>
+                    <h5 style="color: #333; margin-bottom: 15px;">저장 완료!</h5>
+                    <p style="color: #666;">${data.message}</p>
+                    <div style="margin-top: 20px;">
+                        <button type="button" class="btn btn-primary" onclick="closeRecommendModal()" 
+                                style="background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">
+                            확인
+                        </button>
+                    </div>
+                </div>
+            `;
+        } else {
+            modalBody.innerHTML = `
+                <div style="text-align: center; padding: 40px;">
+                    <div style="color: #dc3545; font-size: 48px; margin-bottom: 20px;">✗</div>
+                    <h5 style="color: #333; margin-bottom: 15px;">저장 실패</h5>
+                    <p style="color: #666;">${data.error || '알 수 없는 오류가 발생했습니다.'}</p>
+                    <div style="margin-top: 20px;">
+                        <button type="button" class="btn btn-secondary" onclick="closeRecommendModal()" 
+                                style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">
+                            닫기
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        modalBody.innerHTML = `
+            <div style="text-align: center; padding: 40px;">
+                <div style="color: #dc3545; font-size: 48px; margin-bottom: 20px;">✗</div>
+                <h5 style="color: #333; margin-bottom: 15px;">네트워크 오류</h5>
+                <p style="color: #666;">저장 중 네트워크 오류가 발생했습니다.</p>
+                <div style="margin-top: 20px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeRecommendModal()" 
+                            style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">
+                        닫기
+                    </button>
+                </div>
+            </div>
+        `;
+    });
+}
+
+// CSRF 토큰 가져오기 함수
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
 }

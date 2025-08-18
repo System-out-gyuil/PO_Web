@@ -1,7 +1,8 @@
 from django.shortcuts import render
 from django.views import View
-from .models import User, Diary_main_count
+from .models import User, Diary_main_count, DailyViewRecord
 from django.utils import timezone
+from datetime import date
 
 class DiaryMainView(View):
     def get(self, request):
@@ -14,6 +15,9 @@ class DiaryMainView(View):
         
         # IP 카운트 업데이트
         try:
+            current_date = timezone.now().date()
+            
+            # 기존 IP 카운트 업데이트
             ip_count, created = Diary_main_count.objects.get_or_create(
                 ip=ip,
                 defaults={'count': 1}
@@ -22,6 +26,18 @@ class DiaryMainView(View):
                 ip_count.count += 1
                 ip_count.updated_at = timezone.now()
                 ip_count.save()
+            
+            # 일별 상세 기록 추가
+            daily_record, created = DailyViewRecord.objects.get_or_create(
+                ip=ip,
+                date=current_date,
+                page_type='main',
+                defaults={'count': 1}
+            )
+            if not created:
+                daily_record.count += 1
+                daily_record.save()
+                
         except Exception as e:
             # 에러 발생 시 로그 기록 (선택사항)
             print(f"IP 카운트 업데이트 중 오류 발생: {e}")

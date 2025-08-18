@@ -700,6 +700,104 @@
                             </div>
                         </div>
 
+                        <!-- Date Range Selection -->
+                        <div class="card mb-4">
+                            <div class="card-body">
+                                <h5 class="card-title mb-3">날짜 범위 선택</h5>
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <label for="start-date" class="form-label">시작 날짜</label>
+                                        <input type="date" class="form-control" id="start-date">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="end-date" class="form-label">종료 날짜</label>
+                                        <input type="date" class="form-control" id="end-date">
+                                    </div>
+                                    <div class="col-md-4 d-flex align-items-end">
+                                        <button type="button" class="btn btn-primary" onclick="loadDailyViewCounts()">
+                                            <i class="fas fa-search"></i> 조회
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Daily View Counts Chart -->
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">
+                                    <i class="fas fa-chart-area me-2"></i>일별 조회수 차트
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="dailyViewChart" width="400" height="200"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Summary Cards -->
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <div class="card border-primary">
+                                    <div class="card-body text-center">
+                                        <h5 class="card-title text-primary">
+                                            <i class="fas fa-chart-bar me-2"></i>총 조회수
+                                        </h5>
+                                        <h3 class="text-primary" id="total-count-display">0</h3>
+                                        <p class="text-muted mb-0" id="count-type-display">메인 페이지</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card border-success">
+                                    <div class="card-body text-center">
+                                        <h5 class="card-title text-success">
+                                            <i class="fas fa-globe me-2"></i>총 IP 수
+                                        </h5>
+                                        <h3 class="text-success" id="total-ips-display">0</h3>
+                                        <p class="text-muted mb-0">고유 방문자</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card border-info">
+                                    <div class="card-body text-center">
+                                        <h5 class="card-title text-info">
+                                            <i class="fas fa-calendar me-2"></i>기간
+                                        </h5>
+                                        <h3 class="text-info" id="date-range-display">-</h3>
+                                        <p class="text-muted mb-0">조회 기간</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Daily Details Table -->
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">
+                                    <i class="fas fa-table me-2"></i>일별 상세 조회수
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>날짜</th>
+                                                <th>총 조회수</th>
+                                                <th>고유 IP 수</th>
+                                                <th>평균 조회수/IP</th>
+                                                <th>상세보기</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="daily-details-table-body">
+                                            <!-- JavaScript로 동적 로드 -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Search and Sort Controls -->
                         <div class="card mb-4">
                             <div class="card-body">
@@ -717,32 +815,6 @@
                                             <option value="created_at">오래된순</option>
                                             <option value="ip">IP순</option>
                                         </select>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Summary Cards -->
-                        <div class="row mb-4">
-                            <div class="col-md-6">
-                                <div class="card border-primary">
-                                    <div class="card-body text-center">
-                                        <h5 class="card-title text-primary">
-                                            <i class="fas fa-chart-bar me-2"></i>총 조회수
-                                        </h5>
-                                        <h3 class="text-primary" id="total-count-display">0</h3>
-                                        <p class="text-muted mb-0" id="count-type-display">메인 페이지</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="card border-success">
-                                    <div class="card-body text-center">
-                                        <h5 class="card-title text-success">
-                                            <i class="fas fa-globe me-2"></i>총 IP 수
-                                        </h5>
-                                        <h3 class="text-success" id="total-ips-display">0</h3>
-                                        <p class="text-muted mb-0">고유 방문자</p>
                                     </div>
                                 </div>
                             </div>
@@ -940,34 +1012,278 @@
 
     <!-- 조회수 삭제 확인 모달 -->
     <div class="modal fade" id="countDeleteModal" tabindex="-1">
-        <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">조회수 기록 삭제 확인</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>정말로 이 조회수 기록을 삭제하시겠습니까?</p>
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>주의:</strong> 삭제된 조회수 기록은 복구할 수 없습니다.
+                </div>
+                <div id="count-delete-info">
+                    <!-- 삭제할 조회수 기록 정보가 여기에 표시됩니다 -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" id="confirm-count-delete-btn">
+                    <i class="fas fa-trash"></i> 삭제
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 일별 조회수 상세 정보 모달 -->
+    <div class="modal fade" id="dailyDetailModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">조회수 기록 삭제 확인</h5>
+                    <h5 class="modal-title">일별 조회수 상세 정보</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <p>정말로 이 조회수 기록을 삭제하시겠습니까?</p>
-                    <div class="alert alert-warning">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <strong>주의:</strong> 삭제된 조회수 기록은 복구할 수 없습니다.
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <strong>날짜:</strong> <span id="detail-date"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <strong>페이지 타입:</strong> <span id="detail-page-type"></span>
+                        </div>
                     </div>
-                    <div id="count-delete-info">
-                        <!-- 삭제할 조회수 기록 정보가 여기에 표시됩니다 -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <strong>총 조회수:</strong> <span id="detail-total-count"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <strong>고유 IP 수:</strong> <span id="detail-unique-ips"></span>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>IP 주소</th>
+                                    <th>조회수</th>
+                                    <th>최초 방문</th>
+                                    <th>마지막 방문</th>
+                                </tr>
+                            </thead>
+                            <tbody id="detail-table-body">
+                                <!-- 동적 로드 -->
+                            </tbody>
+                        </table>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-danger" id="confirm-count-delete-btn">
-                        <i class="fas fa-trash"></i> 삭제
-                    </button>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
                 </div>
             </div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="{% static 'diary/diary_admin.js' %}"></script>
     <script src="{% static 'diary/base/base.js' %}"></script>
+    
+    <script>
+        // 일별 조회수 차트 변수
+        let dailyViewChart = null;
+        
+        // 페이지 로드 시 기본 날짜 설정
+        document.addEventListener('DOMContentLoaded', function() {
+            const today = new Date();
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(today.getDate() - 30);
+            
+            document.getElementById('end-date').value = today.toISOString().split('T')[0];
+            document.getElementById('start-date').value = thirtyDaysAgo.toISOString().split('T')[0];
+            
+            // 조회수 타입 변경 시 자동 로드
+            document.querySelectorAll('input[name="count-type"]').forEach(radio => {
+                radio.addEventListener('change', function() {
+                    loadDailyViewCounts();
+                });
+            });
+        });
+        
+        // 일별 조회수 로드 함수
+        function loadDailyViewCounts() {
+            const pageType = document.querySelector('input[name="count-type"]:checked').value;
+            const startDate = document.getElementById('start-date').value;
+            const endDate = document.getElementById('end-date').value;
+            
+            if (!startDate || !endDate) {
+                alert('시작 날짜와 종료 날짜를 모두 선택해주세요.');
+                return;
+            }
+            
+            fetch(`/sales/api/daily_view_counts/?page_type=${pageType}&start_date=${startDate}&end_date=${endDate}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        updateDailyViewChart(data);
+                        updateDailyDetailsTable(data);
+                        updateSummaryCards(data);
+                    } else {
+                        console.error('일별 조회수 로드 실패:', data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('일별 조회수 로드 오류:', error);
+                });
+        }
+        
+        // 일별 조회수 차트 업데이트
+        function updateDailyViewChart(data) {
+            const ctx = document.getElementById('dailyViewChart').getContext('2d');
+            
+            // 기존 차트가 있으면 제거
+            if (dailyViewChart) {
+                dailyViewChart.destroy();
+            }
+            
+            const dates = Object.keys(data.daily_data).sort();
+            const counts = dates.map(date => data.daily_data[date].total_count);
+            const uniqueIPs = dates.map(date => data.daily_data[date].unique_ips);
+            
+            dailyViewChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dates.map(date => new Date(date).toLocaleDateString('ko-KR')),
+                    datasets: [
+                        {
+                            label: '총 조회수',
+                            data: counts,
+                            borderColor: 'rgb(75, 192, 192)',
+                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: '고유 IP 수',
+                            data: uniqueIPs,
+                            borderColor: 'rgb(255, 99, 132)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    scales: {
+                        x: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: '날짜'
+                            }
+                        },
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: '총 조회수'
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: '고유 IP 수'
+                            },
+                            grid: {
+                                drawOnChartArea: false,
+                            },
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 일별 상세 테이블 업데이트
+        function updateDailyDetailsTable(data) {
+            const tbody = document.getElementById('daily-details-table-body');
+            tbody.innerHTML = '';
+            
+            const dates = Object.keys(data.daily_data).sort();
+            
+            dates.forEach(date => {
+                const record = data.daily_data[date];
+                const row = document.createElement('tr');
+                const avgCount = record.unique_ips > 0 ? (record.total_count / record.unique_ips).toFixed(1) : '0';
+                
+                row.innerHTML = `
+                    <td>${new Date(date).toLocaleDateString('ko-KR')}</td>
+                    <td>${record.total_count.toLocaleString()}</td>
+                    <td>${record.unique_ips.toLocaleString()}</td>
+                    <td>${avgCount}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="showDailyDetail('${date}')">
+                            <i class="fas fa-eye"></i> 상세보기
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+        
+        // 요약 카드 업데이트
+        function updateSummaryCards(data) {
+            document.getElementById('total-count-display').textContent = data.total_stats.total_count.toLocaleString();
+            document.getElementById('total-ips-display').textContent = data.total_stats.total_unique_ips.toLocaleString();
+            document.getElementById('date-range-display').textContent = `${data.start_date} ~ ${data.end_date}`;
+            
+            const pageTypeText = data.page_type === 'main' ? '메인 페이지' : '다이어리 페이지';
+            document.getElementById('count-type-display').textContent = pageTypeText;
+        }
+        
+        // 일별 상세 정보 모달 표시
+        function showDailyDetail(date) {
+            const pageType = document.querySelector('input[name="count-type"]:checked').value;
+            
+            fetch(`/sales/api/daily_view_details/?page_type=${pageType}&date=${date}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('detail-date').textContent = new Date(date).toLocaleDateString('ko-KR');
+                        document.getElementById('detail-page-type').textContent = data.page_type === 'main' ? '메인 페이지' : '다이어리 페이지';
+                        document.getElementById('detail-total-count').textContent = data.stats.total_count.toLocaleString();
+                        document.getElementById('detail-unique-ips').textContent = data.stats.unique_ips.toLocaleString();
+                        
+                        const tbody = document.getElementById('detail-table-body');
+                        tbody.innerHTML = '';
+                        
+                        data.records.forEach(record => {
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td>${record.ip}</td>
+                                <td>${record.count.toLocaleString()}</td>
+                                <td>${new Date(record.created_at).toLocaleString('ko-KR')}</td>
+                                <td>${new Date(record.updated_at).toLocaleString('ko-KR')}</td>
+                            `;
+                            tbody.appendChild(row);
+                        });
+                        
+                        new bootstrap.Modal(document.getElementById('dailyDetailModal')).show();
+                    } else {
+                        console.error('상세 정보 로드 실패:', data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('상세 정보 로드 오류:', error);
+                });
+        }
+    </script>
 </body>
 </html>

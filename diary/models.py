@@ -443,3 +443,27 @@ class Diary_diary_count(models.Model):
     
     def __str__(self):
         return f"{self.ip} - {self.count}"
+
+
+class DailyViewRecord(models.Model):
+    """일별 조회수 상세 기록"""
+    ip = models.CharField(max_length=50)
+    date = models.DateField()  # 접속한 날짜
+    count = models.IntegerField(default=1)  # 해당 날짜의 접속 횟수
+    page_type = models.CharField(max_length=20, choices=[
+        ('main', '메인 페이지'),
+        ('diary', '다이어리 페이지')
+    ])
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        indexes = [
+            models.Index(fields=['ip', 'date']),
+            models.Index(fields=['date']),
+            models.Index(fields=['page_type']),
+        ]
+        unique_together = ['ip', 'date', 'page_type']  # IP, 날짜, 페이지 타입 조합으로 중복 방지
+    
+    def __str__(self):
+        return f"{self.ip} - {self.date} - {self.page_type} ({self.count}회)"
