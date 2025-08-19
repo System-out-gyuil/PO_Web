@@ -360,11 +360,33 @@ class UserAlarm(models.Model):
         self.save()
     
 
+class NomalBoardCategory(models.Model):
+    """게시판 카테고리 모델"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='board_categories')
+    category_name = models.CharField(max_length=50, db_collation='utf8mb4_unicode_ci')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'diary_board_category'
+        verbose_name = '게시판 카테고리'
+        verbose_name_plural = '게시판 카테고리'
+        unique_together = ['user', 'category_name']  # 사용자별로 카테고리명 중복 방지
+        ordering = ['created_at']
+        indexes = [
+            models.Index(fields=['user', 'category_name']),
+            models.Index(fields=['user']),
+        ]
+    
+    def __str__(self):
+        return f"{self.user.name} - {self.category_name}"
+
 class Board(models.Model):
     """게시판 모델"""
     title = models.CharField(max_length=200, db_collation='utf8mb4_unicode_ci')
     content = models.TextField(db_collation='utf8mb4_unicode_ci')
     author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='boards')
+    category = models.ForeignKey(NomalBoardCategory, on_delete=models.CASCADE, related_name='boards', null=True, blank=True)  # FK로 변경
     files = models.JSONField(default=list, blank=True)  # 첨부파일 정보 저장
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -376,6 +398,7 @@ class Board(models.Model):
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['author', '-created_at']),
+            models.Index(fields=['category', '-created_at']),  # 카테고리별 인덱스 추가
             models.Index(fields=['-created_at']),
         ]
     
@@ -391,6 +414,10 @@ class Board(models.Model):
         if len(self.content) > length:
             return self.content[:length] + '...'
         return self.content
+    
+    def get_category_name(self):
+        """카테고리명 반환"""
+        return self.category.category_name if self.category else '일반'
 
 
 class BoardFile(models.Model):

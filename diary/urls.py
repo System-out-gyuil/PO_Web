@@ -15,7 +15,7 @@ from .admin_view import admin_dashboard, inquiry_list, inquiry_detail, alarm_lis
 from .diary_board import diary_board, get_announcements, get_announcement_detail, mark_as_read, download_announcement_file, announcement_detail_page, create_announcement, upload_announcement_file, get_announcement_file_url, get_announcement_download_url
 from .main_views import CompanyInfoView, PersonalInfoView, TermsOfServiceView
 from .session_handlers import cleanup_session_cache_api, get_active_sessions_api
-from .board_views import board_list_view, board_list_api, board_create, board_detail_view, board_file_upload, board_file_preview, board_file_download, board_detail_api, board_edit
+from .board_views import board_list_view, board_list_api, board_create, board_detail_view, board_file_upload, board_file_preview, board_file_download, board_detail_api, board_edit, board_categories_api, board_add_category, board_delete
 from .funding_views import get_funding_recommendation, get_recommended_notices, update_debt_field, save_debt_details, update_expected_loans, update_loan_amount, get_debt_details, get_biz_recommendations, get_saved_biz_recommendations, save_biz_recommendations
 from .order import reorder_entries, save_column_order, update_detail_sort_order
 from .hwp_convert import convert_hwp_to_pdf_board, convert_hwp_to_pdf
@@ -178,10 +178,12 @@ urlpatterns = [
     path('board/<int:board_id>/', board_detail_view, name='board_detail'),
     path('board/<int:board_id>/api/', board_detail_api, name='board_detail_api'),
     path('board/<int:board_id>/edit/', board_edit, name='board_edit'),
+    path('board/<int:board_id>/delete/', board_delete, name='board_delete'),
     path('board/upload-file/', board_file_upload, name='board_file_upload'),
     path('board/file/<path:saved_name>/preview/', board_file_preview, name='board_file_preview'),
     path('board/file/<path:saved_name>/download/', board_file_download, name='board_file_download'),
-    
+    path('board/categories/', board_categories_api, name='board_categories_api'),
+    path('board/add-category/', board_add_category, name='board_add_category'),
     # 알림 관련 URL
     path('diary_board/notifications/', views.get_notifications, name='get_notifications'),
     path('diary_board/notifications/<int:notification_id>/read/', views.mark_notification_read, name='mark_notification_read'),

@@ -3,7 +3,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.db.models import Q
-from .models import User, Board
+from .models import User, Board, NomalBoardCategory
 import json
 
 @csrf_exempt
@@ -48,9 +48,18 @@ def board_list_api(request):
     try:
         page = int(request.GET.get('page', 1))
         search = request.GET.get('search', '').strip()
+        category_id = request.GET.get('category', None)  # category_id로 변경
         
         # 본인이 작성한 게시글만 조회
         boards = Board.objects.filter(author=user)
+        
+        # 카테고리별 필터링
+        if category_id and category_id != 'all':
+            try:
+                category = NomalBoardCategory.objects.get(id=category_id, user=user)
+                boards = boards.filter(category=category)
+            except NomalBoardCategory.DoesNotExist:
+                pass
         
         # 검색어가 있으면 필터링
         if search:
@@ -77,6 +86,8 @@ def board_list_api(request):
                 'title': board.title,
                 'content': board.content,
                 'author_name': board.author.name,
+                'category_id': board.category.id if board.category else None,
+                'category_name': board.get_category_name(),  # 카테고리명 반환
                 'files': board.files or [],
                 'created_at': board.created_at.isoformat(),
                 'updated_at': board.updated_at.isoformat(),
@@ -96,7 +107,8 @@ def board_list_api(request):
         return JsonResponse({
             'success': True,
             'boards': board_list,
-            'pagination': pagination_data
+            'pagination': pagination_data,
+            'category_id': category_id
         })
         
     except Exception as e:
@@ -126,6 +138,7 @@ def board_create(request):
             
             title = data.get('title', '').strip()
             content = data.get('content', '').strip()
+            category_id = data.get('category_id', None)  # category_id로 변경
             files = data.get('files', [])
             
             if not title:
@@ -134,11 +147,20 @@ def board_create(request):
             if not content:
                 return JsonResponse({'success': False, 'message': '내용을 입력해주세요.'})
             
+            # 카테고리 확인
+            category = None
+            if category_id:
+                try:
+                    category = NomalBoardCategory.objects.get(id=category_id, user=user)
+                except NomalBoardCategory.DoesNotExist:
+                    return JsonResponse({'success': False, 'message': '유효하지 않은 카테고리입니다.'})
+            
             # 게시글 생성
             board = Board.objects.create(
                 title=title,
                 content=content,
                 author=user,
+                category=category,  # 카테고리 FK 설정
                 files=files
             )
             
@@ -267,6 +289,41 @@ def board_edit(request, board_id):
             return JsonResponse({
                 'success': False,
                 'message': f'게시글 수정에 실패했습니다: {str(e)}'
+            })
+    
+    return JsonResponse({'success': False, 'message': '잘못된 요청입니다.'})
+
+@csrf_exempt
+def board_delete(request, board_id):
+    """게시글 삭제 API - 본인이 작성한 게시글만 삭제 가능"""
+    if not request.session.get('diary_authenticated'):
+        return JsonResponse({'success': False, 'message': '로그인이 필요합니다.'})
+    
+    user_id = request.session.get('diary_member_id')
+    if not user_id:
+        return JsonResponse({'success': False, 'message': '로그인이 필요합니다.'})
+    
+    try:
+        user = User.objects.get(id=user_id)
+        # 본인이 작성한 게시글만 삭제 가능
+        board = Board.objects.get(id=board_id, author=user)
+    except (User.DoesNotExist, Board.DoesNotExist):
+        return JsonResponse({'success': False, 'message': '게시글을 찾을 수 없습니다.'})
+    
+    if request.method == 'POST':
+        try:
+            # 게시글 삭제
+            board.delete()
+            
+            return JsonResponse({
+                'success': True,
+                'message': '게시글이 삭제되었습니다.'
+            })
+            
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': f'게시글 삭제에 실패했습니다: {str(e)}'
             })
     
     return JsonResponse({'success': False, 'message': '잘못된 요청입니다.'})
@@ -528,3 +585,95 @@ def board_file_download(request, saved_name):
             'success': False,
             'message': f'파일 다운로드에 실패했습니다: {str(e)}'
         })
+
+@csrf_exempt
+def board_categories_api(request):
+    """게시판 카테고리 목록 API"""
+    if not request.session.get('diary_authenticated'):
+        return JsonResponse({'success': False, 'message': '로그인이 필요합니다.'})
+    
+    user_id = request.session.get('diary_member_id')
+    if not user_id:
+        return JsonResponse({'success': False, 'message': '로그인이 필요합니다.'})
+    
+    try:
+        user = User.objects.get(id=user_id)
+        
+        # 사용자의 모든 카테고리 조회
+        categories = NomalBoardCategory.objects.filter(user=user).order_by('created_at')
+
+        for category in categories:
+            print(category.category_name)
+        
+        # 기본 카테고리가 없으면 생성
+        if not categories.exists():
+            default_categories = ['일반']
+            for cat_name in default_categories:
+                NomalBoardCategory.objects.create(user=user, category_name=cat_name)
+            categories = NomalBoardCategory.objects.filter(user=user).order_by('created_at')
+        
+        category_list = []
+        for category in categories:
+            category_list.append({
+                'id': category.id,
+                'name': category.category_name
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'categories': category_list
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'카테고리를 불러오는데 실패했습니다: {str(e)}'
+        })
+
+@csrf_exempt
+def board_add_category(request):
+    """새 카테고리 추가 API"""
+    if not request.session.get('diary_authenticated'):
+        return JsonResponse({'success': False, 'message': '로그인이 필요합니다.'})
+    
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            new_category_name = data.get('category', '').strip()
+            
+            if not new_category_name:
+                return JsonResponse({'success': False, 'message': '카테고리명을 입력해주세요.'})
+            
+            # 카테고리명 길이 제한
+            if len(new_category_name) > 50:
+                return JsonResponse({'success': False, 'message': '카테고리명은 50자 이하여야 합니다.'})
+            
+            user_id = request.session.get('diary_member_id')
+            user = User.objects.get(id=user_id)
+            
+            # 중복 카테고리명 확인
+            if NomalBoardCategory.objects.filter(user=user, category_name=new_category_name).exists():
+                return JsonResponse({'success': False, 'message': '이미 존재하는 카테고리명입니다.'})
+            
+            # 새 카테고리 생성
+            new_category = NomalBoardCategory.objects.create(
+                user=user,
+                category_name=new_category_name
+            )
+            
+            return JsonResponse({
+                'success': True,
+                'message': '새 카테고리가 추가되었습니다.',
+                'category': {
+                    'id': new_category.id,
+                    'name': new_category.category_name
+                }
+            })
+            
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': f'카테고리 추가에 실패했습니다: {str(e)}'
+            })
+    
+    return JsonResponse({'success': False, 'message': '잘못된 요청입니다.'})

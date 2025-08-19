@@ -755,3 +755,73 @@ transition: all 0.2s ease;
   color: #667eea;
   font-size: 0.9rem;
 }
+
+/* 카테고리 탭 스타일 */
+.category-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.category-tab {
+  padding: 10px 20px;
+  border: 2px solid #e2e8f0;
+  border-radius: 25px;
+  background: white;
+  color: #64748b;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 14px;
+}
+
+.category-tab:hover {
+  border-color: #667eea;
+  color: #667eea;
+  background: #f8fafc;
+}
+
+.category-tab.active {
+  border-color: #667eea;
+  background: #667eea;
+  color: white;
+}
+
+.add-category-button {
+  padding: 10px 20px;
+  background: #10b981;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.add-category-button:hover {
+  background: #059669;
+}
+
+.category-display {
+  margin-top: 5px;
+}
+
+.category-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  background: #667eea;
+  color: white;
+  border-radius: 15px;
+  font-size: 12px;
+  font-weight: 500;
+  margin-right: 10px;
+}
+
+.category-note {
+  color: #64748b;
+  font-size: 12px;
+}

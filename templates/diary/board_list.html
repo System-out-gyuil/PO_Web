@@ -19,6 +19,57 @@
     <link rel="stylesheet" href="{% static 'diary/board/board.css' %}">
     <link rel="stylesheet" href="{% static 'diary/base/base.css' %}">
     
+    <style>
+        /* 삭제 버튼 스타일 */
+        .announcement-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        
+        .delete-btn {
+            background: none;
+            border: none;
+            color: #ef4444;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+        
+        .delete-btn:hover {
+            background-color: #fef2f2;
+            color: #dc2626;
+        }
+        
+        /* 삭제 모달 스타일 */
+        .btn-delete {
+            background-color: #ef4444;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .btn-delete:hover {
+            background-color: #dc2626;
+        }
+        
+        .text-red-500 {
+            color: #ef4444;
+        }
+        
+        .text-sm {
+            font-size: 0.875rem;
+        }
+        
+        .mt-2 {
+            margin-top: 0.5rem;
+        }
+    </style>
 </head>
 <body>
     <!-- Header -->
@@ -34,6 +85,13 @@
 
             <!-- 게시판 탭 -->
             <div class="tab-content active" id="board-tab">
+                <!-- 카테고리 탭 -->
+                <div class="category-tabs" id="category-tabs">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+                
                 <!-- 검색 및 필터 -->
                 <div class="search-controls">
                     <div class="search-box" style="max-width: 420px; width: 100%;">
@@ -49,6 +107,9 @@
                     </div>
                     {% if is_authenticated %}
                     <div class="button-group" id="user-buttons">
+                        <button class="add-category-button" onclick="showAddCategoryModal()" style="margin-right: 10px;">
+                            <i class="fas fa-plus"></i> 새 카테고리
+                        </button>
                         <button class="write-button" onclick="showWriteBoardModal()">
                             <i class="fas fa-pen"></i> 게시글 작성
                         </button>
@@ -110,24 +171,143 @@
                     </div>
                 </div>
             </div>
+
+            <!-- 새 카테고리 추가 모달 -->
+            <div class="modal" id="addCategoryModal" style="display: none;">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>새 카테고리 추가</h3>
+                        <button class="close" onclick="closeAddCategoryModal()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label class="form-label">카테고리명</label>
+                            <input type="text" id="new-category-input" class="form-input" placeholder="새 카테고리명을 입력하세요" maxlength="20">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn-cancel" onclick="closeAddCategoryModal()">취소</button>
+                        <button class="btn-submit" onclick="submitNewCategory()">추가</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 게시글 삭제 확인 모달 -->
+            <div class="modal" id="deleteBoardModal" style="display: none;">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>게시글 삭제</h3>
+                        <button class="close" onclick="closeDeleteBoardModal()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <p>정말로 "<span id="delete-board-title"></span>" 게시글을 삭제하시겠습니까?</p>
+                        <p class="text-red-500 text-sm mt-2">이 작업은 되돌릴 수 없습니다.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn-cancel" onclick="closeDeleteBoardModal()">취소</button>
+                        <button class="btn-delete" onclick="confirmDeleteBoard()">삭제</button>
+                    </div>
+                </div>
+            </div>
         </div>
     </main>
 
     <script>
+        let currentCategoryId = null;  // 현재 선택된 카테고리 ID
+        let currentCategoryName = '일반';  // 현재 선택된 카테고리명
+        
+        // 카테고리 탭 로드
+        async function loadCategories() {
+            try {
+                const response = await fetch('/sales/board/categories/');
+                const data = await response.json();
+                
+                if (data.success) {
+                    renderCategoryTabs(data.categories);
+                    
+                    // 카테고리가 로드된 후 첫 번째 카테고리 자동 선택
+                    if (data.categories.length > 0 && !currentCategoryId) {
+                        const firstCategory = data.categories[0];
+                        selectCategory(firstCategory.id, firstCategory.name);
+                    }
+                } else {
+                    showError('카테고리를 불러오는데 실패했습니다: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error loading categories:', error);
+                showError('카테고리를 불러오는데 실패했습니다.');
+            }
+        }
+        
+        // 카테고리 탭 렌더링
+        function renderCategoryTabs(categories) {
+            const categoryTabs = document.getElementById('category-tabs');
+            
+            if (!categoryTabs) return;
+            
+            let html = '';
+            categories.forEach((category, index) => {
+                // 첫 번째 카테고리이거나 현재 선택된 카테고리인 경우 활성화
+                const activeClass = (index === 0 && !currentCategoryId) || category.id === currentCategoryId ? 'active' : '';
+                html += `
+                    <button class="category-tab ${activeClass}" onclick="selectCategory(${category.id}, '${escapeHtml(category.name)}')">
+                        ${escapeHtml(category.name)}
+                    </button>
+                `;
+            });
+            
+            categoryTabs.innerHTML = html;
+            
+            // 디버깅용 로그
+            console.log(`카테고리 탭 렌더링 완료: ${categories.length}개, 현재 선택: ${currentCategoryId}`);
+        }
+        
+        // 카테고리 선택
+        function selectCategory(categoryId, categoryName) {
+            currentCategoryId = categoryId;
+            currentCategoryName = categoryName;
+            
+            // 탭 활성화 상태 업데이트
+            const tabs = document.querySelectorAll('.category-tab');
+            tabs.forEach(tab => {
+                // onclick 속성에서 categoryId를 추출하여 비교
+                const tabCategoryId = tab.onclick.toString().match(/selectCategory\((\d+)/)?.[1];
+                if (tabCategoryId && parseInt(tabCategoryId) === categoryId) {
+                    tab.classList.add('active');
+                } else {
+                    tab.classList.remove('active');
+                }
+            });
+            
+            // 해당 카테고리의 게시글 로드
+            loadBoards(1, '', categoryId);
+            
+            // 디버깅용 로그
+            console.log(`카테고리 선택됨: ID=${categoryId}, 이름=${categoryName}`);
+        }
+        
         // 게시글 검색
         function searchBoards() {
             const searchInput = document.getElementById('board-search');
             const searchTerm = searchInput ? searchInput.value.trim() : '';
-            loadBoards(1, searchTerm);
+            loadBoards(1, searchTerm, currentCategoryId);
         }
         
         // 게시글 목록 로드
-        async function loadBoards(page = 1, search = '') {
+        async function loadBoards(page = 1, search = '', categoryId = null) {
             try {
                 const params = new URLSearchParams({
                     page: page,
                     search: search
                 });
+                
+                if (categoryId) {
+                    params.append('category', categoryId);
+                }
                 
                 const response = await fetch(`/sales/board/api/?${params}`);
                 const data = await response.json();
@@ -168,23 +348,28 @@
                     board.content.substring(0, 300) + '...' : board.content;
                 
                 html += `
-                    <div class="announcement-item" onclick="viewBoardDetail(${board.id})">
+                    <div class="announcement-item">
                         <div class="announcement-header">
-                            <h3 class="announcement-title">${escapeHtml(board.title)}</h3>
-                            <div class="announcement-meta">
-                                <span class="announcement-author">
-                                    <i class="fas fa-user"></i> ${escapeHtml(board.author_name)}
-                                </span>
-                                <span class="announcement-date">
-                                    <i class="fas fa-calendar-alt"></i> ${createdDate}
-                                </span>
+                            <h3 class="announcement-title" onclick="viewBoardDetail(${board.id})">${escapeHtml(board.title)}</h3>
+                            <div class="announcement-actions">
+                                <button class="delete-btn" onclick="deleteBoard(${board.id}, '${escapeHtml(board.title)}')" title="삭제">
+                                    <i class="fas fa-trash"></i>
+                                </button>
                             </div>
                         </div>
-                        <div class="announcement-content">
+                        <div class="announcement-meta">
+                            <span class="announcement-author">
+                                <i class="fas fa-user"></i> ${escapeHtml(board.author_name)}
+                            </span>
+                            <span class="announcement-date">
+                                <i class="fas fa-calendar-alt"></i> ${createdDate}
+                            </span>
+                        </div>
+                        <div class="announcement-content" onclick="viewBoardDetail(${board.id})">
                             <p>${escapeHtml(contentPreview)}</p>
                         </div>
                         ${board.files && board.files.length > 0 ? `
-                            <div class="announcement-files">
+                            <div class="announcement-files" onclick="viewBoardDetail(${board.id})">
                                 <i class="fas fa-paperclip"></i> 첨부파일 ${board.files.length}개
                             </div>
                         ` : ''}
@@ -272,6 +457,27 @@
             document.getElementById('board-content-input').value = '';
             document.getElementById('boardFileList').innerHTML = '';
             document.getElementById('boardUploadProgress').style.display = 'none';
+            
+            // 현재 선택된 카테고리 표시
+            const categoryDisplay = document.createElement('div');
+            categoryDisplay.className = 'form-group';
+            categoryDisplay.innerHTML = `
+                <label class="form-label">카테고리</label>
+                <div class="category-display">
+                    <span class="category-badge">${escapeHtml(currentCategoryName)}</span>
+                    <small class="category-note">현재 선택된 카테고리에 게시글이 저장됩니다.</small>
+                </div>
+            `;
+            
+            // 기존 카테고리 표시 영역이 있으면 제거
+            const existingCategoryDisplay = document.querySelector('.category-display');
+            if (existingCategoryDisplay) {
+                existingCategoryDisplay.parentElement.remove();
+            }
+            
+            // 카테고리 표시를 제목 입력 필드 앞에 추가
+            const titleInput = document.getElementById('board-title-input');
+            titleInput.parentElement.parentElement.insertBefore(categoryDisplay, titleInput.parentElement);
             
             // 제목 입력 필드에 포커스
             document.getElementById('board-title-input').focus();
@@ -379,21 +585,21 @@
             
             const iconMap = {
                 // 이미지 파일
-                'jpg': '🖼️', 'jpeg': '🖼️', 'png': '🖼️', 'gif': '🖼️', 'bmp': '🖼️', 'svg': '🖼️', 'webp': '🖼️',
+                'jpg': '🖼️', 'jpeg': '��️', 'png': '��️', 'gif': '��️', 'bmp': '��️', 'svg': '��️', 'webp': '��️',
                 // 문서 파일
-                'pdf': '📄', 'doc': '📝', 'docx': '📝', 'txt': '📄', 'rtf': '📝',
+                'pdf': '📄', 'doc': '📝', 'docx': '��', 'txt': '📄', 'rtf': '📝',
                 // 스프레드시트
                 'xls': '📊', 'xlsx': '📊', 'csv': '📊',
                 // 프레젠테이션
                 'ppt': '📋', 'pptx': '📋',
                 // 압축 파일
-                'zip': '📦', 'rar': '📦', '7z': '📦', 'tar': '📦', 'gz': '📦',
+                'zip': '��', 'rar': '��', '7z': '��', 'tar': '📦', 'gz': '📦',
                 // 오디오 파일
-                'mp3': '🎵', 'wav': '🎵', 'flac': '🎵', 'aac': '🎵', 'ogg': '🎵',
+                'mp3': '��', 'wav': '��', 'flac': '🎵', 'aac': '🎵', 'ogg': '🎵',
                 // 비디오 파일
-                'mp4': '🎬', 'avi': '🎬', 'mov': '🎬', 'wmv': '🎬', 'flv': '🎬', 'mkv': '🎬',
+                'mp4': '🎬', 'avi': '🎬', 'mov': '��', 'wmv': '��', 'flv': '🎬', 'mkv': '🎬',
                 // 코드 파일
-                'html': '🌐', 'css': '🎨', 'js': '⚙️', 'py': '🐍', 'java': '☕', 'cpp': '⚙️', 'c': '⚙️',
+                'html': '��', 'css': '🎨', 'js': '⚙️', 'py': '🐍', 'java': '☕', 'cpp': '⚙️', 'c': '⚙️',
                 // 기타
                 'json': '📋', 'xml': '📋', 'sql': '🗄️', 'md': '📄'
             };
@@ -412,8 +618,8 @@
             return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
         }
         
-        // 게시글 작성 제출
-        async function submitBoard() {
+         // 게시글 작성 제출
+         async function submitBoard() {
             const title = document.getElementById('board-title-input').value.trim();
             const content = document.getElementById('board-content-input').value.trim();
             
@@ -483,7 +689,7 @@
                     }
                 }
                 
-                // 게시글 작성
+                // 게시글 작성 (카테고리 ID 포함)
                 const response = await fetch('/sales/board/create/', {
                     method: 'POST',
                     headers: {
@@ -493,6 +699,7 @@
                     body: JSON.stringify({
                         title: title,
                         content: content,
+                        category_id: currentCategoryId,  // 현재 선택된 카테고리 ID
                         files: uploadedFiles
                     })
                 });
@@ -503,7 +710,7 @@
                     alert('게시글이 작성되었습니다.');
                     closeWriteBoardModal();
                     // 게시글 목록 새로고침
-                    loadBoards();
+                    loadBoards(1, '', currentCategoryId);
                 } else {
                     alert('게시글 작성에 실패했습니다: ' + data.message);
                 }
@@ -515,6 +722,124 @@
                 submitBtn.disabled = false;
                 submitBtn.textContent = originalText;
                 document.getElementById('boardUploadProgress').style.display = 'none';
+            }
+        }
+        
+        // 새 카테고리 추가 모달 표시
+        function showAddCategoryModal() {
+            const modal = document.getElementById('addCategoryModal');
+            modal.style.display = 'block';
+            
+            // 폼 초기화
+            document.getElementById('new-category-input').value = '';
+            
+            // 입력 필드에 포커스
+            document.getElementById('new-category-input').focus();
+        }
+        
+        // 새 카테고리 추가 모달 닫기
+        function closeAddCategoryModal() {
+            const modal = document.getElementById('addCategoryModal');
+            modal.style.display = 'none';
+        }
+        
+        // 새 카테고리 추가 제출
+        async function submitNewCategory() {
+            const categoryName = document.getElementById('new-category-input').value.trim();
+            
+            if (!categoryName) {
+                alert('카테고리명을 입력해주세요.');
+                document.getElementById('new-category-input').focus();
+                return;
+            }
+            
+            try {
+                const response = await fetch('/sales/board/add-category/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        category: categoryName
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('새 카테고리가 추가되었습니다.');
+                    closeAddCategoryModal();
+                    
+                    // 새로 추가된 카테고리 정보
+                    const newCategory = data.category;
+                    
+                    // 카테고리 목록 새로고침
+                    await loadCategories();
+                    
+                    // 새로 추가된 카테고리 자동 선택
+                    setTimeout(() => {
+                        selectCategory(newCategory.id, newCategory.name);
+                    }, 100);
+                } else {
+                    alert('카테고리 추가에 실패했습니다: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error adding category:', error);
+                alert('카테고리 추가 중 오류가 발생했습니다.');
+            }
+        }
+        
+        // 게시글 삭제 모달 표시
+        function deleteBoard(boardId, boardTitle) {
+            const modal = document.getElementById('deleteBoardModal');
+            const titleSpan = document.getElementById('delete-board-title');
+            
+            // 삭제할 게시글 정보 저장
+            modal.dataset.boardId = boardId;
+            titleSpan.textContent = boardTitle;
+            
+            modal.style.display = 'block';
+        }
+        
+        // 게시글 삭제 모달 닫기
+        function closeDeleteBoardModal() {
+            const modal = document.getElementById('deleteBoardModal');
+            modal.style.display = 'none';
+        }
+        
+        // 게시글 삭제 확인
+        async function confirmDeleteBoard() {
+            const modal = document.getElementById('deleteBoardModal');
+            const boardId = modal.dataset.boardId;
+            
+            if (!boardId) {
+                alert('삭제할 게시글 정보를 찾을 수 없습니다.');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/sales/board/${boardId}/delete/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('게시글이 삭제되었습니다.');
+                    closeDeleteBoardModal();
+                    // 게시글 목록 새로고침
+                    loadBoards(1, '', currentCategoryId);
+                } else {
+                    alert('게시글 삭제에 실패했습니다: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error deleting board:', error);
+                alert('게시글 삭제 중 오류가 발생했습니다.');
             }
         }
         
@@ -574,9 +899,18 @@
         
         // 모달 외부 클릭 시 닫기
         window.onclick = function(event) {
-            const modal = document.getElementById('writeBoardModal');
-            if (event.target === modal) {
+            const writeModal = document.getElementById('writeBoardModal');
+            const categoryModal = document.getElementById('addCategoryModal');
+            const deleteModal = document.getElementById('deleteBoardModal');
+            
+            if (event.target === writeModal) {
                 closeWriteBoardModal();
+            }
+            if (event.target === categoryModal) {
+                closeAddCategoryModal();
+            }
+            if (event.target === deleteModal) {
+                closeDeleteBoardModal();
             }
         }
         
@@ -586,15 +920,23 @@
                 event.preventDefault();
                 submitBoard();
             }
+            
+            // 새 카테고리 모달에서 Enter 키로 제출
+            if (event.key === 'Enter' && document.getElementById('addCategoryModal').style.display === 'block') {
+                event.preventDefault();
+                submitNewCategory();
+            }
         });
         
         // 페이지 로드 시 초기 데이터 로드
         document.addEventListener('DOMContentLoaded', function() {
-            loadBoards();
+            loadCategories();  // 카테고리 먼저 로드
+            // 첫 번째 카테고리 선택 (기본값)
+            // 이 부분은 loadCategories 함수 내부에서 처리되므로 제거
         });
     </script>
     
     <!-- Base JavaScript -->
     <script src="{% static 'diary/base/base.js' %}"></script>
 </body>
-</html> 
+</html>
