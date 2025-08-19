@@ -247,10 +247,39 @@ def diary_list(request):
     # 각 행의 속성 값들을 가져오기 (필터링된 속성만)
     rows_data = []
     
+    # 지원사업 속성에서 알림 정보 미리 계산
+    support_business_attr = None
+    try:
+        support_business_attr = Attribute.objects.get(name='지원사업', user=user)
+    except Attribute.DoesNotExist:
+        support_business_attr = None
+    
     for row in rows:
         row_values = {}
-        # 행의 모든 값들을 딕셔너리로 미리 구성
+        # 행의 모든 값들을 딕셔너리로 미리 구성하여 N+1 쿼리 방지
         row_value_dict = {value.attribute_id: value.value for value in row.values.all()}
+        
+        # 알림 상태 확인
+        has_notifications = False
+        if support_business_attr:
+            try:
+                attr_value = AttributeValue.objects.get(attribute=support_business_attr, row=row)
+                if attr_value.value:
+                    # 데이터 타입에 따른 분기 처리
+                    if isinstance(attr_value.value, dict):
+                        alerts = attr_value.value.get('알림', [])
+                        has_notifications = len(alerts) > 0
+                    elif isinstance(attr_value.value, str):
+                        try:
+                            # JSON 파싱 시도
+                            parsed_data = json.loads(attr_value.value.replace("'", '"').replace('True', 'true').replace('False', 'false'))
+                            if isinstance(parsed_data, dict):
+                                alerts = parsed_data.get('알림', [])
+                                has_notifications = len(alerts) > 0
+                        except (json.JSONDecodeError, AttributeError):
+                            has_notifications = False
+            except AttributeValue.DoesNotExist:
+                has_notifications = False
         
         for attr in user_attributes:  # 이미 필터링된 속성들만 사용
             value = row_value_dict.get(attr.id, '')
@@ -343,7 +372,8 @@ def diary_list(request):
         
         rows_data.append({
             'id': row.id,
-            'values': row_values
+            'values': row_values,
+            'has_notifications': has_notifications
         })
     
     # 캐시 무효화를 위한 타임스탬프
@@ -1262,10 +1292,39 @@ def entry_table_partial(request):
     # 각 행의 속성 값들을 가져오기 (필터링된 속성만)
     rows_data = []
     
+    # 지원사업 속성에서 알림 정보 미리 계산
+    support_business_attr = None
+    try:
+        support_business_attr = Attribute.objects.get(name='지원사업', user=user)
+    except Attribute.DoesNotExist:
+        support_business_attr = None
+    
     for row in rows:
         row_values = {}
         # 행의 모든 값들을 딕셔너리로 미리 구성하여 N+1 쿼리 방지
         row_value_dict = {value.attribute_id: value.value for value in row.values.all()}
+        
+        # 알림 상태 확인
+        has_notifications = False
+        if support_business_attr:
+            try:
+                attr_value = AttributeValue.objects.get(attribute=support_business_attr, row=row)
+                if attr_value.value:
+                    # 데이터 타입에 따른 분기 처리
+                    if isinstance(attr_value.value, dict):
+                        alerts = attr_value.value.get('알림', [])
+                        has_notifications = len(alerts) > 0
+                    elif isinstance(attr_value.value, str):
+                        try:
+                            # JSON 파싱 시도
+                            parsed_data = json.loads(attr_value.value.replace("'", '"').replace('True', 'true').replace('False', 'false'))
+                            if isinstance(parsed_data, dict):
+                                alerts = parsed_data.get('알림', [])
+                                has_notifications = len(alerts) > 0
+                        except (json.JSONDecodeError, AttributeError):
+                            has_notifications = False
+            except AttributeValue.DoesNotExist:
+                has_notifications = False
         
         for attr in user_attributes:  # 이미 필터링된 속성들만 사용
             value = row_value_dict.get(attr.id, '')
@@ -1398,7 +1457,8 @@ def entry_table_partial(request):
         
         rows_data.append({
             'id': row.id,
-            'values': row_values
+            'values': row_values,
+            'has_notifications': has_notifications
         })
     
     # 속성 리스트 생성 - 이미 메모리에 있는 데이터 활용

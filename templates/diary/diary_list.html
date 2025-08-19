@@ -236,7 +236,7 @@
             </thead>
             <tbody id="entryTbody">
                 {% for row in rows %}
-                <tr data-id="{{ row.id }}">
+                <tr data-id="{{ row.id }}" data-has-notifications="{{ row.has_notifications|yesno:'true,false' }}">
                     <td class="drag-cell">
                         <div class="cell-button-container">
                             <input type="checkbox" class="row-checkbox" data-row-id="{{ row.id }}" onchange="updateBulkDeleteButton()" class="row-checkbox-margin">

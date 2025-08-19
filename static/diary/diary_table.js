@@ -36,62 +36,40 @@ function addNotificationToDetailButton(rowId, moreBtn) {
         return;
     }
     
-    // 지원사업 속성에서 알림 데이터 확인
-    fetch('/sales/get_saved_biz_recommendations/', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCookie('csrftoken')
-        },
-        body: JSON.stringify({ row_id: rowId })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success && data.data && data.data.length > 0) {
-            // 새로 추가된 공고가 있는지 확인
-            const hasNewRecommendations = data.data.some(item => item.isNew);
-            if (hasNewRecommendations) {
-                // 알림 표시 추가
-                const notificationSpan = document.createElement('span');
-                notificationSpan.className = 'notification-bell';
-                notificationSpan.innerHTML = '';
-                notificationSpan.style.cssText = `
-                    position: absolute;
-                    top: -2px;
-                    right: -2px;
-                    width: 8px;
-                    height: 8px;
-                    background: #dc3545;
-                    border-radius: 50%;
-                    animation: pulse 2s infinite;
-                    display: inline-block;
-                    z-index: 10;
-                `;
-                
-                // 버튼에 강조 효과 추가 (position: relative 추가)
-                moreBtn.style.cssText += `
-                    position: relative !important;
-                    border: 2px solid #dc3545 !important;
-                    box-shadow: 0 0 10px rgba(220, 53, 69, 0.5) !important;
-                    animation: glow 2s infinite alternate !important;
-                    display: flex !important;
-                    align-items: center !important;
-                    justify-content: center !important;
-                    min-width: 20px !important;
-                    min-height: 20px !important;
-                `;
-                
-                // 알림이 있을 때 항상 보이도록 클래스 추가
-                moreBtn.classList.add('has-notification');
-                
-                moreBtn.appendChild(notificationSpan);
-                console.log(`행 ID ${rowId}: 알림 표시 완료`);
-            }
-        }
-    })
-    .catch(error => {
-        console.error('알림 데이터 조회 실패:', error);
-    });
+    // 서버에서 전달받은 알림 정보 확인
+    const row = document.querySelector(`tr[data-id=\"${rowId}\"]`);
+    if (row && row.dataset.hasNotifications === 'true') {
+        // 상세보기 버튼에 position: relative 설정 (알림 표시를 위한 기준점)
+        moreBtn.style.position = 'relative';
+        
+        // 알림 표시 추가
+        const notificationSpan = document.createElement('span');
+        notificationSpan.className = 'notification-bell';
+        notificationSpan.innerHTML = '';
+        notificationSpan.style.cssText = `
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            width: 8px;
+            height: 8px;
+            background: #dc3545;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+            z-index: 10;
+        `;
+        
+        // 상세보기 버튼에 알림 클래스 추가
+        moreBtn.classList.add('has-notification');
+        
+        // 알림 표시 추가
+        moreBtn.appendChild(notificationSpan);
+        
+        console.log(`행 ID ${rowId}: 알림 표시 추가 완료`);
+    } else {
+        // 알림이 없으면 기본 투명 상태로 설정
+        moreBtn.classList.remove('has-notification');
+        console.log(`행 ID ${rowId}: 알림 없음 - 기본 투명 상태`);
+    }
 }
 
 // CSS 애니메이션 추가
@@ -2831,6 +2809,11 @@ document.head.appendChild(style);
               window.processSupportBusinessAlerts();
           }
       }, 500);
+      
+      // 초기 알림 표시 처리 (서버 데이터 기반)
+      setTimeout(() => {
+          addInitialNotifications();
+      }, 1000);
   });
 
   // === 다중선택 드롭다운 셀을 옵션명 pill로 변환하는 함수 ===
@@ -4229,4 +4212,39 @@ function testNotificationForRow(rowId) {
 // 전역 함수로 등록 (콘솔에서 사용 가능)
 window.testNotificationForRow = testNotificationForRow;
 window.addNotificationsToAllDetailButtons = addNotificationsToAllDetailButtons;
+window.addInitialNotifications = addInitialNotifications;
+window.updateTableDetailButtonStyle = updateTableDetailButtonStyle;
 
+// 알림 제거 후 테이블의 상세보기 버튼 스타일을 업데이트하는 함수
+function updateTableDetailButtonStyle(rowId, hasNotifications) {
+    const row = document.querySelector(`tr[data-id="${rowId}"]`);
+    if (row) {
+        const moreBtn = row.querySelector('.more-btn');
+        if (moreBtn) {
+            if (hasNotifications) {
+                // 알림이 있으면 강조 표시
+                moreBtn.classList.add('has-notification');
+                // 기존 알림 표시 제거
+                const existingBell = moreBtn.querySelector('.notification-bell');
+                if (existingBell) {
+                    existingBell.remove();
+                }
+                // 새로운 알림 표시 추가
+                addNotificationToDetailButton(rowId, moreBtn);
+            } else {
+                // 알림이 없으면 기본 투명 상태로 설정
+                moreBtn.classList.remove('has-notification');
+                // 알림 표시 제거
+                const existingBell = moreBtn.querySelector('.notification-bell');
+                if (existingBell) {
+                    existingBell.remove();
+                }
+                // 강조 효과 제거
+                moreBtn.style.border = '';
+                moreBtn.style.boxShadow = '';
+                moreBtn.style.animation = '';
+                moreBtn.style.position = '';
+            }
+        }
+    }
+}

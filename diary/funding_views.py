@@ -1235,8 +1235,6 @@ def get_saved_biz_recommendations(request):
         # 저장된 추천 지원사업 ID 가져오기
         saved_recommendations = _get_attribute_value(user, row, '지원사업')
         
-        print(f'saved_recommendations: {saved_recommendations}')
-        
         if not saved_recommendations:
             return JsonResponse({
                 'success': False, 
@@ -1265,19 +1263,16 @@ def get_saved_biz_recommendations(request):
                         
                         # 중복 제거하여 모든 ID 수집
                         all_ids = list(set(pblanc_ids + alerts))
-                        print(f"문자열 파싱 성공 - pblanc_ids: {pblanc_ids}, alerts: {alerts}, all_ids: {all_ids}")
                     else:
                         # 딕셔너리가 아닌 경우 쉼표로 분리
                         all_ids = [id.strip() for id in saved_recommendations.split(',') if id.strip()]
                         alerts = []
-                        print(f"문자열을 쉼표로 분리: {all_ids}")
                         
                 except (json.JSONDecodeError, AttributeError) as e:
                     print(f"JSON 파싱 실패, 쉼표로 분리: {e}")
                     # JSON 파싱 실패 시 쉼표로 분리
                     all_ids = [id.strip() for id in saved_recommendations.split(',') if id.strip()]
                     alerts = []
-                    print(f"fallback 쉼표 분리: {all_ids}")
             else:
                 # 기존 로직 (딕셔너리인 경우)
                 if isinstance(saved_recommendations, dict):
@@ -1286,7 +1281,6 @@ def get_saved_biz_recommendations(request):
                     
                     # 중복 제거하여 모든 ID 수집
                     all_ids = list(set(pblanc_ids + alerts))
-                    print(f"딕셔너리 처리 - pblanc_ids: {pblanc_ids}, alerts: {alerts}, all_ids: {all_ids}")
                 else:
                     # 기타 타입인 경우 빈 배열로 처리
                     all_ids = []
@@ -1458,6 +1452,7 @@ def clear_biz_recommendation_alerts(request):
     """
     추천 지원사업 공고 확인 후 알림 제거
     """
+    print(f"clear_biz_recommendation_alerts 호출됨")
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': '잘못된 요청 방법입니다.'})
     
@@ -1487,13 +1482,41 @@ def clear_biz_recommendation_alerts(request):
             attr_value = AttributeValue.objects.get(attribute=support_attr, row=row)
             
             current_value = attr_value.value
+            print(f"current_value: {current_value}")
+            print(f"type(current_value): {type(current_value)}")
+            
+            # 데이터 타입에 따른 분기 처리
             if isinstance(current_value, dict):
-                # 알림 배열을 비우고 pblanc_ids는 유지
+                # 딕셔너리인 경우
                 updated_value = {
                     'pblanc_ids': current_value.get('pblanc_ids', []),
                     '알림': []  # 알림 제거
                 }
-                
+            elif isinstance(current_value, str):
+                # 문자열인 경우 JSON 파싱 시도
+                try:
+                    # Python 딕셔너리 형태의 문자열을 정리
+                    cleaned_string = current_value.replace("'", '"').replace('True', 'true').replace('False', 'false')
+                    parsed_data = json.loads(cleaned_string)
+                    
+                    if isinstance(parsed_data, dict):
+                        updated_value = {
+                            'pblanc_ids': parsed_data.get('pblanc_ids', []),
+                            '알림': []  # 알림 제거
+                        }
+                    else:
+                        # 딕셔너리가 아닌 경우 원본 값 유지
+                        updated_value = current_value
+                except (json.JSONDecodeError, AttributeError) as e:
+                    print(f"JSON 파싱 실패: {e}")
+                    # JSON 파싱 실패 시 원본 값 유지
+                    updated_value = current_value
+            else:
+                # 기타 타입인 경우 원본 값 유지
+                updated_value = current_value
+            
+            # 딕셔너리인 경우에만 알림 제거 처리
+            if isinstance(updated_value, dict):
                 attr_value.value = updated_value
                 attr_value.save()
                 

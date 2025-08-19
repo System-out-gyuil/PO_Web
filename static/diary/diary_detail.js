@@ -746,9 +746,8 @@ function generateDetailModalContent(attributes, rowData, rowId) {
                                         }
                                         
                                         const alerts = supportData.알림 || [];
-                                        // 알림이 있으면 🔔 표시
-                                        return (alerts && Array.isArray(alerts) && alerts.length > 0) ? 
-                                            '<span style="color: #dc3545; font-weight: bold; margin-left: 8px;">🔔</span>' : '';
+                                        // 알림이 있으면 빈 문자열 반환 (아이콘 제거)
+                                        return '';
                                     } catch (e) {
                                         return '';
                                     }
@@ -756,8 +755,61 @@ function generateDetailModalContent(attributes, rowData, rowId) {
                                 return '';
                             })()}
                         </div>
-                        <button type="button" class="btn btn-primary" onclick="openRecommendModalWithAlertClear('${rowId}', 'view')" style="background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
+                        <button type="button" class="btn btn-primary" onclick="openRecommendModalWithAlertClear('${rowId}', 'view')" 
+                            style="background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; position: relative;" 
+                            class="detail-button ${(() => {
+                                if (supportValue) {
+                                    try {
+                                        let supportData;
+                                        if (typeof supportValue === 'string') {
+                                            const cleanedString = supportValue
+                                                .replace(/'/g, '"')
+                                                .replace(/True/g, 'true')
+                                                .replace(/False/g, 'false');
+                                            supportData = JSON.parse(cleanedString);
+                                        } else if (typeof supportValue === 'object' && supportValue !== null) {
+                                            supportData = supportValue;
+                                        } else {
+                                            supportData = { pblanc_ids: [] };
+                                        }
+                                        
+                                        const alerts = supportData.알림 || [];
+                                        if (alerts && Array.isArray(alerts) && alerts.length > 0) {
+                                            return 'has-notification';
+                                        }
+                                    } catch (e) {
+                                        // 오류 발생 시 기본 스타일 유지
+                                    }
+                                }
+                                return '';
+                            })()}">
                             추천 지원사업 공고 보기
+                            ${(() => {
+                                if (supportValue) {
+                                    try {
+                                        let supportData;
+                                        if (typeof supportValue === 'string') {
+                                            const cleanedString = supportValue
+                                                .replace(/'/g, '"')
+                                                .replace(/True/g, 'true')
+                                                .replace(/False/g, 'false');
+                                            supportData = JSON.parse(cleanedString);
+                                        } else if (typeof supportValue === 'object' && supportValue !== null) {
+                                            supportData = supportValue;
+                                        } else {
+                                            supportData = { pblanc_ids: [] };
+                                        }
+                                        
+                                        const alerts = supportData.알림 || [];
+                                        if (alerts && Array.isArray(alerts) && alerts.length > 0) {
+                                            return '<span style="position: absolute; top: -2px; right: -2px; width: 8px; height: 8px; background: #dc3545; border-radius: 50%; animation: pulse 2s infinite; z-index: 10;"></span>';
+                                        }
+                                    } catch (e) {
+                                        // 오류 발생 시 기본 스타일 유지
+                                    }
+                                }
+                                return '';
+                            })()}
                         </button>
                         <button type="button" class="btn btn-success" onclick="openRecommendModal('${rowId}', 'recommend')" style="background: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
                             추천받기
@@ -4950,91 +5002,57 @@ document.head.appendChild(style2);
 
 // 추천 지원사업 공고 보기 모달을 열 때 알림 제거
 function openRecommendModalWithAlertClear(rowId, type) {
-    if (type === 'view') {
-        // 알림 제거 API 호출
-        fetch('/sales/clear_biz_recommendation_alerts/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken')
-            },
-            body: JSON.stringify({ row_id: rowId })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                console.log('알림 제거 완료:', data.message);
-                
-                // 버튼 강조 효과 제거
-                const recommendViewBtn = document.querySelector(`button[onclick*="openRecommendModal('${rowId}', 'view')"]`);
-                if (recommendViewBtn) {
-                    recommendViewBtn.style.border = '';
-                    recommendViewBtn.style.boxShadow = '';
-                    recommendViewBtn.style.animation = '';
-                    recommendViewBtn.style.background = '';
-                    
-                    // 알림 아이콘 제거
-                    const notificationSpan = recommendViewBtn.querySelector('span');
-                    if (notificationSpan && notificationSpan.innerHTML === '🔔') {
-                        notificationSpan.remove();
-                    }
-                }
-                
-                // 상세보기 버튼 강조 효과도 제거 (테이블의 more-btn)
-                const detailButtons = document.querySelectorAll(`td[data-field="회사명"] .more-btn`);
-                detailButtons.forEach(btn => {
-                    btn.style.border = '';
-                    btn.style.boxShadow = '';
-                    btn.style.animation = '';
-                    btn.style.position = '';
-                    btn.style.display = '';
-                    btn.style.alignItems = '';
-                    btn.style.justifyContent = '';
-                    btn.style.minWidth = '';
-                    btn.style.minHeight = '';
-                    
-                    // 알림 동그라미 제거
-                    const notificationBell = btn.querySelector('.notification-bell');
-                    if (notificationBell) {
-                        notificationBell.remove();
-                    }
-                });
-                
-                // 테이블의 지원사업 필드도 업데이트 (알림 아이콘 제거)
-                const supportCells = document.querySelectorAll(`tr[data-id="${rowId}"] td[data-field="지원사업"]`);
-                supportCells.forEach(cell => {
-                    const currentValue = cell.getAttribute('data-value');
-                    if (currentValue) {
-                        try {
-                            let supportData = JSON.parse(currentValue);
-                            if (supportData && typeof supportData === 'object') {
-                                // 알림 배열을 비움
-                                supportData.알림 = [];
-                                // UI 업데이트
-                                const pblancIds = supportData.pblanc_ids || [];
-                                let displayText = '';
-                                
-                                if (pblancIds.length > 0) {
-                                    displayText = `저장된 공고: ${pblancIds.length}개`;
-                                } else {
-                                    displayText = '저장된 공고 없음';
-                                }
-                                
-                                cell.innerHTML = `<span>${displayText}</span>`;
-                                cell.setAttribute('data-value', JSON.stringify(supportData));
-                            }
-                        } catch (e) {
-                            console.error('지원사업 데이터 파싱 오류:', e);
-                        }
-                    }
-                });
-            }
-        })
-        .catch(error => {
-            console.error('알림 제거 실패:', error);
-        });
-    }
+    // 기존 모달이 열려있으면 닫기
+    closeRecommendModal();
     
-    // 기존 모달 열기 함수 호출
-    openRecommendModal(rowId, type);
+    // 알림 제거 요청
+    fetch('/sales/clear_biz_recommendation_alerts/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({ row_id: rowId })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            console.log('알림 제거 성공:', data.message);
+            
+            // 상세보기 모달의 버튼에서 빨간 동그라미 제거
+            const detailButton = document.querySelector(`button[onclick*="openRecommendModalWithAlertClear('${rowId}', 'view')"]`);
+            if (detailButton) {
+                // 빨간 동그라미 제거
+                const redCircle = detailButton.querySelector('span[style*="background: #dc3545"]');
+                if (redCircle) {
+                    redCircle.remove();
+                }
+                // 알림 클래스 제거
+                detailButton.classList.remove('has-notification');
+            }
+            
+            // 테이블의 상세보기 버튼도 업데이트
+            if (typeof window.updateTableDetailButtonStyle === 'function') {
+                window.updateTableDetailButtonStyle(rowId, false);
+            }
+            
+            // 행의 data-has-notifications 속성 업데이트
+            const row = document.querySelector(`tr[data-id="${rowId}"]`);
+            if (row) {
+                row.dataset.hasNotifications = 'false';
+            }
+            
+            // 추천 모달 열기
+            openRecommendModal(rowId, type);
+        } else {
+            console.error('알림 제거 실패:', data.error);
+            // 알림 제거 실패 시에도 모달 열기
+            openRecommendModal(rowId, type);
+        }
+    })
+    .catch(error => {
+        console.error('알림 제거 중 오류:', error);
+        // 오류 발생 시에도 모달 열기
+        openRecommendModal(rowId, type);
+    });
 }

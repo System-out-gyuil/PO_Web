@@ -189,12 +189,22 @@ def upload_excel(request):
             
             # 데이터 처리 및 행 생성
             created_rows = 0
+            created_attributes = 0
+            created_dropdown_options = 0
             
             # 사용자의 모든 속성 가져오기
             user_attributes = Attribute.objects.filter(user=user).values_list('name', flat=True)
             user_attributes = list(user_attributes)
             
-            # 엑셀 컬럼과 DB 속성명 자동 매핑
+            # 기본 속성 타입 가져오기 (텍스트 타입)
+            from .models import AttributeType
+            try:
+                text_attribute_type = AttributeType.objects.get(name='text')
+            except AttributeType.DoesNotExist:
+                # 텍스트 타입이 없으면 첫 번째 타입 사용
+                text_attribute_type = AttributeType.objects.first()
+            
+            # 엑셀 컬럼과 DB 속성명 자동 매핑 및 없는 속성 생성
             auto_mapping = {}
             for column in df.columns:
                 if column != "Unnamed: 0":  # 첫 번째 빈 컬럼 제외
@@ -203,13 +213,31 @@ def upload_excel(request):
                         auto_mapping[column] = column
                     else:
                         # 부분 일치하는 속성 찾기
+                        matched_attr = None
                         for attr_name in user_attributes:
                             if column.lower() in attr_name.lower() or attr_name.lower() in column.lower():
-                                auto_mapping[column] = attr_name
+                                matched_attr = attr_name
                                 break
+                        
+                        if matched_attr:
+                            auto_mapping[column] = matched_attr
                         else:
-                            # 매핑되지 않은 컬럼은 건너뛰기
-                            continue
+                            # 매핑되지 않은 컬럼은 새 속성으로 생성
+                            try:
+                                # 새 속성 생성
+                                new_attribute = Attribute.objects.create(
+                                    user=user,
+                                    name=column,
+                                    attributeType=text_attribute_type,
+                                    order=Attribute.objects.filter(user=user).count() + 1
+                                )
+                                auto_mapping[column] = column
+                                user_attributes.append(column)
+                                created_attributes += 1
+                                print(f"새 속성 생성: {column}")
+                            except Exception as e:
+                                print(f"속성 '{column}' 생성 실패: {str(e)}")
+                                continue
             
             print(f"자동 매핑 결과: {auto_mapping}")
             
@@ -238,18 +266,23 @@ def upload_excel(request):
                                 if attribute.attributeType and attribute.attributeType.name == 'dropdown':
                                     try:
                                         # DropdownAttribute에서 해당 옵션 찾기
-                                        dropdown_attr = DropdownAttribute.objects.get(
+                                        dropdown_attr = DropdownAttribute.objects.filter(
                                             attribute=attribute, 
                                             option=excel_value
-                                        )
+                                        ).first()
                                         
                                         if dropdown_attr:
                                             value_to_save = str(dropdown_attr.id)
                                             print(f"    Dropdown 매핑: {excel_value} -> ID {dropdown_attr.id}")
                                         else:
-                                            # 해당 옵션이 없으면 원본 값 그대로 저장
-                                            value_to_save = excel_value
-                                            print(f"    Dropdown 옵션 없음: {excel_value} (원본 값 저장)")
+                                            # 해당 옵션이 없으면 새로 생성
+                                            new_dropdown_option = DropdownAttribute.objects.create(
+                                                attribute=attribute,
+                                                option=excel_value
+                                            )
+                                            value_to_save = str(new_dropdown_option.id)
+                                            created_dropdown_options += 1
+                                            print(f"    새 Dropdown 옵션 생성: {excel_value} -> ID {new_dropdown_option.id}")
                                     except Exception as e:
                                         # 오류 발생 시 원본 값 그대로 저장
                                         value_to_save = excel_value
@@ -299,6 +332,8 @@ def upload_excel(request):
                 'success': True,
                 'message': f'{created_rows}개의 행이 성공적으로 생성되었습니다.',
                 'created_rows': created_rows,
+                'created_attributes': created_attributes,
+                'created_dropdown_options': created_dropdown_options,
                 'excel_file_url': download_url
             })
             

@@ -798,7 +798,7 @@
             
             try {
                 const announcementId = window.currentAnnouncement.id;
-                const response = await fetch(`/sales/admin/alarm/edit/${announcementId}/`, {
+                const response = await fetch(`/sales/diary_admin/alarm/${announcementId}/`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
