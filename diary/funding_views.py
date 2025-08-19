@@ -1272,7 +1272,9 @@ def get_saved_biz_recommendations(request):
                 is_new = False
                 if isinstance(saved_recommendations, dict):
                     alerts = saved_recommendations.get('알림', [])
-                    is_new = str(biz.pblanc_id) in alerts
+                    # 여기를 다음과 같이 수정하세요:
+                    is_new = str(biz.pblanc_id) in [str(alert_id) for alert_id in alerts]
+                
                 
                 result_data.append({
                     'pblanc_id': biz.pblanc_id,

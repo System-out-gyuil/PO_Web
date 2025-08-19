@@ -881,6 +881,11 @@ function generateDetailModalContent(attributes, rowData, rowId) {
                 console.log('deleteFile 함수 호출 후');
             });
         });
+
+        const recommendViewBtn = document.querySelector(`button[onclick*="openRecommendModal('${rowId}', 'view')"]`);
+        if (recommendViewBtn) {
+            addNotificationToRecommendButton(rowId, recommendViewBtn);
+        }
     }, 100);
 }
 
@@ -4871,4 +4876,43 @@ function getCookie(name) {
         }
     }
     return cookieValue;
+}
+
+// 상세보기 모달 내의 추천 지원사업 공고 보기 버튼에 알림 표시를 추가하는 함수
+function addNotificationToRecommendButton(rowId, recommendButton) {
+    // 지원사업 속성에서 알림 데이터 확인
+    fetch('/sales/get_saved_biz_recommendations/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({ row_id: rowId })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.data && data.data.length > 0) {
+            // 새로 추가된 공고가 있는지 확인
+            const hasNewRecommendations = data.data.some(item => item.isNew);
+            if (hasNewRecommendations) {
+                // 알림 표시 추가
+                const notificationSpan = document.createElement('span');
+                notificationSpan.innerHTML = '🔔';
+                notificationSpan.style.cssText = 'color: #dc3545; font-weight: bold; margin-left: 8px; font-size: 14px;';
+                notificationSpan.title = '새로운 추천 지원사업이 있습니다!';
+                
+                // 기존 알림이 있으면 제거
+                const existingNotification = recommendButton.querySelector('.notification-bell');
+                if (existingNotification) {
+                    existingNotification.remove();
+                }
+                
+                notificationSpan.className = 'notification-bell';
+                recommendButton.appendChild(notificationSpan);
+            }
+        }
+    })
+    .catch(error => {
+        console.error('알림 데이터 조회 실패:', error);
+    });
 }
