@@ -23,7 +23,7 @@ async function loadClassForms(page = 1) {
         const data = await response.json();
         
         if (data.success) {
-            renderClassFormsTable(data.class_forms);
+            renderClassFormsTable(data.class_forms, page, 10);
             renderPagination(data.pagination, 'class-forms-pagination', loadClassForms);
             updateClassFormsSummary(data.total_count);
         } else {
@@ -36,7 +36,7 @@ async function loadClassForms(page = 1) {
 }
 
 // 원데이 클래스 신청 테이블 렌더링
-function renderClassFormsTable(classForms) {
+function renderClassFormsTable(classForms, currentPage = 1, pageSize = 10) {
     const tbody = document.getElementById('class-forms-table-body');
     if (!tbody) return;
     
@@ -47,10 +47,12 @@ function renderClassFormsTable(classForms) {
         return;
     }
     
-    classForms.forEach(classForm => {
+    classForms.forEach((classForm, index) => {
         const row = document.createElement('tr');
+        const displayNumber = (currentPage - 1) * pageSize + (classForms.length - index);
+        
         row.innerHTML = `
-            <td>${classForm.id}</td>
+            <td>${displayNumber}</td>
             <td>${classForm.name}</td>
             <td>${classForm.phone}</td>
             <td>${formatDate(classForm.created_at)}</td>
@@ -498,7 +500,7 @@ async function loadInquiries(page = 1) {
         const data = await response.json();
         
         if (data.success) {
-            renderInquiriesTable(data.inquiries);
+            renderInquiriesTable(data.inquiries, page, 10);
             renderPagination(data.pagination, 'inquiries-pagination', loadInquiries);
         } else {
             showAlert('문의사항을 불러오는데 실패했습니다.', 'danger');
@@ -525,7 +527,7 @@ async function loadAlarms(page = 1) {
         const data = await response.json();
         
         if (data.success) {
-            renderAlarmsTable(data.alarms);
+            renderAlarmsTable(data.alarms, page, 10);
             renderPagination(data.pagination, 'alarms-pagination', loadAlarms);
         } else {
             showAlert('공지사항을 불러오는데 실패했습니다.', 'danger');
@@ -593,7 +595,7 @@ async function loadUsers(page = 1) {
         const data = await response.json();
         
         if (data.success) {
-            renderUsersTable(data.users, data.current_user_id, data.is_super_admin);
+            renderUsersTable(data.users, data.current_user_id, data.is_super_admin, page, 10);
             renderPagination(data.pagination, 'users-pagination', loadUsers);
             // 정렬 상태는 이미 handleUserTableSort에서 업데이트됨
         } else {
@@ -624,10 +626,13 @@ function loadViewCounts(page = 1) {
             return response.json();
         })
         .then(data => {
-            console.log('Received data:', data);
+            
+            
+            
+            
             if (data.success) {
-                displayViewCounts(data.counts);
-                displayViewCountPagination(data.pagination);
+                displayViewCounts(data.counts, page, 20, data.total_count, data.total_ips);
+                displayViewCountPagination(data.pagination, page);
                 updateViewCountSummary(data.total_count, data.total_ips);
             } else {
                 console.error('조회수 로드 실패:', data.message);
@@ -639,7 +644,7 @@ function loadViewCounts(page = 1) {
 }
 
 // 문의사항 테이블 렌더링
-function renderInquiriesTable(inquiries) {
+function renderInquiriesTable(inquiries, currentPage = 1, pageSize = 10) {
     const tbody = document.getElementById('inquiries-table-body');
     if (!tbody) return;
     
@@ -650,10 +655,12 @@ function renderInquiriesTable(inquiries) {
         return;
     }
     
-    inquiries.forEach(inquiry => {
+    inquiries.forEach((inquiry, index) => {
         const row = document.createElement('tr');
+        const displayNumber = (currentPage - 1) * pageSize + (inquiries.length - index);
+        
         row.innerHTML = `
-            <td>${inquiry.id}</td>
+            <td>${displayNumber}</td>
             <td>${inquiry.name || '익명'}</td>
             <td>${inquiry.company_name || '-'}</td>
             <td>${inquiry.contact || '-'}</td>
@@ -673,7 +680,7 @@ function renderInquiriesTable(inquiries) {
 }
 
 // 공지사항 테이블 렌더링
-function renderAlarmsTable(alarms) {
+function renderAlarmsTable(alarms, currentPage = 1, pageSize = 10) {
     const tbody = document.getElementById('alarms-table-body');
     if (!tbody) return;
     
@@ -684,13 +691,14 @@ function renderAlarmsTable(alarms) {
         return;
     }
     
-    alarms.forEach(alarm => {
+    alarms.forEach((alarm, index) => {
         const fileCount = alarm.files ? alarm.files.length : 0;
         const fileInfo = fileCount > 0 ? `<span class="badge bg-info"><i class="fas fa-paperclip"></i> ${fileCount}개</span>` : '-';
+        const displayNumber = (currentPage - 1) * pageSize + (alarms.length - index);
         
         const row = document.createElement('tr');
         row.innerHTML = `
-            <td>${alarm.id}</td>
+            <td>${displayNumber}</td>
             <td>${safeEmojiText(alarm.title)}</td>
             <td>${safeEmojiText(alarm.content.length > 50 ? alarm.content.substring(0, 50) + '...' : alarm.content)}</td>
             <td>${fileInfo}</td>
@@ -709,7 +717,7 @@ function renderAlarmsTable(alarms) {
 }
 
 // 사용자 테이블 렌더링
-function renderUsersTable(users, currentUserId, isSuperAdmin) {
+function renderUsersTable(users, currentUserId, isSuperAdmin, currentPage = 1, pageSize = 10) {
     const tbody = document.getElementById('users-table-body');
     if (!tbody) return;
     
@@ -720,8 +728,9 @@ function renderUsersTable(users, currentUserId, isSuperAdmin) {
         return;
     }
     
-    users.forEach(user => {
+    users.forEach((user, index) => {
         let adminToggleBtn = '';
+        const displayNumber = (currentPage - 1) * pageSize + (users.length - index);
         
         // 최고 관리자(ID=1)만 관리자 권한 토글 버튼 표시
         if (isSuperAdmin) {
@@ -752,7 +761,7 @@ function renderUsersTable(users, currentUserId, isSuperAdmin) {
         
         const row = document.createElement('tr');
         row.innerHTML = `
-            <td>${user.id}</td>
+            <td>${displayNumber}</td>
             <td>${user.name || '-'}</td>
             <td>${user.email}</td>
             <td>${user.company_name || '-'}</td>
@@ -1378,7 +1387,8 @@ function displayUsers(users) {
     });
 }
 
-function displayViewCounts(counts) {
+// 조회수 테이블 렌더링
+function displayViewCounts(counts, currentPage = 1, pageSize = 20, totalCount = 0, totalIps = 0) {
     console.log('Displaying view counts:', counts);
     const tbody = document.getElementById('counts-table-body');
     if (!tbody) {
@@ -1393,10 +1403,13 @@ function displayViewCounts(counts) {
         return;
     }
     
-    counts.forEach(count => {
+    counts.forEach((count, index) => {
         const row = document.createElement('tr');
+        // IP 수 기준으로 번호 매기기: 1페이지 맨 위에 가장 큰 번호(총 IP 수)가 나오도록
+        const displayNumber = totalIps - ((currentPage - 1) * pageSize + index);
+        
         row.innerHTML = `
-            <td>${count.id}</td>
+            <td>${displayNumber}</td>
             <td>${count.ip}</td>
             <td><span class="badge bg-primary">${count.count}</span></td>
             <td>${formatDate(count.created_at)}</td>
@@ -1411,7 +1424,7 @@ function displayViewCounts(counts) {
     });
 }
 
-function displayViewCountPagination(pagination) {
+function displayViewCountPagination(pagination, currentPage = 1) {
     const paginationElement = document.getElementById('counts-pagination');
     if (!paginationElement) return;
     

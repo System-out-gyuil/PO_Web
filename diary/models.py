@@ -483,4 +483,17 @@ class ClassForm(models.Model):
         return f"{self.name} - {self.phone}"
 
 
+class CountUser(models.Model):
+    name = models.CharField(max_length=50)
+    count = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['created_at']),
+        ]
+
+    def __str__(self):
+        return f"{self.name} - {self.count}"
+        

@@ -9,7 +9,7 @@ from django.utils import timezone
 from datetime import timedelta
 import random
 import re
-from .models import User, BaseAttribute, BaseAttributeDetail, Attribute, AttributeValue, DropdownAttribute, Row, CalendarSettings, KanbanSettings, EmailVerification
+from .models import User, BaseAttribute, BaseAttributeDetail, Attribute, AttributeValue, DropdownAttribute, Row, CalendarSettings, KanbanSettings, EmailVerification, CountUser
 import json
 from config import EMAIL_AUTH_VALID_TIME, SENDER_EMAIL
 
@@ -25,7 +25,7 @@ class LoginView(View):
             member_id = data.get('member_id')
             member_pw = data.get('member_pw')
 
-            print(member_id, member_pw)
+            print(f'member_id: {member_id}, member_pw: {member_pw}')
 
             # 입력값 검증
             if not member_id or not member_pw:
@@ -51,7 +51,19 @@ class LoginView(View):
                     request.session['diary_authenticated'] = True
                     request.session['diary_member_id'] = member.id
 
-                    print(member.id)
+                    # CountUser 테이블에 로그인 기록 추가
+                    try:
+                        count_user, created = CountUser.objects.get_or_create(
+                            name=member.name,
+                            defaults={'count': 1}
+                        )
+                        if not created:
+                            count_user.count += 1
+                            count_user.save()
+                    except Exception as e:
+                        print(f"CountUser 업데이트 중 오류: {str(e)}")
+
+                    print(f"로그인 성공: {member.id}")
 
                     return JsonResponse({
                         'success': True,
@@ -142,7 +154,7 @@ class SignupView(View):
                 manager_name=manager_name,
                 company_name=company_name,
                 phone_number=phone_number,
-                use_date=timezone.now() + timedelta(days=30)  # 한 달 사용 기간 설정
+                use_date=timezone.now() + timedelta(days=7)  # 한 달 사용 기간 설정
             )
 
             # 모든 기존 공지(Alarm)를 UserAlarm으로 추가
@@ -194,9 +206,10 @@ class SignupView(View):
             '나이',        # 7. baseattribute
             '경력',        # 9. baseattribute
             '직원수',      # 10. baseattribute
-            '추천자금',
             '지역',
             '상세지역',
+            '추천자금',
+            '지원사업'
         ]
         
         # 동기화를 활성화할 속성들 정의

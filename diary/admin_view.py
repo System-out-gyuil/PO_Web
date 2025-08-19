@@ -871,6 +871,7 @@ def diary_count_list(request):
         counts = counts.order_by('-count')
     
     # 페이지네이션
+    total_ips = counts.count()  # 실제 IP 개수
     paginator = Paginator(counts, 20)  # 페이지당 20개
     try:
         counts_page = paginator.page(page)
@@ -900,8 +901,7 @@ def diary_count_list(request):
     }
     
     # 총계 정보
-    total_count = counts.aggregate(total=Sum('count'))['total'] or 0
-    total_ips = counts.count()
+    total_count = counts.aggregate(total=Sum('count'))['total'] or 0  # 조회수 합계
     
     return JsonResponse({
         'success': True,
