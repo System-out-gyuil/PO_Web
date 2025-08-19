@@ -564,126 +564,146 @@ def naver_login(driver, naver_id, naver_password, session_id=None):
         except:
             pass
         
-        # 보안 인증 창 처리 (새로운 창이 열렸는지 확인)
+                # 보안 인증 창 처리 (새로운 창이 열렸는지 확인)
         try:
             # 현재 창 핸들 저장
             original_window = driver.current_window_handle
             original_handles_count = len(driver.window_handles)
             
-            print(f"보안 인증 창 확인 시작 - 현재 창 개수: {original_handles_count}")
+            print(f"�� 보안 인증 확인 시작 - 현재 창 개수: {original_handles_count}")
             
-            # 로그인 후 더 오래 대기 (새 창이 열릴 시간 확보)
+            # 로그인 후 더 오래 대기 (페이지 이동 시간 확보)
             time.sleep(5)
             
             # 새 창이 열렸는지 확인 (여러 번 체크)
             max_checks = 6  # 최대 6번 체크 (총 30초)
             for check_count in range(max_checks):
                 current_handles_count = len(driver.window_handles)
-                print(f"🔍 보안 인증 창 체크 {check_count + 1}/{max_checks} - 창 개수: {original_handles_count} → {current_handles_count}")
+                current_url = driver.current_url
+                print(f"🔍 보안 인증 체크 {check_count + 1}/{max_checks} - 창 개수: {original_handles_count} → {current_handles_count}, URL: {current_url}")
                 
-                if current_handles_count > original_handles_count:
-                    print(f"보안 인증 창 감지됨 (창 개수: {original_handles_count} → {current_handles_count})")
-                    update_status('security_auth', '보안 인증 창 처리 중', '추가 인증 진행 중...', session_id=session_id)
+                # 새 창이 열렸거나 새로운 기기 확인 페이지로 이동했는지 확인
+                if (current_handles_count > original_handles_count or 
+                    "deviceConfirm" in current_url or
+                    "login/ext/deviceConfirm" in current_url):
                     
-                    # 새 창으로 전환
-                    for handle in driver.window_handles:
-                        if handle != original_window:
-                            driver.switch_to.window(handle)
-                            print(f"🔐 보안 인증 창으로 전환: {handle}")
-                            
-                            # 페이지 로딩 대기
-                            time.sleep(3)
-                            
-                            # 현재 페이지 정보 출력 (디버깅용)
+                    print(f"🔐 새로운 기기 확인 페이지 감지됨 - 창 개수: {original_handles_count} → {current_handles_count}, URL: {current_url}")
+                    update_status('security_auth', '새로운 기기 확인 처리 중', '기기 등록 진행 중...', session_id=session_id)
+                    
+                    # 새 창이 열린 경우
+                    if current_handles_count > original_handles_count:
+                        # 새 창으로 전환
+                        for handle in driver.window_handles:
+                            if handle != original_window:
+                                driver.switch_to.window(handle)
+                                print(f"🔐 보안 인증 창으로 전환: {handle}")
+                                break
+                    else:
+                        print("🔐 현재 창에서 새로운 기기 확인 페이지 처리")
+                    
+                    # 페이지 로딩 대기
+                    time.sleep(3)
+                    
+                    # 현재 페이지 정보 출력 (디버깅용)
+                    try:
+                        current_url = driver.current_url
+                        page_title = driver.title
+                        print(f"�� 새로운 기기 확인 페이지 정보 - URL: {current_url}, 제목: {page_title}")
+                    except:
+                        pass
+                    
+                    # 등록 버튼 찾기 및 클릭 (XPath와 CSS 선택자 모두 시도)
+                    register_btn = None
+                    
+                    # XPath 선택자들 (새로운 기기 등록 페이지에 맞게 수정)
+                    xpath_selectors = [
+                        "//a[text()='새로운 기기 등록']",
+                        "//a[contains(text(), '새로운 기기 등록')]",
+                        "//a[contains(text(), '등록')]",
+                        "//a[text()='등록']",
+                        "//button[text()='새로운 기기 등록']",
+                        "//button[contains(text(), '등록')]",
+                        "//input[@value='새로운 기기 등록']",
+                        "//input[@value='등록']"
+                    ]
+                    
+                    # CSS 선택자들
+                    css_selectors = [
+                        "a:contains('새로운 기기 등록')",
+                        "a:contains('등록')",
+                        "button:contains('새로운 기기 등록')",
+                        "button:contains('등록')",
+                        "input[value='새로운 기기 등록']",
+                        "input[value='등록']",
+                        ".btn",
+                        "a.btn"
+                    ]
+                    
+                    # XPath 먼저 시도
+                    for xpath in xpath_selectors:
+                        try:
+                            register_btn = WebDriverWait(driver, 3).until(
+                                EC.element_to_be_clickable((By.XPATH, xpath))
+                            )
+                            print(f"✅ 등록 버튼 발견 (XPath): {xpath}")
+                            break
+                        except Exception as xpath_error:
+                            print(f"⚠️ XPath {xpath} 실패: {str(xpath_error)}")
+                            continue
+                    
+                    # XPath 실패 시 CSS 선택자 시도
+                    if not register_btn:
+                        for css_selector in css_selectors:
                             try:
-                                current_url = driver.current_url
-                                page_title = driver.title
-                                print(f"🔍 보안 인증 창 정보 - URL: {current_url}, 제목: {page_title}")
-                            except:
-                                pass
-                            
-                            # 등록 버튼 찾기 및 클릭 (XPath와 CSS 선택자 모두 시도)
-                            register_btn = None
-                            
-                            # XPath 선택자들
-                            xpath_selectors = [
-                                "//a[@id='new.save' and @class='btn']",
-                                "//a[@id='new.save']",
-                                "//a[contains(@class, 'btn') and @id='new.save']",
-                                "//span[@class='btn_upload']//a[@id='new.save']",
-                                "//a[text()='등록']",
-                                "//a[contains(text(), '등록')]"
-                            ]
-                            
-                            # CSS 선택자들
-                            css_selectors = [
-                                "a#new\\.save.btn",
-                                "a[id='new.save']",
-                                "a.btn[id*='new']",
-                                "a.btn",
-                                "a[href='#']"
-                            ]
-                            
-                            # XPath 먼저 시도
-                            for xpath in xpath_selectors:
-                                try:
-                                    register_btn = WebDriverWait(driver, 3).until(
-                                        EC.element_to_be_clickable((By.XPATH, xpath))
-                                    )
-                                    print(f"✅ 등록 버튼 발견 (XPath): {xpath}")
-                                    break
-                                except Exception as xpath_error:
-                                    print(f"⚠️ XPath {xpath} 실패: {str(xpath_error)}")
-                                    continue
-                            
-                            # XPath 실패 시 CSS 선택자 시도
-                            if not register_btn:
-                                for css_selector in css_selectors:
-                                    try:
-                                        register_btn = WebDriverWait(driver, 3).until(
-                                            EC.element_to_be_clickable((By.CSS_SELECTOR, css_selector))
-                                        )
-                                        print(f"✅ 등록 버튼 발견 (CSS): {css_selector}")
-                                        break
-                                    except Exception as css_error:
-                                        print(f"⚠️ CSS 선택자 {css_selector} 실패: {str(css_error)}")
-                                        continue
-                            
-                            if register_btn:
-                                # 버튼 클릭 전 잠시 대기
-                                time.sleep(1)
-                                register_btn.click()
-                                print("✅ 보안 인증 등록 버튼 클릭 완료")
-                                update_status('security_auth_complete', '보안 인증 완료', '인증 창 닫는 중...', session_id=session_id)
-                                
-                                # 인증 완료 후 잠시 대기
-                                time.sleep(3)
-                            else:
-                                print("⚠️ 등록 버튼을 찾을 수 없음")
-                            
-                            # 인증 창 닫기
+                                register_btn = WebDriverWait(driver, 3).until(
+                                    EC.element_to_be_clickable((By.CSS_SELECTOR, css_selector))
+                                )
+                                print(f"✅ 등록 버튼 발견 (CSS): {css_selector}")
+                                break
+                            except Exception as css_error:
+                                print(f"⚠️ CSS 선택자 {css_selector} 실패: {str(css_error)}")
+                                continue
+                    
+                    if register_btn:
+                        # 버튼 클릭 전 잠시 대기
+                        time.sleep(1)
+                        register_btn.click()
+                        print("✅ 새로운 기기 등록 버튼 클릭 완료")
+                        update_status('security_auth_complete', '새로운 기기 등록 완료', '인증 처리 중...', session_id=session_id)
+                        
+                        # 인증 완료 후 잠시 대기
+                        time.sleep(3)
+                        
+                        # 새 창이었던 경우 창 닫기
+                        if current_handles_count > original_handles_count:
                             driver.close()
-                            
-                            # 원래 창으로 복귀
                             driver.switch_to.window(original_window)
                             print("✅ 보안 인증 창 닫고 원래 창으로 복귀")
-                            
-                            # 원래 창에서 페이지 로딩 대기
-                            time.sleep(3)
-                            break
+                        else:
+                            print("✅ 새로운 기기 등록 페이지에서 인증 완료")
+                        
+                        # 원래 창에서 페이지 로딩 대기
+                        time.sleep(3)
+                    else:
+                        print("⚠️ 등록 버튼을 찾을 수 없음")
+                        # 새 창이었던 경우 창 닫기
+                        if current_handles_count > original_handles_count:
+                            driver.close()
+                            driver.switch_to.window(original_window)
+                            print("⚠️ 등록 버튼을 찾을 수 없어 창 닫음")
                     
-                    # 보안 인증 창 처리 완료 후 루프 종료
+                    # 보안 인증 처리 완료 후 루프 종료
                     break
                 
-                # 아직 새 창이 열리지 않았다면 잠시 대기 후 재시도
+                # 아직 보안 인증이 감지되지 않았다면 잠시 대기 후 재시도
                 if check_count < max_checks - 1:
                     time.sleep(5)
                 else:
-                    print(f"ℹ️ 보안 인증 창 없음 (창 개수: {original_handles_count} → {current_handles_count})")
+                    print(f"ℹ️ 보안 인증 없음 (창 개수: {original_handles_count} → {current_handles_count})")
                     
         except Exception as e:
-            # 새 창 처리 중 오류 발생 시 무시하고 진행
-            print(f"⚠️ 보안 인증 창 처리 중 오류 발생: {str(e)}")
+            # 보안 인증 처리 중 오류 발생 시 무시하고 진행
+            print(f"⚠️ 보안 인증 처리 중 오류 발생: {str(e)}")
             # 원래 창으로 복귀 시도
             try:
                 driver.switch_to.window(original_window)
