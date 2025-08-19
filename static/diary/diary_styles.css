@@ -2640,6 +2640,23 @@ th.resizing {
     padding: 8px;
     border: 1px solid #ddd;
     border-radius: 4px;
+    transition: border-color 0.3s ease;
+}
+
+.add-attribute-input:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.add-attribute-input.duplicate {
+    border-color: #ff4444;
+    box-shadow: 0 0 0 2px rgba(255, 68, 68, 0.25);
+}
+
+.add-attribute-input.available {
+    border-color: #44ff44;
+    box-shadow: 0 0 0 2px rgba(68, 255, 68, 0.25);
 }
 
 .add-attribute-select {
@@ -2669,6 +2686,31 @@ th.resizing {
     border: none;
     border-radius: 4px;
     cursor: pointer;
+}
+
+.save-attribute-btn:disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+}
+
+/* 중복 체크 메시지 스타일 */
+#duplicateMessage {
+    font-size: 12px;
+    margin-top: 5px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+#duplicateMessage.duplicate {
+    background-color: rgba(255, 68, 68, 0.1);
+    border: 1px solid rgba(255, 68, 68, 0.3);
+}
+
+#duplicateMessage.available {
+    background-color: rgba(68, 255, 68, 0.1);
+    border: 1px solid rgba(68, 255, 68, 0.3);
 }
 
 /* 기대출 모달 */

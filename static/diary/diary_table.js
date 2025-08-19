@@ -29,6 +29,76 @@ function processDropdownOptions(options, value, cell) {
     }
 }
 
+// 상세보기 버튼에 알림 표시를 추가하는 함수
+function addNotificationToDetailButton(rowId, moreBtn) {
+    // 이미 알림이 표시되어 있는지 확인
+    if (moreBtn.querySelector('.notification-bell')) {
+        console.log(`행 ID ${rowId}: 이미 알림이 표시되어 있음`);
+        return;
+    }
+    
+    // 지원사업 속성에서 알림 데이터 확인
+    fetch('/sales/get_saved_biz_recommendations/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({ row_id: rowId })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.data && data.data.length > 0) {
+            // 새로 추가된 공고가 있는지 확인
+            const hasNewRecommendations = data.data.some(item => item.isNew);
+            if (hasNewRecommendations) {
+                // 알림 표시 추가
+                const notificationSpan = document.createElement('span');
+                notificationSpan.className = 'notification-bell';
+                notificationSpan.innerHTML = '';
+                notificationSpan.style.cssText = `
+                    width: 8px;
+                    height: 8px;
+                    margin-left: 8px;
+                    background: #dc3545;
+                    border-radius: 50%;
+                    animation: pulse 2s infinite;
+                    display: inline-block;
+                `;
+                
+                // 버튼에 강조 효과 추가
+                moreBtn.style.cssText += `
+                    border: 2px solid #dc3545 !important;
+                    box-shadow: 0 0 10px rgba(220, 53, 69, 0.5) !important;
+                    animation: glow 2s infinite alternate !important;
+                `;
+                
+                moreBtn.appendChild(notificationSpan);
+                console.log(`행 ID ${rowId}: 알림 표시 완료`);
+            }
+        }
+    })
+    .catch(error => {
+        console.error('알림 데이터 조회 실패:', error);
+    });
+}
+
+// CSS 애니메이션 추가
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.2); }
+        100% { transform: scale(1); }
+    }
+    
+    @keyframes glow {
+        0% { box-shadow: 0 0 10px rgba(220, 53, 69, 0.5); }
+        100% { box-shadow: 0 0 20px rgba(220, 53, 69, 0.8); }
+    }
+`;
+document.head.appendChild(style);
+
   // Sticky 헤더 기능 초기화
   function initializeStickyHeader() {
       
@@ -536,36 +606,36 @@ function processDropdownOptions(options, value, cell) {
                           td.innerHTML = `
                             <div class="name-container">
                               <div class="name-text">${value}</div>
-                              <div class="more-btn-wrapper"><div class="more-btn" style="cursor:pointer;">⋯</div></div>
+                              <div class="more-btn-wrapper"><div class="more-btn" id="moreBtn_${id}" style="cursor:pointer;">⋯</div></div>
                             </div>
                           `;
                           // ...버튼 이벤트 재바인딩
                           const newMoreBtn = td.querySelector('.more-btn');
-                          if (newMoreBtn) {
-                              newMoreBtn.onclick = function(e) {
-                                  e.stopPropagation();
-                                  const tr = td.closest('tr');
-                                  const id = tr.getAttribute('data-id');
-                                  if (!id) { alert('ID 정보가 없습니다.'); return; }
-                                  fetch('/sales/get_row_details/' + id + '/')
-                                      .then(r => r.json())
-                                      .then(function(data) {
-                                          if (data.success) showDetailModal(data.row_data, data.row_id);
-                                          else alert('상세정보 불러오기 실패: ' + (data.error || ''));
-                                      })
-                                      .catch(function(err) {
-                                          alert('상세정보 불러오기 실패: 네트워크 오류\n' + err);
-                                          console.error(err);
-                                      });
-                              };
-                              
-                              // 알림 표시 추가
-                              const tr = td.closest('tr');
-                              const id = tr.getAttribute('data-id');
-                              if (id) {
-                                  addNotificationToDetailButton(id, newMoreBtn);
-                              }
-                          }
+                            if (newMoreBtn) {
+                                newMoreBtn.onclick = function(e) {
+                                    e.stopPropagation();
+                                    const tr = td.closest('tr');
+                                    const id = tr.getAttribute('data-id');
+                                    if (!id) { alert('ID 정보가 없습니다.'); return; }
+                                    fetch('/sales/get_row_details/' + id + '/')
+                                        .then(r => r.json())
+                                        .then(function(data) {
+                                            if (data.success) showDetailModal(data.row_data, data.row_id);
+                                            else alert('상세정보 불러오기 실패: ' + (data.error || ''));
+                                        })
+                                        .catch(function(err) {
+                                            alert('상세정보 불러오기 실패: 네트워크 오류\n' + err);
+                                            console.error(err);
+                                        });
+                                };
+                                
+                                // 알림 표시 추가 (이 줄을 추가)
+                                const tr = td.closest('tr');
+                                const id = tr.getAttribute('data-id');
+                                if (id) {
+                                    addNotificationToDetailButton(id, newMoreBtn);
+                                }
+                            }
                           // td.onclick도 재바인딩 (more-btn 체크)
                           td.onclick = function(e) {
                               if (e.target.classList.contains('more-btn')) return;
@@ -797,25 +867,32 @@ function processDropdownOptions(options, value, cell) {
               
               // 회사명 필드에 대한 상세보기 버튼 이벤트 바인딩
               if (type === '회사명') {
-                  const moreBtn = td.querySelector('.more-btn');
-                  if (moreBtn) {
-                      moreBtn.onclick = function(e) {
-                          e.stopPropagation();
-                          const tr = td.closest('tr');
-                          const id = tr.getAttribute('data-id');
-                          if (!id) { alert('ID 정보가 없습니다.'); return; }
-                          fetch('/sales/get_row_details/' + id + '/')
-                              .then(r => r.json())
-                              .then(function(data) {
-                                  if (data.success) showDetailModal(data.row_data, data.row_id);
-                                  else alert('상세정보 불러오기 실패: ' + (data.error || ''));
-                              })
-                              .catch(function(err) {
-                                  alert('상세정보 불러오기 실패: 네트워크 오류\n' + err);
-                                  console.error(err);
-                              });
-                      };
-                  }
+                const moreBtn = td.querySelector('.more-btn');
+                if (moreBtn) {
+                    moreBtn.onclick = function(e) {
+                        e.stopPropagation();
+                        const tr = td.closest('tr');
+                        const id = tr.getAttribute('data-id');
+                        if (!id) { alert('ID 정보가 없습니다.'); return; }
+                        fetch('/sales/get_row_details/' + id + '/')
+                            .then(r => r.json())
+                            .then(function(data) {
+                                if (data.success) showDetailModal(data.row_data, data.row_id);
+                                else alert('상세정보 불러오기 실패: ' + (data.error || ''));
+                            })
+                            .catch(function(err) {
+                                alert('상세정보 불러오기 실패: 네트워크 오류\n' + err);
+                                console.error(err);
+                            });
+                    };
+                    
+                    // 알림 표시 추가 (이 줄을 추가)
+                    const tr = td.closest('tr');
+                    const id = tr.getAttribute('data-id');
+                    if (id) {
+                        addNotificationToDetailButton(id, moreBtn);
+                    }
+                }
               }
           }
       });
@@ -1185,94 +1262,94 @@ function processDropdownOptions(options, value, cell) {
                               td.innerHTML = `
                                 <div class="name-container">
                                   <div class="name-text">${value}</div>
-                                  <div class="more-btn-wrapper"><div class="more-btn" style="cursor:pointer;">⋯</div></div>
+                                  <div class="more-btn-wrapper"><div class="more-btn" id="moreBtn_${id}" style="cursor:pointer;">⋯</div></div>
                                 </div>
                               `;
                               // ...버튼 이벤트 재바인딩
                               const newMoreBtn = td.querySelector('.more-btn');
                               if (newMoreBtn) {
-                                  newMoreBtn.onclick = function(e) {
-                                      e.stopPropagation();
-                                      const tr = td.closest('tr');
-                                      const id = tr.getAttribute('data-id');
-                                      if (!id) { alert('ID 정보가 없습니다.'); return; }
-                                      fetch('/sales/get_row_details/' + id + '/')
-                                          .then(r => r.json())
-                                          .then(function(data) {
-                                              if (data.success) showDetailModal(data.row_data, data.row_id);
-                                              else alert('상세정보 불러오기 실패: ' + (data.error || ''));
-                                          })
-                                          .catch(function(err) {
-                                              alert('상세정보 불러오기 실패: 네트워크 오류\n' + err);
-                                              console.error(err);
-                                          });
+                                newMoreBtn.onclick = function(e) {
+                                    e.stopPropagation();
+                                    const tr = td.closest('tr');
+                                    const id = tr.getAttribute('data-id');
+                                    if (!id) { alert('ID 정보가 없습니다.'); return; }
+                                    fetch('/sales/get_row_details/' + id + '/')
+                                        .then(r => r.json())
+                                        .then(function(data) {
+                                            if (data.success) showDetailModal(data.row_data, data.row_id);
+                                            else alert('상세정보 불러오기 실패: ' + (data.error || ''));
+                                        })
+                                        .catch(function(err) {
+                                            alert('상세정보 불러오기 실패: 네트워크 오류\n' + err);
+                                            console.error(err);
+                                        });
                                   };
-                              }
-
-                              // 알림 표시 추가
-                              const tr = td.closest('tr');
-                              const id = tr.getAttribute('data-id');
-                              if (id) {
-                                  addNotificationToDetailButton(id, newMoreBtn);
-                              }
-                              // td.onclick도 재바인딩 (more-btn 체크)
-                              td.onclick = function(e) {
-                                  // more-btn을 클릭한 경우 상세보기 모달로 처리하지 않음
-                                  if (e.target.classList.contains('more-btn') || e.target.closest('.more-btn')) {
-                                      return;
-                                  }
                                   
-                                  // name-text를 클릭한 경우에만 편집 모드로 진입
-                                  if (!e.target.classList.contains('name-text') && !e.target.closest('.name-text')) {
-                                      return;
+                                  // 알림 표시 추가 (이 줄을 추가)
+                                  const tr = td.closest('tr');
+                                  const id = tr.getAttribute('data-id');
+                                  if (id) {
+                                      addNotificationToDetailButton(id, newMoreBtn);
                                   }
-                                  
-                                  if (td.querySelector('input')) return;
-                                  td.style.width = td.offsetWidth + 'px';
-                                  const nameDiv = td.querySelector('.name-text');
-                                  if (!nameDiv) return;
-                                  const oldValue = nameDiv.innerText;
-                                  const id = td.parentElement.getAttribute('data-id');
-                                  const input = document.createElement('input');
-                                  input.type = 'text';
-                                  input.value = oldValue;
-                                  input.className = 'table-edit-input';
-                                  nameDiv.innerHTML = '';
-                                  nameDiv.appendChild(input);
-                                  const moreBtnWrapper = td.querySelector('.more-btn-wrapper');
-                                  if (moreBtnWrapper) moreBtnWrapper.style.visibility = 'hidden';
-                                  input.focus();
-                                  input.onblur = function() {
-                                      const newValue = input.value;
-                                      restoreCell(newValue);
-                                      if (id && id.startsWith('temp_')) {
-                                          saveNewRowField(td.parentElement, '회사명', newValue);
-                                      } else {
-                                          // 🔥 종속행 동기화를 위해 updateCellValue 함수 사용
-                                          updateCellValue(id, '회사명', newValue, td);
-                                      }
-                                  };
-                                  input.onkeydown = function(e) {
-                                      if (e.key === 'Enter') input.blur();
-                                      if (e.key === 'Escape') restoreCell(oldValue);
-                                  };
-                              };
-                              td.style.width = '';
+                              }
                           }
-                          input.onblur = function() {
-                              const newValue = input.value;
-                              restoreCell(newValue);
-                              if (id && id.startsWith('temp_')) {
-                                  saveNewRowField(td.parentElement, '회사명', newValue);
-                              } else {
-                                  // 🔥 종속행 동기화를 위해 updateCellValue 함수 사용
-                                  updateCellValue(id, '회사명', newValue, td);
+                          // td.onclick도 재바인딩 (more-btn 체크)
+                          td.onclick = function(e) {
+                              // more-btn을 클릭한 경우 상세보기 모달로 처리하지 않음
+                              if (e.target.classList.contains('more-btn') || e.target.closest('.more-btn')) {
+                                  return;
                               }
+                              
+                              // name-text를 클릭한 경우에만 편집 모드로 진입
+                              if (!e.target.classList.contains('name-text') && !e.target.closest('.name-text')) {
+                                  return;
+                              }
+                              
+                              if (td.querySelector('input')) return;
+                              td.style.width = td.offsetWidth + 'px';
+                              const nameDiv = td.querySelector('.name-text');
+                              if (!nameDiv) return;
+                              const oldValue = nameDiv.innerText;
+                              const id = td.parentElement.getAttribute('data-id');
+                              const input = document.createElement('input');
+                              input.type = 'text';
+                              input.value = oldValue;
+                              input.className = 'table-edit-input';
+                              nameDiv.innerHTML = '';
+                              nameDiv.appendChild(input);
+                              const moreBtnWrapper = td.querySelector('.more-btn-wrapper');
+                              if (moreBtnWrapper) moreBtnWrapper.style.visibility = 'hidden';
+                              input.focus();
+                              input.onblur = function() {
+                                  const newValue = input.value;
+                                  restoreCell(newValue);
+                                  if (id && id.startsWith('temp_')) {
+                                      saveNewRowField(td.parentElement, '회사명', newValue);
+                                  } else {
+                                      // 🔥 종속행 동기화를 위해 updateCellValue 함수 사용
+                                      updateCellValue(id, '회사명', newValue, td);
+                                  }
+                              };
+                              input.onkeydown = function(e) {
+                                  if (e.key === 'Enter') input.blur();
+                                  if (e.key === 'Escape') restoreCell(oldValue);
+                              };
                           };
-                          input.onkeydown = function(e) {
-                              if (e.key === 'Enter') input.blur();
-                              if (e.key === 'Escape') restoreCell(oldValue);
-                          };
+                          td.style.width = '';
+                      }
+                      input.onblur = function() {
+                          const newValue = input.value;
+                          restoreCell(newValue);
+                          if (id && id.startsWith('temp_')) {
+                              saveNewRowField(td.parentElement, '회사명', newValue);
+                          } else {
+                              // 🔥 종속행 동기화를 위해 updateCellValue 함수 사용
+                              updateCellValue(id, '회사명', newValue, td);
+                          }
+                      };
+                      input.onkeydown = function(e) {
+                          if (e.key === 'Enter') input.blur();
+                          if (e.key === 'Escape') restoreCell(oldValue);
                       };
                   } else {
                       // 일반 텍스트 필드들 처리
@@ -4087,41 +4164,58 @@ function finalizeContactFieldEdit(cell, newValue) {
     setTableEditingState(false);
 }
 
-// 상세보기 버튼에 알림 표시를 추가하는 함수
-function addNotificationToDetailButton(rowId, moreBtn) {
-    // 지원사업 속성에서 알림 데이터 확인
-    fetch('/sales/get_saved_biz_recommendations/', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCookie('csrftoken')
-        },
-        body: JSON.stringify({ row_id: rowId })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success && data.data && data.data.length > 0) {
-            // 새로 추가된 공고가 있는지 확인
-            const hasNewRecommendations = data.data.some(item => item.isNew);
-            if (hasNewRecommendations) {
-                // 알림 표시 추가
-                const notificationSpan = document.createElement('span');
-                notificationSpan.innerHTML = '🔔';
-                notificationSpan.style.cssText = 'color: #dc3545; font-weight: bold; margin-left: 8px; font-size: 14px;';
-                notificationSpan.title = '새로운 추천 지원사업이 있습니다!';
-                
-                // 기존 알림이 있으면 제거
-                const existingNotification = moreBtn.querySelector('.notification-bell');
-                if (existingNotification) {
-                    existingNotification.remove();
+// 페이지 로드 완료 후 모든 상세보기 버튼에 알림 표시
+document.addEventListener('DOMContentLoaded', function() {
+    // 약간의 지연 후 실행
+    setTimeout(() => {
+        console.log('상세보기 버튼 알림 표시 시작');
+        addNotificationsToAllDetailButtons();
+    }, 2000);
+});
+
+// 모든 상세보기 버튼에 알림을 표시하는 함수
+function addNotificationsToAllDetailButtons() {
+    const allMoreBtns = document.querySelectorAll('.more-btn');
+    console.log('찾은 상세보기 버튼 개수:', allMoreBtns.length);
+    
+    let processedCount = 0;
+    allMoreBtns.forEach((btn, index) => {
+        const tr = btn.closest('tr');
+        if (tr) {
+            const rowId = tr.getAttribute('data-id');
+            if (rowId && !rowId.startsWith('temp_')) {
+                // 이미 알림이 표시되어 있는지 확인
+                if (!btn.querySelector('.notification-bell')) {
+                    console.log(`버튼 ${index}: 행 ID ${rowId}에 알림 표시 시도`);
+                    addNotificationToDetailButton(rowId, btn);
+                    processedCount++;
+                } else {
+                    console.log(`버튼 ${index}: 행 ID ${rowId}는 이미 알림이 표시됨`);
                 }
-                
-                notificationSpan.className = 'notification-bell';
-                moreBtn.appendChild(notificationSpan);
             }
         }
-    })
-    .catch(error => {
-        console.error('알림 데이터 조회 실패:', error);
     });
+    console.log(`총 ${processedCount}개의 버튼에 알림 표시 완료`);
 }
+
+// 수동으로 알림을 테스트하는 함수 (콘솔에서 실행 가능)
+function testNotificationForRow(rowId) {
+    console.log(`행 ID ${rowId}의 알림 테스트 시작`);
+    const row = document.querySelector(`tr[data-id="${rowId}"]`);
+    if (row) {
+        const moreBtn = row.querySelector('.more-btn');
+        if (moreBtn) {
+            console.log('상세보기 버튼 찾음:', moreBtn);
+            addNotificationToDetailButton(rowId, moreBtn);
+        } else {
+            console.log('상세보기 버튼을 찾을 수 없음');
+        }
+    } else {
+        console.log(`행 ID ${rowId}를 찾을 수 없음`);
+    }
+}
+
+// 전역 함수로 등록 (콘솔에서 사용 가능)
+window.testNotificationForRow = testNotificationForRow;
+window.addNotificationsToAllDetailButtons = addNotificationsToAllDetailButtons;
+

@@ -96,10 +96,11 @@ def preview_excel(request):
                 for attr_name in user_attributes:
                     try:
                         attr = Attribute.objects.get(user=user, name=attr_name)
-                        if attr.attributeType and attr.attributeType.name == 'dropdown':
+                        if attr and attr.attributeType and attr.attributeType.name == 'dropdown':
                             dropdown_options = DropdownAttribute.objects.filter(attribute=attr).values('id', 'option')
                             dropdown_info[attr_name] = list(dropdown_options)
-                    except Attribute.DoesNotExist:
+                    except Exception as e:
+                        print(f"속성 '{attr_name}' 처리 중 오류: {str(e)}")
                         continue
                 
                 print(f"Dropdown 옵션 정보: {dropdown_info}")
@@ -241,12 +242,18 @@ def upload_excel(request):
                                             attribute=attribute, 
                                             option=excel_value
                                         )
-                                        value_to_save = str(dropdown_attr.id)
-                                        print(f"    Dropdown 매핑: {excel_value} -> ID {dropdown_attr.id}")
-                                    except DropdownAttribute.DoesNotExist:
-                                        # 해당 옵션이 없으면 원본 값 그대로 저장
+                                        
+                                        if dropdown_attr:
+                                            value_to_save = str(dropdown_attr.id)
+                                            print(f"    Dropdown 매핑: {excel_value} -> ID {dropdown_attr.id}")
+                                        else:
+                                            # 해당 옵션이 없으면 원본 값 그대로 저장
+                                            value_to_save = excel_value
+                                            print(f"    Dropdown 옵션 없음: {excel_value} (원본 값 저장)")
+                                    except Exception as e:
+                                        # 오류 발생 시 원본 값 그대로 저장
                                         value_to_save = excel_value
-                                        print(f"    Dropdown 옵션 없음: {excel_value} (원본 값 저장)")
+                                        print(f"    Dropdown 처리 오류: {excel_value} (원본 값 저장) - {str(e)}")
                                 elif attribute.attributeType and attribute.attributeType.name == 'datetime':
                                     # datetime 타입인 경우 날짜만 추출 (YYYY-MM-DD 형식)
                                     try:
@@ -359,7 +366,7 @@ def create_sample_excel_template(request):
             
             if attr.attributeType and attr.attributeType.name == 'dropdown':
                 # 드롭다운 타입인 경우 첫 번째 옵션 사용
-                dropdown_options = DropdownAttribute.objects.filter(attribute=attr).first()
+                dropdown_options = DropdownAttribute.objects.get(attribute=attr)
                 if dropdown_options:
                     sample_data[attr_name] = dropdown_options.option
                 else:

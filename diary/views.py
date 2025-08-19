@@ -585,8 +585,8 @@ def create_new_row(request):
         # 첫 번째 필드 값 설정
         try:
             attr = Attribute.objects.get(name=field, user=user)
-        except Attribute.DoesNotExist:
-            return JsonResponse({'success': False, 'error': 'Invalid attribute'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': f'Attribute 조회 오류: {str(e)}'})
             
         attr_type = attr.attributeType.name if attr.attributeType else ''
         attribute, _ = Attribute.objects.get_or_create(
@@ -600,8 +600,8 @@ def create_new_row(request):
             try:
                 dropdown = DropdownAttribute.objects.get(id=int(value), attribute=attr)
                 value_to_save = str(dropdown.id)
-            except (DropdownAttribute.DoesNotExist, ValueError):
-                return JsonResponse({'success': False, 'error': 'Invalid dropdown value'})
+            except (ValueError, Exception) as e:
+                return JsonResponse({'success': False, 'error': f'Dropdown 처리 오류: {str(e)}'})
         else:
             value_to_save = value
             
@@ -625,14 +625,20 @@ def create_new_row(request):
                     else:
                         dropdown_option = DropdownAttribute.objects.get(attribute=status_attr, option=status_value)
                         status_value_to_save = str(dropdown_option.id)
+                        AttributeValue.objects.create(
+                            row=new_row,
+                            attribute=status_attr,
+                            value=status_value_to_save
+                        )
+                        logger.info(f"상태 필드 값 설정: {status_field}={status_value_to_save}")
                 else:
                     status_value_to_save = status_value
-                AttributeValue.objects.create(
-                    row=new_row,
-                    attribute=status_attr,
-                    value=status_value_to_save
-                )
-                logger.info(f"상태 필드 값 설정: {status_field}={status_value_to_save}")
+                    AttributeValue.objects.create(
+                        row=new_row,
+                        attribute=status_attr,
+                        value=status_value_to_save
+                    )
+                    logger.info(f"상태 필드 값 설정: {status_field}={status_value_to_save}")
             except Exception as e:
                 logger.error(f"상태 필드 생성 오류: {e}")
         
@@ -695,8 +701,8 @@ def update_row_field(request):
             # 속성 조회
             try:
                 attr = Attribute.objects.get(name=field_name, user=user)
-            except Attribute.DoesNotExist:
-                return JsonResponse({'success': False, 'error': f'속성 {field_name}을 찾을 수 없습니다'})
+            except Exception as e:
+                return JsonResponse({'success': False, 'error': f'속성 조회 중 오류: {str(e)}'})
             
             # 드롭다운 타입인 경우 특별 처리
             if attr.attributeType and attr.attributeType.name == 'dropdown':
@@ -1444,8 +1450,8 @@ def update_sales_field(request):
             # 속성 조회
             try:
                 attr = Attribute.objects.get(name=field_name, user=user)
-            except Attribute.DoesNotExist:
-                return JsonResponse({'success': False, 'error': f'속성 {field_name}을 찾을 수 없습니다'})
+            except Exception as e:
+                return JsonResponse({'success': False, 'error': f'속성 조회 중 오류: {str(e)}'})
             
             # AttributeValue 조회 또는 생성
             attr_value, created = AttributeValue.objects.get_or_create(
@@ -1874,8 +1880,8 @@ def save_column_width(request):
             attribute.width = width
             attribute.save()
             return JsonResponse({'success': True, 'message': '컬럼 너비가 저장되었습니다.'})
-        except Attribute.DoesNotExist:
-            return JsonResponse({'success': False, 'error': '속성을 찾을 수 없습니다'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': f'속성 처리 중 오류: {str(e)}'})
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Invalid JSON'})
     except Exception as e:
@@ -1932,8 +1938,8 @@ def get_dependent_rows(request):
             try:
                 cascade_attribute = Attribute.objects.get(name=field, user=user, cascade=True)
                 logger.debug(f"Cascade 속성 찾음: {field}")
-            except Attribute.DoesNotExist:
-                logger.debug(f"Cascade 속성을 찾을 수 없습니다: {field}")
+            except Exception as e:
+                logger.debug(f"Cascade 속성 조회 중 오류: {str(e)}")
                 # Cascade가 false인 속성이면 종속된 행들을 찾지 않음
                 return JsonResponse({
                     'success': True,
@@ -1997,22 +2003,13 @@ def get_dependent_rows(request):
             # 각 관련 행에 대해 해당 필드의 값을 가져와서 종속된 행 목록에 추가
             for dep_row in unique_related_rows:
                 try:
-                    attr_value = AttributeValue.objects.filter(row=dep_row, attribute=cascade_attribute).first()
-                    if attr_value:
-                        dependent_rows.append({
-                            'row_id': dep_row.id,
-                            'field': field,
-                            'value': attr_value.value
-                        })
-                        logger.debug(f"종속된 행 추가: {dep_row.id}, {field}, {attr_value.value}")
-                    else:
-                        # 해당 속성의 값이 없으면 빈 값으로 설정
-                        dependent_rows.append({
-                            'row_id': dep_row.id,
-                            'field': field,
-                            'value': ''
-                        })
-                        logger.debug(f"종속된 행 추가 (빈 값): {dep_row.id}, {field}")
+                    attr_value = AttributeValue.objects.get(row=dep_row, attribute=cascade_attribute)
+                    dependent_rows.append({
+                        'row_id': dep_row.id,
+                        'field': field,
+                        'value': attr_value.value
+                    })
+                    logger.debug(f"종속된 행 추가: {dep_row.id}, {field}, {attr_value.value}")
                 except AttributeValue.DoesNotExist:
                     # 해당 속성의 값이 없으면 빈 값으로 설정
                     dependent_rows.append({

@@ -93,6 +93,12 @@ def upload_audio_file(request):
             # 음성파일 속성 조회 (변환된 텍스트 속성은 더 이상 사용하지 않음)
             audio_attribute = Attribute.objects.get(name='음성파일', user=user)
             
+            if not audio_attribute:
+                return JsonResponse({
+                    'success': False,
+                    'error': '음성파일 속성을 찾을 수 없습니다.'
+                })
+            
             # 오늘 날짜 생성
             from datetime import date
             today = date.today().strftime('%y.%m.%d')

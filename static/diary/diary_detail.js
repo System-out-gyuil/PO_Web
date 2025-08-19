@@ -40,6 +40,14 @@ function showDetailModal(rowData, rowId) {
         .catch(error => {
             console.error('속성 정보 요청 실패:', error);
         });
+    
+    setTimeout(() => {
+        // 추천 지원사업 공고 보기 버튼에 알림 표시 추가
+        const recommendButton = document.querySelector(`#recommendViewBtn_${rowId}`);
+        if (recommendButton) {
+            addNotificationToRecommendButton(rowId, recommendButton);
+        }
+    }, 100);
 }
 
 function generateDetailModalContent(attributes, rowData, rowId) {
@@ -665,35 +673,25 @@ function generateDetailModalContent(attributes, rowData, rowId) {
                     console.log('supportValue raw value:', JSON.stringify(supportValue));
                     
                     if (typeof supportValue === 'string') {
-                        // 문자열인 경우 JSON 파싱 시도
-                        if (supportValue.trim().startsWith('{') && supportValue.trim().endsWith('}')) {
-                            // Python 딕셔너리 형식이므로 빈 배열인지 확인
-                            if (supportValue.includes("'pblanc_ids': []") && supportValue.includes("'알림': []")) {
-                                supportData = { pblanc_ids: [], 알림: [] };
-                                console.log('빈 딕셔너리 감지, 빈 객체로 초기화');
-                            } else {
-                                // 다른 값이 있는 경우에만 파싱 시도
-                                try {
-                                    const jsString = supportValue.replace(/'/g, '"');
-                                    supportData = JSON.parse(jsString);
-                                    console.log('Python 딕셔너리 파싱 성공:', supportData);
-                                } catch (jsonError) {
-                                    console.log('파싱 실패, 빈 객체로 초기화:', jsonError);
-                                    supportData = { pblanc_ids: [], 알림: [] };
-                                }
-                            }
-                        } else {
-                            // 일반 쉼표 구분 문자열
-                            const splitIds = supportValue.split(',').filter(id => id.trim());
-                            supportData = { pblanc_ids: splitIds };
+                        try {
+                            // Python 딕셔너리 형태의 문자열을 JavaScript 객체로 변환
+                            const cleanedString = supportValue
+                                .replace(/'/g, '"')  // 작은따옴표를 큰따옴표로 변경
+                                .replace(/True/g, 'true')  // Python boolean을 JavaScript boolean으로
+                                .replace(/False/g, 'false');
+                            
+                            supportData = JSON.parse(cleanedString);
+                            console.log('Python 딕셔너리 파싱 성공:', supportData);
+                        } catch (e) {
+                            console.error('Python 딕셔너리 파싱 실패:', e);
+                            // 기존 로직으로 fallback
+                            supportData = { pblanc_ids: supportValue.split(',').filter(id => id.trim()) };
                         }
                     } else if (typeof supportValue === 'object' && supportValue !== null) {
-                        // 이미 객체인 경우 (dict 형태)
+                        // 이미 객체인 경우 그대로 사용
                         supportData = supportValue;
-                        console.log('이미 객체 형태 데이터:', supportData);
                     } else {
-                        // 기타 타입인 경우 빈 객체로 초기화
-                        supportData = { pblanc_ids: [], 알림: [] };
+                        supportData = { pblanc_ids: [] };
                     }
                     
                     const pblancIds = supportData.pblanc_ids || [];
@@ -712,6 +710,9 @@ function generateDetailModalContent(attributes, rowData, rowId) {
                         if (alerts && Array.isArray(alerts) && alerts.length > 0) {
                             supportDisplay += ` (새로운 공고: ${alerts.length}개)`;
                         }
+                    } else if (alerts && Array.isArray(alerts) && alerts.length > 0) {
+                        // pblancIds는 비어있지만 알림이 있는 경우
+                        supportDisplay = `새로운 공고: ${alerts.length}개`;
                     } else {
                         supportDisplay = '신규 추천 공고 없음';
                     }
@@ -724,38 +725,45 @@ function generateDetailModalContent(attributes, rowData, rowId) {
             }
             
             inputHtml = `
-                <div style="display: flex; gap: 10px; align-items: center;">
-                    <div style="flex: 1; padding: 8px 12px; background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 4px; color: #333;">
-                        ${supportDisplay}
-                        ${(() => {
-                            if (supportValue) {
-                                try {
-                                    let supportData;
-                                    if (typeof supportValue === 'string') {
-                                        supportData = { pblanc_ids: supportValue.split(',').filter(id => id.trim()) };
-                                    } else if (typeof supportValue === 'object' && supportValue !== null) {
-                                        // 이미 객체인 경우 그대로 사용
-                                        supportData = supportValue;
-                                    } else {
-                                        supportData = { pblanc_ids: [] };
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <div style="flex: 1; padding: 8px 12px; background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 4px; color: #333;">
+                            ${supportDisplay}
+                            ${(() => {
+                                if (supportValue) {
+                                    try {
+                                        let supportData;
+                                        if (typeof supportValue === 'string') {
+                                            // Python 딕셔너리 형태의 문자열을 JavaScript 객체로 변환
+                                            const cleanedString = supportValue
+                                                .replace(/'/g, '"')
+                                                .replace(/True/g, 'true')
+                                                .replace(/False/g, 'false');
+                                            supportData = JSON.parse(cleanedString);
+                                        } else if (typeof supportValue === 'object' && supportValue !== null) {
+                                            supportData = supportValue;
+                                        } else {
+                                            supportData = { pblanc_ids: [] };
+                                        }
+                                        
+                                        const alerts = supportData.알림 || [];
+                                        // 알림이 있으면 🔔 표시
+                                        return (alerts && Array.isArray(alerts) && alerts.length > 0) ? 
+                                            '<span style="color: #dc3545; font-weight: bold; margin-left: 8px;">🔔</span>' : '';
+                                    } catch (e) {
+                                        return '';
                                     }
-                                    const alerts = supportData.알림 || [];
-                                    return (alerts && Array.isArray(alerts) && alerts.length > 0) ? '<span style="color: #dc3545; font-weight: bold; margin-left: 8px;">🔔</span>' : '';
-                                } catch (e) {
-                                    return '';
                                 }
-                            }
-                            return '';
-                        })()}
+                                return '';
+                            })()}
+                        </div>
+                        <button type="button" class="btn btn-primary" onclick="openRecommendModalWithAlertClear('${rowId}', 'view')" style="background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
+                            추천 지원사업 공고 보기
+                        </button>
+                        <button type="button" class="btn btn-success" onclick="openRecommendModal('${rowId}', 'recommend')" style="background: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
+                            추천받기
+                        </button>
                     </div>
-                    <button type="button" class="btn btn-primary" onclick="openRecommendModal('${rowId}', 'view')" style="background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
-                        추천 지원사업 공고 보기
-                    </button>
-                    <button type="button" class="btn btn-success" onclick="openRecommendModal('${rowId}', 'recommend')" style="background: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
-                        추천받기
-                    </button>
-                </div>
-            `;
+                `;
         }
         
         else {
@@ -4898,16 +4906,23 @@ function addNotificationToRecommendButton(rowId, recommendButton) {
                 // 알림 표시 추가
                 const notificationSpan = document.createElement('span');
                 notificationSpan.innerHTML = '🔔';
-                notificationSpan.style.cssText = 'color: #dc3545; font-weight: bold; margin-left: 8px; font-size: 14px;';
-                notificationSpan.title = '새로운 추천 지원사업이 있습니다!';
+                notificationSpan.style.cssText = `
+                    color: #dc3545;
+                    font-size: 16px;
+                    margin-left: 8px;
+                    animation: pulse 2s infinite;
+                    display: inline-block;
+                `;
                 
-                // 기존 알림이 있으면 제거
-                const existingNotification = recommendButton.querySelector('.notification-bell');
-                if (existingNotification) {
-                    existingNotification.remove();
-                }
+                // 버튼에 강조 효과 추가
+                recommendButton.style.cssText += `
+                    border: 2px solid #dc3545 !important;
+                    box-shadow: 0 0 10px rgba(220, 53, 69, 0.5) !important;
+                    animation: glow 2s infinite alternate !important;
+                    background: linear-gradient(45deg, #007bff, #dc3545) !important;
+                    color: white !important;
+                `;
                 
-                notificationSpan.className = 'notification-bell';
                 recommendButton.appendChild(notificationSpan);
             }
         }
@@ -4915,4 +4930,73 @@ function addNotificationToRecommendButton(rowId, recommendButton) {
     .catch(error => {
         console.error('알림 데이터 조회 실패:', error);
     });
+}
+
+// CSS 애니메이션 추가
+const style2 = document.createElement('style');
+style2.textContent = `
+    @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.2); }
+        100% { transform: scale(1); }
+    }
+    
+    @keyframes glow {
+        0% { box-shadow: 0 0 10px rgba(220, 53, 69, 0.5); }
+        100% { box-shadow: 0 0 20px rgba(220, 53, 69, 0.8); }
+    }
+`;
+document.head.appendChild(style2);
+
+// 추천 지원사업 공고 보기 모달을 열 때 알림 제거
+function openRecommendModalWithAlertClear(rowId, type) {
+    if (type === 'view') {
+        // 알림 제거 API 호출
+        fetch('/sales/clear_biz_recommendation_alerts/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({ row_id: rowId })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                console.log('알림 제거 완료:', data.message);
+                
+                // 버튼 강조 효과 제거
+                const recommendViewBtn = document.querySelector(`button[onclick*="openRecommendModal('${rowId}', 'view')"]`);
+                if (recommendViewBtn) {
+                    recommendViewBtn.style.border = '';
+                    recommendViewBtn.style.boxShadow = '';
+                    recommendViewBtn.style.animation = '';
+                    
+                    const notificationBell = recommendViewBtn.querySelector('.notification-bell');
+                    if (notificationBell) {
+                        notificationBell.remove();
+                    }
+                }
+                
+                // 상세보기 버튼 강조 효과도 제거
+                const detailButtons = document.querySelectorAll(`td[data-field="회사명"] .more-btn`);
+                detailButtons.forEach(btn => {
+                    btn.style.border = '';
+                    btn.style.boxShadow = '';
+                    btn.style.animation = '';
+                    
+                    const notificationBell = btn.querySelector('.notification-bell');
+                    if (notificationBell) {
+                        notificationBell.remove();
+                    }
+                });
+            }
+        })
+        .catch(error => {
+            console.error('알림 제거 실패:', error);
+        });
+    }
+    
+    // 기존 모달 열기 함수 호출
+    openRecommendModal(rowId, type);
 }

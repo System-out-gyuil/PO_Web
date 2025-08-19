@@ -583,10 +583,10 @@ class Command(BaseCommand):
                     # pblanc_id 목록 생성
                     pblanc_ids = [biz.pblanc_id for biz in final_data]
                     pblanc_ids_str = ','.join(pblanc_ids)
-                    
+
                     print(f"    추천된 공고 수: {len(final_data)}개")
                     print(f"    pblanc_ids: {pblanc_ids_str}")
-                    
+
                     # 지원사업 속성 찾기 (없으면 생성)
                     try:
                         recommend_attr = Attribute.objects.get(name='지원사업', user=user)
@@ -599,7 +599,7 @@ class Command(BaseCommand):
                             user=user
                         )
                         print(f"    새로운 '지원사업' 속성 생성: {recommend_attr.id}")
-                    
+
                     # 기존 값 가져오기
                     existing_value = None
                     try:
@@ -607,13 +607,13 @@ class Command(BaseCommand):
                         existing_value = attr_value.value
                     except AttributeValue.DoesNotExist:
                         pass
-                    
+
                     # dict 형태로 데이터 구성
                     support_data = {
-                        'pblanc_ids': pblanc_ids,
+                        'pblanc_ids': pblanc_ids,  # 항상 전체 추천 공고 ID 저장
                         '알림': []
                     }
-                    
+
                     # 기존 값이 있으면 기존 pblanc_ids와 비교하여 새로 추가된 것들 찾기
                     if existing_value:
                         try:
@@ -632,18 +632,23 @@ class Command(BaseCommand):
                                 # 새로 추가된 공고 ID들 찾기
                                 new_ids = [id for id in pblanc_ids if id not in existing_ids]
                                 if new_ids:
-                                    support_data['알림'] = new_ids
+                                    support_data['알림'] = new_ids  # 새로 추가된 것들만 알림에
                                     print(f"    새로 추가된 공고: {new_ids}")
+                            else:
+                                # 기존 데이터가 잘못된 형태인 경우, 모든 공고를 알림으로 설정
+                                support_data['알림'] = pblanc_ids
+                                print(f"    기존 데이터 형태 오류, 모든 공고를 알림으로 설정: {pblanc_ids}")
                         except Exception as e:
                             print(f"    기존 값 파싱 오류: {e}")
-                            # 기존 값이 잘못된 형태인 경우 빈 알림으로 시작
-                            support_data['알림'] = []
+                            # 기존 값이 잘못된 형태인 경우, 모든 공고를 알림으로 설정
+                            support_data['알림'] = pblanc_ids
+                            print(f"    파싱 오류로 모든 공고를 알림으로 설정: {pblanc_ids}")
                     else:
-                        # 첫 번째 실행인 경우, 처음 3개 공고를 알림으로 표시
+                        # 첫 번째 실행인 경우, 모든 공고를 알림으로 설정
                         if len(pblanc_ids) > 0:
-                            support_data['알림'] = pblanc_ids[:3]
-                            print(f"    첫 번째 실행 - 처음 3개 공고를 알림으로 설정: {support_data['알림']}")
-                    
+                            support_data['알림'] = pblanc_ids
+                            print(f"    첫 번째 실행 - 모든 공고를 알림으로 설정: {pblanc_ids}")
+
                     print(f"    최종 support_data: {support_data}")
                     
                     # AttributeValue 업데이트 또는 생성

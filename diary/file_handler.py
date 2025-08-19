@@ -298,7 +298,7 @@ def delete_file(request):
             
             # AttributeValue 조회
             try:
-                attribute_value = AttributeValue.objects.filter(row=row, attribute=attribute).first()
+                attribute_value = AttributeValue.objects.get(row=row, attribute=attribute)
                 
                 # 파일 정보 파싱
                 if attribute_value and attribute_value.value:
@@ -505,9 +505,15 @@ def download_file(request, row_id, field_name, fileId):
         row = Row.objects.get(id=row_id, user=user)
         attribute = Attribute.objects.get(name=field_name, user=user)
         
+        if not attribute:
+            return JsonResponse({
+                'success': False,
+                'error': f'속성 {field_name}을 찾을 수 없습니다.'
+            })
+        
         # AttributeValue 조회
         try:
-            attribute_value = AttributeValue.objects.filter(row=row, attribute=attribute).first()
+            attribute_value = AttributeValue.objects.get(row=row, attribute=attribute)
             
             if attribute_value and attribute_value.value:
                 try:
@@ -627,9 +633,9 @@ def download_file_note(request, fileId):
         row = Row.objects.get(id=row_id)
         user = row.user  # 유저 정보 추출
         # '음성파일' 또는 '노트' 필드명에 따라 Attribute 조회 (user 포함)
-        attribute = Attribute.objects.filter(name='음성파일', user=user).first()
+        attribute = Attribute.objects.get(name='음성파일', user=user)
         if not attribute:
-            attribute = Attribute.objects.filter(name='노트', user=user).first()
+            attribute = Attribute.objects.get(name='노트', user=user)
         if not attribute:
             return JsonResponse({'success': False, 'error': '노트/음성파일 속성을 찾을 수 없습니다.'})
         try:

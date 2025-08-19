@@ -1229,11 +1229,13 @@ def get_saved_biz_recommendations(request):
         # Row 객체 가져오기
         try:
             row = Row.objects.get(id=row_id, user=user)
-        except Row.DoesNotExist:
+        except Attribute.DoesNotExist:
             return JsonResponse({'success': False, 'error': '해당 행을 찾을 수 없습니다.'})
         
         # 저장된 추천 지원사업 ID 가져오기
         saved_recommendations = _get_attribute_value(user, row, '지원사업')
+        
+        print(f'saved_recommendations: {saved_recommendations}')
         
         if not saved_recommendations:
             return JsonResponse({
@@ -1242,22 +1244,66 @@ def get_saved_biz_recommendations(request):
             })
         
         try:
-            # dict 형태로 저장된 경우 pblanc_ids에서 ID들 추출
-            if isinstance(saved_recommendations, dict):
-                pblanc_ids = saved_recommendations.get('pblanc_ids', [])
+            # 데이터 타입에 따른 분기 처리
+            if isinstance(saved_recommendations, str):
+                # 문자열인 경우 JSON 파싱 시도
+                try:
+                    # Python 딕셔너리 형태의 문자열을 정리
+                    cleaned_string = saved_recommendations.replace("'", '"').replace('True', 'true').replace('False', 'false')
+                    parsed_data = json.loads(cleaned_string)
+                    
+                    if isinstance(parsed_data, dict):
+                        # 딕셔너리인 경우 pblanc_ids와 알림 추출
+                        pblanc_ids = parsed_data.get('pblanc_ids', [])
+                        alerts = parsed_data.get('알림', [])
+                        
+                        # 리스트가 아닌 경우 리스트로 변환
+                        if isinstance(pblanc_ids, str):
+                            pblanc_ids = [id.strip() for id in pblanc_ids.split(',') if id.strip()]
+                        if isinstance(alerts, str):
+                            alerts = [id.strip() for id in alerts.split(',') if id.strip()]
+                        
+                        # 중복 제거하여 모든 ID 수집
+                        all_ids = list(set(pblanc_ids + alerts))
+                        print(f"문자열 파싱 성공 - pblanc_ids: {pblanc_ids}, alerts: {alerts}, all_ids: {all_ids}")
+                    else:
+                        # 딕셔너리가 아닌 경우 쉼표로 분리
+                        all_ids = [id.strip() for id in saved_recommendations.split(',') if id.strip()]
+                        alerts = []
+                        print(f"문자열을 쉼표로 분리: {all_ids}")
+                        
+                except (json.JSONDecodeError, AttributeError) as e:
+                    print(f"JSON 파싱 실패, 쉼표로 분리: {e}")
+                    # JSON 파싱 실패 시 쉼표로 분리
+                    all_ids = [id.strip() for id in saved_recommendations.split(',') if id.strip()]
+                    alerts = []
+                    print(f"fallback 쉼표 분리: {all_ids}")
             else:
-                # 기존 문자열 형태로 저장된 경우 (하위 호환성)
-                pblanc_ids = [id.strip() for id in saved_recommendations.split(',') if id.strip()]
+                # 기존 로직 (딕셔너리인 경우)
+                if isinstance(saved_recommendations, dict):
+                    pblanc_ids = saved_recommendations.get('pblanc_ids', [])
+                    alerts = saved_recommendations.get('알림', [])
+                    
+                    # 중복 제거하여 모든 ID 수집
+                    all_ids = list(set(pblanc_ids + alerts))
+                    print(f"딕셔너리 처리 - pblanc_ids: {pblanc_ids}, alerts: {alerts}, all_ids: {all_ids}")
+                else:
+                    # 기타 타입인 경우 빈 배열로 처리
+                    all_ids = []
+                    alerts = []
+                    print(f"기타 타입 처리: {type(saved_recommendations)}")
             
-            # pblanc_ids가 빈 배열이거나 None인 경우 처리
-            if not pblanc_ids or len(pblanc_ids) == 0:
+            # all_ids가 빈 배열이거나 None인 경우 처리
+            if not all_ids or len(all_ids) == 0:
                 return JsonResponse({
                     'success': False, 
                     'error': '저장된 공고 ID가 없습니다. 먼저 추천받기를 진행해주세요.'
                 })
             
+            print(f'all_ids: {all_ids}')
+            
             # BizInfo에서 해당 ID들로 데이터 조회
-            biz_data = BizInfo.objects.filter(pblanc_id__in=pblanc_ids)
+            biz_data = BizInfo.objects.filter(pblanc_id__in=all_ids)
             
             # 실제 조회된 데이터가 없는 경우
             if not biz_data.exists():
@@ -1268,13 +1314,10 @@ def get_saved_biz_recommendations(request):
             
             result_data = []
             for biz in biz_data:
-                # 새로 추가된 공고인지 확인
+                # 새로 추가된 공고인지 확인 (알림 배열에 포함된 경우)
                 is_new = False
-                if isinstance(saved_recommendations, dict):
-                    alerts = saved_recommendations.get('알림', [])
-                    # 여기를 다음과 같이 수정하세요:
+                if 'alerts' in locals() and alerts:
                     is_new = str(biz.pblanc_id) in [str(alert_id) for alert_id in alerts]
-                
                 
                 result_data.append({
                     'pblanc_id': biz.pblanc_id,
@@ -1293,7 +1336,13 @@ def get_saved_biz_recommendations(request):
             return JsonResponse({
                 'success': True,
                 'data': result_data,
-                'count': len(result_data)
+                'count': len(result_data),
+                'summary': {
+                    'total_ids': len(all_ids),
+                    'pblanc_count': len(pblanc_ids) if 'pblanc_ids' in locals() else 0,
+                    'alerts_count': len(alerts) if 'alerts' in locals() else 0,
+                    'unique_count': len(all_ids)
+                }
             })
             
         except Exception as e:
@@ -1304,7 +1353,7 @@ def get_saved_biz_recommendations(request):
         logger.error(f"저장된 추천 지원사업 조회 중 오류 발생: {str(e)}")
         logger.error(traceback.format_exc())
         return JsonResponse({'success': False, 'error': f'저장된 추천 지원사업 조회 중 오류가 발생했습니다: {str(e)}'})
-
+    
 @csrf_exempt
 def save_biz_recommendations(request):
     """
@@ -1403,3 +1452,71 @@ def save_biz_recommendations(request):
         logger.error(f"추천 지원사업 저장 중 오류 발생: {str(e)}")
         logger.error(traceback.format_exc())
         return JsonResponse({'success': False, 'error': f'추천 지원사업 저장 중 오류가 발생했습니다: {str(e)}'})
+    
+@csrf_exempt
+def clear_biz_recommendation_alerts(request):
+    """
+    추천 지원사업 공고 확인 후 알림 제거
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': '잘못된 요청 방법입니다.'})
+    
+    try:
+        data = json.loads(request.body)
+        row_id = data.get('row_id')
+        
+        if not row_id:
+            return JsonResponse({'success': False, 'error': 'row_id가 누락되었습니다.'})
+        
+        # 사용자 정보 가져오기
+        try:
+            user_id = request.session.get('diary_member_id')
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '사용자를 찾을 수 없습니다.'})
+        
+        # Row 객체 가져오기
+        try:
+            row = Row.objects.get(id=row_id, user=user)
+        except Row.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '해당 행을 찾을 수 없습니다.'})
+        
+        # 지원사업 속성 가져오기
+        try:
+            support_attr = Attribute.objects.get(name='지원사업', user=user)
+            attr_value = AttributeValue.objects.get(attribute=support_attr, row=row)
+            
+            current_value = attr_value.value
+            if isinstance(current_value, dict):
+                # 알림 배열을 비우고 pblanc_ids는 유지
+                updated_value = {
+                    'pblanc_ids': current_value.get('pblanc_ids', []),
+                    '알림': []  # 알림 제거
+                }
+                
+                attr_value.value = updated_value
+                attr_value.save()
+                
+                print(f"알림 제거 완료: {updated_value}")
+                
+                return JsonResponse({
+                    'success': True,
+                    'message': '알림이 제거되었습니다.',
+                    'updated_data': updated_value
+                })
+            else:
+                return JsonResponse({
+                    'success': False,
+                    'error': '지원사업 데이터 형식이 올바르지 않습니다.'
+                })
+                
+        except (Attribute.DoesNotExist, AttributeValue.DoesNotExist):
+            return JsonResponse({
+                'success': False,
+                'error': '지원사업 속성을 찾을 수 없습니다.'
+            })
+        
+    except Exception as e:
+        logger.error(f"알림 제거 중 오류 발생: {str(e)}")
+        logger.error(traceback.format_exc())
+        return JsonResponse({'success': False, 'error': f'알림 제거 중 오류가 발생했습니다: {str(e)}'})

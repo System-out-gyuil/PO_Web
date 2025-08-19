@@ -16,7 +16,7 @@ from .diary_board import diary_board, get_announcements, get_announcement_detail
 from .main_views import CompanyInfoView, PersonalInfoView, TermsOfServiceView
 from .session_handlers import cleanup_session_cache_api, get_active_sessions_api
 from .board_views import board_list_view, board_list_api, board_create, board_detail_view, board_file_upload, board_file_preview, board_file_download, board_detail_api, board_edit, board_categories_api, board_add_category, board_delete
-from .funding_views import get_funding_recommendation, get_recommended_notices, update_debt_field, save_debt_details, update_expected_loans, update_loan_amount, get_debt_details, get_biz_recommendations, get_saved_biz_recommendations, save_biz_recommendations
+from .funding_views import get_funding_recommendation, get_recommended_notices, update_debt_field, save_debt_details, update_expected_loans, update_loan_amount, get_debt_details, get_biz_recommendations, get_saved_biz_recommendations, save_biz_recommendations, clear_biz_recommendation_alerts
 from .order import reorder_entries, save_column_order, update_detail_sort_order
 from .hwp_convert import convert_hwp_to_pdf_board, convert_hwp_to_pdf
 from .ai_class import ai_class, class_form, class_form_end
@@ -106,6 +106,7 @@ urlpatterns = [
     path('get_file_content_note/<str:file_id>/', get_file_content_note, name='get_file_content_note'),
     path('upload_note_file/', upload_note_file, name='upload_note_file'),
     path('delete_note_file/', delete_note_file, name='delete_note_file'),
+    path('clear_biz_recommendation_alerts/', clear_biz_recommendation_alerts, name='clear_biz_recommendation_alerts'),
 
     # 캘린더 설정 관련 API
     path('get_datetime_attributes/', get_datetime_attributes, name='get_datetime_attributes'),

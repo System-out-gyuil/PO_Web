@@ -25,6 +25,11 @@ def add_attribute(request):
 
             user = User.objects.get(id=user_id)  # 임시로 user id=1 사용
             
+            # 사용자별 속성명 중복 체크
+            existing_attribute = Attribute.objects.filter(user=user, name=name).first()
+            if existing_attribute:
+                return JsonResponse({'success': False, 'error': f'속성명 "{name}"이 이미 존재합니다.'})
+            
             # AttributeType 가져오기 또는 생성
             attribute_type, _ = AttributeType.objects.get_or_create(name=attr_type)
             

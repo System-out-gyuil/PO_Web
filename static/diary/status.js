@@ -88,7 +88,7 @@ function selectStatusTab(statusId) {
   loadFilteredData(statusId);
   
   // URL을 기본 URL로 변경 (쿼리스트링 제거)
-  const baseUrl = window.location.origin + '/sales/diary/';
+  const baseUrl = window.location.origin + '/sales/';
   window.history.pushState({}, '', baseUrl);
 }
 
@@ -1004,6 +1004,6 @@ function selectStatusTabWithImmediateUpdate(statusId) {
   loadFilteredData(statusId);
   
   // URL을 기본 URL로 변경 (쿼리스트링 제거)
-  const baseUrl = window.location.origin + '/sales/diary/';
+  const baseUrl = window.location.origin + '/sales/';
   window.history.pushState({}, '', baseUrl);
 }
