@@ -568,46 +568,105 @@ def naver_login(driver, naver_id, naver_password, session_id=None):
         try:
             # 현재 창 핸들 저장
             original_window = driver.current_window_handle
+            original_handles_count = len(driver.window_handles)
             
-            # 새 창이 열렸는지 확인 (최대 5초 대기)
-            WebDriverWait(driver, 5).until(lambda d: len(d.window_handles) > 1)
+            # 로그인 후 잠시 대기 (새 창이 열릴 시간 확보)
+            time.sleep(3)
             
-            # 새 창으로 전환
-            for handle in driver.window_handles:
-                if handle != original_window:
-                    driver.switch_to.window(handle)
-                    print("🔐 보안 인증 창 감지됨 - 새 창으로 전환")
-                    update_status('security_auth', '보안 인증 창 처리 중', '추가 인증 진행 중...', session_id=session_id)
-                    
-                    # 등록 버튼 찾기 및 클릭
-                    try:
-                        register_btn = WebDriverWait(driver, 10).until(
-                            EC.element_to_be_clickable((By.CSS_SELECTOR, "span.btn_upload a#new\\.save.btn"))
-                        )
-                        register_btn.click()
-                        print("✅ 보안 인증 등록 버튼 클릭 완료")
-                        update_status('security_auth_complete', '보안 인증 완료', '인증 창 닫는 중...', session_id=session_id)
+            # 새 창이 열렸는지 확인
+            current_handles_count = len(driver.window_handles)
+            
+            if current_handles_count > original_handles_count:
+                print(f"�� 보안 인증 창 감지됨 (창 개수: {original_handles_count} → {current_handles_count})")
+                update_status('security_auth', '보안 인증 창 처리 중', '추가 인증 진행 중...', session_id=session_id)
+                
+                # 새 창으로 전환
+                for handle in driver.window_handles:
+                    if handle != original_window:
+                        driver.switch_to.window(handle)
+                        print(f"🔐 보안 인증 창으로 전환: {handle}")
+                        
+                        # 페이지 로딩 대기
+                        time.sleep(2)
+                        
+                        # 등록 버튼 찾기 및 클릭 (XPath와 CSS 선택자 모두 시도)
+                        register_btn = None
+                        
+                        # XPath 선택자들
+                        xpath_selectors = [
+                            "//a[@id='new.save' and @class='btn']",
+                            "//a[@id='new.save']",
+                            "//a[contains(@class, 'btn') and @id='new.save']",
+                            "//span[@class='btn_upload']//a[@id='new.save']"
+                        ]
+                        
+                        # CSS 선택자들
+                        css_selectors = [
+                            "a#new\\.save.btn",
+                            "a[id='new.save']",
+                            "a.btn[id*='new']",
+                            "a.btn"
+                        ]
+                        
+                        # XPath 먼저 시도
+                        for xpath in xpath_selectors:
+                            try:
+                                register_btn = WebDriverWait(driver, 5).until(
+                                    EC.element_to_be_clickable((By.XPATH, xpath))
+                                )
+                                print(f"✅ 등록 버튼 발견 (XPath): {xpath}")
+                                break
+                            except Exception as xpath_error:
+                                print(f"⚠️ XPath {xpath} 실패: {str(xpath_error)}")
+                                continue
+                        
+                        # XPath 실패 시 CSS 선택자 시도
+                        if not register_btn:
+                            for css_selector in css_selectors:
+                                try:
+                                    register_btn = WebDriverWait(driver, 5).until(
+                                        EC.element_to_be_clickable((By.CSS_SELECTOR, css_selector))
+                                    )
+                                    print(f"✅ 등록 버튼 발견 (CSS): {css_selector}")
+                                    break
+                                except Exception as css_error:
+                                    print(f"⚠️ CSS 선택자 {css_selector} 실패: {str(css_error)}")
+                                    continue
+                        
+                        if register_btn:
+                            # 버튼 클릭 전 잠시 대기
+                            time.sleep(1)
+                            register_btn.click()
+                            print("✅ 보안 인증 등록 버튼 클릭 완료")
+                            update_status('security_auth_complete', '보안 인증 완료', '인증 창 닫는 중...', session_id=session_id)
+                            
+                            # 인증 완료 후 잠시 대기
+                            time.sleep(3)
+                        else:
+                            print("⚠️ 등록 버튼을 찾을 수 없음")
                         
                         # 인증 창 닫기
-                        time.sleep(2)
                         driver.close()
                         
                         # 원래 창으로 복귀
                         driver.switch_to.window(original_window)
                         print("✅ 보안 인증 창 닫고 원래 창으로 복귀")
                         
-                    except Exception as e:
-                        print(f"⚠️ 보안 인증 등록 버튼 클릭 실패: {str(e)}")
-                        # 인증 실패 시에도 창은 닫고 진행
-                        driver.close()
-                        driver.switch_to.window(original_window)
-                        print("⚠️ 보안 인증 실패했지만 창은 닫고 진행")
-                    
-                    break
+                        # 원래 창에서 페이지 로딩 대기
+                        time.sleep(2)
+                        break
+            else:
+                print(f"ℹ️ 보안 인증 창 없음 (창 개수: {original_handles_count} → {current_handles_count})")
                     
         except Exception as e:
-            # 새 창이 열리지 않았거나 처리 중 오류 발생 시 무시하고 진행
-            print(f"ℹ️ 보안 인증 창 없음 또는 처리 완료: {str(e)}")
+            # 새 창 처리 중 오류 발생 시 무시하고 진행
+            print(f"⚠️ 보안 인증 창 처리 중 오류 발생: {str(e)}")
+            # 원래 창으로 복귀 시도
+            try:
+                driver.switch_to.window(original_window)
+                print("✅ 오류 발생 후 원래 창으로 복귀")
+            except:
+                pass
         
         # 현재 URL 확인으로 로그인 성공 여부 판단
         current_url = driver.current_url
