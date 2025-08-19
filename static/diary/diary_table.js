@@ -29,7 +29,6 @@ function processDropdownOptions(options, value, cell) {
     }
 }
 
-// 상세보기 버튼에 알림 표시를 추가하는 함수
 function addNotificationToDetailButton(rowId, moreBtn) {
     // 이미 알림이 표시되어 있는지 확인
     if (moreBtn.querySelector('.notification-bell')) {
@@ -57,21 +56,33 @@ function addNotificationToDetailButton(rowId, moreBtn) {
                 notificationSpan.className = 'notification-bell';
                 notificationSpan.innerHTML = '';
                 notificationSpan.style.cssText = `
+                    position: absolute;
+                    top: -2px;
+                    right: -2px;
                     width: 8px;
                     height: 8px;
-                    margin-left: 8px;
                     background: #dc3545;
                     border-radius: 50%;
                     animation: pulse 2s infinite;
                     display: inline-block;
+                    z-index: 10;
                 `;
                 
-                // 버튼에 강조 효과 추가
+                // 버튼에 강조 효과 추가 (position: relative 추가)
                 moreBtn.style.cssText += `
+                    position: relative !important;
                     border: 2px solid #dc3545 !important;
                     box-shadow: 0 0 10px rgba(220, 53, 69, 0.5) !important;
                     animation: glow 2s infinite alternate !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    min-width: 20px !important;
+                    min-height: 20px !important;
                 `;
+                
+                // 알림이 있을 때 항상 보이도록 클래스 추가
+                moreBtn.classList.add('has-notification');
                 
                 moreBtn.appendChild(notificationSpan);
                 console.log(`행 ID ${rowId}: 알림 표시 완료`);

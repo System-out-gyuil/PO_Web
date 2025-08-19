@@ -4971,23 +4971,61 @@ function openRecommendModalWithAlertClear(rowId, type) {
                     recommendViewBtn.style.border = '';
                     recommendViewBtn.style.boxShadow = '';
                     recommendViewBtn.style.animation = '';
+                    recommendViewBtn.style.background = '';
                     
-                    const notificationBell = recommendViewBtn.querySelector('.notification-bell');
-                    if (notificationBell) {
-                        notificationBell.remove();
+                    // 알림 아이콘 제거
+                    const notificationSpan = recommendViewBtn.querySelector('span');
+                    if (notificationSpan && notificationSpan.innerHTML === '🔔') {
+                        notificationSpan.remove();
                     }
                 }
                 
-                // 상세보기 버튼 강조 효과도 제거
+                // 상세보기 버튼 강조 효과도 제거 (테이블의 more-btn)
                 const detailButtons = document.querySelectorAll(`td[data-field="회사명"] .more-btn`);
                 detailButtons.forEach(btn => {
                     btn.style.border = '';
                     btn.style.boxShadow = '';
                     btn.style.animation = '';
+                    btn.style.position = '';
+                    btn.style.display = '';
+                    btn.style.alignItems = '';
+                    btn.style.justifyContent = '';
+                    btn.style.minWidth = '';
+                    btn.style.minHeight = '';
                     
+                    // 알림 동그라미 제거
                     const notificationBell = btn.querySelector('.notification-bell');
                     if (notificationBell) {
                         notificationBell.remove();
+                    }
+                });
+                
+                // 테이블의 지원사업 필드도 업데이트 (알림 아이콘 제거)
+                const supportCells = document.querySelectorAll(`tr[data-id="${rowId}"] td[data-field="지원사업"]`);
+                supportCells.forEach(cell => {
+                    const currentValue = cell.getAttribute('data-value');
+                    if (currentValue) {
+                        try {
+                            let supportData = JSON.parse(currentValue);
+                            if (supportData && typeof supportData === 'object') {
+                                // 알림 배열을 비움
+                                supportData.알림 = [];
+                                // UI 업데이트
+                                const pblancIds = supportData.pblanc_ids || [];
+                                let displayText = '';
+                                
+                                if (pblancIds.length > 0) {
+                                    displayText = `저장된 공고: ${pblancIds.length}개`;
+                                } else {
+                                    displayText = '저장된 공고 없음';
+                                }
+                                
+                                cell.innerHTML = `<span>${displayText}</span>`;
+                                cell.setAttribute('data-value', JSON.stringify(supportData));
+                            }
+                        } catch (e) {
+                            console.error('지원사업 데이터 파싱 오류:', e);
+                        }
                     }
                 });
             }

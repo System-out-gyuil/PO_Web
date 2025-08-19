@@ -564,6 +564,51 @@ def naver_login(driver, naver_id, naver_password, session_id=None):
         except:
             pass
         
+        # 보안 인증 창 처리 (새로운 창이 열렸는지 확인)
+        try:
+            # 현재 창 핸들 저장
+            original_window = driver.current_window_handle
+            
+            # 새 창이 열렸는지 확인 (최대 5초 대기)
+            WebDriverWait(driver, 5).until(lambda d: len(d.window_handles) > 1)
+            
+            # 새 창으로 전환
+            for handle in driver.window_handles:
+                if handle != original_window:
+                    driver.switch_to.window(handle)
+                    print("🔐 보안 인증 창 감지됨 - 새 창으로 전환")
+                    update_status('security_auth', '보안 인증 창 처리 중', '추가 인증 진행 중...', session_id=session_id)
+                    
+                    # 등록 버튼 찾기 및 클릭
+                    try:
+                        register_btn = WebDriverWait(driver, 10).until(
+                            EC.element_to_be_clickable((By.CSS_SELECTOR, "span.btn_upload a#new\\.save.btn"))
+                        )
+                        register_btn.click()
+                        print("✅ 보안 인증 등록 버튼 클릭 완료")
+                        update_status('security_auth_complete', '보안 인증 완료', '인증 창 닫는 중...', session_id=session_id)
+                        
+                        # 인증 창 닫기
+                        time.sleep(2)
+                        driver.close()
+                        
+                        # 원래 창으로 복귀
+                        driver.switch_to.window(original_window)
+                        print("✅ 보안 인증 창 닫고 원래 창으로 복귀")
+                        
+                    except Exception as e:
+                        print(f"⚠️ 보안 인증 등록 버튼 클릭 실패: {str(e)}")
+                        # 인증 실패 시에도 창은 닫고 진행
+                        driver.close()
+                        driver.switch_to.window(original_window)
+                        print("⚠️ 보안 인증 실패했지만 창은 닫고 진행")
+                    
+                    break
+                    
+        except Exception as e:
+            # 새 창이 열리지 않았거나 처리 중 오류 발생 시 무시하고 진행
+            print(f"ℹ️ 보안 인증 창 없음 또는 처리 완료: {str(e)}")
+        
         # 현재 URL 확인으로 로그인 성공 여부 판단
         current_url = driver.current_url
         if "nid.naver.com" in current_url:

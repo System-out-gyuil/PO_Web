@@ -449,6 +449,12 @@ td[data-field="회사명"]:hover .more-btn {
     visibility: visible;
 }
 
+/* 알림이 있을 경우 상세보기 버튼을 항상 보이게 함 */
+td[data-field="회사명"] .more-btn.has-notification {
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
 .edit-col-btn, .del-col-btn { display: none; margin-left: 4px; }
 th.col-active .edit-col-btn, th.col-active .del-col-btn { display: inline-block; }
 td[data-field] { position: relative; }
