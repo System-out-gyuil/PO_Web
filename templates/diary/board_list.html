@@ -18,6 +18,7 @@
     <link rel="stylesheet" href="{% static 'diary/diary_board.css' %}">
     <link rel="stylesheet" href="{% static 'diary/board/board.css' %}">
     <link rel="stylesheet" href="{% static 'diary/base/base.css' %}">
+    <link rel="icon" href="{% static 'images/자금왕_favicon.png' %}">
     
     <style>
         /* 삭제 버튼 스타일 */
@@ -166,8 +167,8 @@
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button class="btn-cancel" onclick="closeWriteBoardModal()">취소</button>
                         <button class="btn-submit" onclick="submitBoard()">작성</button>
+                        <button class="btn-cancel" onclick="closeWriteBoardModal()">취소</button>
                     </div>
                 </div>
             </div>
@@ -188,8 +189,8 @@
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button class="btn-cancel" onclick="closeAddCategoryModal()">취소</button>
                         <button class="btn-submit" onclick="submitNewCategory()">추가</button>
+                        <button class="btn-cancel" onclick="closeAddCategoryModal()">취소</button>
                     </div>
                 </div>
             </div>
@@ -208,8 +209,8 @@
                         <p class="text-red-500 text-sm mt-2">이 작업은 되돌릴 수 없습니다.</p>
                     </div>
                     <div class="modal-footer">
-                        <button class="btn-cancel" onclick="closeDeleteBoardModal()">취소</button>
                         <button class="btn-delete" onclick="confirmDeleteBoard()">삭제</button>
+                        <button class="btn-cancel" onclick="closeDeleteBoardModal()">취소</button>
                     </div>
                 </div>
             </div>

@@ -1033,6 +1033,7 @@ function processDropdownOptions(options, value, cell) {
       
       // 연락처 필드가 변경된 경우 중복값 하이라이트 업데이트 (마지막에 적용)
       if (field === '연락처') {
+          // 디바운싱이 적용된 updateContactDuplicateHighlight 함수 사용
           // 약간의 지연 후 중복값 하이라이트 적용 (시각적 피드백과 충돌 방지)
           setTimeout(() => {
               updateContactDuplicateHighlight(cell);
@@ -3908,46 +3909,71 @@ function highlightDuplicateContactValues() {
     console.log('연락처 중복값 하이라이트 완료');
 }
 
-// 연락처 값이 변경될 때 중복값 하이라이트 업데이트
+// 연락처 중복값 하이라이트 관련 변수들
+let contactHighlightTimer = null;
+let isUpdatingContactHighlight = false;
+
+// 연락처 값이 변경될 때 중복값 하이라이트 업데이트 (디바운싱 적용)
 function updateContactDuplicateHighlight(changedCell) {
-    const table = document.getElementById('entryTable');
-    if (!table) return;
+    // 이미 업데이트 중이면 스킵
+    if (isUpdatingContactHighlight) {
+        return;
+    }
     
-    // 기존 하이라이트 제거
-    const highlightedCells = table.querySelectorAll('td[data-duplicate-contact="true"]');
-    highlightedCells.forEach(cell => {
-        cell.style.backgroundColor = '';
-        cell.removeAttribute('data-duplicate-contact');
-    });
+    // 기존 타이머가 있으면 취소
+    if (contactHighlightTimer) {
+        clearTimeout(contactHighlightTimer);
+    }
     
-    // 모든 연락처 셀을 다시 검사하여 중복값 하이라이트 적용
-    const allContactCells = table.querySelectorAll('td[data-field="연락처"]');
-    const valueGroups = {};
-    
-    // 값별로 그룹화
-    allContactCells.forEach(cell => {
-        const value = cell.textContent.trim() || cell.innerText.trim();
-        if (value && value !== '') {
-            if (!valueGroups[value]) {
-                valueGroups[value] = [];
-            }
-            valueGroups[value].push(cell);
-        }
-    });
-    
-    // 중복값이 있는 그룹만 하이라이트
-    Object.entries(valueGroups).forEach(([value, cells]) => {
-        if (cells.length > 1) {
-            console.log(`연락처 중복값 발견: "${value}" (${cells.length}개)`);
-            cells.forEach(cell => {
-                cell.style.backgroundColor = '#e9ecef';
-                cell.style.transition = 'background-color 0.3s ease';
-                cell.setAttribute('data-duplicate-contact', 'true');
+    // 디바운싱 적용 (100ms 후 실행)
+    contactHighlightTimer = setTimeout(() => {
+        isUpdatingContactHighlight = true;
+        
+        const table = document.getElementById('entryTable');
+        if (table) {
+            // 기존 하이라이트 제거
+            const highlightedCells = table.querySelectorAll('td[data-duplicate-contact="true"]');
+            highlightedCells.forEach(cell => {
+                cell.style.backgroundColor = '';
+                cell.removeAttribute('data-duplicate-contact');
             });
+            
+            // 모든 연락처 셀을 다시 검사하여 중복값 하이라이트 적용
+            const allContactCells = table.querySelectorAll('td[data-field="연락처"]');
+            const valueGroups = {};
+            
+            // 값별로 그룹화
+            allContactCells.forEach(cell => {
+                const value = cell.textContent.trim() || cell.innerText.trim();
+                if (value && value !== '') {
+                    if (!valueGroups[value]) {
+                        valueGroups[value] = [];
+                    }
+                    valueGroups[value].push(cell);
+                }
+            });
+            
+            // 중복값이 있는 그룹만 하이라이트
+            Object.entries(valueGroups).forEach(([value, cells]) => {
+                if (cells.length > 1) {
+                    console.log(`연락처 중복값 발견: "${value}" (${cells.length}개)`);
+                    cells.forEach(cell => {
+                        cell.style.backgroundColor = '#e9ecef';
+                        cell.style.transition = 'background-color 0.3s ease';
+                        cell.setAttribute('data-duplicate-contact', 'true');
+                    });
+                }
+            });
+            
+            console.log('연락처 중복값 하이라이트 업데이트 완료');
         }
-    });
-    
-    console.log('연락처 중복값 하이라이트 업데이트 완료');
+        
+        // 업데이트 완료 후 플래그 해제
+        setTimeout(() => {
+            isUpdatingContactHighlight = false;
+        }, 50);
+        
+    }, 100);
 }
 
 // 연락처 필드 입력 완료 시 중복값 하이라이트 즉시 업데이트
@@ -3956,8 +3982,8 @@ function handleContactFieldUpdate(cell, newValue) {
     cell.textContent = newValue;
     cell.setAttribute('data-value', newValue);
     
-    // 즉시 중복값 하이라이트 업데이트
-    updateContactDuplicateHighlight(cell);
+    // 중복값 하이라이트는 updateContactDuplicateHighlight에서 자동으로 처리됨
+    // 여기서 직접 호출하지 않음
     
     // 시각적 피드백
     cell.style.transition = 'background-color 0.3s ease';
@@ -4040,8 +4066,8 @@ function finalizeContactFieldEdit(cell, newValue) {
     cell.textContent = newValue;
     cell.setAttribute('data-value', newValue);
     
-    // 즉시 중복값 하이라이트 업데이트
-    updateContactDuplicateHighlight(cell);
+    // 중복값 하이라이트는 updateContactDuplicateHighlight에서 자동으로 처리됨
+    // 여기서 직접 호출하지 않음
     
     // 편집 상태 해제
     setTableEditingState(false);

@@ -1249,14 +1249,22 @@ def get_saved_biz_recommendations(request):
                 # 기존 문자열 형태로 저장된 경우 (하위 호환성)
                 pblanc_ids = [id.strip() for id in saved_recommendations.split(',') if id.strip()]
             
-            if not pblanc_ids:
+            # pblanc_ids가 빈 배열이거나 None인 경우 처리
+            if not pblanc_ids or len(pblanc_ids) == 0:
                 return JsonResponse({
                     'success': False, 
-                    'error': '저장된 공고 ID가 없습니다.'
+                    'error': '저장된 공고 ID가 없습니다. 먼저 추천받기를 진행해주세요.'
                 })
             
             # BizInfo에서 해당 ID들로 데이터 조회
             biz_data = BizInfo.objects.filter(pblanc_id__in=pblanc_ids)
+            
+            # 실제 조회된 데이터가 없는 경우
+            if not biz_data.exists():
+                return JsonResponse({
+                    'success': False, 
+                    'error': '저장된 공고 정보를 찾을 수 없습니다. 공고가 삭제되었거나 변경되었을 수 있습니다.'
+                })
             
             result_data = []
             for biz in biz_data:
@@ -1317,6 +1325,10 @@ def save_biz_recommendations(request):
             return JsonResponse({'success': False, 'error': 'row_id가 누락되었습니다.'})
         
         if not pblanc_ids:
+            return JsonResponse({'success': False, 'error': '저장할 지원사업 ID가 없습니다.'})
+        
+        # 빈 배열인 경우도 체크
+        if len(pblanc_ids) == 0:
             return JsonResponse({'success': False, 'error': '저장할 지원사업 ID가 없습니다.'})
         
         # 사용자 정보 가져오기

@@ -659,22 +659,57 @@ function generateDetailModalContent(attributes, rowData, rowId) {
             if (supportValue) {
                 try {
                     let supportData;
+                    console.log('supportValue type check:', typeof supportValue);
+                    console.log('supportValue is object?', typeof supportValue === 'object');
+                    console.log('supportValue is null?', supportValue === null);
+                    console.log('supportValue raw value:', JSON.stringify(supportValue));
+                    
                     if (typeof supportValue === 'string') {
-                        // 기존 문자열 형태 (하위 호환성)
-                        supportData = { pblanc_ids: supportValue.split(',').filter(id => id.trim()) };
-                    } else {
-                        // dict 형태
+                        // 문자열인 경우 JSON 파싱 시도
+                        if (supportValue.trim().startsWith('{') && supportValue.trim().endsWith('}')) {
+                            // Python 딕셔너리 형식이므로 빈 배열인지 확인
+                            if (supportValue.includes("'pblanc_ids': []") && supportValue.includes("'알림': []")) {
+                                supportData = { pblanc_ids: [], 알림: [] };
+                                console.log('빈 딕셔너리 감지, 빈 객체로 초기화');
+                            } else {
+                                // 다른 값이 있는 경우에만 파싱 시도
+                                try {
+                                    const jsString = supportValue.replace(/'/g, '"');
+                                    supportData = JSON.parse(jsString);
+                                    console.log('Python 딕셔너리 파싱 성공:', supportData);
+                                } catch (jsonError) {
+                                    console.log('파싱 실패, 빈 객체로 초기화:', jsonError);
+                                    supportData = { pblanc_ids: [], 알림: [] };
+                                }
+                            }
+                        } else {
+                            // 일반 쉼표 구분 문자열
+                            const splitIds = supportValue.split(',').filter(id => id.trim());
+                            supportData = { pblanc_ids: splitIds };
+                        }
+                    } else if (typeof supportValue === 'object' && supportValue !== null) {
+                        // 이미 객체인 경우 (dict 형태)
                         supportData = supportValue;
+                        console.log('이미 객체 형태 데이터:', supportData);
+                    } else {
+                        // 기타 타입인 경우 빈 객체로 초기화
+                        supportData = { pblanc_ids: [], 알림: [] };
                     }
                     
                     const pblancIds = supportData.pblanc_ids || [];
-                    console.log('pblancIds:', pblancIds);
+                    console.log('최종 pblancIds:', pblancIds);
+                    console.log('pblancIds.length:', pblancIds.length);
+                    console.log('pblancIds type:', typeof pblancIds);
+                    console.log('Array.isArray(pblancIds):', Array.isArray(pblancIds));
+                    
                     const alerts = supportData.알림 || [];
                     console.log('alerts:', alerts);
+                    console.log('alerts.length:', alerts.length);
                     
-                    if (pblancIds.length > 0) {
+                    // 빈 배열 체크를 더 엄격하게
+                    if (pblancIds && Array.isArray(pblancIds) && pblancIds.length > 0) {
                         supportDisplay = `신규 추천 공고: ${pblancIds.length}개`;
-                        if (alerts.length > 0) {
+                        if (alerts && Array.isArray(alerts) && alerts.length > 0) {
                             supportDisplay += ` (새로운 공고: ${alerts.length}개)`;
                         }
                     } else {
@@ -698,11 +733,14 @@ function generateDetailModalContent(attributes, rowData, rowId) {
                                     let supportData;
                                     if (typeof supportValue === 'string') {
                                         supportData = { pblanc_ids: supportValue.split(',').filter(id => id.trim()) };
-                                    } else {
+                                    } else if (typeof supportValue === 'object' && supportValue !== null) {
+                                        // 이미 객체인 경우 그대로 사용
                                         supportData = supportValue;
+                                    } else {
+                                        supportData = { pblanc_ids: [] };
                                     }
                                     const alerts = supportData.알림 || [];
-                                    return alerts.length > 0 ? '<span style="color: #dc3545; font-weight: bold; margin-left: 8px;">🔔</span>' : '';
+                                    return (alerts && Array.isArray(alerts) && alerts.length > 0) ? '<span style="color: #dc3545; font-weight: bold; margin-left: 8px;">🔔</span>' : '';
                                 } catch (e) {
                                     return '';
                                 }
@@ -759,11 +797,14 @@ function generateDetailModalContent(attributes, rowData, rowId) {
                                         let supportData;
                                         if (typeof supportValue === 'string') {
                                             supportData = { pblanc_ids: supportValue.split(',').filter(id => id.trim()) };
-                                        } else {
+                                        } else if (typeof supportValue === 'object' && supportValue !== null) {
+                                            // 이미 객체인 경우 그대로 사용
                                             supportData = supportValue;
+                                        } else {
+                                            supportData = { pblanc_ids: [] };
                                         }
                                         const alerts = supportData.알림 || [];
-                                        return alerts.length > 0 ? '<span style="color: #dc3545; font-size: 14px; margin-left: 5px;">⚠️</span>' : '';
+                                        return (alerts && Array.isArray(alerts) && alerts.length > 0) ? '<span style="color: #dc3545; font-weight: bold; margin-left: 8px;">🔔</span>' : '';
                                     } catch (e) {
                                         return '';
                                     }
@@ -4612,7 +4653,13 @@ function getSavedBizRecommendations(rowId) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showRecommendModal('저장된 추천 지원사업', '', false, data.data, rowId, 'view');
+            console.log('저장된 추천 지원사업 데이터:', data);
+            // 데이터가 실제로 있는지 확인
+            if (data.data && data.data.length > 0) {
+                showRecommendModal('저장된 추천 지원사업', '', false, data.data, rowId, 'view');
+            } else {
+                showRecommendModal('저장된 추천 지원사업', '저장된 추천 지원사업이 없습니다. 먼저 추천받기를 진행해주세요.', false);
+            }
         } else {
             showRecommendModal('오류', data.error || '저장된 데이터를 가져오는데 실패했습니다.', false);
         }
@@ -4688,6 +4735,14 @@ function showRecommendModal(title, message, isLoading, data = null, rowId = null
         modalContent = `
             <div style="text-align: center; padding: 40px;">
                 <p style="color: #666; font-size: 16px;">${message}</p>
+                ${type === 'view' ? `
+                    <div style="margin-top: 20px;">
+                        <button type="button" class="btn btn-primary" onclick="closeRecommendModal()" 
+                                style="background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">
+                            확인
+                        </button>
+                    </div>
+                ` : ''}
             </div>
         `;
     }

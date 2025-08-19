@@ -15,6 +15,7 @@
     <!-- Base CSS and Custom CSS -->
     <link rel="stylesheet" href="{% static 'diary/base/base.css' %}">
     <link rel="stylesheet" href="{% static 'diary/diary_board.css' %}">
+    <link rel="icon" href="{% static 'images/자금왕_favicon.png' %}">
     
     <style>
         * {
@@ -595,8 +596,8 @@
             // 메타 정보 설정
             document.getElementById('board-meta').innerHTML = `
                 <span><i class="fas fa-user"></i> 작성자: ${escapeHtml(board.author_name)}</span>
-                <span><i class="fas fa-calendar-alt"></i> 작성일: ${board.created_at}</span>
-                <span><i class="fas fa-clock"></i> 수정일: ${board.updated_at}</span>
+                <span><i class="fas fa-calendar-alt"></i> 작성일: ${formatDate(board.created_at)}</span>
+                <span><i class="fas fa-clock"></i> 수정일: ${formatDate(board.updated_at)}</span>
             `;
             
             // 내용 설정
@@ -616,6 +617,25 @@
             
             // 전역 변수에 현재 게시글 정보 저장
             window.currentBoard = board;
+        }
+        
+        // 날짜 포맷팅 함수 (YYYY-MM-DD 형식)
+        function formatDate(dateString) {
+            if (!dateString) return '날짜 없음';
+            
+            try {
+                const date = new Date(dateString);
+                if (isNaN(date.getTime())) return '날짜 오류';
+                
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                
+                return `${year}-${month}-${day}`;
+            } catch (error) {
+                console.error('날짜 포맷팅 오류:', error);
+                return '날짜 오류';
+            }
         }
         
         // 수정 모드 토글
