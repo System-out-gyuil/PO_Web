@@ -80,11 +80,21 @@ def delete_attribute(request):
             return JsonResponse({'success': False, 'error': '속성명이 필요합니다.'})
         
         try:
-            # 속성 찾기
-            attribute = Attribute.objects.filter(name=attr_name).first()
+            # 현재 로그인한 사용자 정보 가져오기
+            user_id = request.session.get('diary_member_id')
+            if not user_id:
+                return JsonResponse({'success': False, 'error': '로그인이 필요합니다.'})
+            
+            try:
+                user = User.objects.get(id=user_id)
+            except User.DoesNotExist:
+                return JsonResponse({'success': False, 'error': '사용자 정보를 찾을 수 없습니다.'})
+            
+            # 현재 사용자의 속성만 찾기
+            attribute = Attribute.objects.filter(name=attr_name, user=user).first()
             
             if not attribute:
-                return JsonResponse({'success': False, 'error': '존재하지 않는 속성입니다.'})
+                return JsonResponse({'success': False, 'error': f'속성 "{attr_name}"을 찾을 수 없습니다.'})
             
             # essential 속성인지 확인
             if attribute.assential:

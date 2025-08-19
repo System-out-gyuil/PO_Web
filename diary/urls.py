@@ -12,7 +12,7 @@ from .cascade_handlers import toggle_cascade_attribute, get_cascade_attributes_l
 from .auto_blog import upload_blog_file, get_blog_files, get_blog_status, debug_redis_status
 from .detail_openai import ai_chat, ai_chat_cache_clear, file_cache_management, performance_monitoring
 from .admin_view import admin_dashboard, inquiry_list, inquiry_detail, alarm_list, alarm_create, alarm_edit, alarm_delete, inquiry_delete, admin_api, user_list, user_delete, user_toggle_admin, user_update_use_date, diary_count_list, diary_count_delete, class_form_list, class_form_delete
-from .diary_board import diary_board, get_announcements, get_announcement_detail, mark_as_read, download_announcement_file, announcement_detail_page, create_announcement, upload_announcement_file, get_announcement_file_url, get_announcement_download_url
+from .diary_board import diary_board, get_announcements, get_announcement_detail, mark_as_read, download_announcement_file, announcement_detail_page, create_announcement, upload_announcement_file, get_announcement_file_url, get_announcement_download_url, announcement_category_list, announcement_category_create, announcement_category_delete, announcement_list_with_category, create_announcement_with_category
 from .main_views import CompanyInfoView, PersonalInfoView, TermsOfServiceView
 from .session_handlers import cleanup_session_cache_api, get_active_sessions_api
 from .board_views import board_list_view, board_list_api, board_create, board_detail_view, board_file_upload, board_file_preview, board_file_download, board_detail_api, board_edit, board_categories_api, board_add_category, board_delete
@@ -171,6 +171,15 @@ urlpatterns = [
     path('diary_board/announcement/upload-file/', upload_announcement_file, name='upload_announcement_file'),
     path('diary_board/announcement/file/<path:saved_name>/<str:action>/', get_announcement_file_url, name='get_announcement_file_url'),
     path('diary_board/announcement/download/<path:saved_name>/', get_announcement_download_url, name='get_announcement_download_url'),
+    
+    # 공고 게시판 카테고리 관련 URL
+    path('diary_board/announcement/category/list/', announcement_category_list, name='announcement_category_list'),
+    path('diary_board/announcement/category/create/', announcement_category_create, name='announcement_category_create'),
+    path('diary_board/announcement/category/<int:category_id>/delete/', announcement_category_delete, name='announcement_category_delete'),
+    
+    # 공고 게시판 관련 URL (카테고리 지원)
+    path('diary_board/announcement/', announcement_list_with_category, name='announcement_list_with_category'),
+    path('diary_board/announcement/create/', create_announcement_with_category, name='create_announcement_with_category'),
     
     # 게시판 관련 URL (일반 게시판)
     path('board_list/', board_list_view, name='board_list'),

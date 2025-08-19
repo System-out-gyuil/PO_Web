@@ -309,6 +309,7 @@ class Inquiry(models.Model):
 class Alarm(models.Model):
     title = models.CharField(max_length=100, db_collation='utf8mb4_unicode_ci')
     content = models.JSONField(default=dict)  # dict 형태로 저장: {"text": "...", "files": [...]}
+    category = models.ForeignKey('AlarmCategory', on_delete=models.SET_NULL, null=True, blank=True, related_name='alarms')  # 카테고리 추가
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -316,6 +317,11 @@ class Alarm(models.Model):
         db_table = 'diary_alarm'
         verbose_name = '공지사항'
         verbose_name_plural = '공지사항'
+        ordering = ['-created_at']  # 최신순 정렬 추가
+        indexes = [
+            models.Index(fields=['category', '-created_at']),  # 카테고리별 인덱스 추가
+            models.Index(fields=['-created_at']),
+        ]
     
     def __str__(self):
         return self.title
@@ -335,6 +341,31 @@ class Alarm(models.Model):
             'files': files or []
         }
         self.save()
+    
+    def get_category_name(self):
+        """카테고리명 반환"""
+        return self.category.category_name if self.category else '일반'
+
+class AlarmCategory(models.Model):
+    """공지사항 카테고리 모델"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='alarm_categories')
+    category_name = models.CharField(max_length=50, db_collation='utf8mb4_unicode_ci')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'diary_alarm_category'
+        verbose_name = '공지사항 카테고리'
+        verbose_name_plural = '공지사항 카테고리'
+        unique_together = ['user', 'category_name']  # 사용자별로 카테고리명 중복 방지
+        ordering = ['created_at']
+        indexes = [
+            models.Index(fields=['user', 'category_name']),
+            models.Index(fields=['user']),
+        ]
+    
+    def __str__(self):
+        return f"{self.user.name} - {self.category_name}"
 
 class UserAlarm(models.Model):
     """사용자별 알람 확인 상태를 관리하는 모델"""
@@ -368,7 +399,7 @@ class NomalBoardCategory(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
-        db_table = 'diary_board_category'
+        db_table = 'nomal_diary_board_category'
         verbose_name = '게시판 카테고리'
         verbose_name_plural = '게시판 카테고리'
         unique_together = ['user', 'category_name']  # 사용자별로 카테고리명 중복 방지

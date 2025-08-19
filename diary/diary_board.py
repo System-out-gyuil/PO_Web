@@ -725,3 +725,308 @@ def upload_announcement_file(request):
             'success': False, 
             'message': f'파일 업로드 중 오류가 발생했습니다: {str(e)}'
         })
+
+# 공고 게시판 카테고리 관련 함수들
+
+def announcement_category_list(request):
+    """공고 게시판 카테고리 목록 조회 API"""
+    user_id = request.session.get('diary_member_id')
+    
+    if not user_id:
+        return JsonResponse({'success': False, 'message': '로그인이 필요합니다.'})
+    
+    try:
+        from .models import AlarmCategory
+        # 모든 카테고리를 사용자와 관계없이 조회
+        categories = AlarmCategory.objects.all().order_by('created_at')
+        category_list = []
+        
+        for category in categories:
+            category_list.append({
+                'id': category.id,
+                'category_name': category.category_name,
+                'created_at': category.created_at.isoformat()
+            })
+        
+        return UnicodeJsonResponse({
+            'success': True,
+            'categories': category_list
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': str(e)
+        })
+
+@csrf_exempt
+def announcement_category_create(request):
+    """공고 게시판 카테고리 생성 API"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'POST 요청만 허용됩니다.'})
+    
+    user_id = request.session.get('diary_member_id')
+    
+    if not user_id:
+        return JsonResponse({'success': False, 'message': '로그인이 필요합니다.'})
+    
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'message': '사용자를 찾을 수 없습니다.'})
+    
+    # 관리자 권한 확인
+    if not user.is_admin:
+        return JsonResponse({
+            'success': False,
+            'message': '관리자만 카테고리를 생성할 수 있습니다.'
+        })
+    
+    try:
+        import json
+        data = json.loads(request.body.decode('utf-8'))
+        category_name = data.get('category_name', '').strip()
+        
+        if not category_name:
+            return JsonResponse({
+                'success': False,
+                'message': '카테고리명을 입력해주세요.'
+            })
+        
+        from .models import AlarmCategory
+        
+        # 중복 체크
+        if AlarmCategory.objects.filter(user=user, category_name=category_name).exists():
+            return JsonResponse({
+                'success': False,
+                'message': '이미 존재하는 카테고리명입니다.'
+            })
+        
+        # 카테고리 생성
+        category = AlarmCategory.objects.create(
+            user=user,
+            category_name=category_name
+        )
+        
+        return UnicodeJsonResponse({
+            'success': True,
+            'category': {
+                'id': category.id,
+                'category_name': category.category_name,
+                'created_at': category.created_at.isoformat()
+            }
+        })
+    except json.JSONDecodeError:
+        return UnicodeJsonResponse({'success': False, 'message': '잘못된 요청 형식입니다.'})
+    except Exception as e:
+        return UnicodeJsonResponse({'success': False, 'message': str(e)})
+
+@csrf_exempt
+def announcement_category_delete(request, category_id):
+    """공고 게시판 카테고리 삭제 API"""
+    if request.method != 'DELETE':
+        return JsonResponse({'success': False, 'message': 'DELETE 요청만 허용됩니다.'})
+    
+    user_id = request.session.get('diary_member_id')
+    
+    if not user_id:
+        return JsonResponse({'success': False, 'message': '로그인이 필요합니다.'})
+    
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'message': '사용자를 찾을 수 없습니다.'})
+    
+    # 관리자 권한 확인
+    if not user.is_admin:
+        return JsonResponse({
+            'success': False,
+            'message': '관리자만 카테고리를 삭제할 수 있습니다.'
+        })
+    
+    try:
+        from .models import AlarmCategory
+        
+        # 카테고리 존재 확인
+        try:
+            category = AlarmCategory.objects.get(id=category_id, user=user)
+        except AlarmCategory.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'message': '존재하지 않는 카테고리입니다.'
+            })
+        
+        # 해당 카테고리의 공고들을 일반(카테고리 없음)으로 변경
+        Alarm.objects.filter(category=category).update(category=None)
+        
+        # 카테고리 삭제
+        category.delete()
+        
+        return JsonResponse({
+            'success': True,
+            'message': '카테고리가 삭제되었습니다.'
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': str(e)
+        })
+
+def announcement_list_with_category(request):
+    """공고 게시판 목록 조회 API (카테고리 필터링 지원)"""
+    user_id = request.session.get('diary_member_id')
+    
+    if not user_id:
+        return JsonResponse({'success': False, 'message': '로그인이 필요합니다.'})
+    
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'message': '사용자를 찾을 수 없습니다.'})
+    
+    try:
+        page = int(request.GET.get('page', 1))
+        search = request.GET.get('search', '').strip()
+        category_id = request.GET.get('category', '').strip()
+        
+        # 공고 쿼리셋
+        announcements = Alarm.objects.all().order_by('-created_at')
+        
+        # 카테고리 필터링
+        if category_id and category_id != 'all':
+            try:
+                from .models import AlarmCategory
+                announcements = announcements.filter(category_id=category_id)
+            except ValueError:
+                pass
+        
+        # 검색 필터링
+        if search:
+            announcements = announcements.filter(
+                Q(title__icontains=search) |
+                Q(content__icontains=search)
+            )
+        
+        # 페이지네이션
+        paginator = Paginator(announcements, 10)  # 페이지당 10개
+        
+        try:
+            page_obj = paginator.page(page)
+        except:
+            page_obj = paginator.page(1)
+        
+        # 공고 데이터 준비
+        announcement_list = []
+        for announcement in page_obj:
+            # 텍스트 내용 추출
+            text_content = announcement.get_text_content()
+            # 파일 정보
+            files = announcement.get_files()
+            
+            announcement_data = {
+                'id': announcement.id,
+                'title': announcement.title,
+                'content': text_content,
+                'created_at': announcement.created_at.isoformat(),
+                'category': announcement.category.id if announcement.category else None,
+                'category_name': announcement.category.category_name if announcement.category else None,
+                'files': files,
+                'file_count': len(files)
+            }
+            announcement_list.append(announcement_data)
+        
+        # 페이지네이션 정보
+        pagination = {
+            'number': page_obj.number,
+            'num_pages': paginator.num_pages,
+            'has_previous': page_obj.has_previous(),
+            'has_next': page_obj.has_next(),
+            'previous_page_number': page_obj.previous_page_number() if page_obj.has_previous() else None,
+            'next_page_number': page_obj.next_page_number() if page_obj.has_next() else None,
+        }
+        
+        return UnicodeJsonResponse({
+            'success': True,
+            'announcements': announcement_list,
+            'pagination': pagination
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': str(e)
+        })
+
+@csrf_exempt
+def create_announcement_with_category(request):
+    """공고 게시판 공고 생성 API (카테고리 지원)"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'POST 요청만 허용됩니다.'})
+    
+    user_id = request.session.get('diary_member_id')
+    
+    if not user_id:
+        return JsonResponse({'success': False, 'message': '로그인이 필요합니다.'})
+    
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'message': '사용자를 찾을 수 없습니다.'})
+    
+    # 관리자 권한 확인
+    if not user.is_admin:
+        return JsonResponse({'success': False, 'message': '관리자 권한이 필요합니다.'})
+    
+    try:
+        import json
+        data = json.loads(request.body.decode('utf-8'))
+        title = data.get('title', '').strip()
+        content = data.get('content', '').strip()
+        category_id = data.get('category')
+        files = data.get('files', [])
+        
+        if not title:
+            return JsonResponse({'success': False, 'message': '제목을 입력해주세요.'})
+        
+        if not content:
+            return JsonResponse({'success': False, 'message': '내용을 입력해주세요.'})
+        
+        # 카테고리 확인
+        category = None
+        if category_id:
+            try:
+                from .models import AlarmCategory
+                category = AlarmCategory.objects.get(id=category_id, user=user)
+            except AlarmCategory.DoesNotExist:
+                pass
+        
+        # content를 dict 형태로 저장
+        content_data = {
+            'text': content,
+            'files': files
+        }
+        
+        # 공고 생성
+        alarm = Alarm.objects.create(
+            title=title,
+            content=content_data,
+            category=category
+        )
+        
+        # 모든 사용자에게 알람 생성
+        users = User.objects.all()
+        for user in users:
+            UserAlarm.objects.create(
+                user=user,
+                alarm=alarm,
+                is_read=False
+            )
+        
+        return UnicodeJsonResponse({
+            'success': True,
+            'message': '공고가 작성되었습니다.',
+            'announcement_id': alarm.id
+        })
+        
+    except json.JSONDecodeError:
+        return UnicodeJsonResponse({'success': False, 'message': '잘못된 요청 형식입니다.'})
+    except Exception as e:
+        return UnicodeJsonResponse({'success': False, 'message': f'공고 작성 중 오류가 발생했습니다: {str(e)}'})
