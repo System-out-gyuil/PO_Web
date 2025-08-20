@@ -284,7 +284,7 @@
                 }
             });
             
-            // 해당 카테고리의 게시글 로드
+            // 카테고리 변경 시 1페이지부터 시작
             loadBoards(1, '', categoryId);
             
             // 디버깅용 로그
@@ -295,6 +295,8 @@
         function searchBoards() {
             const searchInput = document.getElementById('board-search');
             const searchTerm = searchInput ? searchInput.value.trim() : '';
+            
+            // 검색 시 1페이지부터 시작
             loadBoards(1, searchTerm, currentCategoryId);
         }
         
@@ -397,9 +399,14 @@
             
             let html = '';
             
+            // 페이지 정보 표시
+            html += `<div class="pagination-info">
+                <span>${pagination.number} / ${pagination.num_pages} 페이지</span>
+            </div>`;
+            
             // 이전 페이지
             if (pagination.has_previous) {
-                html += `<a href="#" class="page-button" onclick="loadBoards(${pagination.previous_page_number})">
+                html += `<a href="#" class="page-button" onclick="loadBoards(${pagination.previous_page_number}, '', currentCategoryId)">
                     <i class="fas fa-chevron-left"></i>
                 </a>`;
             }
@@ -410,12 +417,12 @@
             
             for (let i = startPage; i <= endPage; i++) {
                 const activeClass = i === pagination.number ? 'active' : '';
-                html += `<a href="#" class="page-button ${activeClass}" onclick="loadBoards(${i})">${i}</a>`;
+                html += `<a href="#" class="page-button ${activeClass}" onclick="loadBoards(${i}, '', currentCategoryId)">${i}</a>`;
             }
             
             // 다음 페이지
             if (pagination.has_next) {
-                html += `<a href="#" class="page-button" onclick="loadBoards(${pagination.next_page_number})">
+                html += `<a href="#" class="page-button" onclick="loadBoards(${pagination.next_page_number}, '', currentCategoryId)">
                     <i class="fas fa-chevron-right"></i>
                 </a>`;
             }

@@ -476,11 +476,17 @@ class LogoutView(View):
             request.session.pop('diary_authenticated', None)
             request.session.save()
             
-            # 로그아웃 후 바로 리다이렉트
-            return redirect('/sales/')
+            # JSON 응답 반환
+            return JsonResponse({
+                'success': True,
+                'message': '로그아웃되었습니다.'
+            })
         except Exception as e:
-            # 오류가 발생해도 로그아웃은 성공으로 처리하고 리다이렉트
-            return redirect('/sales/')
+            # 오류가 발생해도 로그아웃은 성공으로 처리
+            return JsonResponse({
+                'success': True,
+                'message': '로그아웃되었습니다.'
+            })
 
 @method_decorator(csrf_exempt, name='dispatch')
 class ChangePasswordView(View):

@@ -4736,6 +4736,7 @@ function getSavedBizRecommendations(rowId) {
 }
 
 function showRecommendModal(title, message, isLoading, data = null, rowId = null, type = null) {
+    console.log('showRecommendModal 호출됨:', { title, message, isLoading, data, rowId, type });
     // 기존 모달이 있으면 제거
     const existingModal = document.getElementById('recommendModal');
     if (existingModal) {
@@ -4757,16 +4758,21 @@ function showRecommendModal(title, message, isLoading, data = null, rowId = null
         modalContent = `
             <div style="max-height: 70vh; overflow-y: auto;">
                 <div style="margin-bottom: 20px;">
-                    ${type === 'view' && data.some(biz => biz.isNew) ? '<p style="color: #dc3545; font-size: 14px; font-weight: bold;">🔔 새로 추가된 공고가 있습니다!</p>' : ''}
+                ${type === 'view' && data.some(biz => biz.isNew) ? `
+                    <div style="background: linear-gradient(135deg, #ff6b6b, #ee5a24); color: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center;">
+                        <h5 style="margin: 0 0 10px 0; font-size: 18px;">🔔 새로운 추천 공고 알림</h5>
+                        <p style="margin: 0; font-size: 14px;">새로 추가된 공고: <strong>${data.filter(biz => biz.isNew).length}개</strong> / 전체 공고: <strong>${data.length}개</strong></p>
+                    </div>
+                ` : ''}
                 </div>
                 <div style="display: grid; gap: 15px;">
                     ${data.map((biz, index) => `
-                        <div class="biz-card" style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; background: #fafafa; ${biz.isNew ? 'border-left: 4px solid #dc3545;' : ''}">
+                        <div class="biz-card" style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; background: ${biz.isNew ? '#fff5f5' : '#fafafa'}; ${biz.isNew ? 'border-left: 4px solid #dc3545; border: 2px solid #ff6b6b;' : ''}">
                             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; cursor: pointer;" onclick="window.open('https://namatji.com/board/detail/${biz.pblanc_id}/', '_blank')">
                                 <h6 style="margin: 0; color: #007bff; font-weight: 600;" >${biz.title || '제목 없음'}</h6>
-                                ${biz.isNew ? '<span style="color: #dc3545; font-weight: bold; font-size: 12px;">NEW</span>' : ''}
+                                ${biz.isNew ? '<span style="color: #dc3545; font-weight: bold; font-size: 12px; background: #ff6b6b; color: white; padding: 4px 8px; border-radius: 12px;">NEW</span>' : ''}
                             </div>
-                            <div style="display: none; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 13px;">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 13px;">
                                 <div><strong>지역:</strong> ${biz.region || '정보 없음'}</div>
                                 <div><strong>업종:</strong> ${biz.possible_industry || '정보 없음'}</div>
                                 <div><strong>매출:</strong> ${biz.revenue || '정보 없음'}</div>

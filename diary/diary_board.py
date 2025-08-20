@@ -608,6 +608,124 @@ def create_announcement(request):
         return UnicodeJsonResponse({'success': False, 'message': f'공고 작성 중 오류가 발생했습니다: {str(e)}'})
 
 @csrf_exempt
+def update_announcement(request, announcement_id):
+    """공고 수정 API"""
+    if request.method != 'PUT':
+        return JsonResponse({'success': False, 'message': 'PUT 요청만 허용됩니다.'})
+    
+    user_id = request.session.get('diary_member_id')
+    
+    if not user_id:
+        return JsonResponse({'success': False, 'message': '로그인이 필요합니다.'})
+    
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'message': '사용자를 찾을 수 없습니다.'})
+    
+    # 관리자 권한 확인
+    if not user.is_admin:
+        return JsonResponse({'success': False, 'message': '관리자 권한이 필요합니다.'})
+    
+    try:
+        # 공고 존재 확인
+        alarm = Alarm.objects.get(id=announcement_id)
+    except Alarm.DoesNotExist:
+        return JsonResponse({'success': False, 'message': '존재하지 않는 공고입니다.'})
+    
+    try:
+        import json
+        data = json.loads(request.body.decode('utf-8'))
+        title = data.get('title', '').strip()
+        content = data.get('content', '').strip()
+        category_id = data.get('category')
+        
+        # 제목 유효성 검사
+        if not title:
+            return JsonResponse({'success': False, 'message': '제목을 입력해주세요.'})
+        
+        # 내용 유효성 검사
+        if not content:
+            return JsonResponse({'success': False, 'message': '내용을 입력해주세요.'})
+        
+        # 카테고리 유효성 검사
+        if not category_id:
+            return JsonResponse({'success': False, 'message': '카테고리를 선택해주세요.'})
+        
+        # 카테고리 확인
+        category = None
+        if category_id:
+            try:
+                from .models import AlarmCategory
+                category = AlarmCategory.objects.get(id=category_id)  # user 조건 제거
+            except AlarmCategory.DoesNotExist:
+                return JsonResponse({'success': False, 'message': '존재하지 않는 카테고리입니다.'})
+        
+        # content를 dict 형태로 저장
+        content_data = {
+            'text': content,
+            'files': data.get('files', [])  # 전달받은 파일 정보 사용
+        }
+        
+        # 공고 수정
+        alarm.title = title
+        alarm.content = content_data
+        alarm.category = category
+        alarm.save()
+        
+        return UnicodeJsonResponse({
+            'success': True,
+            'message': '공고가 수정되었습니다.',
+            'announcement_id': alarm.id
+        })
+        
+    except json.JSONDecodeError:
+        return UnicodeJsonResponse({'success': False, 'message': '잘못된 요청 형식입니다.'})
+    except Exception as e:
+        return UnicodeJsonResponse({'success': False, 'message': f'공고 수정 중 오류가 발생했습니다: {str(e)}'})
+
+@csrf_exempt
+def delete_announcement(request, announcement_id):
+    """공고 삭제 API"""
+    if request.method != 'DELETE':
+        return JsonResponse({'success': False, 'message': 'DELETE 요청만 허용됩니다.'})
+    
+    user_id = request.session.get('diary_member_id')
+    
+    if not user_id:
+        return JsonResponse({'success': False, 'message': '로그인이 필요합니다.'})
+    
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'message': '사용자를 찾을 수 없습니다.'})
+    
+    # 관리자 권한 확인
+    if not user.is_admin:
+        return JsonResponse({'success': False, 'message': '관리자 권한이 필요합니다.'})
+    
+    try:
+        # 공고 존재 확인
+        alarm = Alarm.objects.get(id=announcement_id)
+    except Alarm.DoesNotExist:
+        return JsonResponse({'success': False, 'message': '존재하지 않는 공고입니다.'})
+    
+    try:
+        # 관련된 UserAlarm 레코드들 삭제
+        UserAlarm.objects.filter(alarm=alarm).delete()
+        
+        # 공고 삭제
+        alarm.delete()
+        
+        return JsonResponse({
+            'success': True,
+            'message': '공고가 삭제되었습니다.'
+        })
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'공고 삭제 중 오류가 발생했습니다: {str(e)}'})
+
+@csrf_exempt
 def upload_announcement_file(request):
     """공고 파일 업로드 API"""
     if request.method != 'POST':
@@ -795,7 +913,7 @@ def announcement_category_create(request):
         from .models import AlarmCategory
         
         # 중복 체크
-        if AlarmCategory.objects.filter(user=user, category_name=category_name).exists():
+        if AlarmCategory.objects.filter(category_name=category_name).exists():  # user 조건 제거
             return JsonResponse({
                 'success': False,
                 'message': '이미 존재하는 카테고리명입니다.'
@@ -848,7 +966,7 @@ def announcement_category_delete(request, category_id):
         
         # 카테고리 존재 확인
         try:
-            category = AlarmCategory.objects.get(id=category_id, user=user)
+            category = AlarmCategory.objects.get(id=category_id)  # user 조건 제거
         except AlarmCategory.DoesNotExist:
             return JsonResponse({
                 'success': False,
@@ -983,20 +1101,26 @@ def create_announcement_with_category(request):
         category_id = data.get('category')
         files = data.get('files', [])
         
+        # 제목 유효성 검사
         if not title:
             return JsonResponse({'success': False, 'message': '제목을 입력해주세요.'})
         
+        # 내용 유효성 검사
         if not content:
             return JsonResponse({'success': False, 'message': '내용을 입력해주세요.'})
+        
+        # 카테고리 유효성 검사 (필수)
+        if not category_id:
+            return JsonResponse({'success': False, 'message': '카테고리를 선택해주세요.'})
         
         # 카테고리 확인
         category = None
         if category_id:
             try:
                 from .models import AlarmCategory
-                category = AlarmCategory.objects.get(id=category_id, user=user)
+                category = AlarmCategory.objects.get(id=category_id)  # user 조건 제거
             except AlarmCategory.DoesNotExist:
-                pass
+                return JsonResponse({'success': False, 'message': '존재하지 않는 카테고리입니다.'})
         
         # content를 dict 형태로 저장
         content_data = {

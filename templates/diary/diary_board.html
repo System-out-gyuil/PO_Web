@@ -1,12 +1,11 @@
 {% load static %}
-
 <!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>게시판 - 자금왕</title>
+    <title>공지 게시판 - 자금왕</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
     <!-- Font Awesome -->
@@ -123,6 +122,30 @@
             margin: 0;
             line-height: 1.5;
         }
+        
+        /* 유효성 검사 스타일 */
+        .form-input.error,
+        .form-textarea.error,
+        .form-input.error:focus,
+        .form-textarea.error:focus {
+            border-color: #dc3545 !important;
+            box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25) !important;
+        }
+        
+        .error-message {
+            color: #dc3545;
+            font-size: 12px;
+            margin-top: 4px;
+            display: none;
+        }
+        
+        .error-message.show {
+            display: block;
+        }
+        
+        .form-group.error .form-label {
+            color: #dc3545;
+        }
     </style>
 </head>
 <body>
@@ -197,6 +220,7 @@
                         <div class="form-group">
                             <label class="form-label">제목</label>
                             <input type="text" id="announcement-title-input" class="form-input" placeholder="제목을 입력하세요">
+                            <div class="error-message" id="title-error">제목을 입력해주세요</div>
                         </div>
                         <div class="form-group">
                             <label class="form-label">카테고리</label>
@@ -204,10 +228,12 @@
                                 <option value="">카테고리 선택 (선택사항)</option>
                                 <!-- 카테고리 옵션들은 JavaScript로 동적 생성 -->
                             </select>
+                            <div class="error-message" id="category-error">카테고리를 선택해주세요</div>
                         </div>
                         <div class="form-group">
                             <label class="form-label">내용</label>
                             <textarea id="announcement-content-input" class="form-textarea" placeholder="내용을 입력하세요"></textarea>
+                            <div class="error-message" id="content-error">내용을 입력해주세요</div>
                         </div>
                         <div class="file-upload-section">
                             <div class="file-upload-area" onclick="document.getElementById('announcement-file-input').click()">
@@ -260,6 +286,62 @@
                     </div>
                 </div>
             </div>
+
+            <!-- 게시글 편집 모달 -->
+            <div class="modal" id="editAnnouncementModal" style="display: none;">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>게시글 편집</h3>
+                        <button class="close" onclick="closeEditAnnouncementModal()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label class="form-label">제목</label>
+                            <input type="text" id="edit-announcement-title" class="form-input" placeholder="제목을 입력하세요">
+                            <div class="error-message" id="edit-title-error">제목을 입력해주세요</div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">카테고리</label>
+                            <select id="edit-announcement-category" class="form-input">
+                                <option value="">카테고리 선택</option>
+                                <!-- 카테고리 옵션들은 JavaScript로 동적 생성 -->
+                            </select>
+                            <div class="error-message" id="edit-category-error">카테고리를 선택해주세요</div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">내용</label>
+                            <textarea id="edit-announcement-content" class="form-textarea" placeholder="내용을 입력하세요"></textarea>
+                            <div class="error-message" id="edit-content-error">내용을 입력해주세요</div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">파일 관리</label>
+                            <div class="file-upload-section">
+                                <div class="file-upload-area" onclick="document.getElementById('edit-announcement-file-input').click()">
+                                    <div class="file-upload-icon">
+                                        <i class="fas fa-cloud-upload-alt"></i>
+                                    </div>
+                                    <div class="file-upload-text">
+                                        파일을 드래그하거나 클릭하여 업로드하세요
+                                    </div>
+                                </div>
+                                <input type="file" id="edit-announcement-file-input" class="file-input" multiple>
+                                <div class="file-list" id="editAnnouncementFileList"></div>
+                                <div class="upload-progress" id="editAnnouncementUploadProgress" style="display: none;">
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" id="editAnnouncementProgressBar"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn-cancel" onclick="closeEditAnnouncementModal()">취소</button>
+                        <button class="btn-submit" onclick="updateAnnouncement()">수정</button>
+                    </div>
+                </div>
+            </div>
         </div>
     </main>
 
@@ -269,6 +351,12 @@
     <script>
         let currentCategoryId = null;  // 현재 선택된 카테고리 ID
         let currentCategoryName = '일반';  // 현재 선택된 카테고리명
+        let is_admin = false;  // 기본값 설정
+        
+        // Django 템플릿 변수를 JavaScript 변수로 설정
+        {% if is_admin %}
+        is_admin = true;
+        {% endif %}
         
         // 탭 전환
         function switchTab(tabName) {
@@ -298,14 +386,20 @@
             
             if (pagination.num_pages <= 1) {
                 paginationContainer.innerHTML = '';
+                paginationContainer.style.display = 'none';
                 return;
             }
             
+            paginationContainer.style.display = 'flex';
+            
             let html = '';
+            
+            // 페이지 정보 표시
+            
             
             // 이전 페이지
             if (pagination.has_previous) {
-                html += `<a href="#" class="page-button" onclick="loadAnnouncements(${pagination.previous_page_number})">
+                html += `<a href="#" class="page-button" onclick="loadAnnouncements(${pagination.previous_page_number}, '', currentCategoryId)">
                     <i class="fas fa-chevron-left"></i>
                 </a>`;
             }
@@ -316,12 +410,12 @@
             
             for (let i = startPage; i <= endPage; i++) {
                 const activeClass = i === pagination.number ? 'active' : '';
-                html += `<a href="#" class="page-button ${activeClass}" onclick="loadAnnouncements(${i})">${i}</a>`;
+                html += `<a href="#" class="page-button ${activeClass}" onclick="loadAnnouncements(${i}, '', currentCategoryId)">${i}</a>`;
             }
             
             // 다음 페이지
             if (pagination.has_next) {
-                html += `<a href="#" class="page-button" onclick="loadAnnouncements(${pagination.next_page_number})">
+                html += `<a href="#" class="page-button" onclick="loadAnnouncements(${pagination.next_page_number}, '', currentCategoryId)">
                     <i class="fas fa-chevron-right"></i>
                 </a>`;
             }
@@ -360,7 +454,7 @@
                 }
             });
             
-            // 해당 카테고리의 공고 로드 (전체인 경우 categoryId는 null)
+            // 카테고리 변경 시 1페이지부터 시작
             loadAnnouncements(1, '', categoryId);
             
             // 디버깅용 로그
@@ -645,7 +739,7 @@
             const searchInput = document.getElementById('announcement-search');
             const searchTerm = searchInput ? searchInput.value.trim() : '';
             
-            // 현재 선택된 카테고리 사용
+            // 검색 시 1페이지부터 시작
             loadAnnouncements(1, searchTerm, currentCategoryId);
         }
         
@@ -709,16 +803,69 @@
                         <div class="announcement-content">
                             <p>${escapeHtml(contentPreview)}</p>
                         </div>
+                        <div class="announcement-controler">
                         ${announcement.files && announcement.files.length > 0 ? `
                             <div class="announcement-files">
                                 <i class="fas fa-paperclip"></i> 첨부파일 ${announcement.files.length}개
                             </div>
+                        ` : '<div></div>'}
+                        ${typeof is_admin !== 'undefined' && is_admin ? `
+                            <div class="announcement-actions" onclick="event.stopPropagation();">
+                                <button class="btn-edit" data-id="${announcement.id}" data-title="${announcement.title}" data-content="${contentPreview}" data-category="${announcement.category_id || announcement.category || ''}" data-files="${announcement.files ? JSON.stringify(announcement.files).replace(/"/g, '&quot;') : ''}">
+                                    <i class="fas fa-edit"></i> 편집
+                                </button>
+                                <button class="btn-delete" data-id="${announcement.id}">
+                                    <i class="fas fa-trash"></i> 삭제
+                                </button>
+                            </div>
                         ` : ''}
+                        </div>
                     </div>
                 `;
             });
             
             announcementList.innerHTML = html;
+            
+            // 편집/삭제 버튼에 이벤트 리스너 추가
+            if (typeof is_admin !== 'undefined' && is_admin) {
+                setupAnnouncementActions();
+            }
+        }
+        
+        // 공고 액션 버튼 이벤트 리스너 설정
+        function setupAnnouncementActions() {
+            // 편집 버튼 이벤트 리스너
+            document.querySelectorAll('.btn-edit').forEach(button => {
+                button.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const id = this.getAttribute('data-id');
+                    const title = this.getAttribute('data-title');
+                    const content = this.getAttribute('data-content');
+                    const category = this.getAttribute('data-category');
+                    const filesData = this.getAttribute('data-files');
+                    
+                    let files = [];
+                    if (filesData) {
+                        try {
+                            files = JSON.parse(filesData);
+                        } catch (e) {
+                            console.error('파일 데이터 파싱 오류:', e);
+                            files = [];
+                        }
+                    }
+                    
+                    showEditAnnouncementModal(id, title, content, category, files);
+                });
+            });
+            
+            // 삭제 버튼 이벤트 리스너
+            document.querySelectorAll('.btn-delete').forEach(button => {
+                button.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const id = this.getAttribute('data-id');
+                    deleteAnnouncement(id);
+                });
+            });
         }
         
         // 에러 표시 함수
@@ -902,21 +1049,96 @@
         // 게시글 작성 모달 관련 함수들
         
         // 게시글 작성 모달 표시
-        function showWriteBoardModal() {
-            const modal = document.getElementById('writeBoardModal');
-            modal.style.display = 'block';
+        function showWriteAnnouncementModal() {
+            document.getElementById('writeAnnouncementModal').style.display = 'flex';
+            document.getElementById('announcement-title-input').value = '';
+            document.getElementById('announcement-content-input').value = '';
+            document.getElementById('announcement-category-input').value = '';  // 카테고리 초기화
+            document.getElementById('announcementFileList').innerHTML = '';
+            document.getElementById('announcementUploadProgress').style.display = 'none';
+            setupAnnouncementFileUpload();
+            loadAnnouncementCategoryOptions();  // 카테고리 옵션 로드
             
-            // 폼 초기화
-            document.getElementById('board-title-input').value = '';
-            document.getElementById('board-content-input').value = '';
-            document.getElementById('fileList').innerHTML = '';
-            document.getElementById('uploadProgress').style.display = 'none';
+            // 에러 상태 초기화
+            clearValidationErrors();
+        }
+        
+        // 유효성 검사 에러 초기화
+        function clearValidationErrors() {
+            // 모든 에러 메시지 숨기기
+            document.querySelectorAll('.error-message').forEach(msg => {
+                msg.classList.remove('show');
+            });
             
-            // 제목 입력 필드에 포커스
-            document.getElementById('board-title-input').focus();
+            // 모든 입력 필드에서 에러 클래스 제거
+            document.querySelectorAll('.form-input, .form-textarea').forEach(input => {
+                input.classList.remove('error');
+            });
             
-            // 파일 입력 이벤트 리스너 추가
-            setupFileUpload();
+            // 모든 form-group에서 에러 클래스 제거
+            document.querySelectorAll('.form-group').forEach(group => {
+                group.classList.remove('error');
+            });
+        }
+        
+        // 특정 필드의 에러 표시
+        function showFieldError(fieldId, errorMessageId) {
+            const field = document.getElementById(fieldId);
+            const errorMessage = document.getElementById(errorMessageId);
+            const formGroup = field.closest('.form-group');
+            
+            if (field && errorMessage && formGroup) {
+                field.classList.add('error');
+                formGroup.classList.add('error');
+                errorMessage.classList.add('show');
+            }
+        }
+        
+        // 특정 필드의 에러 제거
+        function clearFieldError(fieldId, errorMessageId) {
+            const field = document.getElementById(fieldId);
+            const errorMessage = document.getElementById(errorMessageId);
+            const formGroup = field.closest('.form-group');
+            
+            if (field && errorMessage && formGroup) {
+                field.classList.remove('error');
+                formGroup.classList.remove('error');
+                errorMessage.classList.remove('show');
+            }
+        }
+        
+        // 실시간 유효성 검사
+        function setupRealTimeValidation() {
+            const titleInput = document.getElementById('announcement-title-input');
+            const contentInput = document.getElementById('announcement-content-input');
+            const categoryInput = document.getElementById('announcement-category-input');
+            
+            // 제목 입력 시 실시간 검사
+            if (titleInput) {
+                titleInput.addEventListener('input', function() {
+                    if (this.value.trim()) {
+                        clearFieldError('announcement-title-input', 'title-error');
+                    }
+                });
+            }
+            
+            // 내용 입력 시 실시간 검사
+            if (contentInput) {
+                contentInput.addEventListener('input', function() {
+                    if (this.value.trim()) {
+                        clearFieldError('announcement-content-input', 'content-error');
+                    }
+                });
+            }
+            
+            // 카테고리 선택 시 실시간 검사
+            if (categoryInput) {
+                categoryInput.addEventListener('change', function() {
+                    if (this.value) {
+                        clearFieldError('announcement-category-input', 'category-error');
+                    }
+                });
+            }
         }
         
         // 파일 업로드 설정
@@ -1212,6 +1434,9 @@
         document.addEventListener('DOMContentLoaded', function() {
             console.log('DOM 로드 완료, 초기화 시작...');
             
+            // 실시간 유효성 검사 설정
+            setupRealTimeValidation();
+            
             // 먼저 카테고리 로드, 그 다음 공고 로드
             loadAnnouncementCategoriesForTabs().then(() => {
                 console.log('카테고리 로드 완료, 공고 로드 시작...');
@@ -1236,26 +1461,86 @@
             setupAnnouncementFileUpload();
             loadAnnouncementCategoryOptions();  // 카테고리 옵션 로드
             
-            // 현재 선택된 카테고리 표시
-            const categoryDisplay = document.createElement('div');
-            categoryDisplay.className = 'form-group';
-            categoryDisplay.innerHTML = `
-                <label class="form-label">카테고리</label>
-                <div class="category-display">
-                    <span class="category-badge">${escapeHtml(currentCategoryName)}</span>
-                    <small class="category-note">현재 선택된 카테고리에 공고가 저장됩니다.</small>
-                </div>
-            `;
+            // 에러 상태 초기화
+            clearValidationErrors();
+        }
+        
+        // 유효성 검사 에러 초기화
+        function clearValidationErrors() {
+            // 모든 에러 메시지 숨기기
+            document.querySelectorAll('.error-message').forEach(msg => {
+                msg.classList.remove('show');
+            });
             
-            // 기존 카테고리 표시 영역이 있으면 제거
-            const existingCategoryDisplay = document.querySelector('.category-display');
-            if (existingCategoryDisplay) {
-                existingCategoryDisplay.parentElement.remove();
+            // 모든 입력 필드에서 에러 클래스 제거
+            document.querySelectorAll('.form-input, .form-textarea').forEach(input => {
+                input.classList.remove('error');
+            });
+            
+            // 모든 form-group에서 에러 클래스 제거
+            document.querySelectorAll('.form-group').forEach(group => {
+                group.classList.remove('error');
+            });
+        }
+        
+        // 특정 필드의 에러 표시
+        function showFieldError(fieldId, errorMessageId) {
+            const field = document.getElementById(fieldId);
+            const errorMessage = document.getElementById(errorMessageId);
+            const formGroup = field.closest('.form-group');
+            
+            if (field && errorMessage && formGroup) {
+                field.classList.add('error');
+                formGroup.classList.add('error');
+                errorMessage.classList.add('show');
+            }
+        }
+        
+        // 특정 필드의 에러 제거
+        function clearFieldError(fieldId, errorMessageId) {
+            const field = document.getElementById(fieldId);
+            const errorMessage = document.getElementById(errorMessageId);
+            const formGroup = field.closest('.form-group');
+            
+            if (field && errorMessage && formGroup) {
+                field.classList.remove('error');
+                formGroup.classList.remove('error');
+                errorMessage.classList.remove('show');
+            }
+        }
+        
+        // 실시간 유효성 검사
+        function setupRealTimeValidation() {
+            const titleInput = document.getElementById('announcement-title-input');
+            const contentInput = document.getElementById('announcement-content-input');
+            const categoryInput = document.getElementById('announcement-category-input');
+            
+            // 제목 입력 시 실시간 검사
+            if (titleInput) {
+                titleInput.addEventListener('input', function() {
+                    if (this.value.trim()) {
+                        clearFieldError('announcement-title-input', 'title-error');
+                    }
+                });
             }
             
-            // 카테고리 표시를 제목 입력 필드 앞에 추가
-            const titleInput = document.getElementById('announcement-title-input');
-            titleInput.parentElement.parentElement.insertBefore(categoryDisplay, titleInput.parentElement);
+            // 내용 입력 시 실시간 검사
+            if (contentInput) {
+                contentInput.addEventListener('input', function() {
+                    if (this.value.trim()) {
+                        clearFieldError('announcement-content-input', 'content-error');
+                    }
+                });
+            }
+            
+            // 카테고리 선택 시 실시간 검사
+            if (categoryInput) {
+                categoryInput.addEventListener('change', function() {
+                    if (this.value) {
+                        clearFieldError('announcement-category-input', 'category-error');
+                    }
+                });
+            }
         }
         
         // 공고 작성 모달 닫기
@@ -1279,13 +1564,19 @@
             
             uploadArea.addEventListener('dragleave', (e) => {
                 e.preventDefault();
+                e.stopPropagation();
                 uploadArea.style.borderColor = '#ddd';
+                uploadArea.style.backgroundColor = 'transparent';
             });
             
             uploadArea.addEventListener('drop', (e) => {
                 e.preventDefault();
+                e.stopPropagation();
                 uploadArea.style.borderColor = '#ddd';
+                uploadArea.style.backgroundColor = 'transparent';
+                
                 const files = e.dataTransfer.files;
+                console.log('드래그 앤 드롭으로 받은 파일:', files);
                 handleAnnouncementFiles(files);
             });
         }
@@ -1339,19 +1630,35 @@
         
         // 공고 작성 제출
         async function submitAnnouncement() {
+            // 유효성 검사 에러 초기화
+            clearValidationErrors();
+            
             const title = document.getElementById('announcement-title-input').value.trim();
             const content = document.getElementById('announcement-content-input').value.trim();
+            const category = document.getElementById('announcement-category-input').value;
             
-            // 유효성 검사
+            let hasError = false;
+            
+            // 제목 유효성 검사
             if (!title) {
-                alert('제목을 입력해주세요.');
-                document.getElementById('announcement-title-input').focus();
-                return;
+                showFieldError('announcement-title-input', 'title-error');
+                hasError = true;
             }
             
+            // 내용 유효성 검사
             if (!content) {
-                alert('내용을 입력해주세요.');
-                document.getElementById('announcement-content-input').focus();
+                showFieldError('announcement-content-input', 'content-error');
+                hasError = true;
+            }
+            
+            // 카테고리 유효성 검사 (필수)
+            if (!category) {
+                showFieldError('announcement-category-input', 'category-error');
+                hasError = true;
+            }
+            
+            // 에러가 있으면 제출 중단
+            if (hasError) {
                 return;
             }
             
@@ -1394,7 +1701,7 @@
                     }
                 }
                 
-                // 공고 작성 (현재 선택된 카테고리 ID 사용)
+                // 공고 작성 (선택된 카테고리 ID 사용)
                 const response = await fetch('/sales/diary_board/announcement/create/', {
                     method: 'POST',
                     headers: {
@@ -1404,7 +1711,7 @@
                     body: JSON.stringify({
                         title: title,
                         content: content,
-                        category: currentCategoryId,  // 현재 선택된 카테고리 ID 사용
+                        category: category,  // 선택된 카테고리 ID 사용
                         files: uploadedFiles
                     })
                 });
@@ -1414,7 +1721,7 @@
                 if (data.success) {
                     alert('공고가 작성되었습니다.');
                     closeWriteAnnouncementModal();
-                    loadAnnouncements(1, '', currentCategoryId);  // 현재 카테고리로 새로고침
+                    loadAnnouncements(1, '', category);  // 선택된 카테고리로 새로고침
                 } else {
                     alert('공고 작성 실패: ' + data.message);
                 }
@@ -1457,7 +1764,7 @@
             }
             
             // 오디오 파일
-            if (contentType.includes('audio/') || ['mp3', 'wav', 'flac', 'aac', 'ogg', 'm4a'].includes(fileExt)) {
+            if (contentType.includes('audio/') || ['mp3','wav','flac','aac','ogg','m4a'].includes(fileExt)) {
                 return true;
             }
             
@@ -1656,44 +1963,65 @@
             }
         }
         // 로그아웃 함수
-function logout() {
-  if (confirm('로그아웃하시겠습니까?')) {
-      // 서버에 로그아웃 요청
-      fetch('/sales/logout/', {
-          method: 'POST',
-          headers: {
-              'Content-Type': 'application/json',
-              'X-CSRFToken': getCsrfToken()
-          }
-      })
-      .then(response => response.json())
-      .then(data => {
-          if (data.success) {
-              // 브라우저 캐시 정리
-              if ('caches' in window) {
-                  caches.keys().then(function(names) {
-                      for (let name of names) {
-                          caches.delete(name);
-                      }
-                  });
-              }
-              
-              // 세션 스토리지 정리
-              sessionStorage.clear();
-              
-              // 로그인 페이지로 리다이렉트
-              window.location.href = '/sales/login/';
-          } else {
-              alert('로그아웃 중 오류가 발생했습니다: ' + (data.error || ''));
-          }
-      })
-      .catch(error => {
-          console.error('로그아웃 오류:', error);
-          alert('로그아웃 중 오류가 발생했습니다.');
-      });
-  }
-}
-
+        function logout() {
+            if (confirm('로그아웃하시겠습니까?')) {
+                // 서버에 로그아웃 요청
+                fetch('/sales/logout/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    }
+                })
+                .then(response => {
+                    // 응답 타입 확인
+                    const contentType = response.headers.get('content-type');
+                    
+                    if (contentType && contentType.includes('application/json')) {
+                        // JSON 응답인 경우
+                        return response.json().then(data => {
+                            if (data.success) {
+                                performLogoutCleanup();
+                            } else {
+                                alert('로그아웃 중 오류가 발생했습니다: ' + (data.error || ''));
+                            }
+                        });
+                    } else {
+                        // HTML 응답인 경우 (리다이렉트 등)
+                        console.log('로그아웃 성공, HTML 응답 받음');
+                        performLogoutCleanup();
+                        return;
+                    }
+                })
+                .catch(error => {
+                    console.error('로그아웃 오류:', error);
+                    // 오류가 발생해도 로그아웃 처리를 진행
+                    performLogoutCleanup();
+                });
+            }
+        }
+        
+        // 로그아웃 정리 작업
+        function performLogoutCleanup() {
+            // 브라우저 캐시 정리
+            if ('caches' in window) {
+                caches.keys().then(function(names) {
+                    for (let name of names) {
+                        caches.delete(name);
+                    }
+                });
+            }
+            
+            // 세션 스토리지 정리
+            sessionStorage.clear();
+            
+            // 로컬 스토리지 정리 (필요한 경우)
+            localStorage.removeItem('user_preferences');
+            
+            // 로그인 페이지로 리다이렉트
+            window.location.href = '/sales/login/';
+        }
+        
         // 파일 다운로드
         async function downloadFile(savedName, originalName) {
             console.log('다운로드 함수 호출:', { savedName, originalName });
@@ -1743,6 +2071,380 @@ function logout() {
             const originalName = button.getAttribute('data-original-name');
             console.log('버튼에서 파일 정보 읽기:', { savedName, originalName });
             downloadFile(savedName, originalName);
+        }
+
+        // 게시글 편집 모달 표시
+        function showEditAnnouncementModal(announcementId, title, content, categoryId, files = []) {
+            console.log('편집 모달 열기:', { announcementId, title, content, categoryId, files });
+            
+            // 현재 편집 중인 게시글 ID 저장
+            window.currentEditingAnnouncementId = announcementId;
+            
+            // 모달 표시
+            document.getElementById('editAnnouncementModal').style.display = 'flex';
+            
+            // 기존 데이터로 폼 채우기
+            document.getElementById('edit-announcement-title').value = title;
+            document.getElementById('edit-announcement-content').value = content;
+            
+            // 카테고리 옵션 로드 및 선택
+            loadEditAnnouncementCategoryOptions(categoryId);
+            
+            // 기존 파일 목록 로드 (전달받은 파일 정보 사용)
+            console.log('기존 파일 로드 시작...');
+            renderExistingFiles(files);
+            
+            // 파일 업로드 설정
+            setupEditAnnouncementFileUpload();
+            
+            // 에러 상태 초기화
+            clearEditValidationErrors();
+        }
+        
+        // 기존 파일 목록 렌더링
+        function renderExistingFiles(files) {
+            const fileList = document.getElementById('editAnnouncementFileList');
+            if (!fileList) return;
+            
+            console.log('기존 파일 렌더링 시작, 파일 수:', files.length);
+            
+            if (!files || files.length === 0) {
+                fileList.innerHTML = '<div class="no-files-message">기존 첨부파일이 없습니다.</div>';
+                return;
+            }
+            
+            let html = '';
+            files.forEach(file => {
+                console.log('파일 정보:', file);
+                html += `
+                    <div class="file-item existing-file" data-file-id="${file.saved_name || ''}" data-original-name="${file.original_name || ''}" data-file-size="${file.file_size || ''}">
+                        <div class="file-info">
+                            <div class="file-icon">${getFileIcon(file.original_name || '')}</div>
+                            <div class="file-name">${escapeHtml(file.original_name || 'Unknown')}</div>
+                            <div class="file-size">${formatFileSize(file.file_size || 0)}</div>
+                        </div>
+                        <div class="file-actions">
+                            <button class="file-remove" onclick="removeExistingFile(this)" title="제거">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            fileList.innerHTML = html;
+            console.log('기존 파일 렌더링 완료');
+        }
+        
+        // 기존 파일 제거
+        function removeExistingFile(button) {
+            if (confirm('이 파일을 제거하시겠습니까?')) {
+                button.closest('.file-item').remove();
+            }
+        }
+        
+        // 편집 모달 파일 업로드 설정
+        function setupEditAnnouncementFileUpload() {
+            const fileInput = document.getElementById('edit-announcement-file-input');
+            const uploadArea = document.querySelector('#editAnnouncementModal .file-upload-area');
+            
+            if (!fileInput || !uploadArea) return;
+            
+            fileInput.addEventListener('change', handleEditAnnouncementFileSelect);
+            
+            // 드래그 앤 드롭
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                uploadArea.style.borderColor = '#667eea';
+                uploadArea.style.backgroundColor = '#f0f4ff';
+            });
+            
+            uploadArea.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                uploadArea.style.borderColor = '#ddd';
+                uploadArea.style.backgroundColor = 'transparent';
+            });
+            
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                uploadArea.style.borderColor = '#ddd';
+                uploadArea.style.backgroundColor = 'transparent';
+                
+                const files = e.dataTransfer.files;
+                console.log('드래그 앤 드롭으로 받은 파일:', files);
+                handleEditAnnouncementFiles(files);
+            });
+        }
+        
+        // 편집 모달 파일 선택 처리
+        function handleEditAnnouncementFileSelect(event) {
+            const files = event.target.files;
+            handleEditAnnouncementFiles(files);
+        }
+        
+        // 편집 모달 파일 처리
+        function handleEditAnnouncementFiles(files) {
+            for (let file of files) {
+                // 파일 크기 제한 (10MB)
+                if (file.size > 10 * 1024 * 1024) {
+                    alert('파일 크기가 너무 큽니다. (최대 10MB)');
+                    continue;
+                }
+                
+                const fileItem = createEditAnnouncementFileItem(file);
+                document.getElementById('editAnnouncementFileList').appendChild(fileItem);
+            }
+        }
+        
+        // 편집 모달 파일 아이템 생성
+        function createEditAnnouncementFileItem(file) {
+            const fileItem = document.createElement('div');
+            fileItem.className = 'file-item new-file';
+            
+            const fileIcon = getFileIcon(file.name);
+            const fileSize = formatFileSize(file.size);
+            
+            fileItem.innerHTML = `
+                <div class="file-info">
+                    <div class="file-icon">${fileIcon}</div>
+                    <div class="file-name">${escapeHtml(file.name)}</div>
+                    <div class="file-size">${fileSize}</div>
+                </div>
+                <button class="file-remove" onclick="removeEditAnnouncementFile(this)">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            
+            return fileItem;
+        }
+        
+        // 편집 모달 파일 제거
+        function removeEditAnnouncementFile(button) {
+            button.parentElement.remove();
+        }
+        
+        // 편집 모달용 카테고리 옵션 로드
+        async function loadEditAnnouncementCategoryOptions(selectedCategoryId) {
+            try {
+                const response = await fetch('/sales/diary_board/announcement/category/list/');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const categorySelect = document.getElementById('edit-announcement-category');
+                    if (categorySelect) {
+                        // 기존 옵션들 제거 (첫 번째 "카테고리 선택" 옵션 제외)
+                        while (categorySelect.children.length > 1) {
+                            categorySelect.removeChild(categorySelect.lastChild);
+                        }
+                        
+                        // 새 카테고리 옵션들 추가
+                        data.categories.forEach(category => {
+                            const option = document.createElement('option');
+                            option.value = category.id;
+                            option.textContent = category.category_name;
+                            if (category.id == selectedCategoryId) {
+                                option.selected = true;
+                            }
+                            categorySelect.appendChild(option);
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error('카테고리 옵션 로드 오류:', error);
+            }
+        }
+        
+        // 편집 모달 에러 초기화
+        function clearEditValidationErrors() {
+            document.querySelectorAll('#editAnnouncementModal .error-message').forEach(msg => {
+                msg.classList.remove('show');
+            });
+            
+            document.querySelectorAll('#editAnnouncementModal .form-input, #editAnnouncementModal .form-textarea').forEach(input => {
+                input.classList.remove('error');
+            });
+            
+            document.querySelectorAll('#editAnnouncementModal .form-group').forEach(group => {
+                group.classList.remove('error');
+            });
+        }
+        
+        // 편집 모달 닫기
+        function closeEditAnnouncementModal() {
+            document.getElementById('editAnnouncementModal').style.display = 'none';
+            window.currentEditingAnnouncementId = null;
+            
+            // 파일 목록 초기화
+            document.getElementById('editAnnouncementFileList').innerHTML = '';
+            document.getElementById('edit-announcement-file-input').value = '';
+        }
+        
+        // 게시글 수정
+        async function updateAnnouncement() {
+            if (!window.currentEditingAnnouncementId) {
+                alert('편집할 게시글을 찾을 수 없습니다.');
+                return;
+            }
+            
+            // 유효성 검사
+            clearEditValidationErrors();
+            
+            const title = document.getElementById('edit-announcement-title').value.trim();
+            const content = document.getElementById('edit-announcement-content').value.trim();
+            const category = document.getElementById('edit-announcement-category').value;
+            
+            let hasError = false;
+            
+            if (!title) {
+                showFieldError('edit-announcement-title', 'edit-title-error');
+                hasError = true;
+            }
+            
+            if (!content) {
+                showFieldError('edit-announcement-content', 'edit-content-error');
+                hasError = true;
+            }
+            
+            if (!category) {
+                showFieldError('edit-announcement-category', 'edit-category-error');
+                hasError = true;
+            }
+            
+            if (hasError) {
+                return;
+            }
+            
+            const submitBtn = document.querySelector('#editAnnouncementModal .btn-submit');
+            submitBtn.disabled = true;
+            submitBtn.textContent = '수정 중...';
+            
+            try {
+                // 새로 업로드된 파일 처리
+                const fileList = document.getElementById('editAnnouncementFileList');
+                const newFileItems = fileList.querySelectorAll('.new-file');
+                const uploadedFiles = [];
+                
+                if (newFileItems.length > 0) {
+                    document.getElementById('editAnnouncementUploadProgress').style.display = 'block';
+                    
+                    for (let fileItem of newFileItems) {
+                        const fileName = fileItem.querySelector('.file-name').textContent;
+                        const fileInput = document.getElementById('edit-announcement-file-input');
+                        const file = Array.from(fileInput.files).find(f => f.name === fileName);
+                        
+                        if (file) {
+                            const formData = new FormData();
+                            formData.append('file', file);
+                            
+                            const uploadResponse = await fetch('/sales/diary_board/announcement/upload-file/', {
+                                method: 'POST',
+                                body: formData
+                            });
+                            
+                            const uploadData = await uploadResponse.json();
+                            
+                            if (uploadData.success) {
+                                uploadedFiles.push(uploadData.file);
+                            } else {
+                                alert(`파일 업로드 실패: ${uploadData.message}`);
+                                return;
+                            }
+                        }
+                    }
+                }
+                
+                // 기존 파일 목록 (제거되지 않은 파일들)
+                const existingFileItems = fileList.querySelectorAll('.existing-file');
+                const existingFiles = [];
+                existingFileItems.forEach(fileItem => {
+                    const savedName = fileItem.getAttribute('data-file-id');
+                    const originalName = fileItem.getAttribute('data-original-name');
+                    const fileSize = fileItem.getAttribute('data-file-size');
+                    
+                    if (savedName && originalName) {
+                        // 기존 파일 정보를 유지
+                        existingFiles.push({
+                            saved_name: savedName,
+                            original_name: originalName,
+                            file_size: parseInt(fileSize) || 0
+                        });
+                    }
+                });
+                
+                console.log('기존 파일:', existingFiles);
+                console.log('새로 업로드된 파일:', uploadedFiles);
+                
+                // 모든 파일 합치기
+                const allFiles = [...existingFiles, ...uploadedFiles];
+                console.log('최종 파일 목록:', allFiles);
+                
+                // 공고 수정
+                const response = await fetch(`/sales/diary_board/announcement/${window.currentEditingAnnouncementId}/update/`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        title: title,
+                        content: content,
+                        category: category,
+                        files: allFiles
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('게시글이 수정되었습니다.');
+                    closeEditAnnouncementModal();
+                    // 현재 카테고리로 목록 새로고침
+                    loadAnnouncements(1, '', currentCategoryId);
+                } else {
+                    alert('게시글 수정 실패: ' + data.message);
+                }
+                
+            } catch (error) {
+                console.error('게시글 수정 오류:', error);
+                alert('게시글 수정 중 오류가 발생했습니다.');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '수정';
+                document.getElementById('editAnnouncementUploadProgress').style.display = 'none';
+            }
+        }
+        
+        // 게시글 삭제
+        async function deleteAnnouncement(announcementId) {
+            if (!confirm('이 게시글을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/sales/diary_board/announcement/${announcementId}/delete/`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('게시글이 삭제되었습니다.');
+                    // 현재 카테고리로 목록 새로고침
+                    loadAnnouncements(1, '', currentCategoryId);
+                } else {
+                    alert('게시글 삭제 실패: ' + data.message);
+                }
+                
+            } catch (error) {
+                console.error('게시글 삭제 오류:', error);
+                alert('게시글 삭제 중 오류가 발생했습니다.');
+            }
         }
     </script>
 </body>

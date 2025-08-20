@@ -451,12 +451,8 @@ body {
 }
 
 .error-message {
-    background: #f8d7da;
     color: #721c24;
-    padding: 1rem;
     border-radius: 6px;
-    border: 1px solid #f5c6cb;
-    text-align: center;
 }
 
 .empty-state {
@@ -477,6 +473,14 @@ body {
     align-items: center;
     gap: 0.5rem;
     margin-top: 2rem;
+    margin-bottom: 2rem;
+}
+
+.pagination-info {
+    margin-right: 1rem;
+    color: #6c757d;
+    font-size: 0.9rem;
+    font-weight: 500;
 }
 
 .page-button {
@@ -542,6 +546,19 @@ body {
     .pagination {
         flex-wrap: wrap;
         gap: 0.25rem;
+        justify-content: center;
+    }
+    
+    .pagination-info {
+        width: 100%;
+        text-align: center;
+        margin-right: 0;
+        margin-bottom: 0.5rem;
+    }
+    
+    .page-button {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.9rem;
     }
     
     .modal-content {
@@ -569,6 +586,7 @@ body {
     display: flex;
     gap: 0.5rem;
     align-items: center;
+    margin-right: 10px;
 }
 
 .write-button {
@@ -604,14 +622,23 @@ body {
 
 .modal-content {
     background-color: white;
-    margin: 2% auto;
+    margin: 0% auto;
     padding: 0;
     border-radius: 12px;
     width: 95%;
     max-width: 800px;
-    max-height: 95vh;
+    max-height: 97vh;
     box-shadow: 0 4px 20px rgba(0,0,0,0.3);
     animation: modalSlideIn 0.3s ease;
+    overflow-y: auto;
+    /* 스크롤바 숨기기 */
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+}
+
+/* Webkit 브라우저(Chrome, Safari)에서 스크롤바 숨기기 */
+.modal-content::-webkit-scrollbar {
+    display: none;
 }
 
 @keyframes modalSlideIn {
@@ -628,7 +655,7 @@ body {
 .modal-header {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
-    padding: 1.5rem;
+    padding: 1rem;
     border-radius: 12px 12px 0 0;
     display: flex;
     justify-content: space-between;
@@ -663,7 +690,7 @@ body {
 }
 
 .modal-body {
-    padding: 2rem;
+    padding: 0.5rem 2rem;
 }
 
 .form-group {
@@ -716,17 +743,30 @@ body {
     background: #f8f9fa;
     border-radius: 8px;
     border: 2px dashed #dee2e6;
-    transition: border-color 0.3s ease;
+    transition: all 0.3s ease;
 }
 
 .file-upload-section:hover {
     border-color: #667eea;
+    background: #f0f4ff;
 }
 
 .file-upload-area {
     text-align: center;
-    padding: 1rem;
     cursor: pointer;
+    padding: 2rem;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+}
+
+.file-upload-area:hover {
+    background: #e8f4fd;
+}
+
+.file-upload-area.dragover {
+    border-color: #667eea;
+    background: #f0f4ff;
+    transform: scale(1.02);
 }
 
 .file-upload-icon {
@@ -796,6 +836,51 @@ body {
 
 .file-remove:hover {
     background: #c82333;
+}
+
+.file-actions {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.file-preview-btn,
+.file-download-btn {
+    background: #17a2b8;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+.file-preview-btn:hover {
+    background: #138496;
+}
+
+.file-download-btn:hover {
+    background: #138496;
+}
+
+.existing-file {
+    background: #f8f9fa;
+    border-left: 3px solid #28a745;
+}
+
+.new-file {
+    background: #fff3cd;
+    border-left: 3px solid #ffc107;
+}
+
+.no-files-message {
+    text-align: center;
+    padding: 1rem;
+    color: #6c757d;
+    font-style: italic;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border: 1px dashed #dee2e6;
 }
 
 .upload-progress {
@@ -915,6 +1000,22 @@ background: #c82333;
 transform: translateY(-1px);
 }
 
+.announcement-files {
+    color: #0087fd;
+}
+
+.announcement-controler {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    justify-content: space-between;
+}
+
+.btn-edit, .btn-delete {
+    color: #ff5252;
+}
+
 @media (max-width: 768px) {
 .header-title {
 font-size: 19px;
@@ -939,6 +1040,57 @@ font-size: 19px;
     padding: 0;
     text-align: center;
     justify-content: center;
+}
+
+.announcement-files {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+}
+
+.announcement-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    justify-content: flex-end;
+}
+
+.btn-edit {
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.btn-edit:hover {
+    background: #218838;
+    transform: translateY(-1px);
+}
+
+.btn-delete {
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.btn-delete:hover {
+    background: #c82333;
+    transform: translateY(-1px);
 }
 
 

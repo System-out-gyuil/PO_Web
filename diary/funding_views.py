@@ -1242,6 +1242,11 @@ def get_saved_biz_recommendations(request):
             })
         
         try:
+            # 변수 초기화
+            pblanc_ids = []
+            alerts = []
+            all_ids = []
+            
             # 데이터 타입에 따른 분기 처리
             if isinstance(saved_recommendations, str):
                 # 문자열인 경우 JSON 파싱 시도
@@ -1266,13 +1271,11 @@ def get_saved_biz_recommendations(request):
                     else:
                         # 딕셔너리가 아닌 경우 쉼표로 분리
                         all_ids = [id.strip() for id in saved_recommendations.split(',') if id.strip()]
-                        alerts = []
                         
                 except (json.JSONDecodeError, AttributeError) as e:
                     print(f"JSON 파싱 실패, 쉼표로 분리: {e}")
                     # JSON 파싱 실패 시 쉼표로 분리
                     all_ids = [id.strip() for id in saved_recommendations.split(',') if id.strip()]
-                    alerts = []
             else:
                 # 기존 로직 (딕셔너리인 경우)
                 if isinstance(saved_recommendations, dict):
@@ -1284,7 +1287,6 @@ def get_saved_biz_recommendations(request):
                 else:
                     # 기타 타입인 경우 빈 배열로 처리
                     all_ids = []
-                    alerts = []
                     print(f"기타 타입 처리: {type(saved_recommendations)}")
             
             # all_ids가 빈 배열이거나 None인 경우 처리
@@ -1295,6 +1297,8 @@ def get_saved_biz_recommendations(request):
                 })
             
             print(f'all_ids: {all_ids}')
+            print(f'pblanc_ids: {pblanc_ids}')
+            print(f'alerts: {alerts}')
             
             # BizInfo에서 해당 ID들로 데이터 조회
             biz_data = BizInfo.objects.filter(pblanc_id__in=all_ids)
@@ -1308,9 +1312,9 @@ def get_saved_biz_recommendations(request):
             
             result_data = []
             for biz in biz_data:
-                # 새로 추가된 공고인지 확인 (알림 배열에 포함된 경우)
+                # 새로 추가된 공고인지 확인 (alerts 배열에 포함된 경우)
                 is_new = False
-                if 'alerts' in locals() and alerts:
+                if alerts and len(alerts) > 0:
                     is_new = str(biz.pblanc_id) in [str(alert_id) for alert_id in alerts]
                 
                 result_data.append({
@@ -1333,8 +1337,8 @@ def get_saved_biz_recommendations(request):
                 'count': len(result_data),
                 'summary': {
                     'total_ids': len(all_ids),
-                    'pblanc_count': len(pblanc_ids) if 'pblanc_ids' in locals() else 0,
-                    'alerts_count': len(alerts) if 'alerts' in locals() else 0,
+                    'pblanc_count': len(pblanc_ids),
+                    'alerts_count': len(alerts),
                     'unique_count': len(all_ids)
                 }
             })
