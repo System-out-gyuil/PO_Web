@@ -229,7 +229,13 @@ def get_announcement_detail(request, announcement_id):
         'content': alarm.get_text_content(),
         'files': processed_files,
         'created_at': alarm.created_at.strftime('%Y-%m-%d %H:%M'),
-        'updated_at': alarm.updated_at.strftime('%Y-%m-%d %H:%M')
+        'updated_at': alarm.updated_at.strftime('%Y-%m-%d %H:%M'),
+        'category_id': alarm.category.id if alarm.category else None,
+        'category_name': alarm.category.category_name if alarm.category else None,
+        'category': {
+            'id': alarm.category.id,
+            'name': alarm.category.category_name
+        } if alarm.category else None
     }
     
     return UnicodeJsonResponse({
@@ -994,7 +1000,7 @@ def announcement_category_delete(request, category_id):
                 'message': '존재하지 않는 카테고리입니다.'
             })
         
-        # 해당 카테고리의 공고들을 일반(카테고리 없음)으로 변경
+        # 해당 카테고리의 공고들에서 카테고리만 제거 (None으로 설정)
         Alarm.objects.filter(category=category).update(category=None)
         
         # 카테고리 삭제
@@ -1002,7 +1008,7 @@ def announcement_category_delete(request, category_id):
         
         return JsonResponse({
             'success': True,
-            'message': '카테고리가 삭제되었습니다.'
+            'message': '카테고리가 삭제되었습니다. 해당 공고들은 카테고리가 없는 상태로 유지됩니다.'
         })
     except Exception as e:
         return JsonResponse({
