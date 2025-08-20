@@ -434,25 +434,30 @@
         function switchAnnouncementCategory(categoryId, categoryName) {
             console.log('switchAnnouncementCategory 호출됨:', { categoryId, categoryName });
             
+            // 현재 선택된 카테고리 정보 업데이트
             currentCategoryId = categoryId;
-            currentCategoryName = categoryName;
+            currentCategoryName = categoryName || '전체';
             
-            // 탭 활성화 상태 업데이트
+            // 모든 카테고리 탭에서 active 클래스 제거
             const tabs = document.querySelectorAll('#announcement-category-tabs .category-tab');
             tabs.forEach(tab => {
                 tab.classList.remove('active');
-                
-                // "전체" 탭인지 확인
-                if (categoryId === null && tab.textContent.trim() === '전체') {
-                    tab.classList.add('active');
-                } else if (categoryId !== null) {
-                    // onclick 속성에서 categoryId를 추출하여 비교
+            });
+            
+            // 클릭된 탭에 active 클래스 추가
+            const clickedTab = Array.from(tabs).find(tab => {
+                if (categoryId === null) {
+                    return tab.textContent.trim() === '전체';
+                } else {
                     const tabCategoryId = tab.onclick.toString().match(/switchAnnouncementCategory\('(\d+)'/)?.[1];
-                    if (tabCategoryId && parseInt(tabCategoryId) === parseInt(categoryId)) {
-                        tab.classList.add('active');
-                    }
+                    return tabCategoryId && parseInt(tabCategoryId) === parseInt(categoryId);
                 }
             });
+            
+            if (clickedTab) {
+                clickedTab.classList.add('active');
+                console.log('카테고리 탭 활성화:', clickedTab.textContent.trim());
+            }
             
             // 카테고리 변경 시 1페이지부터 시작
             loadAnnouncements(1, '', categoryId);
@@ -487,7 +492,7 @@
             if (categories && categories.length > 0) {
                 categories.forEach((category, index) => {
                     console.log(`카테고리 ${index}:`, category);
-                    const activeClass = category.id === currentCategoryId ? 'active' : '';
+                    const activeClass = category.id == currentCategoryId ? 'active' : '';
                     html += `
                         <button class="category-tab ${activeClass}" onclick="switchAnnouncementCategory('${category.id}', '${escapeHtml(category.category_name)}')">
                             ${escapeHtml(category.category_name)}
@@ -652,18 +657,22 @@
                         console.log('기본 "전체" 탭 선택');
                         currentCategoryId = null;
                         currentCategoryName = '전체';
+                        // 전체 탭을 active 상태로 설정
+                        updateCategoryTabActiveState(null);
                     }
                 } else {
                     console.error('카테고리 탭 로드 실패:', data.message);
                     // 실패 시에도 기본 상태로 설정
                     currentCategoryId = null;
                     currentCategoryName = '전체';
+                    updateCategoryTabActiveState(null);
                 }
             } catch (error) {
                 console.error('카테고리 탭 로드 오류:', error);
                 // 오류 시에도 기본 상태로 설정
                 currentCategoryId = null;
                 currentCategoryName = '전체';
+                updateCategoryTabActiveState(null);
             }
         }
         
@@ -681,8 +690,11 @@
         // 공고 작성 모달용 카테고리 옵션 로드
         async function loadAnnouncementCategoryOptions() {
             try {
+                console.log('카테고리 옵션 로드 시작...');
                 const response = await fetch('/sales/diary_board/announcement/category/list/');
                 const data = await response.json();
+                
+                console.log('카테고리 옵션 응답:', data);
                 
                 if (data.success) {
                     const categorySelect = document.getElementById('announcement-category-input');
@@ -698,8 +710,13 @@
                             option.value = category.id;
                             option.textContent = category.category_name;
                             categorySelect.appendChild(option);
+                            console.log('카테고리 옵션 추가:', category.id, category.category_name);
                         });
+                        
+                        console.log('총 카테고리 옵션 수:', categorySelect.children.length);
                     }
+                } else {
+                    console.error('카테고리 옵션 로드 실패:', data.message);
                 }
             } catch (error) {
                 console.error('카테고리 옵션 로드 오류:', error);
@@ -1131,10 +1148,10 @@
                 });
             }
             
-            // 카테고리 선택 시 실시간 검사
+            // 카테고리 선택 시 실시간 검사 (필수)
             if (categoryInput) {
                 categoryInput.addEventListener('change', function() {
-                    if (this.value) {
+                    if (this.value.trim()) {
                         clearFieldError('announcement-category-input', 'category-error');
                     }
                 });
@@ -1533,10 +1550,1618 @@
                 });
             }
             
-            // 카테고리 선택 시 실시간 검사
+            // 카테고리 선택 시 실시간 검사 (필수)
             if (categoryInput) {
                 categoryInput.addEventListener('change', function() {
-                    if (this.value) {
+                    if (this.value.trim()) {
+                        clearFieldError('announcement-category-input', 'category-error');
+                    }
+                });
+            }
+        }
+        
+        // 파일 업로드 설정
+        function setupFileUpload() {
+            const fileInput = document.getElementById('board-file-input');
+            const fileList = document.getElementById('fileList');
+            
+            // 파일 선택 이벤트
+            fileInput.addEventListener('change', handleFileSelect);
+            
+            // 드래그 앤 드롭 이벤트
+            const uploadSection = document.querySelector('.file-upload-section');
+            
+            uploadSection.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadSection.style.borderColor = '#667eea';
+            });
+            
+            uploadSection.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                uploadSection.style.borderColor = '#dee2e6';
+            });
+            
+            uploadSection.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadSection.style.borderColor = '#dee2e6';
+                
+                const files = e.dataTransfer.files;
+                handleFiles(files);
+            });
+        }
+        
+        // 파일 선택 처리
+        function handleFileSelect(event) {
+            const files = event.target.files;
+            handleFiles(files);
+        }
+        
+        // 파일 처리
+        function handleFiles(files) {
+            const fileList = document.getElementById('fileList');
+            
+            Array.from(files).forEach(file => {
+                // 파일 크기 제한 (10MB)
+                if (file.size > 10 * 1024 * 1024) {
+                    alert(`파일 크기가 너무 큽니다: ${file.name}`);
+                    return;
+                }
+                
+                // 파일 아이템 생성
+                const fileItem = createFileItem(file);
+                fileList.appendChild(fileItem);
+            });
+        }
+        
+        // 파일 아이템 생성
+        function createFileItem(file) {
+            const fileItem = document.createElement('div');
+            fileItem.className = 'file-item';
+            fileItem.dataset.fileName = file.name;
+            fileItem.dataset.fileSize = file.size;
+            
+            const fileIcon = getFileIcon(file.name);
+            const fileSize = formatFileSize(file.size);
+            
+            fileItem.innerHTML = `
+                <div class="file-info">
+                    <div class="file-icon">
+                        <i class="${fileIcon}"></i>
+                    </div>
+                    <div>
+                        <div class="file-name">${escapeHtml(file.name)}</div>
+                        <div class="file-size">${fileSize}</div>
+                    </div>
+                </div>
+                <button class="file-remove" onclick="removeFile(this)">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            
+            return fileItem;
+        }
+        
+        // 파일 제거
+        function removeFile(button) {
+            const fileItem = button.parentElement;
+            fileItem.remove();
+        }
+        
+        // 파일 아이콘 반환
+        function getFileIcon(fileName) {
+            const fileExt = fileName.split('.').pop()?.toLowerCase() || '';
+            
+            const iconMap = {
+                // 이미지 파일
+                'jpg': '🖼️', 'jpeg': '🖼️', 'png': '🖼️', 'gif': '🖼️', 'bmp': '🖼️', 'svg': '🖼️', 'webp': '🖼️',
+                // 문서 파일
+                'pdf': '📄', 'doc': '📝', 'docx': '📝', 'txt': '📄', 'rtf': '📝',
+                // 스프레드시트
+                'xls': '📊', 'xlsx': '📊', 'csv': '📊',
+                // 프레젠테이션
+                'ppt': '📋', 'pptx': '📋',
+                // 압축 파일
+                'zip': '📦', 'rar': '📦', '7z': '📦', 'tar': '📦', 'gz': '📦',
+                // 오디오 파일
+                'mp3': '🎵', 'wav': '🎵', 'flac': '🎵', 'aac': '🎵', 'ogg': '🎵',
+                // 비디오 파일
+                'mp4': '🎬', 'avi': '🎬', 'mov': '🎬', 'wmv': '🎬', 'flv': '🎬', 'mkv': '🎬',
+                // 코드 파일
+                'html': '🌐', 'css': '🎨', 'js': '⚙️', 'py': '🐍', 'java': '☕', 'cpp': '⚙️', 'c': '⚙️',
+                // 기타
+                'json': '📋', 'xml': '📋', 'sql': '🗄️', 'md': '📄'
+            };
+            
+            return iconMap[fileExt] || '📄';
+        }
+        
+        // 파일 크기 포맷팅
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        // 게시글 작성 모달 닫기
+        function closeWriteBoardModal() {
+            const modal = document.getElementById('writeBoardModal');
+            modal.style.display = 'none';
+        }
+        
+        // 게시글 작성 제출
+        async function submitBoard() {
+            const title = document.getElementById('board-title-input').value.trim();
+            const content = document.getElementById('board-content-input').value.trim();
+            
+            // 유효성 검사
+            if (!title) {
+                alert('제목을 입력해주세요.');
+                document.getElementById('board-title-input').focus();
+                return;
+            }
+            
+            if (!content) {
+                alert('내용을 입력해주세요.');
+                document.getElementById('board-content-input').focus();
+                return;
+            }
+            
+            // 제출 버튼 비활성화
+            const submitBtn = document.querySelector('.btn-submit');
+            const originalText = submitBtn.textContent;
+            submitBtn.disabled = true;
+            submitBtn.textContent = '작성 중...';
+            
+            try {
+                // 파일 업로드 처리
+                const fileItems = document.querySelectorAll('#fileList .file-item');
+                let uploadedFiles = [];
+                
+                if (fileItems.length > 0) {
+                    // 업로드 진행률 표시
+                    document.getElementById('uploadProgress').style.display = 'block';
+                    const progressBar = document.getElementById('progressBar');
+                    
+                    for (let i = 0; i < fileItems.length; i++) {
+                        const fileItem = fileItems[i];
+                        const fileName = fileItem.dataset.fileName;
+                        const fileSize = fileItem.dataset.fileSize;
+                        
+                        // 파일 객체 찾기
+                        const fileInput = document.getElementById('board-file-input');
+                        const file = Array.from(fileInput.files).find(f => f.name === fileName);
+                        
+                        if (file) {
+                            // 진행률 업데이트
+                            const progress = ((i + 1) / fileItems.length) * 100;
+                            progressBar.style.width = progress + '%';
+                            
+                            // 파일 업로드
+                            const formData = new FormData();
+                            formData.append('file', file);
+                            
+                            const uploadResponse = await fetch('/sales/diary_board/general/upload-file/', {
+                                method: 'POST',
+                                headers: {
+                                    'X-CSRFToken': getCookie('csrftoken')
+                                },
+                                body: formData
+                            });
+                            
+                            const uploadData = await uploadResponse.json();
+                            
+                            if (uploadData.success) {
+                                uploadedFiles.push(uploadData.file);
+                            } else {
+                                alert(`파일 업로드 실패: ${fileName}`);
+                            }
+                        }
+                    }
+                }
+                
+                // 게시글 작성
+                const response = await fetch('/sales/diary_board/general/create/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        title: title,
+                        content: content,
+                        files: uploadedFiles
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('게시글이 작성되었습니다.');
+                    closeWriteBoardModal();
+                    // 게시글 목록 새로고침
+                    loadGeneralBoards();
+                } else {
+                    alert('게시글 작성에 실패했습니다: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error submitting board:', error);
+                alert('게시글 작성 중 오류가 발생했습니다.');
+            } finally {
+                // 제출 버튼 다시 활성화
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
+                document.getElementById('uploadProgress').style.display = 'none';
+            }
+        }
+        
+        // CSRF 토큰 가져오기
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        
+        // CSRF 토큰 가져오기 함수
+        function getCsrfToken() {
+            const cookieValue = document.cookie
+                .split('; ')
+                .find(row => row.startsWith('csrftoken='))
+                ?.split('=')[1];
+            return cookieValue || '';
+        }
+        
+        // 모달 외부 클릭 시 닫기
+        window.onclick = function(event) {
+            const modal = document.getElementById('writeBoardModal');
+            if (event.target === modal) {
+                closeWriteBoardModal();
+            }
+            
+            const categoryModal = document.getElementById('categoryManageModal');
+            if (event.target === categoryModal) {
+                closeCategoryManageModal();
+            }
+        }
+        
+        // Enter 키로 제출
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter' && event.ctrlKey) {
+                event.preventDefault();
+                submitBoard();
+            }
+        });
+
+        // 실시간 업데이트 (30초마다)
+        // setInterval(() => {
+        //     loadAnnouncements();
+        // }, 30000);
+        
+        // 페이지 로드 시 초기 데이터 로드
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM 로드 완료, 초기화 시작...');
+            
+            // 실시간 유효성 검사 설정
+            setupRealTimeValidation();
+            
+            // 먼저 카테고리 로드, 그 다음 공고 로드
+            loadAnnouncementCategoriesForTabs().then(() => {
+                console.log('카테고리 로드 완료, 공고 로드 시작...');
+                // 기본적으로 "전체" 탭이 선택되어 있으므로 categoryId는 null
+                loadAnnouncements(1, '', null);
+            }).catch(error => {
+                console.error('카테고리 로드 실패, 공고만 로드:', error);
+                loadAnnouncements(1, '', null);
+            });
+        });
+        
+        // 관리자 권한 확인 함수 전체 제거
+        
+        // 공고 작성 모달 표시
+        function showWriteAnnouncementModal() {
+            document.getElementById('writeAnnouncementModal').style.display = 'flex';
+            document.getElementById('announcement-title-input').value = '';
+            document.getElementById('announcement-content-input').value = '';
+            document.getElementById('announcement-category-input').value = '';  // 카테고리 초기화
+            document.getElementById('announcementFileList').innerHTML = '';
+            document.getElementById('announcementUploadProgress').style.display = 'none';
+            setupAnnouncementFileUpload();
+            loadAnnouncementCategoryOptions();  // 카테고리 옵션 로드
+            
+            // 에러 상태 초기화
+            clearValidationErrors();
+        }
+        
+        // 유효성 검사 에러 초기화
+        function clearValidationErrors() {
+            // 모든 에러 메시지 숨기기
+            document.querySelectorAll('.error-message').forEach(msg => {
+                msg.classList.remove('show');
+            });
+            
+            // 모든 입력 필드에서 에러 클래스 제거
+            document.querySelectorAll('.form-input, .form-textarea').forEach(input => {
+                input.classList.remove('error');
+            });
+            
+            // 모든 form-group에서 에러 클래스 제거
+            document.querySelectorAll('.form-group').forEach(group => {
+                group.classList.remove('error');
+            });
+        }
+        
+        // 특정 필드의 에러 표시
+        function showFieldError(fieldId, errorMessageId) {
+            const field = document.getElementById(fieldId);
+            const errorMessage = document.getElementById(errorMessageId);
+            const formGroup = field.closest('.form-group');
+            
+            if (field && errorMessage && formGroup) {
+                field.classList.add('error');
+                formGroup.classList.add('error');
+                errorMessage.classList.add('show');
+            }
+        }
+        
+        // 특정 필드의 에러 제거
+        function clearFieldError(fieldId, errorMessageId) {
+            const field = document.getElementById(fieldId);
+            const errorMessage = document.getElementById(errorMessageId);
+            const formGroup = field.closest('.form-group');
+            
+            if (field && errorMessage && formGroup) {
+                field.classList.remove('error');
+                formGroup.classList.remove('error');
+                errorMessage.classList.remove('show');
+            }
+        }
+        
+        // 실시간 유효성 검사
+        function setupRealTimeValidation() {
+            const titleInput = document.getElementById('announcement-title-input');
+            const contentInput = document.getElementById('announcement-content-input');
+            const categoryInput = document.getElementById('announcement-category-input');
+            
+            // 제목 입력 시 실시간 검사
+            if (titleInput) {
+                titleInput.addEventListener('input', function() {
+                    if (this.value.trim()) {
+                        clearFieldError('announcement-title-input', 'title-error');
+                    }
+                });
+            }
+            
+            // 내용 입력 시 실시간 검사
+            if (contentInput) {
+                contentInput.addEventListener('input', function() {
+                    if (this.value.trim()) {
+                        clearFieldError('announcement-content-input', 'content-error');
+                    }
+                });
+            }
+            
+            // 카테고리 선택 시 실시간 검사 (필수)
+            if (categoryInput) {
+                categoryInput.addEventListener('change', function() {
+                    if (this.value.trim()) {
+                        clearFieldError('announcement-category-input', 'category-error');
+                    }
+                });
+            }
+        }
+        
+        // 파일 업로드 설정
+        function setupFileUpload() {
+            const fileInput = document.getElementById('board-file-input');
+            const fileList = document.getElementById('fileList');
+            
+            // 파일 선택 이벤트
+            fileInput.addEventListener('change', handleFileSelect);
+            
+            // 드래그 앤 드롭 이벤트
+            const uploadSection = document.querySelector('.file-upload-section');
+            
+            uploadSection.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadSection.style.borderColor = '#667eea';
+            });
+            
+            uploadSection.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                uploadSection.style.borderColor = '#dee2e6';
+            });
+            
+            uploadSection.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadSection.style.borderColor = '#dee2e6';
+                
+                const files = e.dataTransfer.files;
+                handleFiles(files);
+            });
+        }
+        
+        // 파일 선택 처리
+        function handleFileSelect(event) {
+            const files = event.target.files;
+            handleFiles(files);
+        }
+        
+        // 파일 처리
+        function handleFiles(files) {
+            const fileList = document.getElementById('fileList');
+            
+            Array.from(files).forEach(file => {
+                // 파일 크기 제한 (10MB)
+                if (file.size > 10 * 1024 * 1024) {
+                    alert(`파일 크기가 너무 큽니다: ${file.name}`);
+                    return;
+                }
+                
+                // 파일 아이템 생성
+                const fileItem = createFileItem(file);
+                fileList.appendChild(fileItem);
+            });
+        }
+        
+        // 파일 아이템 생성
+        function createFileItem(file) {
+            const fileItem = document.createElement('div');
+            fileItem.className = 'file-item';
+            fileItem.dataset.fileName = file.name;
+            fileItem.dataset.fileSize = file.size;
+            
+            const fileIcon = getFileIcon(file.name);
+            const fileSize = formatFileSize(file.size);
+            
+            fileItem.innerHTML = `
+                <div class="file-info">
+                    <div class="file-icon">
+                        <i class="${fileIcon}"></i>
+                    </div>
+                    <div>
+                        <div class="file-name">${escapeHtml(file.name)}</div>
+                        <div class="file-size">${fileSize}</div>
+                    </div>
+                </div>
+                <button class="file-remove" onclick="removeFile(this)">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            
+            return fileItem;
+        }
+        
+        // 파일 제거
+        function removeFile(button) {
+            const fileItem = button.parentElement;
+            fileItem.remove();
+        }
+        
+        // 파일 아이콘 반환
+        function getFileIcon(fileName) {
+            const fileExt = fileName.split('.').pop()?.toLowerCase() || '';
+            
+            const iconMap = {
+                // 이미지 파일
+                'jpg': '🖼️', 'jpeg': '🖼️', 'png': '🖼️', 'gif': '🖼️', 'bmp': '🖼️', 'svg': '🖼️', 'webp': '🖼️',
+                // 문서 파일
+                'pdf': '📄', 'doc': '📝', 'docx': '📝', 'txt': '📄', 'rtf': '📝',
+                // 스프레드시트
+                'xls': '📊', 'xlsx': '📊', 'csv': '📊',
+                // 프레젠테이션
+                'ppt': '📋', 'pptx': '📋',
+                // 압축 파일
+                'zip': '📦', 'rar': '📦', '7z': '📦', 'tar': '📦', 'gz': '📦',
+                // 오디오 파일
+                'mp3': '🎵', 'wav': '🎵', 'flac': '🎵', 'aac': '🎵', 'ogg': '🎵',
+                // 비디오 파일
+                'mp4': '🎬', 'avi': '🎬', 'mov': '🎬', 'wmv': '🎬', 'flv': '🎬', 'mkv': '🎬',
+                // 코드 파일
+                'html': '🌐', 'css': '🎨', 'js': '⚙️', 'py': '🐍', 'java': '☕', 'cpp': '⚙️', 'c': '⚙️',
+                // 기타
+                'json': '📋', 'xml': '📋', 'sql': '🗄️', 'md': '📄'
+            };
+            
+            return iconMap[fileExt] || '📄';
+        }
+        
+        // 파일 크기 포맷팅
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        // 게시글 작성 모달 닫기
+        function closeWriteBoardModal() {
+            const modal = document.getElementById('writeBoardModal');
+            modal.style.display = 'none';
+        }
+        
+        // 게시글 작성 제출
+        async function submitBoard() {
+            const title = document.getElementById('board-title-input').value.trim();
+            const content = document.getElementById('board-content-input').value.trim();
+            
+            // 유효성 검사
+            if (!title) {
+                alert('제목을 입력해주세요.');
+                document.getElementById('board-title-input').focus();
+                return;
+            }
+            
+            if (!content) {
+                alert('내용을 입력해주세요.');
+                document.getElementById('board-content-input').focus();
+                return;
+            }
+            
+            // 제출 버튼 비활성화
+            const submitBtn = document.querySelector('.btn-submit');
+            const originalText = submitBtn.textContent;
+            submitBtn.disabled = true;
+            submitBtn.textContent = '작성 중...';
+            
+            try {
+                // 파일 업로드 처리
+                const fileItems = document.querySelectorAll('#fileList .file-item');
+                let uploadedFiles = [];
+                
+                if (fileItems.length > 0) {
+                    // 업로드 진행률 표시
+                    document.getElementById('uploadProgress').style.display = 'block';
+                    const progressBar = document.getElementById('progressBar');
+                    
+                    for (let i = 0; i < fileItems.length; i++) {
+                        const fileItem = fileItems[i];
+                        const fileName = fileItem.dataset.fileName;
+                        const fileSize = fileItem.dataset.fileSize;
+                        
+                        // 파일 객체 찾기
+                        const fileInput = document.getElementById('board-file-input');
+                        const file = Array.from(fileInput.files).find(f => f.name === fileName);
+                        
+                        if (file) {
+                            // 진행률 업데이트
+                            const progress = ((i + 1) / fileItems.length) * 100;
+                            progressBar.style.width = progress + '%';
+                            
+                            // 파일 업로드
+                            const formData = new FormData();
+                            formData.append('file', file);
+                            
+                            const uploadResponse = await fetch('/sales/diary_board/general/upload-file/', {
+                                method: 'POST',
+                                headers: {
+                                    'X-CSRFToken': getCookie('csrftoken')
+                                },
+                                body: formData
+                            });
+                            
+                            const uploadData = await uploadResponse.json();
+                            
+                            if (uploadData.success) {
+                                uploadedFiles.push(uploadData.file);
+                            } else {
+                                alert(`파일 업로드 실패: ${fileName}`);
+                            }
+                        }
+                    }
+                }
+                
+                // 게시글 작성
+                const response = await fetch('/sales/diary_board/general/create/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        title: title,
+                        content: content,
+                        files: uploadedFiles
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('게시글이 작성되었습니다.');
+                    closeWriteBoardModal();
+                    // 게시글 목록 새로고침
+                    loadGeneralBoards();
+                } else {
+                    alert('게시글 작성에 실패했습니다: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error submitting board:', error);
+                alert('게시글 작성 중 오류가 발생했습니다.');
+            } finally {
+                // 제출 버튼 다시 활성화
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
+                document.getElementById('uploadProgress').style.display = 'none';
+            }
+        }
+        
+        // CSRF 토큰 가져오기
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        
+        // CSRF 토큰 가져오기 함수
+        function getCsrfToken() {
+            const cookieValue = document.cookie
+                .split('; ')
+                .find(row => row.startsWith('csrftoken='))
+                ?.split('=')[1];
+            return cookieValue || '';
+        }
+        
+        // 모달 외부 클릭 시 닫기
+        window.onclick = function(event) {
+            const modal = document.getElementById('writeBoardModal');
+            if (event.target === modal) {
+                closeWriteBoardModal();
+            }
+            
+            const categoryModal = document.getElementById('categoryManageModal');
+            if (event.target === categoryModal) {
+                closeCategoryManageModal();
+            }
+        }
+        
+        // Enter 키로 제출
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter' && event.ctrlKey) {
+                event.preventDefault();
+                submitBoard();
+            }
+        });
+
+        // 실시간 업데이트 (30초마다)
+        // setInterval(() => {
+        //     loadAnnouncements();
+        // }, 30000);
+        
+        // 페이지 로드 시 초기 데이터 로드
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM 로드 완료, 초기화 시작...');
+            
+            // 실시간 유효성 검사 설정
+            setupRealTimeValidation();
+            
+            // 먼저 카테고리 로드, 그 다음 공고 로드
+            loadAnnouncementCategoriesForTabs().then(() => {
+                console.log('카테고리 로드 완료, 공고 로드 시작...');
+                // 기본적으로 "전체" 탭이 선택되어 있으므로 categoryId는 null
+                loadAnnouncements(1, '', null);
+            }).catch(error => {
+                console.error('카테고리 로드 실패, 공고만 로드:', error);
+                loadAnnouncements(1, '', null);
+            });
+        });
+        
+        // 관리자 권한 확인 함수 전체 제거
+        
+        // 공고 작성 모달 표시
+        function showWriteAnnouncementModal() {
+            document.getElementById('writeAnnouncementModal').style.display = 'flex';
+            document.getElementById('announcement-title-input').value = '';
+            document.getElementById('announcement-content-input').value = '';
+            document.getElementById('announcement-category-input').value = '';  // 카테고리 초기화
+            document.getElementById('announcementFileList').innerHTML = '';
+            document.getElementById('announcementUploadProgress').style.display = 'none';
+            setupAnnouncementFileUpload();
+            loadAnnouncementCategoryOptions();  // 카테고리 옵션 로드
+            
+            // 에러 상태 초기화
+            clearValidationErrors();
+        }
+        
+        // 유효성 검사 에러 초기화
+        function clearValidationErrors() {
+            // 모든 에러 메시지 숨기기
+            document.querySelectorAll('.error-message').forEach(msg => {
+                msg.classList.remove('show');
+            });
+            
+            // 모든 입력 필드에서 에러 클래스 제거
+            document.querySelectorAll('.form-input, .form-textarea').forEach(input => {
+                input.classList.remove('error');
+            });
+            
+            // 모든 form-group에서 에러 클래스 제거
+            document.querySelectorAll('.form-group').forEach(group => {
+                group.classList.remove('error');
+            });
+        }
+        
+        // 특정 필드의 에러 표시
+        function showFieldError(fieldId, errorMessageId) {
+            const field = document.getElementById(fieldId);
+            const errorMessage = document.getElementById(errorMessageId);
+            const formGroup = field.closest('.form-group');
+            
+            if (field && errorMessage && formGroup) {
+                field.classList.add('error');
+                formGroup.classList.add('error');
+                errorMessage.classList.add('show');
+            }
+        }
+        
+        // 특정 필드의 에러 제거
+        function clearFieldError(fieldId, errorMessageId) {
+            const field = document.getElementById(fieldId);
+            const errorMessage = document.getElementById(errorMessageId);
+            const formGroup = field.closest('.form-group');
+            
+            if (field && errorMessage && formGroup) {
+                field.classList.remove('error');
+                formGroup.classList.remove('error');
+                errorMessage.classList.remove('show');
+            }
+        }
+        
+        // 실시간 유효성 검사
+        function setupRealTimeValidation() {
+            const titleInput = document.getElementById('announcement-title-input');
+            const contentInput = document.getElementById('announcement-content-input');
+            const categoryInput = document.getElementById('announcement-category-input');
+            
+            // 제목 입력 시 실시간 검사
+            if (titleInput) {
+                titleInput.addEventListener('input', function() {
+                    if (this.value.trim()) {
+                        clearFieldError('announcement-title-input', 'title-error');
+                    }
+                });
+            }
+            
+            // 내용 입력 시 실시간 검사
+            if (contentInput) {
+                contentInput.addEventListener('input', function() {
+                    if (this.value.trim()) {
+                        clearFieldError('announcement-content-input', 'content-error');
+                    }
+                });
+            }
+            
+            // 카테고리 선택 시 실시간 검사 (필수)
+            if (categoryInput) {
+                categoryInput.addEventListener('change', function() {
+                    if (this.value.trim()) {
+                        clearFieldError('announcement-category-input', 'category-error');
+                    }
+                });
+            }
+        }
+        
+        // 파일 업로드 설정
+        function setupFileUpload() {
+            const fileInput = document.getElementById('board-file-input');
+            const fileList = document.getElementById('fileList');
+            
+            // 파일 선택 이벤트
+            fileInput.addEventListener('change', handleFileSelect);
+            
+            // 드래그 앤 드롭 이벤트
+            const uploadSection = document.querySelector('.file-upload-section');
+            
+            uploadSection.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadSection.style.borderColor = '#667eea';
+            });
+            
+            uploadSection.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                uploadSection.style.borderColor = '#dee2e6';
+            });
+            
+            uploadSection.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadSection.style.borderColor = '#dee2e6';
+                
+                const files = e.dataTransfer.files;
+                handleFiles(files);
+            });
+        }
+        
+        // 파일 선택 처리
+        function handleFileSelect(event) {
+            const files = event.target.files;
+            handleFiles(files);
+        }
+        
+        // 파일 처리
+        function handleFiles(files) {
+            const fileList = document.getElementById('fileList');
+            
+            Array.from(files).forEach(file => {
+                // 파일 크기 제한 (10MB)
+                if (file.size > 10 * 1024 * 1024) {
+                    alert(`파일 크기가 너무 큽니다: ${file.name}`);
+                    return;
+                }
+                
+                // 파일 아이템 생성
+                const fileItem = createFileItem(file);
+                fileList.appendChild(fileItem);
+            });
+        }
+        
+        // 파일 아이템 생성
+        function createFileItem(file) {
+            const fileItem = document.createElement('div');
+            fileItem.className = 'file-item';
+            fileItem.dataset.fileName = file.name;
+            fileItem.dataset.fileSize = file.size;
+            
+            const fileIcon = getFileIcon(file.name);
+            const fileSize = formatFileSize(file.size);
+            
+            fileItem.innerHTML = `
+                <div class="file-info">
+                    <div class="file-icon">
+                        <i class="${fileIcon}"></i>
+                    </div>
+                    <div>
+                        <div class="file-name">${escapeHtml(file.name)}</div>
+                        <div class="file-size">${fileSize}</div>
+                    </div>
+                </div>
+                <button class="file-remove" onclick="removeFile(this)">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            
+            return fileItem;
+        }
+        
+        // 파일 제거
+        function removeFile(button) {
+            const fileItem = button.parentElement;
+            fileItem.remove();
+        }
+        
+        // 파일 아이콘 반환
+        function getFileIcon(fileName) {
+            const fileExt = fileName.split('.').pop()?.toLowerCase() || '';
+            
+            const iconMap = {
+                // 이미지 파일
+                'jpg': '🖼️', 'jpeg': '🖼️', 'png': '🖼️', 'gif': '🖼️', 'bmp': '🖼️', 'svg': '🖼️', 'webp': '🖼️',
+                // 문서 파일
+                'pdf': '📄', 'doc': '📝', 'docx': '📝', 'txt': '📄', 'rtf': '📝',
+                // 스프레드시트
+                'xls': '📊', 'xlsx': '📊', 'csv': '📊',
+                // 프레젠테이션
+                'ppt': '📋', 'pptx': '📋',
+                // 압축 파일
+                'zip': '📦', 'rar': '📦', '7z': '📦', 'tar': '📦', 'gz': '📦',
+                // 오디오 파일
+                'mp3': '🎵', 'wav': '🎵', 'flac': '🎵', 'aac': '🎵', 'ogg': '🎵',
+                // 비디오 파일
+                'mp4': '🎬', 'avi': '🎬', 'mov': '🎬', 'wmv': '🎬', 'flv': '🎬', 'mkv': '🎬',
+                // 코드 파일
+                'html': '🌐', 'css': '🎨', 'js': '⚙️', 'py': '🐍', 'java': '☕', 'cpp': '⚙️', 'c': '⚙️',
+                // 기타
+                'json': '📋', 'xml': '📋', 'sql': '🗄️', 'md': '📄'
+            };
+            
+            return iconMap[fileExt] || '📄';
+        }
+        
+        // 파일 크기 포맷팅
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        // 게시글 작성 모달 닫기
+        function closeWriteBoardModal() {
+            const modal = document.getElementById('writeBoardModal');
+            modal.style.display = 'none';
+        }
+        
+        // 게시글 작성 제출
+        async function submitBoard() {
+            const title = document.getElementById('board-title-input').value.trim();
+            const content = document.getElementById('board-content-input').value.trim();
+            
+            // 유효성 검사
+            if (!title) {
+                alert('제목을 입력해주세요.');
+                document.getElementById('board-title-input').focus();
+                return;
+            }
+            
+            if (!content) {
+                alert('내용을 입력해주세요.');
+                document.getElementById('board-content-input').focus();
+                return;
+            }
+            
+            // 제출 버튼 비활성화
+            const submitBtn = document.querySelector('.btn-submit');
+            const originalText = submitBtn.textContent;
+            submitBtn.disabled = true;
+            submitBtn.textContent = '작성 중...';
+            
+            try {
+                // 파일 업로드 처리
+                const fileItems = document.querySelectorAll('#fileList .file-item');
+                let uploadedFiles = [];
+                
+                if (fileItems.length > 0) {
+                    // 업로드 진행률 표시
+                    document.getElementById('uploadProgress').style.display = 'block';
+                    const progressBar = document.getElementById('progressBar');
+                    
+                    for (let i = 0; i < fileItems.length; i++) {
+                        const fileItem = fileItems[i];
+                        const fileName = fileItem.dataset.fileName;
+                        const fileSize = fileItem.dataset.fileSize;
+                        
+                        // 파일 객체 찾기
+                        const fileInput = document.getElementById('board-file-input');
+                        const file = Array.from(fileInput.files).find(f => f.name === fileName);
+                        
+                        if (file) {
+                            // 진행률 업데이트
+                            const progress = ((i + 1) / fileItems.length) * 100;
+                            progressBar.style.width = progress + '%';
+                            
+                            // 파일 업로드
+                            const formData = new FormData();
+                            formData.append('file', file);
+                            
+                            const uploadResponse = await fetch('/sales/diary_board/general/upload-file/', {
+                                method: 'POST',
+                                headers: {
+                                    'X-CSRFToken': getCookie('csrftoken')
+                                },
+                                body: formData
+                            });
+                            
+                            const uploadData = await uploadResponse.json();
+                            
+                            if (uploadData.success) {
+                                uploadedFiles.push(uploadData.file);
+                            } else {
+                                alert(`파일 업로드 실패: ${fileName}`);
+                            }
+                        }
+                    }
+                }
+                
+                // 게시글 작성
+                const response = await fetch('/sales/diary_board/general/create/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        title: title,
+                        content: content,
+                        files: uploadedFiles
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('게시글이 작성되었습니다.');
+                    closeWriteBoardModal();
+                    // 게시글 목록 새로고침
+                    loadGeneralBoards();
+                } else {
+                    alert('게시글 작성에 실패했습니다: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error submitting board:', error);
+                alert('게시글 작성 중 오류가 발생했습니다.');
+            } finally {
+                // 제출 버튼 다시 활성화
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
+                document.getElementById('uploadProgress').style.display = 'none';
+            }
+        }
+        
+        // CSRF 토큰 가져오기
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        
+        // CSRF 토큰 가져오기 함수
+        function getCsrfToken() {
+            const cookieValue = document.cookie
+                .split('; ')
+                .find(row => row.startsWith('csrftoken='))
+                ?.split('=')[1];
+            return cookieValue || '';
+        }
+        
+        // 모달 외부 클릭 시 닫기
+        window.onclick = function(event) {
+            const modal = document.getElementById('writeBoardModal');
+            if (event.target === modal) {
+                closeWriteBoardModal();
+            }
+            
+            const categoryModal = document.getElementById('categoryManageModal');
+            if (event.target === categoryModal) {
+                closeCategoryManageModal();
+            }
+        }
+        
+        // Enter 키로 제출
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter' && event.ctrlKey) {
+                event.preventDefault();
+                submitBoard();
+            }
+        });
+
+        // 실시간 업데이트 (30초마다)
+        // setInterval(() => {
+        //     loadAnnouncements();
+        // }, 30000);
+        
+        // 페이지 로드 시 초기 데이터 로드
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM 로드 완료, 초기화 시작...');
+            
+            // 실시간 유효성 검사 설정
+            setupRealTimeValidation();
+            
+            // 먼저 카테고리 로드, 그 다음 공고 로드
+            loadAnnouncementCategoriesForTabs().then(() => {
+                console.log('카테고리 로드 완료, 공고 로드 시작...');
+                // 기본적으로 "전체" 탭이 선택되어 있으므로 categoryId는 null
+                loadAnnouncements(1, '', null);
+            }).catch(error => {
+                console.error('카테고리 로드 실패, 공고만 로드:', error);
+                loadAnnouncements(1, '', null);
+            });
+        });
+        
+        // 관리자 권한 확인 함수 전체 제거
+        
+        // 공고 작성 모달 표시
+        function showWriteAnnouncementModal() {
+            document.getElementById('writeAnnouncementModal').style.display = 'flex';
+            document.getElementById('announcement-title-input').value = '';
+            document.getElementById('announcement-content-input').value = '';
+            document.getElementById('announcement-category-input').value = '';  // 카테고리 초기화
+            document.getElementById('announcementFileList').innerHTML = '';
+            document.getElementById('announcementUploadProgress').style.display = 'none';
+            setupAnnouncementFileUpload();
+            loadAnnouncementCategoryOptions();  // 카테고리 옵션 로드
+            
+            // 에러 상태 초기화
+            clearValidationErrors();
+        }
+        
+        // 유효성 검사 에러 초기화
+        function clearValidationErrors() {
+            // 모든 에러 메시지 숨기기
+            document.querySelectorAll('.error-message').forEach(msg => {
+                msg.classList.remove('show');
+            });
+            
+            // 모든 입력 필드에서 에러 클래스 제거
+            document.querySelectorAll('.form-input, .form-textarea').forEach(input => {
+                input.classList.remove('error');
+            });
+            
+            // 모든 form-group에서 에러 클래스 제거
+            document.querySelectorAll('.form-group').forEach(group => {
+                group.classList.remove('error');
+            });
+        }
+        
+        // 특정 필드의 에러 표시
+        function showFieldError(fieldId, errorMessageId) {
+            const field = document.getElementById(fieldId);
+            const errorMessage = document.getElementById(errorMessageId);
+            const formGroup = field.closest('.form-group');
+            
+            if (field && errorMessage && formGroup) {
+                field.classList.add('error');
+                formGroup.classList.add('error');
+                errorMessage.classList.add('show');
+            }
+        }
+        
+        // 특정 필드의 에러 제거
+        function clearFieldError(fieldId, errorMessageId) {
+            const field = document.getElementById(fieldId);
+            const errorMessage = document.getElementById(errorMessageId);
+            const formGroup = field.closest('.form-group');
+            
+            if (field && errorMessage && formGroup) {
+                field.classList.remove('error');
+                formGroup.classList.remove('error');
+                errorMessage.classList.remove('show');
+            }
+        }
+        
+        // 실시간 유효성 검사
+        function setupRealTimeValidation() {
+            const titleInput = document.getElementById('announcement-title-input');
+            const contentInput = document.getElementById('announcement-content-input');
+            const categoryInput = document.getElementById('announcement-category-input');
+            
+            // 제목 입력 시 실시간 검사
+            if (titleInput) {
+                titleInput.addEventListener('input', function() {
+                    if (this.value.trim()) {
+                        clearFieldError('announcement-title-input', 'title-error');
+                    }
+                });
+            }
+            
+            // 내용 입력 시 실시간 검사
+            if (contentInput) {
+                contentInput.addEventListener('input', function() {
+                    if (this.value.trim()) {
+                        clearFieldError('announcement-content-input', 'content-error');
+                    }
+                });
+            }
+            
+            // 카테고리 선택 시 실시간 검사 (필수)
+            if (categoryInput) {
+                categoryInput.addEventListener('change', function() {
+                    if (this.value.trim()) {
+                        clearFieldError('announcement-category-input', 'category-error');
+                    }
+                });
+            }
+        }
+        
+        // 파일 업로드 설정
+        function setupFileUpload() {
+            const fileInput = document.getElementById('board-file-input');
+            const fileList = document.getElementById('fileList');
+            
+            // 파일 선택 이벤트
+            fileInput.addEventListener('change', handleFileSelect);
+            
+            // 드래그 앤 드롭 이벤트
+            const uploadSection = document.querySelector('.file-upload-section');
+            
+            uploadSection.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadSection.style.borderColor = '#667eea';
+            });
+            
+            uploadSection.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                uploadSection.style.borderColor = '#dee2e6';
+            });
+            
+            uploadSection.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadSection.style.borderColor = '#dee2e6';
+                
+                const files = e.dataTransfer.files;
+                handleFiles(files);
+            });
+        }
+        
+        // 파일 선택 처리
+        function handleFileSelect(event) {
+            const files = event.target.files;
+            handleFiles(files);
+        }
+        
+        // 파일 처리
+        function handleFiles(files) {
+            const fileList = document.getElementById('fileList');
+            
+            Array.from(files).forEach(file => {
+                // 파일 크기 제한 (10MB)
+                if (file.size > 10 * 1024 * 1024) {
+                    alert(`파일 크기가 너무 큽니다: ${file.name}`);
+                    return;
+                }
+                
+                // 파일 아이템 생성
+                const fileItem = createFileItem(file);
+                fileList.appendChild(fileItem);
+            });
+        }
+        
+        // 파일 아이템 생성
+        function createFileItem(file) {
+            const fileItem = document.createElement('div');
+            fileItem.className = 'file-item';
+            fileItem.dataset.fileName = file.name;
+            fileItem.dataset.fileSize = file.size;
+            
+            const fileIcon = getFileIcon(file.name);
+            const fileSize = formatFileSize(file.size);
+            
+            fileItem.innerHTML = `
+                <div class="file-info">
+                    <div class="file-icon">
+                        <i class="${fileIcon}"></i>
+                    </div>
+                    <div>
+                        <div class="file-name">${escapeHtml(file.name)}</div>
+                        <div class="file-size">${fileSize}</div>
+                    </div>
+                </div>
+                <button class="file-remove" onclick="removeFile(this)">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            
+            return fileItem;
+        }
+        
+        // 파일 제거
+        function removeFile(button) {
+            const fileItem = button.parentElement;
+            fileItem.remove();
+        }
+        
+        // 파일 아이콘 반환
+        function getFileIcon(fileName) {
+            const fileExt = fileName.split('.').pop()?.toLowerCase() || '';
+            
+            const iconMap = {
+                // 이미지 파일
+                'jpg': '🖼️', 'jpeg': '🖼️', 'png': '🖼️', 'gif': '🖼️', 'bmp': '🖼️', 'svg': '🖼️', 'webp': '🖼️',
+                // 문서 파일
+                'pdf': '📄', 'doc': '📝', 'docx': '📝', 'txt': '📄', 'rtf': '📝',
+                // 스프레드시트
+                'xls': '📊', 'xlsx': '📊', 'csv': '📊',
+                // 프레젠테이션
+                'ppt': '📋', 'pptx': '📋',
+                // 압축 파일
+                'zip': '📦', 'rar': '📦', '7z': '📦', 'tar': '📦', 'gz': '📦',
+                // 오디오 파일
+                'mp3': '🎵', 'wav': '🎵', 'flac': '🎵', 'aac': '🎵', 'ogg': '🎵',
+                // 비디오 파일
+                'mp4': '🎬', 'avi': '🎬', 'mov': '🎬', 'wmv': '🎬', 'flv': '🎬', 'mkv': '🎬',
+                // 코드 파일
+                'html': '🌐', 'css': '🎨', 'js': '⚙️', 'py': '🐍', 'java': '☕', 'cpp': '⚙️', 'c': '⚙️',
+                // 기타
+                'json': '📋', 'xml': '📋', 'sql': '🗄️', 'md': '📄'
+            };
+            
+            return iconMap[fileExt] || '📄';
+        }
+        
+        // 파일 크기 포맷팅
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        // 게시글 작성 모달 닫기
+        function closeWriteBoardModal() {
+            const modal = document.getElementById('writeBoardModal');
+            modal.style.display = 'none';
+        }
+        
+        // 게시글 작성 제출
+        async function submitBoard() {
+            const title = document.getElementById('board-title-input').value.trim();
+            const content = document.getElementById('board-content-input').value.trim();
+            
+            // 유효성 검사
+            if (!title) {
+                alert('제목을 입력해주세요.');
+                document.getElementById('board-title-input').focus();
+                return;
+            }
+            
+            if (!content) {
+                alert('내용을 입력해주세요.');
+                document.getElementById('board-content-input').focus();
+                return;
+            }
+            
+            // 제출 버튼 비활성화
+            const submitBtn = document.querySelector('.btn-submit');
+            const originalText = submitBtn.textContent;
+            submitBtn.disabled = true;
+            submitBtn.textContent = '작성 중...';
+            
+            try {
+                // 파일 업로드 처리
+                const fileItems = document.querySelectorAll('#fileList .file-item');
+                let uploadedFiles = [];
+                
+                if (fileItems.length > 0) {
+                    // 업로드 진행률 표시
+                    document.getElementById('uploadProgress').style.display = 'block';
+                    const progressBar = document.getElementById('progressBar');
+                    
+                    for (let i = 0; i < fileItems.length; i++) {
+                        const fileItem = fileItems[i];
+                        const fileName = fileItem.dataset.fileName;
+                        const fileSize = fileItem.dataset.fileSize;
+                        
+                        // 파일 객체 찾기
+                        const fileInput = document.getElementById('board-file-input');
+                        const file = Array.from(fileInput.files).find(f => f.name === fileName);
+                        
+                        if (file) {
+                            // 진행률 업데이트
+                            const progress = ((i + 1) / fileItems.length) * 100;
+                            progressBar.style.width = progress + '%';
+                            
+                            // 파일 업로드
+                            const formData = new FormData();
+                            formData.append('file', file);
+                            
+                            const uploadResponse = await fetch('/sales/diary_board/general/upload-file/', {
+                                method: 'POST',
+                                headers: {
+                                    'X-CSRFToken': getCookie('csrftoken')
+                                },
+                                body: formData
+                            });
+                            
+                            const uploadData = await uploadResponse.json();
+                            
+                            if (uploadData.success) {
+                                uploadedFiles.push(uploadData.file);
+                            } else {
+                                alert(`파일 업로드 실패: ${fileName}`);
+                            }
+                        }
+                    }
+                }
+                
+                // 게시글 작성
+                const response = await fetch('/sales/diary_board/general/create/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        title: title,
+                        content: content,
+                        files: uploadedFiles
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('게시글이 작성되었습니다.');
+                    closeWriteBoardModal();
+                    // 게시글 목록 새로고침
+                    loadGeneralBoards();
+                } else {
+                    alert('게시글 작성에 실패했습니다: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error submitting board:', error);
+                alert('게시글 작성 중 오류가 발생했습니다.');
+            } finally {
+                // 제출 버튼 다시 활성화
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
+                document.getElementById('uploadProgress').style.display = 'none';
+            }
+        }
+        
+        // CSRF 토큰 가져오기
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        
+        // CSRF 토큰 가져오기 함수
+        function getCsrfToken() {
+            const cookieValue = document.cookie
+                .split('; ')
+                .find(row => row.startsWith('csrftoken='))
+                ?.split('=')[1];
+            return cookieValue || '';
+        }
+        
+        // 모달 외부 클릭 시 닫기
+        window.onclick = function(event) {
+            const modal = document.getElementById('writeBoardModal');
+            if (event.target === modal) {
+                closeWriteBoardModal();
+            }
+            
+            const categoryModal = document.getElementById('categoryManageModal');
+            if (event.target === categoryModal) {
+                closeCategoryManageModal();
+            }
+        }
+        
+        // Enter 키로 제출
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter' && event.ctrlKey) {
+                event.preventDefault();
+                submitBoard();
+            }
+        });
+
+        // 실시간 업데이트 (30초마다)
+        // setInterval(() => {
+        //     loadAnnouncements();
+        // }, 30000);
+        
+        // 페이지 로드 시 초기 데이터 로드
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM 로드 완료, 초기화 시작...');
+            
+            // 실시간 유효성 검사 설정
+            setupRealTimeValidation();
+            
+            // 먼저 카테고리 로드, 그 다음 공고 로드
+            loadAnnouncementCategoriesForTabs().then(() => {
+                console.log('카테고리 로드 완료, 공고 로드 시작...');
+                // 기본적으로 "전체" 탭이 선택되어 있으므로 categoryId는 null
+                loadAnnouncements(1, '', null);
+            }).catch(error => {
+                console.error('카테고리 로드 실패, 공고만 로드:', error);
+                loadAnnouncements(1, '', null);
+            });
+        });
+        
+        // 관리자 권한 확인 함수 전체 제거
+        
+        // 공고 작성 모달 표시
+        function showWriteAnnouncementModal() {
+            document.getElementById('writeAnnouncementModal').style.display = 'flex';
+            document.getElementById('announcement-title-input').value = '';
+            document.getElementById('announcement-content-input').value = '';
+            document.getElementById('announcement-category-input').value = '';  // 카테고리 초기화
+            document.getElementById('announcementFileList').innerHTML = '';
+            document.getElementById('announcementUploadProgress').style.display = 'none';
+            setupAnnouncementFileUpload();
+            loadAnnouncementCategoryOptions();  // 카테고리 옵션 로드
+            
+            // 에러 상태 초기화
+            clearValidationErrors();
+        }
+        
+        // 유효성 검사 에러 초기화
+        function clearValidationErrors() {
+            // 모든 에러 메시지 숨기기
+            document.querySelectorAll('.error-message').forEach(msg => {
+                msg.classList.remove('show');
+            });
+            
+            // 모든 입력 필드에서 에러 클래스 제거
+            document.querySelectorAll('.form-input, .form-textarea').forEach(input => {
+                input.classList.remove('error');
+            });
+            
+            // 모든 form-group에서 에러 클래스 제거
+            document.querySelectorAll('.form-group').forEach(group => {
+                group.classList.remove('error');
+            });
+        }
+        
+        // 특정 필드의 에러 표시
+        function showFieldError(fieldId, errorMessageId) {
+            const field = document.getElementById(fieldId);
+            const errorMessage = document.getElementById(errorMessageId);
+            const formGroup = field.closest('.form-group');
+            
+            if (field && errorMessage && formGroup) {
+                field.classList.add('error');
+                formGroup.classList.add('error');
+                errorMessage.classList.add('show');
+            }
+        }
+        
+        // 특정 필드의 에러 제거
+        function clearFieldError(fieldId, errorMessageId) {
+            const field = document.getElementById(fieldId);
+            const errorMessage = document.getElementById(errorMessageId);
+            const formGroup = field.closest('.form-group');
+            
+            if (field && errorMessage && formGroup) {
+                field.classList.remove('error');
+                formGroup.classList.remove('error');
+                errorMessage.classList.remove('show');
+            }
+        }
+        
+        // 실시간 유효성 검사
+        function setupRealTimeValidation() {
+            const titleInput = document.getElementById('announcement-title-input');
+            const contentInput = document.getElementById('announcement-content-input');
+            const categoryInput = document.getElementById('announcement-category-input');
+            
+            // 제목 입력 시 실시간 검사
+            if (titleInput) {
+                titleInput.addEventListener('input', function() {
+                    if (this.value.trim()) {
+                        clearFieldError('announcement-title-input', 'title-error');
+                    }
+                });
+            }
+            
+            // 내용 입력 시 실시간 검사
+            if (contentInput) {
+                contentInput.addEventListener('input', function() {
+                    if (this.value.trim()) {
+                        clearFieldError('announcement-content-input', 'content-error');
+                    }
+                });
+            }
+            
+            // 카테고리 선택 시 실시간 검사 (필수)
+            if (categoryInput) {
+                categoryInput.addEventListener('change', function() {
+                    if (this.value.trim()) {
                         clearFieldError('announcement-category-input', 'category-error');
                     }
                 });
@@ -1701,19 +3326,25 @@
                     }
                 }
                 
-                // 공고 작성 (선택된 카테고리 ID 사용)
+                // 공고 작성 (카테고리는 필수)
+                const requestData = {
+                    title: title,
+                    content: content,
+                    category: category,  // 카테고리는 항상 포함
+                    files: uploadedFiles
+                };
+                
+                console.log('선택된 카테고리 ID:', category);
+                console.log('공고 작성 요청 데이터:', requestData);
+                console.log('현재 선택된 카테고리 ID:', currentCategoryId);
+                
                 const response = await fetch('/sales/diary_board/announcement/create/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json; charset=utf-8',
                         'X-CSRFToken': getCookie('csrftoken')
                     },
-                    body: JSON.stringify({
-                        title: title,
-                        content: content,
-                        category: category,  // 선택된 카테고리 ID 사용
-                        files: uploadedFiles
-                    })
+                    body: JSON.stringify(requestData)
                 });
                 
                 const data = await response.json();
@@ -1721,7 +3352,18 @@
                 if (data.success) {
                     alert('공고가 작성되었습니다.');
                     closeWriteAnnouncementModal();
-                    loadAnnouncements(1, '', category);  // 선택된 카테고리로 새로고침
+                    
+                    // 선택된 카테고리로 이동하고 탭 상태 업데이트
+                    if (category && category.trim() !== '') {
+                        // 카테고리 탭 상태 업데이트
+                        updateCategoryTabActiveState(category);
+                        // 해당 카테고리로 목록 로드
+                        loadAnnouncements(1, '', category);
+                    } else {
+                        // 카테고리 미선택 시 전체 탭으로 이동
+                        updateCategoryTabActiveState(null);
+                        loadAnnouncements(1, '', null);
+                    }
                 } else {
                     alert('공고 작성 실패: ' + data.message);
                 }
@@ -2229,8 +3871,11 @@
         // 편집 모달용 카테고리 옵션 로드
         async function loadEditAnnouncementCategoryOptions(selectedCategoryId) {
             try {
+                console.log('편집 모달 카테고리 옵션 로드 시작, 선택된 카테고리 ID:', selectedCategoryId);
                 const response = await fetch('/sales/diary_board/announcement/category/list/');
                 const data = await response.json();
+                
+                console.log('편집 모달 카테고리 옵션 응답:', data);
                 
                 if (data.success) {
                     const categorySelect = document.getElementById('edit-announcement-category');
@@ -2247,13 +3892,19 @@
                             option.textContent = category.category_name;
                             if (category.id == selectedCategoryId) {
                                 option.selected = true;
+                                console.log('카테고리 선택됨:', category.id, category.category_name);
                             }
                             categorySelect.appendChild(option);
+                            console.log('편집 모달 카테고리 옵션 추가:', category.id, category.category_name);
                         });
+                        
+                        console.log('편집 모달 총 카테고리 옵션 수:', categorySelect.children.length);
                     }
+                } else {
+                    console.error('편집 모달 카테고리 옵션 로드 실패:', data.message);
                 }
             } catch (error) {
-                console.error('카테고리 옵션 로드 오류:', error);
+                console.error('편집 모달 카테고리 옵션 로드 오류:', error);
             }
         }
         
@@ -2308,6 +3959,7 @@
                 hasError = true;
             }
             
+            // 카테고리 유효성 검사 (필수)
             if (!category) {
                 showFieldError('edit-announcement-category', 'edit-category-error');
                 hasError = true;
@@ -2381,19 +4033,32 @@
                 const allFiles = [...existingFiles, ...uploadedFiles];
                 console.log('최종 파일 목록:', allFiles);
                 
-                // 공고 수정
+                // 공고 수정 (카테고리는 필수)
+                const requestData = {
+                    title: title,
+                    content: content,
+                    category: category,  // 카테고리는 항상 포함
+                    files: allFiles
+                };
+                
+                // 카테고리가 선택된 경우에만 추가
+                if (category && category.trim() !== '') {
+                    requestData.category = category;
+                    console.log('편집 시 선택된 카테고리 ID:', category);
+                } else {
+                    console.log('편집 시 카테고리 미선택');
+                }
+                
+                console.log('공고 수정 요청 데이터:', requestData);
+                console.log('현재 선택된 카테고리 ID:', currentCategoryId);
+                
                 const response = await fetch(`/sales/diary_board/announcement/${window.currentEditingAnnouncementId}/update/`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json; charset=utf-8',
                         'X-CSRFToken': getCookie('csrftoken')
                     },
-                    body: JSON.stringify({
-                        title: title,
-                        content: content,
-                        category: category,
-                        files: allFiles
-                    })
+                    body: JSON.stringify(requestData)
                 });
                 
                 const data = await response.json();
@@ -2401,8 +4066,18 @@
                 if (data.success) {
                     alert('게시글이 수정되었습니다.');
                     closeEditAnnouncementModal();
-                    // 현재 카테고리로 목록 새로고침
-                    loadAnnouncements(1, '', currentCategoryId);
+                    
+                    // 선택된 카테고리로 이동하고 탭 상태 업데이트
+                    if (category && category.trim() !== '') {
+                        // 카테고리 탭 상태 업데이트
+                        updateCategoryTabActiveState(category);
+                        // 해당 카테고리로 목록 로드
+                        loadAnnouncements(1, '', category);
+                    } else {
+                        // 카테고리 미선택 시 전체 탭으로 이동
+                        updateCategoryTabActiveState(null);
+                        loadAnnouncements(1, '', null);
+                    }
                 } else {
                     alert('게시글 수정 실패: ' + data.message);
                 }
@@ -2445,6 +4120,46 @@
                 console.error('게시글 삭제 오류:', error);
                 alert('게시글 삭제 중 오류가 발생했습니다.');
             }
+        }
+
+        // 카테고리 탭 active 상태 업데이트
+        function updateCategoryTabActiveState(categoryId) {
+            console.log('카테고리 탭 상태 업데이트:', categoryId);
+            
+            // 현재 선택된 카테고리 ID 업데이트
+            currentCategoryId = categoryId;
+            currentCategoryName = categoryId ? '카테고리' : '전체';
+            
+            // 모든 카테고리 탭에서 active 클래스 제거
+            const tabs = document.querySelectorAll('#announcement-category-tabs .category-tab');
+            tabs.forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // 해당하는 카테고리 탭에 active 클래스 추가
+            if (categoryId) {
+                // 특정 카테고리 탭 찾기
+                const targetTab = Array.from(tabs).find(tab => {
+                    const tabCategoryId = tab.onclick.toString().match(/switchAnnouncementCategory\('(\d+)'/)?.[1];
+                    return tabCategoryId && parseInt(tabCategoryId) === parseInt(categoryId);
+                });
+                
+                if (targetTab) {
+                    targetTab.classList.add('active');
+                    currentCategoryName = targetTab.textContent.trim();
+                    console.log('카테고리 탭 활성화:', currentCategoryName);
+                }
+            } else {
+                // 전체 탭 활성화
+                const allTab = Array.from(tabs).find(tab => tab.textContent.trim() === '전체');
+                if (allTab) {
+                    allTab.classList.add('active');
+                    currentCategoryName = '전체';
+                    console.log('전체 탭 활성화');
+                }
+            }
+            
+            console.log('현재 카테고리 상태:', { id: currentCategoryId, name: currentCategoryName });
         }
     </script>
 </body>

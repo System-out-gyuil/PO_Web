@@ -3,7 +3,7 @@ from django.http import JsonResponse, HttpResponse, HttpResponseRedirect
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.views.decorators.csrf import csrf_exempt
-from .models import Alarm, UserAlarm, User
+from .models import Alarm, UserAlarm, User, AlarmCategory
 from django.utils import timezone
 from django.conf import settings
 import os
@@ -104,6 +104,7 @@ def get_announcements(request):
     
     # 검색 기능
     search_query = request.GET.get('search', '')
+    category_id = request.GET.get('category', '')
     alarms = Alarm.objects.all()
     
     if search_query:
@@ -111,6 +112,14 @@ def get_announcements(request):
             Q(title__icontains=search_query) |
             Q(content__icontains=search_query)
         )
+    
+    # 카테고리 필터링
+    if category_id:
+        try:
+            category = AlarmCategory.objects.get(id=category_id)
+            alarms = alarms.filter(category=category)
+        except AlarmCategory.DoesNotExist:
+            pass
     
     # 정렬 (최신순)
     alarms = alarms.order_by('-created_at')
@@ -140,7 +149,9 @@ def get_announcements(request):
             'files': files,
             'file_count': len(files),
             'created_at': alarm.created_at.strftime('%Y-%m-%d %H:%M'),
-            'is_read': read_status.get(alarm.id, False)
+            'is_read': read_status.get(alarm.id, False),
+            'category_id': alarm.category.id if alarm.category else None,
+            'category_name': alarm.category.category_name if alarm.category else '일반'
         })
     
     pagination_data = {
@@ -567,6 +578,7 @@ def create_announcement(request):
         data = json.loads(request.body.decode('utf-8'))
         title = data.get('title', '').strip()
         content = data.get('content', '').strip()
+        category_id = data.get('category', '').strip()  # 카테고리 ID 추가
         files = data.get('files', [])
         
         if not title:
@@ -575,16 +587,26 @@ def create_announcement(request):
         if not content:
             return JsonResponse({'success': False, 'message': '내용을 입력해주세요.'})
         
+        if not category_id:
+            return JsonResponse({'success': False, 'message': '카테고리를 선택해주세요.'})
+        
+        # 카테고리 존재 여부 확인
+        try:
+            category = AlarmCategory.objects.get(id=category_id)
+        except AlarmCategory.DoesNotExist:
+            return JsonResponse({'success': False, 'message': '존재하지 않는 카테고리입니다.'})
+        
         # content를 dict 형태로 저장
         content_data = {
             'text': content,
             'files': files
         }
         
-        # 공고 생성
+        # 공고 생성 (카테고리 포함)
         alarm = Alarm.objects.create(
             title=title,
-            content=content_data
+            content=content_data,
+            category=category  # 카테고리 연결
         )
         
         # 모든 사용자에게 알람 생성
@@ -656,8 +678,7 @@ def update_announcement(request, announcement_id):
         category = None
         if category_id:
             try:
-                from .models import AlarmCategory
-                category = AlarmCategory.objects.get(id=category_id)  # user 조건 제거
+                category = AlarmCategory.objects.get(id=category_id)
             except AlarmCategory.DoesNotExist:
                 return JsonResponse({'success': False, 'message': '존재하지 않는 카테고리입니다.'})
         
