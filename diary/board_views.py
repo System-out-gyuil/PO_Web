@@ -78,7 +78,7 @@ def board_list_api(request):
         except EmptyPage:
             page_obj = paginator.page(paginator.num_pages)
         
-        # 게시글 데이터 직렬화
+        # 게시글 데이터 준비
         board_list = []
         for board in page_obj:
             board_data = {
@@ -86,8 +86,8 @@ def board_list_api(request):
                 'title': board.title,
                 'content': board.content,
                 'author_name': board.author.name,
-                'category_id': board.category.id if board.category else None,
-                'category_name': board.get_category_name(),  # 카테고리명 반환
+                'category_id': board.category.id if board.category else None,  # 카테고리 ID 추가
+                'category_name': board.category.category_name if board.category else '일반',  # 카테고리명 추가
                 'files': board.files or [],
                 'created_at': board.created_at.isoformat(),
                 'updated_at': board.updated_at.isoformat(),
@@ -224,6 +224,8 @@ def board_detail_api(request, board_id):
             'title': board.title,
             'content': board.content,
             'author_name': board.author.name,
+            'category_id': board.category.id if board.category else None,  # 카테고리 ID 추가
+            'category_name': board.category.category_name if board.category else '일반',  # 카테고리명 추가
             'files': board.files or [],
             'created_at': board.created_at.isoformat(),
             'updated_at': board.updated_at.isoformat(),
@@ -265,6 +267,7 @@ def board_edit(request, board_id):
             
             title = data.get('title', '').strip()
             content = data.get('content', '').strip()
+            category_id = data.get('category_id', None)  # 카테고리 ID 추가
             files = data.get('files', [])
             
             if not title:
@@ -273,9 +276,18 @@ def board_edit(request, board_id):
             if not content:
                 return JsonResponse({'success': False, 'message': '내용을 입력해주세요.'})
             
+            # 카테고리 확인
+            category = None
+            if category_id:
+                try:
+                    category = NomalBoardCategory.objects.get(id=category_id, user=user)
+                except NomalBoardCategory.DoesNotExist:
+                    return JsonResponse({'success': False, 'message': '유효하지 않은 카테고리입니다.'})
+            
             # 게시글 수정
             board.title = title
             board.content = content
+            board.category = category  # 카테고리 변경 추가
             board.files = files
             board.save()
             

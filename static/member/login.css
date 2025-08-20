@@ -54,6 +54,13 @@ button {
   height: 55px;
 }
 
+@media (max-width: 1000px) {
+  .login-with-sns-box {
+    width: 70%;
+    height: 65%;
+  }
+}
+
 @media (max-width: 600px) {
   .login-with-sns-box {
     width: 70%;

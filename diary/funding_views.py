@@ -1314,8 +1314,28 @@ def get_saved_biz_recommendations(request):
             for biz in biz_data:
                 # 새로 추가된 공고인지 확인 (alerts 배열에 포함된 경우)
                 is_new = False
-                if alerts and len(alerts) > 0:
-                    is_new = str(biz.pblanc_id) in [str(alert_id) for alert_id in alerts]
+                print(f'=== 디버깅 정보 ===')
+                print(f'pblanc_ids: {pblanc_ids}')
+                print(f'alerts: {alerts}')
+                print(f'all_ids: {all_ids}')
+                print(f'현재 처리 중인 biz.pblanc_id: {biz.pblanc_id}')
+                
+                # pblanc_ids에만 있고 alerts에는 없는 경우가 새로 추가된 공고
+                if pblanc_ids and len(pblanc_ids) > 0:
+                    is_in_pblanc = str(biz.pblanc_id) in [str(pid) for pid in pblanc_ids]
+                    is_in_alerts = str(biz.pblanc_id) in [str(aid) for aid in alerts] if alerts else False
+                    
+                    # pblanc_ids에는 있지만 alerts에는 없는 경우가 새 공고
+                    is_new = is_in_pblanc and not is_in_alerts
+                    
+                    print(f'is_in_pblanc: {is_in_pblanc}')
+                    print(f'is_in_alerts: {is_in_alerts}')
+                    print(f'is_new 계산: {is_in_pblanc} and not {is_in_alerts} = {is_new}')
+                else:
+                    print(f'pblanc_ids가 비어있음')
+                
+                print(f'결과 is_new: {is_new}')
+                print(f'==================')
                 
                 result_data.append({
                     'pblanc_id': biz.pblanc_id,
