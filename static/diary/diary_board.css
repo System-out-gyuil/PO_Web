@@ -1026,6 +1026,14 @@ transform: translateY(-1px);
     padding: 10px;
     overflow-x: scroll;
     white-space: nowrap;
+    /* 스크롤바 숨기기 */
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* Internet Explorer 10+ */
+}
+
+/* Webkit 브라우저(Chrome, Safari, Edge)에서 스크롤바 숨기기 */
+.category-tabs::-webkit-scrollbar {
+    display: none;
 }
 
 
@@ -1146,6 +1154,11 @@ transform: translateY(-1px);
     color: #dc3545;
 }
 
+.search-input-container {
+    position: relative;
+    width: 100%;
+}
+
 @media (max-width: 768px) {
 .header-title {
 font-size: 19px;
@@ -1237,6 +1250,19 @@ font-size: 19px;
 
 .announcement-meta {
     flex-direction: row;
+}
+
+.search-input {
+    padding: 10px;
+}
+
+.search-input-container {
+    width: 96%;
+    margin: 0 auto;
+}
+
+body {
+    padding-bottom: 40px;
 }
 
 }

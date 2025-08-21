@@ -40,12 +40,20 @@ def diary_board(request):
     # 탭 파라미터 (기본값: 공고 게시판)
     tab = request.GET.get('tab', 'announcement')
     
+    # 모바일 디바이스 감지
+    user_agent = request.META.get('HTTP_USER_AGENT', '').lower()
+    is_mobile = any(mobile_device in user_agent for mobile_device in [
+        'mobile', 'android', 'iphone', 'ipad', 'ipod', 'blackberry', 
+        'windows phone', 'opera mini', 'mobile safari'
+    ])
+    
     context = {
         'user': user,
         'current_tab': tab,
         'error': None,
         'is_admin': user.is_admin,
-        'is_authenticated': True
+        'is_authenticated': True,
+        'is_mobile': is_mobile  # 모바일 여부 추가
     }
     
     return render(request, 'diary/diary_board.html', context)
