@@ -1162,7 +1162,7 @@ def blog_account_check_api(request):
 
         if version != '1.0':
             pass
-        
+
         # 비정상적인 요청 처리
         if not user_id or not password:
             return JsonResponse({
@@ -1170,7 +1170,7 @@ def blog_account_check_api(request):
                 'error': 'ID와 비밀번호를 확인하세요'
             })
         else:
-            member = User.objects.get(username=user_id)
+            member = User.objects.get(name=user_id)
 
 
             # 사용 기간 만료 확인
