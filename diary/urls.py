@@ -9,7 +9,7 @@ from .kanban_handlers import update_kanban_option_order, get_kanban_data, get_ka
 from .attribute_handlers import delete_attribute_value, toggle_attribute_visibility, update_attribute_visibility, get_dropdown_attributes, add_attribute, delete_attribute, get_hidden_attributes, get_all_attributes, update_attribute_name, update_attribute_name
 from .audio_handler import upload_audio_file, get_audio_files_by_date, delete_audio_file, update_audio_file_order, upload_note_file, delete_note_file, update_note_order_and_notes, get_file_preview_url_note, get_file_content_note, convert_hwp_to_pdf, get_file_preview_url, update_audio_text, update_audio_memo, update_audio_text_notes, update_audio_file_order_and_notes
 from .cascade_handlers import toggle_cascade_attribute, get_cascade_attributes_list
-from .auto_blog import upload_blog_file, get_blog_files, get_blog_status, debug_redis_status
+from .auto_blog import upload_blog_file, get_blog_files, get_blog_status, debug_redis_status, blog_account_check_api
 from .detail_openai import ai_chat, ai_chat_cache_clear, file_cache_management, performance_monitoring
 from .admin_view import admin_dashboard, inquiry_list, inquiry_detail, alarm_list, alarm_create, alarm_edit, alarm_delete, inquiry_delete, admin_api, user_list, user_delete, user_toggle_admin, user_update_use_date, diary_count_list, diary_count_delete, class_form_list, class_form_delete
 from .diary_board import diary_board, get_announcements, get_announcement_detail, mark_as_read, download_announcement_file, announcement_detail_page, create_announcement, upload_announcement_file, get_announcement_file_url, get_announcement_download_url, announcement_category_list, announcement_category_create, announcement_category_delete, announcement_list_with_category, create_announcement_with_category, update_announcement, delete_announcement
@@ -147,6 +147,7 @@ urlpatterns = [
     path('debug_redis_status/', debug_redis_status, name='debug_redis_status'),
     path('cleanup_session_cache/', cleanup_session_cache_api, name='cleanup_session_cache'),
     path('get_active_sessions/', get_active_sessions_api, name='get_active_sessions'),
+    path('blog_account_check_api/', blog_account_check_api, name='blog_account_check_api'),
     
     # AI 채팅 관련 API
     path('ai_chat/', ai_chat, name='ai_chat'),

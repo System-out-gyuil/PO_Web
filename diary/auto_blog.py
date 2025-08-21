@@ -24,6 +24,8 @@ import os
 import uuid
 import hashlib
 from .session_handlers import cleanup_session_cache, get_active_sessions
+from .models import User
+from django.contrib.auth.hashers import check_password
 
 # 전역 변수로 현재 세션 ID 관리
 current_session_id = None
@@ -1149,3 +1151,48 @@ def get_blog_status(request):
             'session_id': session_id,
             'redis_connected': redis_connected
         })
+    
+
+def blog_account_check_api(request):
+    """블로그 계정 확인 API"""
+    try: 
+        user_id = request.GET.get('user_id')
+        password = request.GET.get('password')
+        version = request.GET.get('version')
+
+        if version != '1.0':
+            pass
+        
+        # 비정상적인 요청 처리
+        if not user_id or not password:
+            return JsonResponse({
+                'success': False,
+                'error': 'ID와 비밀번호를 확인하세요'
+            })
+        else:
+            member = User.objects.get(username=user_id)
+
+
+            # 사용 기간 만료 확인
+            if member.is_expired():
+                return JsonResponse({
+                    'success': False,
+                    'error': '사용기간이 만료되었습니다.'
+                })
+            if check_password(password, member.password):
+                return JsonResponse({
+                        'success': True,
+                        'message': '로그인되었습니다.',
+                    })
+            else:
+                return JsonResponse({
+                    'success': False,
+                    'error': '비밀번호가 일치하지 않습니다.'
+                })
+            
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })
+                
