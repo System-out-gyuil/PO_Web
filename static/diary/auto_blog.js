@@ -1420,14 +1420,68 @@ function getCookie(name) {
     return cookieValue;
 }
 
+// S3 파일 다운로드 함수
+function downloadS3File() {
+    console.log('자동 블로그 파일 다운로드 시작...');
+    
+    // Django 백엔드 API를 통해 서명된 다운로드 URL 요청
+    fetch('/sales/diary_board/download_s3_auto_blog_file/', {
+        method: 'GET',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            console.log('서명된 다운로드 URL 생성 성공:', data.download_url);
+            
+            // 서명된 URL을 사용하여 파일 다운로드
+            const downloadUrl = data.download_url;
+            const fileName = data.file_name || '자금왕_블로그.zip';
+            
+            // 다운로드 링크 생성 및 클릭
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = downloadUrl;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            
+            // 정리
+            document.body.removeChild(a);
+            
+            console.log('파일 다운로드 완료:', fileName);
+            showNotification('파일 다운로드가 시작되었습니다.', 'success');
+        } else {
+            throw new Error(data.message || '다운로드 URL 생성에 실패했습니다.');
+        }
+    })
+    .catch(error => {
+        console.error('파일 다운로드 실패:', error);
+        showNotification('파일 다운로드에 실패했습니다: ' + error.message, 'error');
+    });
+}
+
 // 페이지 로드 시 블로그 div에 클릭 이벤트 추가
 document.addEventListener('DOMContentLoaded', function() {
     // 블로그 div 찾기
-    const blogDiv = document.querySelector('.filter-controls div:last-child');
+    const blogDiv = document.querySelector('.blog-auto-write-btn');
     if (blogDiv) {
         blogDiv.style.cursor = 'pointer';
         blogDiv.onclick = openBlogModal;
     }
+
+    const blogDiv2 = document.querySelector('.blog-auto-write-btn2');
+    if (blogDiv2) {
+        blogDiv2.style.cursor = 'pointer';
+        blogDiv2.onclick = downloadS3File;
+    } 
 });
 
 // 모달 외부 클릭 시 닫기

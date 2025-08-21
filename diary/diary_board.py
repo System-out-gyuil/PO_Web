@@ -1181,3 +1181,66 @@ def create_announcement_with_category(request):
         return UnicodeJsonResponse({'success': False, 'message': '잘못된 요청 형식입니다.'})
     except Exception as e:
         return UnicodeJsonResponse({'success': False, 'message': f'공고 작성 중 오류가 발생했습니다: {str(e)}'})
+
+def download_s3_auto_blog_file(request):
+    """S3 자동 블로그 파일 다운로드 API"""
+    user_id = request.session.get('diary_member_id')
+    
+    if not user_id:
+        return JsonResponse({'success': False, 'message': '로그인이 필요합니다.'})
+    
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'message': '사용자를 찾을 수 없습니다.'})
+    
+    try:
+        # S3 클라이언트 생성
+        s3_client = boto3.client(
+            's3',
+            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+            region_name=settings.AWS_S3_REGION_NAME
+        )
+        
+        # 자동 블로그 파일의 S3 키
+        s3_key = 'auto_blog/자금왕_블로그.zip'
+        
+        # 서명된 다운로드 URL 생성 (10분 유효)
+        try:
+            signed_url = s3_client.generate_presigned_url(
+                'get_object',
+                Params={
+                    'Bucket': settings.AWS_STORAGE_BUCKET_NAME,
+                    'Key': s3_key
+                },
+                ExpiresIn=600  # 10분
+            )
+            
+            return JsonResponse({
+                'success': True,
+                'download_url': signed_url,
+                'file_name': '자금왕_블로그.zip'
+            })
+            
+        except ClientError as e:
+            error_code = e.response['Error']['Code']
+            error_message = e.response['Error']['Message']
+            print(f"S3 다운로드 URL 생성 실패: {error_code} - {error_message}")
+            return JsonResponse({
+                'success': False, 
+                'message': f'파일 다운로드 URL 생성 중 오류가 발생했습니다: {error_message}'
+            })
+        except Exception as e:
+            print(f"서명된 다운로드 URL 생성 실패: {e}")
+            return JsonResponse({
+                'success': False, 
+                'message': f'파일 다운로드 URL 생성 중 오류가 발생했습니다: {str(e)}'
+            })
+            
+    except Exception as e:
+        print(f"파일 다운로드 URL 생성 중 오류: {e}")
+        return JsonResponse({
+            'success': False, 
+            'message': f'파일 다운로드 URL 생성 중 오류가 발생했습니다: {str(e)}'
+        })

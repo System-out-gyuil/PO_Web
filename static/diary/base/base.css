@@ -799,6 +799,10 @@
   .diary-btn-container {
     display: none;
   }
+
+  .notification-panel {
+    right: -330%;
+  }
 }
 
 /* 로딩 메시지 스타일 */

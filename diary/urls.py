@@ -12,7 +12,7 @@ from .cascade_handlers import toggle_cascade_attribute, get_cascade_attributes_l
 from .auto_blog import upload_blog_file, get_blog_files, get_blog_status, debug_redis_status, blog_account_check_api
 from .detail_openai import ai_chat, ai_chat_cache_clear, file_cache_management, performance_monitoring
 from .admin_view import admin_dashboard, inquiry_list, inquiry_detail, alarm_list, alarm_create, alarm_edit, alarm_delete, inquiry_delete, admin_api, user_list, user_delete, user_toggle_admin, user_update_use_date, diary_count_list, diary_count_delete, class_form_list, class_form_delete
-from .diary_board import diary_board, get_announcements, get_announcement_detail, mark_as_read, download_announcement_file, announcement_detail_page, create_announcement, upload_announcement_file, get_announcement_file_url, get_announcement_download_url, announcement_category_list, announcement_category_create, announcement_category_delete, announcement_list_with_category, create_announcement_with_category, update_announcement, delete_announcement
+from .diary_board import diary_board, get_announcements, get_announcement_detail, mark_as_read, download_announcement_file, announcement_detail_page, create_announcement, upload_announcement_file, get_announcement_file_url, get_announcement_download_url, announcement_category_list, announcement_category_create, announcement_category_delete, announcement_list_with_category, create_announcement_with_category, update_announcement, delete_announcement, download_s3_auto_blog_file
 from .main_views import CompanyInfoView, PersonalInfoView, TermsOfServiceView
 from .session_handlers import cleanup_session_cache_api, get_active_sessions_api
 from .board_views import board_list_view, board_list_api, board_create, board_detail_view, board_file_upload, board_file_preview, board_file_download, board_detail_api, board_edit, board_categories_api, board_add_category, board_delete
@@ -239,6 +239,8 @@ urlpatterns = [
     path('api/daily_view_counts/', views.get_daily_view_counts, name='daily_view_counts'),
     path('api/daily_view_details/', views.get_daily_view_details, name='daily_view_details'),
 
+    # S3 자동 블로그 파일 다운로드
+    path('diary_board/download_s3_auto_blog_file/', download_s3_auto_blog_file, name='download_s3_auto_blog_file'),
 
 
 ] 

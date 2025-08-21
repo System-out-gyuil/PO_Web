@@ -1154,14 +1154,17 @@ def get_blog_status(request):
     
 
 def blog_account_check_api(request):
-    """블로그 계정 확인 API"""
+    """자동 블로그 exe 계정 확인 API"""
     try: 
         user_id = request.GET.get('user_id')
         password = request.GET.get('password')
         version = request.GET.get('version')
+        message = ''
 
+        # 현재 배포중인 버전은 1.0
+        # 조건 변경 시 메세지 나타남
         if version != '1.0':
-            pass
+            message = '자금왕에서 새로운 버전을 다운로드해주세요!'
 
         # 비정상적인 요청 처리
         if not user_id or not password:
@@ -1170,8 +1173,14 @@ def blog_account_check_api(request):
                 'error': 'ID와 비밀번호를 확인하세요'
             })
         else:
-            member = User.objects.get(email=user_id)
-
+            
+            try:
+                member = User.objects.get(email=user_id)
+            except User.DoesNotExist:
+                return JsonResponse({
+                    'success': False,
+                    'error': '아이디 또는 비밀번호가 일치하지 않습니다.'
+                })
 
             # 사용 기간 만료 확인
             if member.is_expired():
@@ -1184,12 +1193,13 @@ def blog_account_check_api(request):
                 return JsonResponse({
                         'success': True,
                         'message': '로그인되었습니다.',
-                        'use_date': member.use_date
+                        'use_date': member.use_date,
+                        'version_message': message
                     })
             else:
                 return JsonResponse({
                     'success': False,
-                    'error': '비밀번호가 일치하지 않습니다.'
+                    'error': '아이디 또는 비밀번호가 일치하지 않습니다.'
                 })
             
     except Exception as e:

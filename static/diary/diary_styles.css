@@ -3449,7 +3449,7 @@ th.resizing {
     cursor: not-allowed;
 }
 
-.blog-auto-write-btn {
+.blog-auto-write-btn, .blog-auto-write-btn2 {
     cursor: pointer;
     padding: 8px 12px;
     background: #007bff;
