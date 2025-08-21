@@ -563,7 +563,12 @@ def start_main_gui():
     
     log_box = tk.Text(log_frame, height=10, wrap='word')
     log_box.pack(fill='both', expand=True)
-    log_box.insert(tk.END, "🟢 프로그램 시작됨...\n")
+    
+    # 텍스트 색상 태그 설정
+    log_box.tag_configure("red", foreground="red", font=("Arial", 9, "bold"))
+    log_box.tag_configure("green", foreground="green", font=("Arial", 9, "bold"))
+    
+    log_box.insert(tk.END, "🟢 프로그램 시작됨\n", 'green')
     
     # 사용 가능 기간 표시
     if user_use_date:
@@ -571,16 +576,33 @@ def start_main_gui():
         try:
             # ISO 형식 (예: 2099-09-09T00:00:00)에서 날짜 부분만 추출
             formatted_date = user_use_date.split('T')[0]
-            log_box.insert(tk.END, f"📅 사용 가능 기간: {formatted_date} 까지\n")
-        except:
+            
+            # 오늘 날짜와 비교하여 남은 일수 계산
+            from datetime import datetime, date
+            today = date.today()
+            
+            # 사용 가능 기간을 date 객체로 변환
+            use_date = datetime.strptime(formatted_date, '%Y-%m-%d').date()
+            
+            # 남은 일수 계산
+            remaining_days = (use_date - today).days
+            
+            if remaining_days > 0:
+                log_box.insert(tk.END, f"📅 사용 가능 기간: {formatted_date} 까지 (D - {remaining_days})\n", "red")
+            elif remaining_days == 0:
+                log_box.insert(tk.END, f"📅 사용 가능 기간: {formatted_date} 까지 (오늘까지)\n", "red")
+            else:
+                log_box.insert(tk.END, f"📅 사용 가능 기간: {formatted_date} 까지 (만료됨)\n", "red")
+                
+        except Exception as e:
             # 변환 실패 시 원본 값 그대로 표시
-            log_box.insert(tk.END, f"📅 사용 가능 기간: {user_use_date} 까지\n")
+            log_box.insert(tk.END, f"📅 사용 가능 기간: {user_use_date} 까지\n", "red")
 
         log_box.see(tk.END)
     
     # 버전 메시지 표시
     if version_message:
-        log_box.insert(tk.END, f"⚠️{version_message}\n")
+        log_box.insert(tk.END, f"⚠️{version_message}\n", "red")
         log_box.see(tk.END)
 
 # def launch_login_ui():

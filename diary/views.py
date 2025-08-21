@@ -199,6 +199,33 @@ def diary_list(request):
         request.session.flush()
         return redirect('login')
     
+    # 사용자의 남은 이용기간
+    use_date = user.use_date
+    print(f'use_date: {use_date}')
+    
+    # use_date를 YYYY-MM-DD 형식으로 변환하고 남은 일수 계산
+    formatted_use_date = None
+    remaining_days = None
+    
+    if use_date:
+        try:
+            # datetime 객체를 YYYY-MM-DD 형식으로 변환
+            formatted_use_date = use_date.strftime('%Y-%m-%d')
+            
+            # 오늘 날짜와 비교하여 남은 일수 계산
+            from datetime import date
+            today = date.today()
+            use_date_only = use_date.date()
+            remaining_days = (use_date_only - today).days
+            
+            print(f'formatted_use_date: {formatted_use_date}')
+            print(f'remaining_days: {remaining_days}')
+            
+        except Exception as e:
+            print(f'날짜 변환 오류: {e}')
+            formatted_use_date = str(use_date)
+            remaining_days = None
+    
     # URL 파라미터에서 상태 ID 가져오기
     status_id = request.GET.get('status_id', 'all')
     if not status_id or status_id in ['undefined', 'null', None, '']:
@@ -428,6 +455,8 @@ def diary_list(request):
         'is_admin': user.is_admin,  # 관리자 상태 추가
         'dropdown_options': dropdown_options,  # 모든 드롭다운 옵션 추가
         'is_mobile': is_mobile,  # 모바일 여부 추가
+        'formatted_use_date': formatted_use_date,  # 사용 가능 기간 (YYYY-MM-DD 형식)
+        'remaining_days': remaining_days,  # 남은 일수
     }
     context['attributes_json'] = json.dumps(context['attributes'], ensure_ascii=False)
     context['dropdown_options_json'] = json.dumps(dropdown_options, ensure_ascii=False)  # JSON 형태로도 추가

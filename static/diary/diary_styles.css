@@ -3872,3 +3872,32 @@ th.resizing {
         opacity: 1;
     }
 }
+
+.use-date-container {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+    margin-bottom: 10px;
+}
+
+.use-date-value-container {
+    background-color: #f0f0f0;
+    padding: 5px 10px;
+    border-radius: 5px;
+}
+
+.use-date-value, .remaining-days-value {
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.remaining-days-value {
+    color: #ee4354;
+}
+
+
+
+
+
+
