@@ -15,6 +15,8 @@ from .funding_calculator import PolicyFundRecommendationEngineV2
 
 logger = logging.getLogger(__name__)
 
+unit = 100000000
+
 @csrf_exempt
 def get_funding_recommendation(request):
     """
@@ -81,8 +83,8 @@ def get_funding_recommendation(request):
 
         
         # 총 기존 부채 계산 (만원 -> 원)
-        total_existing_debt = sum(float(v) for v in debt_data.values() if v) * 10000
-        company_data['existing_debt'] = total_existing_debt - (debt_data.get('collateral', 0) * 10000) - (debt_data.get('credit', 0) * 10000)
+        total_existing_debt = sum(float(v) for v in debt_data.values() if v) * unit
+        company_data['existing_debt'] = total_existing_debt - (debt_data.get('collateral', 0) * unit) - (debt_data.get('credit', 0) * unit)
 
         # V2.0 엔진을 위한 정확한 existing_funds 구조 생성 (만원 -> 원 변환)
         # 실제 기대출 데이터 키에 맞춰 정확한 매핑
@@ -231,12 +233,12 @@ def get_funding_recommendation(request):
 
         existing_funds = {
             'kibo_general': 0,  # 일반보증은 별도 없음
-            'kibo_ip': float(debt_data.get('tech_guarantee', 0)) * 10000,  # 기술보증기금 = 기보 IP보증
-            'sinbo': float(debt_data.get('credit_guarantee', 0)) * 10000,  # 신용보증기금 = 신보
-            'jungjin': float(debt_data.get('smba', 0)) * 10000,  # 중진공
-            'sojin_innovation': float(debt_data.get('semas_innovation', 0)) * 10000,  # 소진공 혁신성장
-            'sojin_lowcredit': float(debt_data.get('semas_lowcredit', 0)) * 10000,  # 소진공 저신용
-            'credit_foundation': float(debt_data.get('credit_foundation', 0)) * 10000  # 신용 = 신용보증재단
+            'kibo_ip': float(debt_data.get('tech_guarantee', 0)) * unit,  # 기술보증기금 = 기보 IP보증
+            'sinbo': float(debt_data.get('credit_guarantee', 0)) * unit,  # 신용보증기금 = 신보
+            'jungjin': float(debt_data.get('smba', 0)) * unit,  # 중진공
+            'sojin_innovation': float(debt_data.get('semas_innovation', 0)) * unit,  # 소진공 혁신성장
+            'sojin_lowcredit': float(debt_data.get('semas_lowcredit', 0)) * unit,  # 소진공 저신용
+            'credit_foundation': float(debt_data.get('credit_foundation', 0)) * unit  # 신용 = 신용보증재단
         }
         company_data['existing_funds'] = existing_funds
         

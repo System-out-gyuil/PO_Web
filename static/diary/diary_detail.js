@@ -142,7 +142,7 @@ function generateDetailModalContent(attributes, rowData, rowId) {
             for (let i = 0; i < 4; i++) {
                 const category = debtCategories[i];
                 const currentValue = debtData[category.key] || '';
-                // 만원 단위 값 표시
+                // 억원 단위 값 표시
                 const displayValue = currentValue ? currentValue.toString() : '';
                 firstRowHtml += `
                     <div style="text-align: center;">
@@ -152,10 +152,10 @@ function generateDetailModalContent(attributes, rowData, rowId) {
                                    id="debt_${category.key}_${rowId}" 
                                    value="${displayValue}" 
                                    placeholder="0"
-                                   style="width: 67px; height: 28px; padding: 4px 6px; border: 1px solid #ced4da; border-radius: 3px; font-size: 12px; text-align: center;"
+                                   style="width: 67px; height: 28px; padding: 4px 6px; border: 1px solid #ced4da; border-radius: 3px; font-size: 14px; text-align: center;"
                                    oninput="formatDebtInputRealtime(this, '${rowId}', '${category.key}')"
                                    onblur="updateDebtField('${rowId}', '${category.key}', this.value)">
-                            <span style="font-size: 11px; color: #6c757d;">만원</span>
+                            <span style="font-size: 13px; color: #414549;">억원</span>
                         </div>
                     </div>
                 `;
@@ -167,7 +167,7 @@ function generateDetailModalContent(attributes, rowData, rowId) {
             for (let i = 4; i < 8; i++) {
                 const category = debtCategories[i];
                 const currentValue = debtData[category.key] || '';
-                // 만원 단위 값 표시
+                // 억원 단위 값 표시
                 const displayValue = currentValue ? currentValue.toString() : '';
                 secondRowHtml += `
                     <div style="text-align: center;">
@@ -180,16 +180,16 @@ function generateDetailModalContent(attributes, rowData, rowId) {
                                    style="width: 65px; height: 28px; padding: 4px 6px; border: 1px solid #ced4da; border-radius: 3px; font-size: 12px; text-align: center;"
                                    oninput="formatDebtInputRealtime(this, '${rowId}', '${category.key}')"
                                    onblur="updateDebtField('${rowId}', '${category.key}', this.value)">
-                            <span style="font-size: 11px; color: #6c757d;">만원</span>
+                            <span style="font-size: 13px; color: #414549;">억원</span>
                         </div>
                     </div>
                 `;
             }
             secondRowHtml += '</div>';
             
-            // 총액 표시 (만원 단위)
+            // 총액 표시 (억원 단위)
             const totalAmount = Object.values(debtData).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
-            const totalDisplayValue = totalAmount ? `${totalAmount}만원` : '0만원';
+            const totalDisplayValue = totalAmount ? `${totalAmount}억원` : '0억';
             const totalHtml = `
                 <div style="margin-top: 10px; padding: 8px; background: #f8f9fa; border-radius: 4px; text-align: center;">
                     <span style="font-weight: bold; color: #495057;">총 기대출: </span>
@@ -1403,27 +1403,27 @@ function closeDetailModal() {
 
 // 기대출 필드 업데이트 함수
 function updateDebtField(rowId, debtKey, value) {
-    // 입력값에서 숫자만 추출
-    const cleanValue = value.replace(/[^\d]/g, '');
-    const numericValue = parseInt(cleanValue) || 0;
-    
-    // 전역 debtData에 업데이트 (만원 단위로 저장)
-    if (!window.debtData) {
-        window.debtData = {};
+    // 숫자와 소수점만 허용
+    let cleanValue = (value ?? '').toString().replace(/[^\d\.]/g, '');
+    // 소수점 하나만 허용
+    const firstDot = cleanValue.indexOf('.');
+    if (firstDot !== -1) {
+        cleanValue = cleanValue.substring(0, firstDot + 1) + cleanValue.substring(firstDot + 1).replace(/\./g, '');
     }
+    let numericValue = parseFloat(cleanValue);
+    if (isNaN(numericValue)) numericValue = 0;
+
+    // 억 단위 소수로 보관
+    if (!window.debtData) window.debtData = {};
     window.debtData[debtKey] = numericValue;
-    
-    // 합계 계산 (만원 단위)
-    const totalAmount = Object.values(window.debtData).reduce((sum, val) => sum + (parseInt(val) || 0), 0);
-    const totalDisplayValue = totalAmount ? `${totalAmount}만원` : '0만원';
-    
-    // 합계 표시 업데이트
+
+    // 합계(억) 계산 및 표시
+    const totalAmount = Object.values(window.debtData).reduce((sum, v) => sum + (parseFloat(v) || 0), 0);
+    const totalDisplayValue = totalAmount ? `${parseFloat(totalAmount.toFixed(2))}억원` : '0억원';
     const totalElement = document.getElementById(`debt_total_${rowId}`);
-    if (totalElement) {
-        totalElement.textContent = totalDisplayValue;
-    }
-    
-    // 서버에 저장
+    if (totalElement) totalElement.textContent = totalDisplayValue;
+
+    // 서버 저장 (float 유지)
     fetch('/sales/update_debt_field/', {
         method: 'POST',
         headers: {
@@ -1435,28 +1435,18 @@ function updateDebtField(rowId, debtKey, value) {
             debt_data: window.debtData
         })
     })
-    .then(response => response.json())
+    .then(r => r.json())
     .then(data => {
         if (data.success) {
-            console.log('기대출 정보가 업데이트되었습니다.');
-            
-            // 테이블과 칸반보드 새로고침
-            if (typeof refreshTable === 'function') {
-                refreshTable();
-            }
-            
-            if (window.kanbanAttribute && window.kanbanAttribute === '기대출') {
-                if (typeof refreshKanban === 'function') {
-                    refreshKanban();
-                }
-            }
+            if (typeof refreshTable === 'function') refreshTable();
+            if (window.kanbanAttribute === '기대출' && typeof refreshKanban === 'function') refreshKanban();
         } else {
             console.error('기대출 업데이트 실패:', data.error);
             showNotification('기대출 정보 업데이트에 실패했습니다.', 'error');
         }
     })
-    .catch(error => {
-        console.error('기대출 업데이트 오류:', error);
+    .catch(err => {
+        console.error('기대출 업데이트 오류:', err);
         showNotification('기대출 정보 업데이트 중 오류가 발생했습니다.', 'error');
     });
 }
@@ -2718,17 +2708,26 @@ function formatSalesInputRealtime(input, rowId, fieldName) {
 
 // 기대출 필드 실시간 변환 함수
 function formatDebtInputRealtime(input, rowId, categoryKey) {
-    const value = input.value.replace(/[^\d]/g, '');
-    const numericValue = parseInt(value) || 0;
-    
-    // 콤마 형태로 표시
-    if (numericValue > 0) {
-        input.value = numericValue.toLocaleString();
-    } else {
-        input.value = '';
+    let value = (input.value ?? '').toString().replace(/[^\d\.]/g, '');
+    // 소수점 하나만 허용
+    const firstDot = value.indexOf('.');
+    if (firstDot !== -1) {
+        value = value.substring(0, firstDot + 1) + value.substring(firstDot + 1).replace(/\./g, '');
     }
+    // 선행 점 보정
+    if (value.startsWith('.')) value = '0' + value;
+    // 소수 둘째 자리 제한
+    const parts = value.split('.');
+    if (parts.length === 2) {
+        parts[1] = parts[1].slice(0, 2);
+        value = parts[0] + (parts[1] !== '' ? '.' + parts[1] : '.');
+    }
+    // 불필요한 선행 0 제거 (0.x는 유지)
+    if (value && value !== '0' && !value.startsWith('0.')) {
+        value = value.replace(/^0+/, '') || '0';
+    }
+    input.value = value;
 }
-
 
 
 // 상세보기 모달의 파일 필드 실시간 업데이트 함수
