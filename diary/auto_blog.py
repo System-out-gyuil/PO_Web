@@ -1179,10 +1179,12 @@ def blog_account_check_api(request):
                     'success': False,
                     'error': '사용기간이 만료되었습니다.'
                 })
+            
             if check_password(password, member.password):
                 return JsonResponse({
                         'success': True,
                         'message': '로그인되었습니다.',
+                        'use_date': member.use_date
                     })
             else:
                 return JsonResponse({
