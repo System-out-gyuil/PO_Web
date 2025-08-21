@@ -77,11 +77,13 @@ def get_funding_recommendation(request):
         # 기대출 정보에서 기존 부채 및 자금 사용 현황 계산 (기본값: 0)
         debt_data = _get_debt_data(user, row)
         print(f"원본 기대출 데이터: {debt_data}")
+
+
         
         # 총 기존 부채 계산 (만원 -> 원)
         total_existing_debt = sum(float(v) for v in debt_data.values() if v) * 10000
-        company_data['existing_debt'] = total_existing_debt
-        
+        company_data['existing_debt'] = total_existing_debt - (debt_data.get('collateral', 0) * 10000) - (debt_data.get('credit', 0) * 10000)
+
         # V2.0 엔진을 위한 정확한 existing_funds 구조 생성 (만원 -> 원 변환)
         # 실제 기대출 데이터 키에 맞춰 정확한 매핑
         print(f'업종 : {company_data["industry"]} ')
