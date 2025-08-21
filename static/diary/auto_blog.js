@@ -1422,7 +1422,9 @@ function getCookie(name) {
 
 // S3 파일 다운로드 함수
 function downloadS3File() {
-    console.log('자동 블로그 파일 다운로드 시작...');
+    if (!confirm('블로그 자동 작성 프로그램을 다운로드 하시겠습니까?')) {
+        return;
+    }
     
     // Django 백엔드 API를 통해 서명된 다운로드 URL 요청
     fetch('/sales/diary_board/download_s3_auto_blog_file/', {
