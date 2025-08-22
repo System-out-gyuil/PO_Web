@@ -129,22 +129,14 @@ function addGlobalClickHandler(dropdown, triggerElement) {
             
             // 지역/상세지역 드롭다운인 경우 약간의 지연 후 닫기
             if (isRegionDropdown) {
-                console.log('지역 드롭다운 외부 클릭 감지, 지연 후 닫기');
-                console.log('클릭된 요소:', e.target);
-                console.log('드롭다운 요소:', dropdown);
-                console.log('트리거 요소:', triggerElement);
                 
                 // 지역 드롭다운의 경우 더 긴 지연 시간 적용
                 setTimeout(() => {
-                    console.log('지연 후 지역 드롭다운 닫기 실행');
                     closeAllDropdowns();
                 }, 500);
             } else {
-                console.log('외부 클릭으로 드롭다운 닫기');
                 closeAllDropdowns();
             }
-        } else {
-            console.log('드롭다운 내부 클릭이므로 닫지 않음');
         }
     };
     
@@ -338,7 +330,6 @@ function createNewDropdown(td, type, id, currentId, currentSubregion) {
     window.addEventListener('resize', scrollHandler);
     
     if (type === 'region') {
-        console.log('지역 드롭다운 처리');
         // 지역 드롭다운
         var regionNames = ['서울','경기','인천','대구','경북', '경남', '부산','광주','대전','울산','세종','강원','충북','충남','전북','전남'];
         let selectedRegion = currentId || '서울';
@@ -371,21 +362,13 @@ function createNewDropdown(td, type, id, currentId, currentSubregion) {
         currentDropdown.innerHTML = html;
         document.body.appendChild(currentDropdown);
         
-        // 드롭다운이 성공적으로 추가되었는지 확인
-        console.log('지역 드롭다운 DOM에 추가됨:', currentDropdown);
-        
         // MutationObserver를 사용하여 드롭다운 제거 감지
         const observer = new MutationObserver((mutations) => {
             mutations.forEach((mutation) => {
                 if (mutation.type === 'childList') {
                     mutation.removedNodes.forEach((node) => {
                         if (node === currentDropdown) {
-                            console.error('지역 드롭다운이 MutationObserver에 의해 제거됨:', {
-                                mutation: mutation,
-                                target: mutation.target,
-                                addedNodes: mutation.addedNodes,
-                                removedNodes: mutation.removedNodes
-                            });
+                            console.log('지역 드랍다운 제거됌');
                         }
                     });
                 }

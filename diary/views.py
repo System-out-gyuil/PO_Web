@@ -2369,7 +2369,7 @@ def download_user_manual(request):
         
         # S3에서 파일 다운로드
         bucket_name = 'po.s3'
-        file_key = 'auto_blog/자금왕_사용_설명_0822.pptx'
+        file_key = 'auto_blog/자금왕_사용_설명_0822.pdf'
         
         try:
             # S3에서 파일 객체 가져오기
@@ -2377,8 +2377,8 @@ def download_user_manual(request):
             file_content = response['Body'].read()
             
             # HTTP 응답 생성
-            response = HttpResponse(file_content, content_type='application/vnd.openxmlformats-officedocument.presentationml.presentation')
-            response['Content-Disposition'] = 'attachment; filename="자금왕_사용_설명_0822.pptx"'
+            response = HttpResponse(file_content, content_type='application/pdf')
+            response['Content-Disposition'] = 'attachment; filename="자금왕_사용_설명_0822.pdf"'
             response['Content-Length'] = len(file_content)
             
             return response

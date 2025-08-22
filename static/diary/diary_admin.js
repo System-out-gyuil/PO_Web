@@ -724,13 +724,12 @@ function renderUsersTable(users, currentUserId, isSuperAdmin, currentPage = 1, p
     tbody.innerHTML = '';
     
     if (users.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted">사용자가 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">사용자가 없습니다.</td></tr>';
         return;
     }
     
     users.forEach((user, index) => {
         let adminToggleBtn = '';
-        let activateToggleBtn = '';
         const displayNumber = (currentPage - 1) * pageSize + (users.length - index);
         
         // 최고 관리자(ID=1)만 관리자 권한 토글 버튼 표시
@@ -747,21 +746,6 @@ function renderUsersTable(users, currentUserId, isSuperAdmin, currentPage = 1, p
             adminToggleBtn = user.is_admin 
                 ? `<span class="badge bg-danger">관리자</span>`
                 : `<span class="badge bg-secondary">일반</span>`;
-        }
-        
-        // 계정 활성화 토글 버튼 (자기 자신 제외)
-        if (user.id != currentUserId) {
-            activateToggleBtn = user.activate 
-                ? `<button class="activate-toggle-btn active" onclick="toggleActivateStatus(${user.id}, '${user.name || '사용자'}', '${user.email}', false)">
-                     <i class="fas fa-toggle-on"></i> 활성화
-                   </button>`
-                : `<button class="activate-toggle-btn inactive" onclick="toggleActivateStatus(${user.id}, '${user.name || '사용자'}', '${user.email}', true)">
-                     <i class="fas fa-toggle-off"></i> 비활성화
-                   </button>`;
-        } else {
-            activateToggleBtn = user.activate 
-                ? `<span class="badge bg-success">활성화</span>`
-                : `<span class="badge bg-danger">비활성화</span>`;
         }
         
         // 사용 기간 표시 및 수정 버튼
@@ -784,7 +768,6 @@ function renderUsersTable(users, currentUserId, isSuperAdmin, currentPage = 1, p
             <td>${user.phone_number || '-'}</td>
             <td>${formatDateOnly(user.created_at)}</td>
             <td>${useDateCell}</td>
-            <td>${activateToggleBtn}</td>
             <td>${adminToggleBtn}</td>
             <td>
                 <button class="btn btn-sm btn-outline-danger" onclick="confirmDeleteUser(${user.id}, '${user.name || '사용자'}', '${user.email}')">
@@ -842,55 +825,6 @@ async function changeAdminStatus(userId, makeAdmin) {
     } catch (error) {
         console.error('Error changing admin status:', error);
         showAlert('관리자 권한 변경에 실패했습니다.', 'danger');
-    }
-}
-
-// 계정 활성화 상태 토글 함수
-function toggleActivateStatus(userId, userName, userEmail, makeActive) {
-    const currentStatus = makeActive ? '비활성화' : '활성화';
-    const targetStatus = makeActive ? '활성화' : '비활성화';
-    
-    // 모달에 정보 설정
-    document.getElementById('current-activate-status').textContent = currentStatus;
-    document.getElementById('target-activate-status').textContent = targetStatus;
-    
-    // 확인 버튼에 함수 연결
-    const confirmBtn = document.getElementById('confirm-activate-change-btn');
-    confirmBtn.onclick = () => changeActivateStatus(userId, makeActive);
-    
-    // 모달 표시
-    const modal = new bootstrap.Modal(document.getElementById('activateChangeModal'));
-    modal.show();
-}
-
-// 계정 활성화 상태 변경 실행 함수
-async function changeActivateStatus(userId, makeActive) {
-    try {
-        const response = await fetch(`/sales/diary_admin/users/${userId}/toggle_activate/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken')
-            },
-            body: JSON.stringify({
-                make_active: makeActive
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            showAlert(data.message, 'success');
-            // 모달 닫기
-            bootstrap.Modal.getInstance(document.getElementById('activateChangeModal')).hide();
-            // 사용자 목록 새로고침
-            loadUsers();
-        } else {
-            showAlert(data.message, 'danger');
-        }
-    } catch (error) {
-        console.error('Error changing activate status:', error);
-        showAlert('계정 활성화 상태 변경에 실패했습니다.', 'danger');
     }
 }
 

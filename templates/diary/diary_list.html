@@ -3150,7 +3150,7 @@ function downloadUserManualFromBackend() {
         
         // 파일 다운로드 응답인지 확인
         const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('application/vnd.openxmlformats-officedocument.presentationml.presentation')) {
+        if (contentType && contentType.includes('application/pdf')) {
             // 파일 다운로드 응답
             return response.blob();
         } else {
@@ -3167,7 +3167,7 @@ function downloadUserManualFromBackend() {
         // 다운로드 링크 생성 및 클릭
         const downloadLink = document.createElement('a');
         downloadLink.href = blobUrl;
-        downloadLink.download = '자금왕_사용_설명_0822.pptx';
+        downloadLink.download = '자금왕_사용_설명_0822.pdf';
         downloadLink.style.display = 'none';
         
         document.body.appendChild(downloadLink);
