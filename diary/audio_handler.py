@@ -849,24 +849,6 @@ def delete_note_file(request):
             attr_value.value = json.dumps(current_data, ensure_ascii=False)
             attr_value.save()
             
-            # Cascade 기능: cascade가 true인 속성이 수정되면 원본 행과 복제된 행들을 동기화
-            if audio_attr.cascade:
-                print(f"=== Cascade 동기화 시작 (delete_note_file) ===")
-                print(f"속성 '음성파일'의 cascade 값: {audio_attr.cascade}")
-                print(f"수정된 행 ID: {row_id}")
-                print(f"새 값: {json.dumps(current_data, ensure_ascii=False)}")
-                
-                synced_count = sync_cascade_attributes(request, row_id, '음성파일', json.dumps(current_data, ensure_ascii=False))
-                if synced_count > 0:
-                    print(f"Cascade 동기화 완료: 음성파일 속성이 {synced_count}개 행에 동기화됨")
-                else:
-                    print(f"Cascade 동기화 실패 또는 동기화할 행이 없음")
-                print(f"=== Cascade 동기화 종료 (delete_note_file) ===")
-            else:
-                print(f"속성 '음성파일'의 cascade 값: {audio_attr.cascade} - 동기화하지 않음")
-            
-            print(f"노트 파일 삭제 완료 - Row: {row_id}, File: {file_id}")
-            
             return JsonResponse({
                 'success': True,
                 'message': '파일이 성공적으로 삭제되었습니다.',
@@ -965,22 +947,6 @@ def update_note_order_and_notes(request):
                 attr_value.value = json.dumps(existing_data, ensure_ascii=False)
                 attr_value.save()
             
-            # Cascade 기능: cascade가 true인 속성이 수정되면 원본 행과 복제된 행들을 동기화
-            if audio_attribute.cascade:
-                print(f"=== Cascade 동기화 시작 (update_note_order_and_notes) ===")
-                print(f"속성 '음성파일'의 cascade 값: {audio_attribute.cascade}")
-                print(f"수정된 행 ID: {row_id}")
-                print(f"새 값: {json.dumps(existing_data, ensure_ascii=False)}")
-                
-                synced_count = sync_cascade_attributes(request, row_id, '음성파일', json.dumps(existing_data, ensure_ascii=False))
-                if synced_count > 0:
-                    print(f"Cascade 동기화 완료: 음성파일 속성이 {synced_count}개 행에 동기화됨")
-                else:
-                    print(f"Cascade 동기화 실패 또는 동기화할 행이 없음")
-                print(f"=== Cascade 동기화 종료 (update_note_order_and_notes) ===")
-            else:
-                print(f"속성 '음성파일'의 cascade 값: {audio_attribute.cascade} - 동기화하지 않음")
-            
             return JsonResponse({
                 'success': True,
                 'message': '노트 순서와 텍스트 노트가 업데이트되었습니다.'
@@ -1007,7 +973,6 @@ def update_note_order_and_notes(request):
 def get_file_preview_url_note(request, file_id):
     """파일 미리보기를 위한 새로운 S3 서명된 URL을 생성하는 API"""
     if request.method == 'GET':
-        print(f"get_file_preview_url_note 호출됨: {file_id}")
         try:
             row_id = request.GET.get('row_id')
             if not row_id:
@@ -1046,8 +1011,6 @@ def get_file_preview_url_note(request, file_id):
             # HWP/HWPX 파일인 경우 PDF로 변환
             if (content_type in ['application/x-hwp', 'application/haansofthwp', 'application/vnd.hancom.hwp'] or
                 original_filename.lower().endswith(('.hwp', '.hwpx'))):
-                
-                print(f"HWP/HWPX 파일 감지: {original_filename}")
                 
                 # LibreOffice 상태 확인
                 if not check_libreoffice_status():
@@ -1142,20 +1105,15 @@ def convert_hwp_to_pdf(hwp_path):
     try:
         # 파일 크기 확인
         file_size = os.path.getsize(hwp_path)
-        print(f"📄 HWP 파일 크기: {file_size / (1024*1024):.2f} MB")
         
         # 파일 크기에 따른 timeout 조정
         if file_size > 50 * 1024 * 1024:  # 50MB 이상
             timeout = 1800  # 30분
-            print("⏰ 대용량 파일 감지, timeout을 30분으로 설정")
         elif file_size > 10 * 1024 * 1024:  # 10MB 이상
             timeout = 900   # 15분
-            print("⏰ 중간 크기 파일 감지, timeout을 15분으로 설정")
         else:
             timeout = 600   # 10분 (기본값)
-            print("⏰ 기본 timeout 10분 설정")
         
-        print("🖥️ LibreOffice 변환 시작...")
         
         result = subprocess.run([
             "libreoffice",
@@ -1165,7 +1123,6 @@ def convert_hwp_to_pdf(hwp_path):
             "--outdir", output_dir
         ], stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=timeout)
 
-        print("🖥️ libreoffice stdout: " + result.stdout.decode())
         if result.stderr:
             print("🖥️ libreoffice stderr: " + result.stderr.decode())
 
@@ -1174,7 +1131,6 @@ def convert_hwp_to_pdf(hwp_path):
 
         if os.path.exists(converted_pdf):
             pdf_size = os.path.getsize(converted_pdf)
-            print(f"✅ 변환 성공: {pdf_size / (1024*1024):.2f} MB")
             return converted_pdf
         else:
             print(f"[❌ 변환 실패] {converted_pdf} 파일이 존재하지 않습니다.")
@@ -1262,7 +1218,6 @@ def upload_pdf_to_s3_for_preview(pdf_path, original_s3_key):
 def get_file_content_note(request, file_id):
     """텍스트 파일의 내용을 가져오는 API (CORS 문제 해결용)"""
     if request.method == 'GET':
-        print(f"get_file_content_note 호출됨: {file_id}")
         try:
             row_id = request.GET.get('row_id')
             if not row_id:
@@ -1327,8 +1282,6 @@ def get_file_content_note(request, file_id):
                 detected_encoding = detected['encoding']
                 confidence = detected['confidence']
                 
-                print(f"감지된 인코딩: {detected_encoding}, 신뢰도: {confidence}")
-                
                 # 파일 확장자에 따른 기본 인코딩 설정
                 default_encoding = 'utf-8'
                 if file_ext in ['txt', 'log', 'csv']:
@@ -1389,11 +1342,9 @@ def get_file_content_note(request, file_id):
 def get_file_preview_url(request, row_id, field_name):
     """단일 파일 필드(영업노트 방식) presigned URL 반환"""
     try:
-        print(f'row_id: {row_id}, field_name: {field_name}')
         
         # file_id 파라미터 추가
         file_id = request.GET.get('file_id')
-        print(f'file_id: {file_id}')
          
         user_id = request.session.get('diary_member_id')
 
@@ -1403,8 +1354,6 @@ def get_file_preview_url(request, row_id, field_name):
         attr_value = AttributeValue.objects.get(row=row, attribute=attr)
         file_data = json.loads(attr_value.value)
 
-        print(f'file_data: {file_data}')
-        
         # file_data가 리스트인 경우 file_id에 해당하는 파일 찾기
         if isinstance(file_data, list):
             if file_id:
@@ -1419,9 +1368,7 @@ def get_file_preview_url(request, row_id, field_name):
                 
                 if target_file:
                     file_info = target_file
-                    print(f'찾은 파일: {file_info}')
                 else:
-                    print(f'file_id {file_id}에 해당하는 파일을 찾을 수 없음, 첫 번째 파일 사용')
                     if len(file_data) > 0:
                         file_info = file_data[0]
                     else:
@@ -1446,8 +1393,6 @@ def get_file_preview_url(request, row_id, field_name):
         # HWP/HWPX 파일인 경우 PDF로 변환
         if (content_type in ['application/x-hwp', 'application/haansofthwp', 'application/vnd.hancom.hwp'] or
             original_filename.lower().endswith(('.hwp', '.hwpx'))):
-            
-            print(f"HWP/HWPX 파일 감지: {original_filename}")
             
             # LibreOffice 상태 확인
             if not check_libreoffice_status():
@@ -1581,22 +1526,6 @@ def update_audio_text(request):
             attr_value.value = json.dumps(audio_data, ensure_ascii=False)
             attr_value.save()
             
-            # Cascade 기능: cascade가 true인 속성이 수정되면 원본 행과 복제된 행들을 동기화
-            if audio_attribute.cascade:
-                print(f"=== Cascade 동기화 시작 (update_audio_text) ===")
-                print(f"속성 '음성파일'의 cascade 값: {audio_attribute.cascade}")
-                print(f"수정된 행 ID: {row_id}")
-                print(f"새 값: {json.dumps(audio_data, ensure_ascii=False)}")
-                
-                synced_count = sync_cascade_attributes(request, row_id, '음성파일', json.dumps(audio_data, ensure_ascii=False))
-                if synced_count > 0:
-                    print(f"Cascade 동기화 완료: 음성파일 속성이 {synced_count}개 행에 동기화됨")
-                else:
-                    print(f"Cascade 동기화 실패 또는 동기화할 행이 없음")
-                print(f"=== Cascade 동기화 종료 (update_audio_text) ===")
-            else:
-                print(f"속성 '음성파일'의 cascade 값: {audio_attribute.cascade} - 동기화하지 않음")
-            
             logger.info(f"음성파일 텍스트 업데이트 성공 - Row ID: {row_id}, Date: {date}, File ID: {file_id}")
             
             return JsonResponse({
@@ -1666,22 +1595,6 @@ def update_audio_memo(request):
             audio_attr_value.value = json.dumps(audio_data, ensure_ascii=False)
             audio_attr_value.save()
             
-            # Cascade 기능: cascade가 true인 속성이 수정되면 원본 행과 복제된 행들을 동기화
-            if audio_attr.cascade:
-                print(f"=== Cascade 동기화 시작 (update_audio_memo) ===")
-                print(f"속성 '음성파일'의 cascade 값: {audio_attr.cascade}")
-                print(f"수정된 행 ID: {row_id}")
-                print(f"새 값: {json.dumps(audio_data, ensure_ascii=False)}")
-                
-                synced_count = sync_cascade_attributes(request, row_id, '음성파일', json.dumps(audio_data, ensure_ascii=False))
-                if synced_count > 0:
-                    print(f"Cascade 동기화 완료: 음성파일 속성이 {synced_count}개 행에 동기화됨")
-                else:
-                    print(f"Cascade 동기화 실패 또는 동기화할 행이 없음")
-                print(f"=== Cascade 동기화 종료 (update_audio_memo) ===")
-            else:
-                print(f"속성 '음성파일'의 cascade 값: {audio_attr.cascade} - 동기화하지 않음")
-            
             logger.info(f"음성파일 메모 업데이트 성공: Row {row_id}, Date {date}, File {file_id}")
             return JsonResponse({'success': True, 'message': '메모가 성공적으로 저장되었습니다.'})
         else:
@@ -1747,22 +1660,6 @@ def update_audio_text_notes(request):
         attr_value.value = json.dumps(data, ensure_ascii=False)
         attr_value.save()
         
-        # Cascade 기능: cascade가 true인 속성이 수정되면 원본 행과 복제된 행들을 동기화
-        if audio_attr.cascade:
-            print(f"=== Cascade 동기화 시작 (update_audio_text_notes) ===")
-            print(f"속성 '음성파일'의 cascade 값: {audio_attr.cascade}")
-            print(f"수정된 행 ID: {row_id}")
-            print(f"새 값: {json.dumps(data, ensure_ascii=False)}")
-            
-            synced_count = sync_cascade_attributes(request, row_id, '음성파일', json.dumps(data, ensure_ascii=False))
-            if synced_count > 0:
-                print(f"Cascade 동기화 완료: 음성파일 속성이 {synced_count}개 행에 동기화됨")
-            else:
-                print(f"Cascade 동기화 실패 또는 동기화할 행이 없음")
-            print(f"=== Cascade 동기화 종료 (update_audio_text_notes) ===")
-        else:
-            print(f"속성 '음성파일'의 cascade 값: {audio_attr.cascade} - 동기화하지 않음")
-        
         return JsonResponse({'success': True})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
@@ -1775,17 +1672,11 @@ def update_audio_file_order_and_notes(request):
     row_id = request.POST.get('row_id')
     notes_json = request.POST.get('notes')
 
-    print(f"=== update_audio_file_order_and_notes 시작 ===")
-    print(f"row_id: {row_id}")
-    print(f"notes_json: {notes_json}")
-
     if not row_id:
         return JsonResponse({'success': False, 'error': 'row_id 누락'})
 
     try:
         notes = json.loads(notes_json or "[]")
-        print(f"파싱된 notes: {notes}")
-
          
         user_id = request.session.get('diary_member_id')
 
@@ -1799,7 +1690,6 @@ def update_audio_file_order_and_notes(request):
             attr_value = AttributeValue.objects.create(row=row, attribute=attr, value='{}')
 
         value = json.loads(attr_value.value or "{}")
-        print(f"기존 value: {value}")
 
         # 'data' 키가 없으면 생성
         if 'data' not in value:
@@ -1814,8 +1704,6 @@ def update_audio_file_order_and_notes(request):
             if not item_id:
                 continue
                 
-            print(f"처리 중인 아이템: {item}")
-            
             if item.get('type') == 'text':
                 # 텍스트 노트
                 text_value = item.get('text', '')
@@ -1828,7 +1716,6 @@ def update_audio_file_order_and_notes(request):
                     'type': 'text',
                     'upload_date': item.get('upload_date', '')
                 }
-                print(f"텍스트 노트 저장: {new_data[item_id]}")
             else:
                 # 파일 (오디오, 이미지, 문서)
                 # notes에서 받은 모든 파일 정보를 그대로 사용 (JS에서 이미 완전한 정보를 보냄)
@@ -1856,34 +1743,14 @@ def update_audio_file_order_and_notes(request):
                         file_data[key] = ''
                 
                 new_data[item_id] = file_data
-                print(f"파일 저장: {new_data[item_id]}")
 
         # 새로운 데이터로 교체
         value['data'] = new_data
-        print(f"최종 저장할 value: {value}")
 
         attr_value.value = json.dumps(value, ensure_ascii=False)
         attr_value.save()
 
-        # Cascade 기능: cascade가 true인 속성이 수정되면 원본 행과 복제된 행들을 동기화
-        if attr.cascade:
-            print(f"=== Cascade 동기화 시작 (update_audio_file_order_and_notes) ===")
-            print(f"속성 '음성파일'의 cascade 값: {attr.cascade}")
-            print(f"수정된 행 ID: {row_id}")
-            print(f"새 값: {json.dumps(value, ensure_ascii=False)}")
-            
-            synced_count = sync_cascade_attributes(request, row_id, '음성파일', json.dumps(value, ensure_ascii=False))
-            if synced_count > 0:
-                print(f"Cascade 동기화 완료: 음성파일 속성이 {synced_count}개 행에 동기화됨")
-            else:
-                print(f"Cascade 동기화 실패 또는 동기화할 행이 없음")
-            print(f"=== Cascade 동기화 종료 (update_audio_file_order_and_notes) ===")
-        else:
-            print(f"속성 '음성파일'의 cascade 값: {attr.cascade} - 동기화하지 않음")
-
-        print("=== update_audio_file_order_and_notes 완료 ===")
         return JsonResponse({'success': True})
 
     except Exception as e:
-        print(f"오류 발생: {str(e)}")
         return JsonResponse({'success': False, 'error': str(e)})

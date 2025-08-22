@@ -199,7 +199,7 @@ class PolicyFundRecommendationEngineV2:
         annual_revenue = company_data.get('annual_revenue', 0)  # 매출 추가
         
         if not (
-            industry in ['제조업', '정보통신업'] and
+            industry in ['제조업', '정보통신업', '전문, 과학 및 기술 서비스업'] and
             (credit_score >= 800 or experience_years >= 15) and  # 경력 15년 이상 또는 신용점수 800점 이상
             experience_years >= 3  # 경력 3년 이상
         ):

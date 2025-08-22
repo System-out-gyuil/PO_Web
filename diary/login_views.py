@@ -38,11 +38,21 @@ class LoginView(View):
                 # 사용자 조회 (이메일로만 조회)
                 member = User.objects.get(email=member_id)
                 
-                # 사용 기간 만료 확인
-                if member.is_expired():
+                # 계정 활성화 상태 확인
+                if not member.activate:
                     return JsonResponse({
                         'success': False,
-                        'error': '사용기간이 만료되었습니다.'
+                        'error': '비활성화된 계정입니다.'
+                    })
+                
+                # 사용 기간 만료 확인 및 자동 비활성화
+                if member.is_expired():
+                    # 만료된 경우 자동으로 비활성화
+                    member.activate = False
+                    member.save()
+                    return JsonResponse({
+                        'success': False,
+                        'error': '사용기간이 만료되어 계정이 비활성화되었습니다.'
                     })
                 
                 # 비밀번호 검증

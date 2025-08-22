@@ -65,7 +65,8 @@ class User(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     is_admin = models.BooleanField(default=False)
     use_date = models.DateTimeField(null=True, blank=True)  # 사용 기간 만료일
-    
+    activate = models.BooleanField(default=True)
+
     def __str__(self):
         return self.name
     
@@ -75,6 +76,14 @@ class User(models.Model):
         if self.use_date is None:
             return False
         return timezone.now() > self.use_date
+    
+    def deactivate_if_expired(self):
+        """사용 기간이 만료되면 자동으로 비활성화"""
+        if self.is_expired() and self.activate:
+            self.activate = False
+            self.save()
+            return True
+        return False
 
 class EmailVerification(models.Model):
     """이메일 인증을 위한 모델"""

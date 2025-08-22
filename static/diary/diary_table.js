@@ -64,11 +64,9 @@ function addNotificationToDetailButton(rowId, moreBtn) {
         // 알림 표시 추가
         moreBtn.appendChild(notificationSpan);
         
-        console.log(`행 ID ${rowId}: 알림 표시 추가 완료`);
     } else {
         // 알림이 없으면 기본 투명 상태로 설정
         moreBtn.classList.remove('has-notification');
-        console.log(`행 ID ${rowId}: 알림 없음 - 기본 투명 상태`);
     }
 }
 
@@ -191,11 +189,9 @@ document.head.appendChild(style);
           }
       });
       
-      console.log('Sticky 헤더 초기화 완료');
   }
   
   function bindTableCellEvents() {
-      console.log('bindTableCellEvents 시작 - 셀 개수:', document.querySelectorAll('td[data-field]').length);
       
       document.querySelectorAll('td[data-field]').forEach(function(td) {
           const type = td.getAttribute('data-field');
@@ -886,7 +882,6 @@ document.head.appendChild(style);
           }
       });
       
-      console.log('bindTableCellEvents 완료');
       
       // 회사명 컬럼 sticky 재적용
     reapplyStickyAfterRefresh();
@@ -3827,7 +3822,6 @@ function formatSalesValue(value) {
 
 // 회사명 컬럼을 sticky하게 만드는 함수
 function makeCompanyNameSticky() {
-    console.log('회사명 컬럼 sticky 설정 시작');
     
     const table = document.getElementById('entryTable');
     if (!table) {
@@ -3844,14 +3838,12 @@ function makeCompanyNameSticky() {
         const companyNameHeader = headerRow.querySelector('th[data-column="회사명"]');
         if (companyNameHeader) {
             companyNameHeader.classList.add('company-name-header-sticky');
-            console.log('회사명 헤더 sticky 클래스 추가 완료');
         }
         
         // 드래그 핸들 컬럼 헤더도 sticky하게
         const dragHeader = headerRow.querySelector('.drag-cell');
         if (dragHeader) {
             dragHeader.classList.add('drag-cell-header-sticky');
-            console.log('드래그 핸들 헤더 sticky 클래스 추가 완료');
         }
     }
     
@@ -3952,7 +3944,6 @@ function reapplyStickyAfterRefresh() {
 
 // 연락처 속성의 동일한 값에 배경색 적용하는 함수
 function highlightDuplicateContactValues() {
-    console.log('연락처 중복값 하이라이트 시작');
     
     const table = document.getElementById('entryTable');
     if (!table) {
@@ -3982,7 +3973,6 @@ function highlightDuplicateContactValues() {
     // 중복값이 있는 그룹만 하이라이트
     Object.entries(valueGroups).forEach(([value, cells]) => {
         if (cells.length > 1) {
-            console.log(`연락처 중복값 발견: "${value}" (${cells.length}개)`);
             cells.forEach(cell => {
                 cell.style.backgroundColor = '#e9ecef';
                 cell.style.transition = 'background-color 0.3s ease';
@@ -3991,7 +3981,6 @@ function highlightDuplicateContactValues() {
         }
     });
     
-    console.log('연락처 중복값 하이라이트 완료');
 }
 
 // 연락처 중복값 하이라이트 관련 변수들
@@ -4170,7 +4159,6 @@ document.addEventListener('DOMContentLoaded', function() {
 // 모든 상세보기 버튼에 알림을 표시하는 함수
 function addNotificationsToAllDetailButtons() {
     const allMoreBtns = document.querySelectorAll('.more-btn');
-    console.log('찾은 상세보기 버튼 개수:', allMoreBtns.length);
     
     let processedCount = 0;
     allMoreBtns.forEach((btn, index) => {
@@ -4180,16 +4168,12 @@ function addNotificationsToAllDetailButtons() {
             if (rowId && !rowId.startsWith('temp_')) {
                 // 이미 알림이 표시되어 있는지 확인
                 if (!btn.querySelector('.notification-bell')) {
-                    console.log(`버튼 ${index}: 행 ID ${rowId}에 알림 표시 시도`);
                     addNotificationToDetailButton(rowId, btn);
                     processedCount++;
-                } else {
-                    console.log(`버튼 ${index}: 행 ID ${rowId}는 이미 알림이 표시됨`);
                 }
             }
         }
     });
-    console.log(`총 ${processedCount}개의 버튼에 알림 표시 완료`);
 }
 
 // 수동으로 알림을 테스트하는 함수 (콘솔에서 실행 가능)
@@ -4247,4 +4231,22 @@ function updateTableDetailButtonStyle(rowId, hasNotifications) {
             }
         }
     }
+}
+
+// 초기 알림 표시 처리 함수
+function addInitialNotifications() {
+    
+    // 기존 DOM에서 data-has-notifications 속성이 있는 행들을 찾아서 알림 표시
+    const rowsWithNotifications = document.querySelectorAll('tr[data-has-notifications="true"]');
+    
+    rowsWithNotifications.forEach((row, index) => {
+        const rowId = row.getAttribute('data-id');
+        if (rowId && !rowId.startsWith('temp_')) {
+            const moreBtn = row.querySelector('.more-btn');
+            if (moreBtn) {
+                addNotificationToDetailButton(rowId, moreBtn);
+            }
+        }
+    });
+    
 }

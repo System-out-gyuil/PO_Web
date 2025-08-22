@@ -1,15 +1,15 @@
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_GET, require_http_methods
+from django.views.decorators.http import require_GET
 from django.utils import timezone
 from django.db import models, transaction
 from django.conf import settings
 
 from .models import (
-    DiaryEntry, Category, Region, SalesStatus,
+    Region, SalesStatus,
     Attribute, AttributeValue, User, DropdownAttribute, Row, 
-    AttributeType, UserAlarm, Diary_diary_count, Diary_main_count, DailyViewRecord
+    UserAlarm, Diary_diary_count, DailyViewRecord
 )
 from board.models import BizInfo
 from main.models import BizTop
@@ -21,10 +21,7 @@ import time
 import uuid
 import os
 import logging
-import tempfile
-import subprocess
 from datetime import datetime
-from types import SimpleNamespace
 import boto3
 from django.db.models import Sum, Count
 
@@ -32,7 +29,6 @@ from django.db.models import Sum, Count
 from .attribute_handlers import filter_attributes_by_status
 
 from .cascade_handlers import sync_cascade_attributes
-from .audio_handler import check_libreoffice_status
 from .data_utils import parse_korean_currency, parse_sales_amount, parse_business_data, calculate_business_years, formatToKoreanCurrency
 
 logger = logging.getLogger(__name__)
@@ -201,7 +197,6 @@ def diary_list(request):
     
     # 사용자의 남은 이용기간
     use_date = user.use_date
-    print(f'use_date: {use_date}')
     
     # use_date를 YYYY-MM-DD 형식으로 변환하고 남은 일수 계산
     formatted_use_date = None
@@ -218,11 +213,8 @@ def diary_list(request):
             use_date_only = use_date.date()
             remaining_days = (use_date_only - today).days
             
-            print(f'formatted_use_date: {formatted_use_date}')
-            print(f'remaining_days: {remaining_days}')
             
         except Exception as e:
-            print(f'날짜 변환 오류: {e}')
             formatted_use_date = str(use_date)
             remaining_days = None
     
@@ -847,7 +839,6 @@ def update_row_field(request):
 def dropdown_options(request):
     # GET과 POST 모두에서 field 파라미터 확인
     field = request.GET.get('field') or request.POST.get('field')
-    print(field)
     if not field:
         return JsonResponse({'error': 'No field'}, status=400)
     
@@ -895,7 +886,6 @@ def dropdown_options(request):
                     user_attr.view_select = view_select_data
                     user_attr.save()
                 
-                print(f"상태 속성 '{attr.name}'의 새 옵션 '{dropdown.option}' (ID: {dropdown.id})을 모든 Attribute의 view_select에 추가 + 전체 탭 설정")
             
             return JsonResponse({'success': True, 'id': dropdown.id, 'option': dropdown.option, 'color': dropdown.color, 'created': created})
         return JsonResponse({'error': 'No option'}, status=400)
@@ -936,7 +926,6 @@ def dropdown_options(request):
                 attr.view_select = view_select_data
                 attr.save()
                 
-                print(f"상태 속성 '{attr.name}'의 view_select 재설정: {len(all_dropdown_options)}개 옵션 + 전체 탭")
             
             return JsonResponse({'success': True})
         return JsonResponse({'error': 'Invalid'}, status=400)
@@ -969,7 +958,6 @@ def dropdown_options(request):
                     user_attr.view_select = view_select_data
                     user_attr.save()
             
-            print(f"상태 속성 '{attr.name}'의 옵션 '{dropdown.option}' (ID: {deleted_option_id})을 모든 Attribute의 view_select에서 제거")
             
             # DropdownAttribute 삭제
             dropdown.delete()
@@ -2265,13 +2253,11 @@ def get_daily_view_counts(request):
             start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
             end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
             date_filter = {'date__range': [start_date, end_date]}
-            print(f"Specific date range - start_date: {start_date}, end_date: {end_date}")
         else:
             # 전체 기간 조회 (날짜 필터 없음)
             start_date = None
             end_date = None
             date_filter = {}
-            print("Loading all data (no date filter)")
 
         # 일별 조회수 집계
         daily_counts = DailyViewRecord.objects.filter(

@@ -12,10 +12,8 @@ function initializeColumnDragDrop(force) {
         return;
     }
     
-    console.log('컬럼 드래그앤드롭 초기화 시작');
     
     const headers = document.querySelectorAll('.attribute-header');
-    console.log('찾은 헤더 개수:', headers.length);
     
     if (headers.length === 0) {
         console.log('헤더를 찾을 수 없음, 초기화 건너뜀');

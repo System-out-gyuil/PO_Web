@@ -1,6 +1,5 @@
 // 탭 초기화 함수
 function initializeStatusTabs() {
-  console.log('탭 초기화 시작');
   
   // 기존 속성 설정 백업
   const existingAttributeSettings = {};
@@ -15,10 +14,8 @@ function initializeStatusTabs() {
   fetch('/sales/get_status_tabs/')
       .then(response => response.json())
       .then(data => {
-          console.log('탭 데이터 응답:', data);
           if (data.success) {
               window.statusAttributeName = data.attribute_name;
-              console.log('사용할 속성명:', window.statusAttributeName);
               
               // 기존 속성 설정 복원
               if (data.attributes && Object.keys(existingAttributeSettings).length > 0) {

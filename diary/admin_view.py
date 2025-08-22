@@ -657,7 +657,8 @@ def user_list(request):
             'phone_number': user.phone_number,
             'created_at': user.created_at.isoformat(),
             'use_date': user.use_date.isoformat() if user.use_date else None,
-            'is_admin': user.is_admin
+            'is_admin': user.is_admin,
+            'activate': user.activate  # 활성화 상태 추가
         }
         users_data.append(user_dict)
     
@@ -779,6 +780,51 @@ def user_toggle_admin(request, user_id):
         return JsonResponse({'success': False, 'message': '잘못된 요청 형식입니다.'})
     except Exception as e:
         return JsonResponse({'success': False, 'message': f'관리자 권한 변경 중 오류가 발생했습니다: {str(e)}'})
+
+@csrf_exempt
+def user_toggle_activate(request, user_id):
+    """사용자 계정 활성화/비활성화 토글"""
+    admin_user_id = request.session.get('diary_member_id')
+    
+    if not admin_user_id:
+        return JsonResponse({'success': False, 'message': '로그인이 필요합니다.'})
+    
+    try:
+        admin_user = User.objects.get(id=admin_user_id)
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'message': '관리자를 찾을 수 없습니다.'})
+
+    if not admin_user.is_admin:
+        return JsonResponse({'success': False, 'message': '권한이 없습니다.'})
+    
+    # 자기 자신의 활성화 상태를 변경하려는 경우 방지
+    if admin_user_id == user_id:
+        return JsonResponse({'success': False, 'message': '자기 자신의 계정 활성화 상태를 변경할 수 없습니다.'})
+    
+    try:
+        user_to_toggle = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'message': '변경할 사용자를 찾을 수 없습니다.'})
+    
+    try:
+        # POST 데이터 파싱
+        data = json.loads(request.body)
+        make_active = data.get('make_active', False)
+        
+        # 활성화 상태 변경
+        user_to_toggle.activate = make_active
+        user_to_toggle.save()
+        
+        status_text = '활성화' if make_active else '비활성화'
+        return JsonResponse({
+            'success': True, 
+            'message': f'사용자 계정이 {status_text}되었습니다.',
+            'new_status': 'active' if make_active else 'inactive'
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': '잘못된 요청 형식입니다.'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'계정 활성화 상태 변경 중 오류가 발생했습니다: {str(e)}'})
 
 @csrf_exempt
 def user_update_use_date(request, user_id):

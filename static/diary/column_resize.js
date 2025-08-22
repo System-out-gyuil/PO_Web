@@ -105,7 +105,6 @@ class ColumnResizer {
         headers.forEach((header, index) => {
             // 마지막 열(속성 추가 열)은 제외
             if (header.classList.contains('add-attribute-th')) {
-                console.log('속성 추가 열 제외:', index);
                 return;
             }
             
@@ -197,11 +196,9 @@ class ColumnResizer {
                 this.cancelResize();
             }
         });
-        console.log('이벤트 바인딩 완료');
     }
     
     startResize(e, handle) {
-        console.log('startResize 함수 호출됨');
         this.isResizing = true;
         this.currentColumn = handle.closest('th');
         this.startX = e.clientX;
@@ -492,7 +489,6 @@ class ColumnResizer {
         .then(res => res.json())
         .then(data => {
             if (data.success && data.widths) {
-                console.log('서버에서 컬럼 너비 로드:', data.widths);
                 const userId = getCurrentUserId();
                 
                 // 서버에서 가져온 너비를 localStorage에 저장하고 적용
@@ -531,12 +527,9 @@ class ColumnResizer {
 
 // 페이지 로드 시 컬럼 리사이저 초기화
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOMContentLoaded 이벤트 발생');
     // 테이블이 로드된 후 리사이저 초기화
     setTimeout(() => {
-        console.log('리사이저 초기화 시도');
         const table = document.getElementById('entryTable');
-        console.log('찾은 테이블:', table);
         if (table) {
             // 기존 리사이저 정리
             if (window.columnResizer) {

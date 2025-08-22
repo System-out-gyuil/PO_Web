@@ -116,7 +116,19 @@ function generateDetailModalContent(attributes, rowData, rowId) {
                 if (value && typeof value === 'object') {
                     debtData = value;
                 } else if (value && typeof value === 'string' && value.startsWith('{')) {
-                    debtData = JSON.parse(value);
+                    try {
+                        // Python 딕셔너리 형태를 JSON 형태로 변환
+                        let jsonValue = value;
+                        if (value.includes("'")) {
+                            // 작은따옴표를 큰따옴표로 변환
+                            jsonValue = value.replace(/'/g, '"');
+                        }
+                        debtData = JSON.parse(jsonValue);
+                    } catch (parseError) {
+                        console.error('기대출 JSON 파싱 실패:', parseError);
+                        console.log('파싱 시도한 값:', value);
+                        debtData = {};
+                    }
                 }
             } catch (e) {
                 console.error('기대출 데이터 파싱 오류:', e);
@@ -188,7 +200,10 @@ function generateDetailModalContent(attributes, rowData, rowId) {
             secondRowHtml += '</div>';
             
             // 총액 표시 (억원 단위)
-            const totalAmount = Object.values(debtData).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
+            const totalAmount = Object.values(debtData).reduce((sum, val) => {
+                const numVal = parseFloat(val) || 0;
+                return Math.round((sum + numVal) * 100) / 100; // 소수점 2자리까지 반올림
+            }, 0);
             const totalDisplayValue = totalAmount ? `${totalAmount}억원` : '0억';
             const totalHtml = `
                 <div style="margin-top: 10px; padding: 8px; background: #f8f9fa; border-radius: 4px; text-align: center;">
@@ -560,7 +575,6 @@ function generateDetailModalContent(attributes, rowData, rowId) {
                 fetch('/sales/dropdown_options/?field=' + encodeURIComponent(attr.name))
                     .then(r => r.json())
                     .then(data => {
-                        console.log('dropdown_options 데이터:', data);
                         if (data.options) {
                             const opt = data.options.find(o => o.option === value);
                             const btn = document.getElementById(`modal-dropdown-btn-${rowId}-${attr.name}`);
@@ -659,18 +673,10 @@ function generateDetailModalContent(attributes, rowData, rowId) {
             // 지원사업 속성 값 가져오기
             const supportValue = rowData[attr.name] || attr.value;
             let supportDisplay = '';
-            console.log('attr.name:', attr.name);
-            console.log('rowData[attr.name]:', rowData[attr.name]);
-            console.log('attr.value:', attr.value);
-            console.log('supportValue:', supportValue);
             
             if (supportValue) {
                 try {
                     let supportData;
-                    console.log('supportValue type check:', typeof supportValue);
-                    console.log('supportValue is object?', typeof supportValue === 'object');
-                    console.log('supportValue is null?', supportValue === null);
-                    console.log('supportValue raw value:', JSON.stringify(supportValue));
                     
                     if (typeof supportValue === 'string') {
                         try {
@@ -681,9 +687,7 @@ function generateDetailModalContent(attributes, rowData, rowId) {
                                 .replace(/False/g, 'false');
                             
                             supportData = JSON.parse(cleanedString);
-                            console.log('Python 딕셔너리 파싱 성공:', supportData);
                         } catch (e) {
-                            console.error('Python 딕셔너리 파싱 실패:', e);
                             // 기존 로직으로 fallback
                             supportData = { pblanc_ids: supportValue.split(',').filter(id => id.trim()) };
                         }
@@ -695,14 +699,8 @@ function generateDetailModalContent(attributes, rowData, rowId) {
                     }
                     
                     const pblancIds = supportData.pblanc_ids || [];
-                    console.log('최종 pblancIds:', pblancIds);
-                    console.log('pblancIds.length:', pblancIds.length);
-                    console.log('pblancIds type:', typeof pblancIds);
-                    console.log('Array.isArray(pblancIds):', Array.isArray(pblancIds));
                     
                     const alerts = supportData.알림 || [];
-                    console.log('alerts:', alerts);
-                    console.log('alerts.length:', alerts.length);
                     
                     // 빈 배열 체크를 더 엄격하게
                     if (pblancIds && Array.isArray(pblancIds) && pblancIds.length > 0) {
@@ -891,7 +889,6 @@ function generateDetailModalContent(attributes, rowData, rowId) {
     // 음성파일 영역 업데이트
     updateAudioFileSection(rowId, audioFileValue);
 
-    console.log('window.innerWidth:', window.innerWidth);
 
     if (window.innerWidth < 1000) {
         document.querySelector('.detail-modal-content').style.flexDirection = 'column';
@@ -910,15 +907,8 @@ function generateDetailModalContent(attributes, rowData, rowId) {
     // 파일 삭제 버튼 이벤트 리스너 추가 (setTimeout으로 지연)
     setTimeout(() => {
         const deleteButtons = document.querySelectorAll('.delete-file-btn');
-        console.log('찾은 삭제 버튼 개수:', deleteButtons.length);
         
         deleteButtons.forEach((btn, index) => {
-            console.log(`버튼 ${index}:`, btn);
-            console.log(`버튼 ${index}의 data 속성:`, {
-                rowId: btn.getAttribute('data-row-id'),
-                fieldName: btn.getAttribute('data-field-name'),
-                fileIndex: btn.getAttribute('data-file-index')
-            });
             
             btn.addEventListener('click', function(e) {
                 e.preventDefault();
@@ -1341,57 +1331,47 @@ function closeDetailModal() {
         // Sticky 헤더 재초기화
         if (typeof initializeStickyHeader === 'function') {
           initializeStickyHeader();
-          console.log('상세 모달 닫기 후 Sticky 헤더 재초기화 완료');
           
           // 추가로 약간의 지연 후 한 번 더 시도 (DOM 완전 렌더링 보장)
           setTimeout(() => {
             initializeStickyHeader();
-            console.log('상세 모달 닫기 후 Sticky 헤더 재초기화 재시도 완료');
           }, 150);
         }
         
         // 컬럼 드래그앤드롭 재초기화
         if (typeof initializeColumnDragDrop === 'function') {
           initializeColumnDragDrop(true); // force=true로 강제 재초기화
-          console.log('상세 모달 닫기 후 컬럼 드래그앤드롭 재초기화 완료');
         }
         
         // 테이블 셀 이벤트 재바인딩
         if (typeof bindTableCellEvents === 'function') {
           bindTableCellEvents();
-          console.log('상세 모달 닫기 후 테이블 셀 이벤트 재바인딩 완료');
         }
         
         // 체크박스와 상세보기 버튼 이벤트 재바인딩
         if (typeof bindCheckboxEvents === 'function') {
           bindCheckboxEvents();
-          console.log('상세 모달 닫기 후 체크박스 이벤트 재바인딩 완료');
         }
         
         if (typeof bindDetailButtonEvents === 'function') {
           setTimeout(() => {
-              console.log('상세 모달 닫기 후 상세보기 버튼 이벤트 바인딩 시작...');
               bindDetailButtonEvents();
-              console.log('상세 모달 닫기 후 상세보기 버튼 이벤트 바인딩 완료');
           }, 200);
         }
         
         // 드롭다운 pill 렌더링
         if (typeof renderDropdownPills === 'function') {
           renderDropdownPills();
-          console.log('상세 모달 닫기 후 드롭다운 pill 렌더링 완료');
         }
         
         // 행 복제 버튼과 상세보기 버튼 재생성
         if (typeof recreateDuplicateButtons === 'function') {
           recreateDuplicateButtons();
-          console.log('상세 모달 닫기 후 행 복제 버튼과 상세보기 버튼 재생성 완료');
         }
         
         // 행 드래그앤드롭 재초기화
         if (typeof reinitializeRowDragDrop === 'function') {
           reinitializeRowDragDrop();
-          console.log('상세 모달 닫기 후 행 드래그앤드롭 재초기화 완료');
         }
       }, 200); // 테이블 새로고침 완료 후 200ms 지연
       
@@ -2673,7 +2653,6 @@ function formatDateInput(input) {
 
 // 음성파일 영역 업데이트 함수
 function updateAudioFileSection(rowId, audioFileValue) {
-    console.log('updateAudioFileSection 호출됨:', rowId, audioFileValue);
     
     // 영업노트 영역의 음성파일 관리 기능 업데이트
     // 이 함수는 우측 영업노트 영역에서 음성파일 데이터를 업데이트하는 역할을 합니다.
@@ -2985,15 +2964,8 @@ function updateFileFieldInModalAfterDelete(rowId, fieldName) {
                                 // 새로운 삭제 버튼에 이벤트 리스너 추가
                                 setTimeout(() => {
                                     const deleteButtons = fileContainer.querySelectorAll('.delete-file-btn');
-                                    console.log('새로 찾은 삭제 버튼 개수:', deleteButtons.length);
                                     
                                     deleteButtons.forEach((btn, index) => {
-                                        console.log(`새 버튼 ${index}:`, btn);
-                                        console.log(`새 버튼 ${index}의 data 속성:`, {
-                                            rowId: btn.getAttribute('data-row-id'),
-                                            fieldName: btn.getAttribute('data-field-name'),
-                                            fileIndex: btn.getAttribute('data-file-index')
-                                        });
                                         
                                         btn.addEventListener('click', function(e) {
                                             e.preventDefault();
@@ -3421,9 +3393,7 @@ function recreateDuplicateButtons() {
     // 상세보기 버튼 이벤트 바인딩 (지연 실행)
     setTimeout(() => {
         if (typeof bindDetailButtonEvents === 'function') {
-            console.log('recreateDuplicateButtons에서 상세보기 버튼 이벤트 바인딩 시작...');
             bindDetailButtonEvents();
-            console.log('recreateDuplicateButtons에서 상세보기 버튼 이벤트 바인딩 완료');
         } else {
             console.log('bindDetailButtonEvents 함수를 찾을 수 없습니다.');
         }
@@ -3459,17 +3429,14 @@ function recreateDuplicateButtons() {
                     }).catch(() => alert('순서 저장 중 오류 발생'));
                 }
             });
-            console.log('드래그 기능 재초기화 완료');
         }
     }
 }
 
 function uploadFile(rowId, fieldName, fileInput) {
-    console.log('uploadFile 호출됨:', rowId, fieldName, fileInput);
 
     // AI 캐시 매니저가 초기화되지 않은 경우 초기화
     if (!window.aiCacheManager || window.aiCacheManager.currentRowCache?.rowId !== rowId) {
-        console.log('파일 업로드 시 AI 캐시 매니저 초기화:', rowId);
         window.currentDetailRowId = rowId; // 임시로 설정
         initializeAICacheManager();
     }
@@ -3492,8 +3459,6 @@ function uploadFile(rowId, fieldName, fileInput) {
             return;
         }
     }
-
-    console.log('업로드할 파일들:', Array.from(files).map(f => f.name));
 
     // AI 캐시 추적은 업로드 완료 후에만 수행하도록 수정
     // 업로드 시작 시 임시 추적 제거
@@ -3552,11 +3517,9 @@ function uploadFile(rowId, fieldName, fileInput) {
         })
         .then(response => response.json())
         .then(data => {
-            console.log(`파일 "${file.name}" 업로드 응답:`, data);
 
             if (data.success) {
                 uploadedCount++;
-                console.log(`파일 "${file.name}" 업로드 성공`);
 
                 if (window.trackFileChange && data.file_info) {
                     const fileInfo = {
@@ -3582,17 +3545,14 @@ function uploadFile(rowId, fieldName, fileInput) {
                     if (existingFile) {
                         // 기존 파일이 있으면 수정으로 처리
                         window.trackFileChange(rowId, fieldName, 'modified', fileInfo);
-                        console.log('AI 캐시에 파일 수정 추적 (기존 파일 존재):', fileInfo);
                     } else {
                         // 새 파일로 처리
                         window.trackFileChange(rowId, fieldName, 'added', fileInfo);
-                        console.log('AI 캐시에 파일 추가 추적:', fileInfo);
                     }
                     
                     // 캐시 무효화 플래그 설정
                     if (window.aiCacheManager) {
                         window.aiCacheManager.cacheInvalidated = true;
-                        console.log('AI 캐시 무효화 플래그 설정됨');
                     }
                 }
 
@@ -3616,7 +3576,6 @@ function uploadFile(rowId, fieldName, fileInput) {
             }
         })
         .catch(error => {
-            console.error('파일 업로드 오류:', error);
             alert('파일 업로드 중 오류가 발생했습니다.');
             failedCount++;
             uploadNextFile(index + 1);  // ✅ 오류 발생 시에도 다음 파일 업로드
@@ -3645,7 +3604,6 @@ function updateFileFieldInModalAfterUpload(rowId, fieldName) {
 
 // 파일 삭제 후 상세보기 모달의 파일 필드를 "파일 없음" 상태로 업데이트하는 함수
 function updateFileFieldInModalAfterDelete(rowId, fieldName) {
-    console.log('updateFileFieldInModalAfterDelete 호출됨:', rowId, fieldName);
     
     // AI 캐시 추적 - 파일 삭제
     if (window.trackFileChange) {
@@ -3654,7 +3612,6 @@ function updateFileFieldInModalAfterDelete(rowId, fieldName) {
             rowId: rowId
         };
         window.trackFileChange(rowId, fieldName, 'deleted', fileInfo);
-        console.log('AI 캐시에 파일 삭제 추적:', fileInfo);
     }
     
     const detailModal = document.getElementById('detailModal');
@@ -3680,15 +3637,12 @@ function updateFileFieldInModalAfterDelete(rowId, fieldName) {
         return;
     }
     
-    console.log('필드 div 찾음:', targetFieldDiv);
-    
     // 서버에서 최신 파일 정보를 가져와서 업데이트
     fetch(`/sales/get_row_details/${rowId}/`)
         .then(response => response.json())
         .then(data => {
             if (data.success && data.row_data) {
                 const fileValue = data.row_data[fieldName];
-                console.log('서버에서 받은 파일 값:', fileValue);
                 
                 if (fileValue) {
                     try {
@@ -3705,7 +3659,6 @@ function updateFileFieldInModalAfterDelete(rowId, fieldName) {
                         }
                         
                         const files = Array.isArray(filesData) ? filesData : [filesData];
-                        console.log('파싱된 파일 데이터:', files);
                         
                         if (files.length > 0) {
                             // 파일이 남아있는 경우: 파일 목록 표시
@@ -3794,20 +3747,12 @@ function updateFileFieldInModalAfterDelete(rowId, fieldName) {
                             const fileContainer = targetFieldDiv.querySelector('div[style*="flex:1"]');
                             if (fileContainer) {
                                 fileContainer.innerHTML = filesHtml;
-                                console.log('파일 목록 업데이트 완료');
                                 
                                 // 새로운 삭제 버튼에 이벤트 리스너 추가
                                 setTimeout(() => {
                                     const deleteButtons = fileContainer.querySelectorAll('.delete-file-btn');
-                                    console.log('새로 찾은 삭제 버튼 개수:', deleteButtons.length);
                                     
                                     deleteButtons.forEach((btn, index) => {
-                                        console.log(`새 버튼 ${index}:`, btn);
-                                        console.log(`새 버튼 ${index}의 data 속성:`, {
-                                            rowId: btn.getAttribute('data-row-id'),
-                                            fieldName: btn.getAttribute('data-field-name'),
-                                            fileIndex: btn.getAttribute('data-file-index')
-                                        });
                                         
                                         btn.addEventListener('click', function(e) {
                                             e.preventDefault();
@@ -3817,17 +3762,10 @@ function updateFileFieldInModalAfterDelete(rowId, fieldName) {
                                             const fieldName = this.getAttribute('data-field-name');
                                             const fileIndex = this.getAttribute('data-file-index');
                                             
-                                            console.log('새 파일 삭제 버튼 클릭됨:', rowId, fieldName, fileIndex);
-                                            console.log('fileIndex 타입:', typeof fileIndex);
-                                            console.log('fileIndex 값:', fileIndex);
                                             
                                             // fileIndex를 숫자로 변환
                                             const numericFileIndex = parseInt(fileIndex, 10);
-                                            console.log('변환된 fileIndex:', numericFileIndex);
-                                            
-                                            console.log('deleteFile 함수 호출 전');
                                             deleteFile(rowId, fieldName, numericFileIndex);
-                                            console.log('deleteFile 함수 호출 후');
                                         });
                                     });
                                 }, 100);
@@ -3850,7 +3788,6 @@ function updateFileFieldInModalAfterDelete(rowId, fieldName) {
                                                onchange="uploadFile('${rowId}', '${fieldName}', this)">
                                     </div>
                                 `;
-                                console.log('파일 표시 영역을 "파일 없음"으로 업데이트 완료');
                             }
                         }
                     } catch (e) {
@@ -3892,7 +3829,6 @@ function updateFileFieldInModalAfterDelete(rowId, fieldName) {
                                        onchange="uploadFile('${rowId}', '${fieldName}', this)">
                             </div>
                         `;
-                        console.log('파일 표시 영역을 "파일 없음"으로 업데이트 완료');
                     }
                 }
             } else {
@@ -3906,20 +3842,12 @@ function updateFileFieldInModalAfterDelete(rowId, fieldName) {
 
 // 파일 미리보기 모달 함수
 function showFilePreviewModal(fileInfo) {
-    console.log('showFilePreviewModal 호출됨:', fileInfo);
     
     // 기존 showFilePreview 함수 사용
     // fileInfo에서 필요한 데이터 추출
     const fileId = fileInfo.id || fileInfo.stored_filename || fileInfo.filename || '';
     const rowId = window.currentDetailRowId || fileInfo.row_id || '';
     const fieldName = fileInfo.field_name || '';
-    
-    console.log('파일 미리보기 파라미터:', {
-        fileId: fileId,
-        fileInfo: fileInfo,
-        rowId: rowId,
-        fieldName: fieldName
-    });
     
     // 필수 파라미터 검증
     if (!fileId) {
@@ -3945,7 +3873,6 @@ function closeFilePreviewModal() {
 
 // 체크박스 이벤트 바인딩 함수
 function bindCheckboxEvents() {
-    console.log('체크박스 이벤트 바인딩 시작');
     
     // 전체 선택 체크박스
     const selectAllCheckbox = document.getElementById('selectAllCheckbox');
@@ -3960,7 +3887,6 @@ function bindCheckboxEvents() {
             
             updateBulkDeleteButton();
         };
-        console.log('전체 선택 체크박스 이벤트 바인딩 완료');
     }
     
     // 개별 행 체크박스
@@ -4015,7 +3941,6 @@ function bindDetailButtonEvents() {
         // 이미 처리된 버튼인지 확인 (data-event-bound 속성으로 추적)
         if (btn.getAttribute('data-event-bound') === 'true') {
             skippedCount++;
-            console.log(`버튼 ${index}는 이미 이벤트가 바인딩되어 건너뜁니다.`);
             return;
         }
         
@@ -4058,12 +3983,9 @@ function bindDetailButtonEvents() {
                     return r.json();
                 })
                 .then(function(data) {
-                    console.log('JSON 파싱 완료:', data);
                     if (data.success) {
-                        console.log('showDetailModal 호출...');
                         showDetailModal(data.row_data, data.row_id);
                     } else {
-                        console.error('상세정보 불러오기 실패:', data.error);
                         alert('상세정보 불러오기 실패: ' + (data.error || ''));
                     }
                 })

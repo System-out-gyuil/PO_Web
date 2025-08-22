@@ -65,7 +65,6 @@ function updateAudioFileManagement(audioFileValue) {
       audioFileData = null;
   }
   
-  console.log('최종 audioFileData:', audioFileData);
   
   // 기존 내용 초기화
   audioFilesList.innerHTML = '';
@@ -96,7 +95,6 @@ function updateAudioFileManagement(audioFileValue) {
                   }
               }
               
-              console.log(`파일 ${fileId} 타입 결정:`, fileType, fileInfo);
               
               // 텍스트 노트인 경우 특별 처리
               if (fileType === 'text') {
@@ -141,7 +139,6 @@ function updateAudioFileManagement(audioFileValue) {
           return b.uploadTime - a.uploadTime;
       });
       
-      console.log('정렬된 모든 아이템:', allItems);
       
       if (allItems.length > 0) {
           if (noAudioFilesMessage) {
@@ -157,30 +154,24 @@ function updateAudioFileManagement(audioFileValue) {
           sortableContainer.appendChild(createAddPlaceholder(0));
           
           allItems.forEach((item, index) => {
-              console.log(`렌더링 아이템 ${index}:`, item);
               
               if (item.type === 'audio') {
-                  console.log('audio 아이템 렌더링:', item);
                   //   const fileElement = createAudioFileElement(item, index);
                   const fileElement = createDocumentFileElement(item, index);
                   sortableContainer.appendChild(fileElement);
               } else if (item.type === 'image') {
-                  console.log('image 아이템 렌더링:', item);
                   const imageElement = createImageFileElement(item, index);
                   sortableContainer.appendChild(imageElement);
               } else if (item.type === 'file') {
-                  console.log('file 아이템 렌더링:', item);
                   const fileElement = createDocumentFileElement(item, index);
                   sortableContainer.appendChild(fileElement);
               } else if (item.type === 'text') {
-                  console.log('text 아이템 렌더링:', item);
                   // 텍스트 노트 데이터 안전하게 처리
                   const textNoteData = {
                       noteId: item.fileId || item.noteId || ('t' + Date.now() + '_' + Math.floor(Math.random()*10000)),
                       text: item.text || '',
                       order: item.order || index
                   };
-                  console.log('텍스트 노트 데이터:', textNoteData);
                   const textElement = createTextNoteElement(textNoteData, index);
                   sortableContainer.appendChild(textElement);
               }
@@ -309,7 +300,6 @@ function saveAudioFileOrder(sortableContainer) {
       }
   }
   
-  console.log('저장할 순서:', orderedFiles);
   
   fetch('/sales/update_audio_file_order/', {
       method: 'POST',
@@ -319,16 +309,13 @@ function saveAudioFileOrder(sortableContainer) {
   .then(response => response.json())
   .then(data => {
       if (data.success) {
-          console.log('파일 순서 저장 완료');
           // 성공 알림 (선택사항)
           showNotification('파일 순서가 저장되었습니다.', 'success');
       } else {
-          console.error('파일 순서 저장 실패:', data.error);
           showNotification('파일 순서 저장에 실패했습니다.', 'error');
       }
   })
   .catch(error => {
-      console.error('파일 순서 저장 오류:', error);
       showNotification('파일 순서 저장 중 오류가 발생했습니다.', 'error');
   });
 }
