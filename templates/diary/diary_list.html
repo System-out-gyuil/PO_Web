@@ -154,6 +154,9 @@
 
 <div class="container">
     <div class="use-date-container">
+        <div class="manual-container">
+            <div class="manual-title" onclick="downloadUserManual()" style="cursor: pointer; transition: all 0.3s ease; user-select: none;" onmouseover="this.style.opacity='0.8'; this.style.transform='scale(1.05)'" onmouseout="this.style.opacity='1'; this.style.transform='scale(1)'">사용메뉴얼</div>
+        </div>
         <div class="use-date-value-container">
             <span class="use-date-value">만료 기간 : {{ formatted_use_date }} </span>
             <span class="remaining-days-value">&nbsp;&nbsp;(D - {{ remaining_days }})</span>
@@ -3119,6 +3122,71 @@ function downloadExcelTemplate() {
     window.location.href = '/sales/download_excel_template/';
 }
 
+// 사용 메뉴얼 다운로드 함수
+function downloadUserManual() {
+    if (confirm('사용 메뉴얼을 다운로드하시겠습니까?')) {
+        // 백엔드 API 호출
+        downloadUserManualFromBackend();
+    }
+}
+
+// 백엔드에서 사용 메뉴얼 다운로드하는 함수
+function downloadUserManualFromBackend() {
+    // 로딩 표시
+    showNotification('사용 메뉴얼을 다운로드하는 중...', 'info');
+    
+    // 백엔드 API 호출
+    fetch('/sales/download_user_manual/', {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        // 파일 다운로드 응답인지 확인
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/vnd.openxmlformats-officedocument.presentationml.presentation')) {
+            // 파일 다운로드 응답
+            return response.blob();
+        } else {
+            // JSON 응답 (에러 등)
+            return response.json().then(data => {
+                throw new Error(data.error || '알 수 없는 오류가 발생했습니다.');
+            });
+        }
+    })
+    .then(blob => {
+        // Blob URL 생성
+        const blobUrl = window.URL.createObjectURL(blob);
+        
+        // 다운로드 링크 생성 및 클릭
+        const downloadLink = document.createElement('a');
+        downloadLink.href = blobUrl;
+        downloadLink.download = '자금왕_사용_설명_0822.pptx';
+        downloadLink.style.display = 'none';
+        
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        
+        // 정리
+        document.body.removeChild(downloadLink);
+        window.URL.revokeObjectURL(blobUrl);
+        
+        // 성공 알림
+        showNotification('사용 메뉴얼 다운로드가 완료되었습니다.', 'success');
+    })
+    .catch(error => {
+        console.error('다운로드 오류:', error);
+        
+        // 오류 알림
+        showNotification('다운로드 중 오류가 발생했습니다: ' + error.message, 'error');
+    });
+}
 </script>
 
 <script src="{% static 'diary/auto_blog.js' %}"></script>

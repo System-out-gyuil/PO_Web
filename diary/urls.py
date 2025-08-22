@@ -22,6 +22,8 @@ from .hwp_convert import convert_hwp_to_pdf_board, convert_hwp_to_pdf
 from .ai_class import ai_class, class_form, class_form_end
 from .attribute_handlers import get_hidden_attributes, add_attribute, delete_attribute, update_attribute_name, update_attribute_visibility, get_dropdown_attributes, get_all_attributes
 
+
+
 urlpatterns = [
     path('', DiaryMainView.as_view(), name='diary_main'),
 
@@ -122,6 +124,7 @@ urlpatterns = [
     path('preview_excel/', preview_excel, name='preview_excel'),
     path('upload_excel/', upload_excel, name='upload_excel'),
     path('download_excel_template/', download_excel_template, name='download_excel_template'),
+    path('download_user_manual/', views.download_user_manual, name='download_user_manual'),
 
     # 칸반보드 관련 처리
     path('update_kanban_option_order/', update_kanban_option_order, name='update_kanban_option_order'),

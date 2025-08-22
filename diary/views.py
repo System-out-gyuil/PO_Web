@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET
 from django.utils import timezone
@@ -2346,6 +2346,52 @@ def get_daily_view_details(request):
         })
         
     except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })
+
+@require_GET
+def download_user_manual(request):
+    """사용 메뉴얼 다운로드 API"""
+    try:
+        # 로그인 상태 확인
+        if not request.session.get('diary_authenticated'):
+            return JsonResponse({'success': False, 'error': '로그인이 필요합니다.'})
+        
+        # S3 설정
+        s3_client = boto3.client(
+            's3',
+            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+            region_name=settings.AWS_S3_REGION_NAME
+        )
+        
+        # S3에서 파일 다운로드
+        bucket_name = 'po.s3'
+        file_key = 'auto_blog/자금왕_사용_설명_0822.pptx'
+        
+        try:
+            # S3에서 파일 객체 가져오기
+            response = s3_client.get_object(Bucket=bucket_name, Key=file_key)
+            file_content = response['Body'].read()
+            
+            # HTTP 응답 생성
+            response = HttpResponse(file_content, content_type='application/vnd.openxmlformats-officedocument.presentationml.presentation')
+            response['Content-Disposition'] = 'attachment; filename="자금왕_사용_설명_0822.pptx"'
+            response['Content-Length'] = len(file_content)
+            
+            return response
+            
+        except Exception as s3_error:
+            logger.error(f"S3 파일 다운로드 오류: {s3_error}")
+            return JsonResponse({
+                'success': False, 
+                'error': f'S3에서 파일을 가져올 수 없습니다: {str(s3_error)}'
+            })
+            
+    except Exception as e:
+        logger.error(f"사용 메뉴얼 다운로드 오류: {e}")
         return JsonResponse({
             'success': False,
             'error': str(e)

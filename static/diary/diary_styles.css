@@ -3877,7 +3877,7 @@ th.resizing {
     display: flex;
     flex-direction: row;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: space-between;
     margin-bottom: 10px;
 }
 
@@ -3896,6 +3896,19 @@ th.resizing {
     color: #ee4354;
 }
 
+.manual-container {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    background-color: #a5ff60;
+    padding: 5px 10px;
+    border-radius: 5px;
+}
+
+.manual-title {
+    font-size: 12px;
+    font-weight: 600;
+}
 
 
 
