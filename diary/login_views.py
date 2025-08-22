@@ -16,6 +16,12 @@ from config import EMAIL_AUTH_VALID_TIME, SENDER_EMAIL
 @method_decorator(csrf_exempt, name='dispatch')
 class LoginView(View):
     def get(self, request):
+        # 이미 로그인된 사용자인지 확인
+        if request.session.get('diary_authenticated') and request.session.get('diary_member_id'):
+            # 로그인된 사용자는 다이어리 페이지로 리다이렉트
+            return redirect('/sales/diary/')
+        
+        # 로그인되지 않은 사용자는 로그인 페이지 렌더링
         return render(request, 'diary/diary_login.html')
     
     def post(self, request):

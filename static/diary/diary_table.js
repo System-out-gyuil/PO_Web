@@ -607,9 +607,12 @@ document.head.appendChild(style);
                           td.onclick = function(e) {
                               if (e.target.classList.contains('more-btn')) return;
                               if (td.querySelector('input')) return;
+
                               td.style.width = td.offsetWidth + 'px';
+                              
                               const nameDiv = td.querySelector('.name-text');
                               if (!nameDiv) return;
+
                               const oldValue = nameDiv.innerText;
                               const id = td.parentElement.getAttribute('data-id');
                               const input = document.createElement('input');

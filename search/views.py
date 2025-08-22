@@ -96,7 +96,6 @@ class SearchAIResultView(View):
         print(region)
         print(detail_region)
         print(big_industry)
-        print(period)
         print(export)
         print(sales)
         print(employees)
@@ -127,6 +126,7 @@ class SearchAIResultView(View):
             empl = "중소기업"
 
                                     #    & Q(target__contains=empl)\
+        print(period)
 
 
         # detail_region이 포함된 데이터 먼저 검색 (정확한 일치만)
@@ -136,8 +136,7 @@ class SearchAIResultView(View):
                                             (Q(region__contains=region) | Q(region__contains="전국") | Q(hashtag__contains=region))\
                                            & (Q(possible_industry__contains=big_industry) | Q(possible_industry__contains='무관')) \
                                            & (Q(revenue__contains=sales) | Q(revenue__contains='무관')) \
-                                           & (Q(business_period__contains=period) | Q(possible_industry__contains='무관')) \
-                                           & (Q(export_performance__contains=export) | Q(export_performance__contains="무관"))\
+                                           & (Q(business_period__contains=period) | Q(business_period__contains='무관')) \
                                            & (
                                                # 상세지역이 포함된 경우만
                                                Q(noti_summary__contains=detail_region) | 
@@ -154,8 +153,7 @@ class SearchAIResultView(View):
                                             (Q(region__contains=region) | Q(region__contains="전국") | Q(hashtag__contains=region))\
                                            & (Q(possible_industry__contains=big_industry) | Q(possible_industry__contains='무관')) \
                                            & (Q(revenue__contains=sales) | Q(revenue__contains='무관')) \
-                                           & (Q(business_period__contains=period) | Q(possible_industry__contains='무관')) \
-                                           & (Q(export_performance__contains=export) | Q(export_performance__contains="무관"))\
+                                           & (Q(business_period__contains=period) | Q(business_period__contains='무관')) \
                                            ).exclude(
                                                # detail_region이 포함된 데이터 제외
                                                Q(noti_summary__contains=detail_region) | 
@@ -173,9 +171,9 @@ class SearchAIResultView(View):
             print(f"DEBUG: detail_region '{detail_region}' 포함되지 않았고 다른 상세지역도 없는 데이터: {data_without_detail.count()}개")
             
             # detail_region이 포함된 데이터가 20개 미만인 경우, 포함되지 않은 데이터도 추가
-            if data_with_detail.count() < 30:
+            if data_with_detail.count() < 100:
                 # 포함되지 않은 데이터에서 필요한 만큼 추가 (중복 제거)
-                needed_count = 30 - data_with_detail.count()
+                needed_count = 100 - data_with_detail.count()
                 additional_data = data_without_detail.exclude(
                     pblanc_id__in=data_with_detail.values_list('pblanc_id', flat=True)
                 )[:needed_count]

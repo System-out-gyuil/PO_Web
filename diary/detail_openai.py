@@ -781,7 +781,7 @@ def ai_chat(request):
                                                 if value and value != 0:
                                                     # 영어 키를 한글로 변환
                                                     korean_key = key_mapping.get(key, key)
-                                                    debt_summary.append(f"{korean_key}: {value:,}만원")
+                                                    debt_summary.append(f"{korean_key}: {value:,}억원")
                                             if debt_summary:
                                                 row_data[attr_name] = " | ".join(debt_summary)
                                     except Exception as e:

@@ -4614,7 +4614,7 @@ function showRecommendModal(title, message, isLoading, data = null, rowId = null
                             </div>
                             ${biz.noti_summary ? `
                                 <div style="margin-top: 10px; padding: 10px; background: white; border-radius: 4px; border-left: 3px solid #007bff;">
-                                    <strong>요약:</strong> ${biz.noti_summary}
+                                    <strong>사업개요:</strong> ${biz.content}
                                 </div>
                             ` : ''}
                             ${biz.hashtag ? `

@@ -2686,7 +2686,6 @@ function saveAttributeName(oldName, newName, editableDiv, nameText, editBtn, sor
         }
     })
     .catch(error => {
-        console.error('속성명 변경 오류:', error);
         alert('속성명 변경 중 오류가 발생했습니다.');
         cancelAttributeName(editableDiv, nameText, editBtn,
             editableDiv.querySelector('.attribute-name-input'),
