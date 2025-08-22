@@ -145,7 +145,7 @@ class SearchAIResultView(View):
                                                Q(title__contains=detail_region) |
                                                Q(region__contains=detail_region)
                                            )
-                                           )
+                                           ).order_by('-registered_at')
             
             # detail_region이 포함되지 않은 데이터 검색
             # 단, 다른 상세지역만 특정되어 있는 경우는 제외
@@ -165,12 +165,12 @@ class SearchAIResultView(View):
                                                # 다른 상세지역만 특정되어 있는 경우 제외
                                                # regionDetails에 정의된 실제 상세지역 목록을 기반으로 필터링
                                                self._build_detail_region_exclude_query(region, detail_region)
-                                           )
+                                           ).order_by('-registered_at')
             
             print(f"DEBUG: detail_region '{detail_region}' 포함된 데이터: {data_with_detail.count()}개")
             print(f"DEBUG: detail_region '{detail_region}' 포함되지 않았고 다른 상세지역도 없는 데이터: {data_without_detail.count()}개")
             
-            # detail_region이 포함된 데이터가 20개 미만인 경우, 포함되지 않은 데이터도 추가
+            # detail_region이 포함된 데이터가 100개 미만인 경우, 포함되지 않은 데이터도 추가
             if data_with_detail.count() < 100:
                 # 포함되지 않은 데이터에서 필요한 만큼 추가 (중복 제거)
                 needed_count = 100 - data_with_detail.count()
@@ -180,10 +180,12 @@ class SearchAIResultView(View):
                 
                 print(f"DEBUG: 추가할 데이터: {additional_data.count()}개")
                 
-                # 두 데이터셋 합치기
-                data = list(data_with_detail) + list(additional_data)
+                # 두 데이터셋 합치기 (최신순으로 정렬된 상태에서 100개로 제한)
+                data = list(data_with_detail[:100]) + list(additional_data)
+                # 최종적으로 100개로 제한
+                data = data[:100]
             else:
-                data = data_with_detail
+                data = list(data_with_detail[:100])
         else:
             # detail_region이 없는 경우 기존 로직 사용
             data = BizInfo.objects.filter(
@@ -192,7 +194,7 @@ class SearchAIResultView(View):
                                            & Q(revenue__contains=sales)\
                                            & Q(business_period__contains=period) \
                                            & (Q(export_performance__contains=export) | Q(export_performance__contains="무관"))\
-                                           )
+                                           ).order_by('-registered_at')[:100]
 
         datas = ''
         datas2 = []
