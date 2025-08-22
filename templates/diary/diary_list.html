@@ -54,14 +54,12 @@
             .then(data => {
                 if (!data.is_authenticated) {
                     // 로그인되지 않은 경우 로그인 페이지로 리다이렉트
-                    console.log('로그인 상태 확인: 로그인되지 않음, 로그인 페이지로 리다이렉트');
                     window.location.href = '/sales/login/';
                 }
             })
             .catch(error => {
                 // 로그아웃 중이 아닐 때만 오류 처리
                 if (!window.isLoggingOut && error.message !== '로그아웃 중') {
-                    console.error('로그인 상태 확인 오류:', error);
                     // 오류 발생 시에도 로그인 페이지로 리다이렉트
                     window.location.href = '/sales/login/';
                 }
@@ -87,14 +85,12 @@
         window.addEventListener('pageshow', function(event) {
             // 뒤로가기로 페이지가 로드된 경우
             if (event.persisted) {
-                console.log('뒤로가기 감지: 로그인 상태 확인');
                 checkLoginStatus();
             }
         });
         
         // 페이지 포커스 시 로그인 상태 확인 (브라우저 탭 전환 시)
         window.addEventListener('focus', function() {
-            console.log('페이지 포커스 감지: 로그인 상태 확인');
             checkLoginStatus();
         });
         
@@ -885,7 +881,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     }).catch(() => alert('순서 저장 중 오류 발생'));
                 }
             });
-            console.log('테이블 행 드래그앤드롭 초기화 완료');
         }
     }
     
@@ -899,11 +894,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // 상세보기 버튼 이벤트 바인딩
     setTimeout(() => {
         if (typeof bindDetailButtonEvents === 'function') {
-            console.log('페이지 로드 시 상세보기 버튼 이벤트 바인딩 시작...');
             bindDetailButtonEvents();
-            console.log('페이지 로드 시 상세보기 버튼 이벤트 바인딩 완료');
-        } else {
-            console.log('bindDetailButtonEvents 함수를 찾을 수 없습니다.');
         }
     }, 500);
 
@@ -1088,7 +1079,6 @@ function setupGlobalEventDelegation() {
         }
     });
     
-    console.log('전역 이벤트 위임 설정 완료');
 }
 
     
@@ -1107,7 +1097,6 @@ function showModalDropdownOptions(rowId, fieldName, btn) {
     fetch('/sales/dropdown_options/?field=' + encodeURIComponent(fieldName))
         .then(r => r.json())
         .then(function(data) {
-            console.log('showModalDropdownOptions 데이터:', data);
             if (!data.options) {
                 alert('드롭다운 옵션을 불러올 수 없습니다.');
                 return;
@@ -1159,7 +1148,6 @@ function showModalDropdownOptions(rowId, fieldName, btn) {
             
             // 새 옵션 추가 버튼
             const addBtn = dropdown.querySelector('.add-btn');
-            console.log('addBtn', addBtn);
             if (addBtn) {
                 addBtn.onclick = function() {
                     const input = dropdown.querySelector('input[type="text"]');
@@ -1208,7 +1196,6 @@ function showModalDropdownOptions(rowId, fieldName, btn) {
 
 // 모달용 드롭다운 옵션 선택 함수 (일반 드롭다운 속성용)
 function selectModalDropdownOption(rowId, fieldName, optionId, optionText, element) {
-    console.log('selectModalDropdownOption html 호출됨')
     // 서버에 업데이트 요청
     fetch('/sales/update_row_field/', {
         method: 'POST',
@@ -1223,7 +1210,6 @@ function selectModalDropdownOption(rowId, fieldName, optionId, optionText, eleme
             
             // 상태 필터가 활성화되어 있고, 변경된 필드가 상태 속성인 경우에만 즉시 필터 적용
             if (window.currentStatusTab !== null && fieldName === window.statusAttributeName) {
-                console.log('상태 속성 변경 감지, 안전한 필터 적용 시작');
                 
                 // 상태 셀 강제 업데이트
                 if (typeof forceUpdateStatusCellValue === 'function') {
@@ -1307,7 +1293,6 @@ function addNewModalDropdownOption(rowId, fieldName, newOption, element) {
             
             // 상태 속성인 경우 상태 탭 새로고침
             if (fieldName === window.statusAttributeName) {
-                console.log('상태 속성 옵션 추가됨, 상태 탭 새로고침 및 테이블 데이터 즉시 업데이트');
                 setTimeout(() => {
                     refreshStatusTabs();
                     
@@ -1347,7 +1332,6 @@ function deleteAllFiles(rowId, fieldName) {
     })
     .then(response => response.json())
     .then(data => {
-        console.log('파일 삭제 응답:', data);
         
         if (data.success) {
             alert('모든 파일이 성공적으로 삭제되었습니다.');
@@ -1372,7 +1356,6 @@ function deleteAllFiles(rowId, fieldName) {
         }
     })
     .catch(error => {
-        console.error('파일 삭제 오류:', error);
         alert('파일 삭제 중 오류가 발생했습니다.');
     });
 }
@@ -1391,7 +1374,6 @@ function handleAudioUpload(fileInput) {
         return;
     }
     
-    console.log('음성파일 업로드 시작:', file.name, file.size, file.type);
     
     // 업로드 진행 알림
     const uploadNotification = document.createElement('div');
@@ -1427,7 +1409,6 @@ function handleAudioUpload(fileInput) {
     })
     .then(response => response.json())
     .then(data => {
-        console.log('음성파일 처리 응답:', data);
         
         // 알림 제거
         uploadNotification.remove();
@@ -1500,7 +1481,6 @@ function handleAudioUpload(fileInput) {
         }
     })
     .catch(error => {
-        console.error('음성파일 처리 오류:', error);
         uploadNotification.remove();
         
         const errorNotification = document.createElement('div');
@@ -1570,38 +1550,9 @@ function saveConvertedText() {
         }
     })
     .catch(error => {
-        console.error('텍스트 저장 오류:', error);
         alert('텍스트 저장 중 오류가 발생했습니다.');
     });
 }
-
-// 알림 표시 함수
-{% comment %} function showNotification(message, type = 'info') {
-    const notification = document.createElement('div');
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: ${type === 'success' ? '#28a745' : type === 'error' ? '#dc3545' : '#007bff'};
-        color: white;
-        padding: 12px 20px;
-        border-radius: 5px;
-        z-index: 10000;
-        font-size: 14px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-    `;
-    notification.textContent = message;
-    
-    document.body.appendChild(notification);
-    
-    // 3초 후 자동 제거
-    setTimeout(() => {
-        if (notification.parentNode) {
-            notification.parentNode.removeChild(notification);
-        }
-    }, 3000);
-} {% endcomment %}
-    
     
 </script>
 
@@ -1743,23 +1694,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-{% comment %} function addTextArea() {
-    const audioFilesList = document.getElementById('audioFilesList');
-    const textAreaContainer = document.createElement('div');
-    textAreaContainer.className = 'draggable-text-area';
-    textAreaContainer.style.cssText = 'margin-top: 10px; padding: 10px; border: 1px solid #ccc; border-radius: 4px; cursor: move;';
-    
-    const textArea = document.createElement('textarea');
-    textArea.placeholder = '텍스트 입력...';
-    textArea.style.cssText = 'width: 100%; height: 50px;';
-    
-    textAreaContainer.appendChild(textArea);
-    audioFilesList.appendChild(textAreaContainer);
-} {% endcomment %}
-
 // 속성 관리 모달 열기
 function openAttributeVisibilityModal() {
-    console.log('속성 관리 모달 열기 - 캐시 초기화 및 새로운 데이터 받아오기');
     
     // 기존 캐시된 데이터 완전 초기화
     window.statusOptions = null;
@@ -1775,7 +1711,6 @@ function openAttributeVisibilityModal() {
 
 // 속성 표시/숨김 관리 모달 닫기
 function closeAttributeVisibilityModal() {
-    console.log('속성 관리 모달 닫기');
     const modal = document.getElementById('attributeVisibilityModal');
     modal.style.display = 'none';
 }
@@ -2002,16 +1937,12 @@ function toggleAttributeVisibility(attributeName, btn) {
 
 // 테이블 비동기 갱신 함수
 function refreshTable() {
-    console.log('=== refreshTable 함수 호출 시작 (diary_list.html) ===');
-    console.log('현재 window.currentStatusTab:', window.currentStatusTab);
     
     // 현재 상태 ID를 URL 파라미터로 전달
     const url = new URL('/sales/entry_table_partial/', window.location.origin);
     if (window.currentStatusTab !== null) {
         url.searchParams.set('status_id', window.currentStatusTab);
     }
-    
-    console.log('요청 URL:', url.toString());
     
     fetch(url, {
         method: 'GET',
@@ -2022,13 +1953,10 @@ function refreshTable() {
         cache: 'no-cache'
     })
         .then(response => {
-            console.log('서버 응답 상태:', response.status);
             return response.text();
         })
         .then(html => {
-            console.log('서버에서 받은 HTML 길이:', html.length);
             document.getElementById('tableView').innerHTML = html;
-            console.log('tableView 업데이트 완료');
             
             // 테이블 업데이트 완료 후 모든 이벤트 재초기화
             setTimeout(() => {
@@ -2177,7 +2105,6 @@ function refreshTable() {
                                     }).catch(() => alert('순서 저장 중 오류 발생'));
                                 }
                             });
-                            console.log('테이블 행 드래그앤드롭 재초기화 완료');
                         }
                     }, 400);
                 }
@@ -2317,14 +2244,12 @@ function refreshTable() {
                 
                 // === 새로 추가된 행으로 스크롤 처리 ===
                 if (window.scrollTableToTopAfterRefresh) {
-                    console.log('새로 생성된 행으로 스크롤 이동 시작 (상단으로)');
                     
                     setTimeout(() => {
                         // 방법 1: 테이블 컨테이너 스크롤 시도
                         const tableView = document.getElementById('tableView');
                         if (tableView) {
                             tableView.scrollTop = 0;
-                            console.log('테이블 컨테이너 스크롤 시도 - scrollTop:', tableView.scrollTop);
                         }
                         
                         // 방법 2: 페이지 전체 스크롤 (더 확실한 방법)
@@ -2338,29 +2263,24 @@ function refreshTable() {
                                     block: 'start',
                                     inline: 'nearest'
                                 });
-                                console.log('새로 생성된 행으로 스크롤 완료 (첫 번째 행으로)');
                             } else {
                                 // 첫 번째 행이 없으면 테이블 전체의 맨 위로 스크롤
                                 window.scrollTo({
                                     top: 0,
                                     behavior: 'smooth'
                                 });
-                                console.log('페이지 맨 위로 스크롤 완료');
                             }
                         }
                     }, 100);
                     
                     window.scrollTableToTopAfterRefresh = false;
-                    console.log('스크롤 플래그 초기화 완료');
                 }
                 
-                console.log('테이블 새로고침 후 모든 이벤트 재초기화 완료');
             }, 100);
 
             // === 정렬/필터 복원 추가 ===
             setTimeout(() => {
                 if (typeof restoreTableStateAfterRefresh === 'function') {
-                    console.log('[refreshTable] 테이블 상태 복원 호출');
                     restoreTableStateAfterRefresh();
                 }
             }, 500);
@@ -2499,7 +2419,6 @@ function refreshKanbanFilter() {
 
 // 캘린더 설정 비동기 업데이트 함수
 function refreshCalendarSettings() {
-    console.log('refreshCalendarSettings 호출됨');
     // 캘린더 설정 모달이 열려있다면 업데이트
     const calendarSettingsModal = document.getElementById('calendarSettingsModal');
     if (calendarSettingsModal && calendarSettingsModal.style.display === 'flex') {
@@ -2595,7 +2514,6 @@ let isDuplicating = false; // 중복 실행 방지 플래그
 function duplicateRow(rowId) {
     // 이미 복제 중이면 무시
     if (isDuplicating) {
-        console.log('복제가 이미 진행 중입니다.');
         return;
     }
     
@@ -2638,7 +2556,6 @@ function duplicateRow(rowId) {
         }
     })
     .catch(error => {
-        console.error('복제 오류:', error);
         showNotification('복제 중 오류가 발생했습니다.', 'error');
     })
     .finally(() => {
@@ -2845,42 +2762,32 @@ function handleExcelFileSelect(file) {
     const formData = new FormData();
     formData.append('excel_file', file);
     
-    console.log('파일 정보:', file.name, file.size, file.type);
-    console.log('FormData 내용:', formData);
-    
     // 파일 미리보기 요청
     fetch('/sales/preview_excel/', {
         method: 'POST',
         body: formData
     })
     .then(response => {
-        console.log('응답 상태:', response.status, response.statusText);
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
         return response.text(); // 먼저 텍스트로 받기
     })
     .then(text => {
-        console.log('서버 응답 텍스트:', text);
         try {
             // NaN 값을 null로 변환
             const cleanedText = text.replace(/:\s*NaN\s*([,}])/g, ': null$1');
             const data = JSON.parse(cleanedText);
-            console.log('서버 응답 JSON:', data);
             if (data.success) {
                 showExcelPreview(data.preview, data.columns, data.mapping, data.dropdown_info);
             } else {
                 alert('파일 처리 실패: ' + (data.error || '알 수 없는 오류'));
             }
         } catch (jsonError) {
-            console.error('JSON 파싱 오류:', jsonError);
-            console.error('원본 응답:', text);
             alert('서버 응답 형식 오류: ' + text.substring(0, 100));
         }
     })
     .catch(error => {
-        console.error('파일 처리 오류 상세:', error);
-        console.error('오류 스택:', error.stack);
         alert('파일 처리 중 오류가 발생했습니다: ' + error.message);
     });
 }
@@ -3055,7 +2962,6 @@ function updateCellValueWithStatusFilter(rowId, fieldName, value) {
 
 // 상태 탭 새로고침 함수 추가
 function refreshStatusTabs() {
-    console.log('상태 탭 새로고침 시작');
     
     // 현재 활성 탭 상태 저장
     const activeTab = document.querySelector('.status-tab.active');
@@ -3064,11 +2970,9 @@ function refreshStatusTabs() {
     fetch('/sales/get_status_tabs/')
         .then(response => response.json())
         .then(data => {
-            console.log('상태 탭 데이터 응답:', data);
             if (data.success) {
                 window.statusAttributeName = data.attribute_name;
                 window.statusOptions = data.options;
-                console.log('사용할 속성명:', window.statusAttributeName);
                 
                 // 기존 탭 컨테이너 초기화
                 const tabContainer = document.getElementById('tabContainer');
@@ -3108,7 +3012,6 @@ function refreshStatusTabs() {
                                 if (typeof loadFilteredData === 'function') {
                                     loadFilteredData(null);
                                 } else if (typeof refreshTable === 'function') {
-                                    console.log('전체 데이터로 테이블 새로고침');
                                     refreshTable();
                                 }
                             }
@@ -3125,7 +3028,6 @@ function refreshStatusTabs() {
                     }
                 }
                 
-                console.log('상태 탭 새로고침 완료');
             } else {
                 console.error('상태 탭 데이터 로드 실패:', data.error);
             }
@@ -3153,7 +3055,6 @@ function addNewModalDropdownOption(rowId, fieldName, newOption, element) {
             
             // 상태 속성인 경우 상태 탭 새로고침
             if (fieldName === window.statusAttributeName) {
-                console.log('상태 속성 옵션 추가됨, 상태 탭 새로고침 및 테이블 데이터 즉시 업데이트');
                 setTimeout(() => {
                     refreshStatusTabs();
                     
@@ -3180,7 +3081,6 @@ function setupDropdownUpdateListeners() {
     // 새로운 이벤트 리스너 추가
     document.addEventListener('dropdownOptionChanged', handleDropdownOptionChange);
     
-    console.log('드롭다운 업데이트 리스너 설정 완료');
 }
 
 
@@ -3194,7 +3094,6 @@ document.addEventListener('DOMContentLoaded', function() {
         generalBoardBtn.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            console.log('게시판 버튼 클릭됨 - 페이지 이동 시작');
             try {
                 window.location.href = '/sales/board_list/';
             } catch (error) {

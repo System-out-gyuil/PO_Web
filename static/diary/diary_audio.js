@@ -34,8 +34,6 @@ function updateAudioFileOrder(rowId, fileId, newOrder) {
 }
 
 function updateAudioFileManagement(audioFileValue) {
-  console.log('updateAudioFileManagement 호출됨:', audioFileValue);
-  console.log('audioFileValue 타입:', typeof audioFileValue);
   
   const audioFilesList = document.getElementById('audioFilesList');
   const noAudioFilesMessage = document.getElementById('noAudioFilesMessage');

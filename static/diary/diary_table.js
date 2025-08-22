@@ -32,7 +32,6 @@ function processDropdownOptions(options, value, cell) {
 function addNotificationToDetailButton(rowId, moreBtn) {
     // 이미 알림이 표시되어 있는지 확인
     if (moreBtn.querySelector('.notification-bell')) {
-        console.log(`행 ID ${rowId}: 이미 알림이 표시되어 있음`);
         return;
     }
     
@@ -212,7 +211,6 @@ document.head.appendChild(style);
                           saveNewRowField(td.parentElement, type, newValue);
                       } else {
                           // 기존 행인 경우
-                          console.log('update_row_field, 테이블3')
                           fetch('/sales/update_row_field/', {
                               method: 'POST',
                               headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -291,7 +289,6 @@ document.head.appendChild(style);
                               saveNewRowField(td.parentElement, type, newValue);
                           } else {
                               // 기존 행인 경우
-                              console.log('update_row_field, 테이블4')
                               fetch('/sales/update_row_field/', {
                                   method: 'POST',
                                   headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -341,10 +338,6 @@ document.head.appendChild(style);
           } else if (dataType === 'dropdown' || dataType === 'region' || dataType === 'region_detail') {
               // 드롭다운 필드 클릭 이벤트
               const clickHandler = function() {
-                  console.log('드롭다운 필드 클릭됨:', type, dataType);
-                  console.log('td 요소:', td);
-                  console.log('td의 data-field:', td.getAttribute('data-field'));
-                  console.log('td의 data-type:', td.getAttribute('data-type'));
                   
                   if (td.querySelector('.dropdown-edit')) return;
                   
@@ -355,26 +348,16 @@ document.head.appendChild(style);
                   const currentSubregion = td.getAttribute('data-subregion');
                   const tr = td.parentElement;
                   
-                  console.log('클릭 핸들러 내부 - currentValue:', currentValue, 'currentSubregion:', currentSubregion);
                   
                   if (dataType === 'region') {
-                      console.log('지역 드롭다운 처리 (기존 행)');
                       const regionValue = td.parentElement.querySelector('td[data-field="지역"]');
                       const regionText = regionValue ? regionValue.innerText.trim() : '';
-                      console.log('지역 텍스트:', regionText);
-                      console.log('openDropdown 함수 호출 전');
                       openDropdown(td, 'region', tr.getAttribute('data-id'), regionText, '');
-                      console.log('openDropdown 함수 호출 후');
                   } else if (dataType === 'region_detail') {
-                      console.log('상세지역 드롭다운 처리 (기존 행)');
                       const regionTd = td.parentElement.querySelector('td[data-field="지역"]');
                       const regionValue = regionTd ? regionTd.innerText.trim() : '';
-                      console.log('상세지역 - 지역 값:', regionValue);
-                      console.log('openDropdown 함수 호출 전');
                       openDropdown(td, 'region_detail', tr.getAttribute('data-id'), regionValue, currentValue);
-                      console.log('openDropdown 함수 호출 후');
                   } else {
-                      console.log('일반 드롭다운 처리 (기존 행)');
                       openNewRowAttributeDropdown(td, type, currentValue, currentSubregion, tr);
                   }
               };
@@ -531,7 +514,6 @@ document.head.appendChild(style);
                           saveNewRowField(td.parentElement, type, newValue);
                       } else {
                           // 기존 행인 경우
-                          console.log('update_row_field, 메모 필드')
                           fetch('/sales/update_row_field/', {
                               method: 'POST',
                               headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -1714,7 +1696,6 @@ document.head.appendChild(style);
   
   // 새 행용 드롭다운 함수 (Attribute 시스템)
   function openNewRowAttributeDropdown(td, type, currentValue, currentSubregion, tr) {
-      console.log('openNewRowAttributeDropdown 호출:', type, currentValue);
       
       // 기존 dropdown_manager.js의 openDropdown 함수 사용
       if (typeof openDropdown === 'function') {
@@ -2609,7 +2590,6 @@ document.head.appendChild(style);
 
   // 새로 만들기 버튼 이벤트 바인딩
   window.addNewRow = function() {
-      console.log('=== addNewRow 함수 호출 시작 ===');
       
       // 중복 클릭 방지를 위한 전역 변수
       if (window.isAddingNewRow) {
@@ -2691,37 +2671,24 @@ document.head.appendChild(style);
                       return response.json(); 
                   })
                   .then(function(data) {
-                      console.log('서버 응답 데이터:', data);
                       if (data.success) {
-                          console.log('새 행 생성 성공! 새 행 ID:', data.id);
-                          
-                          // diary_list.html의 refreshTable 함수 호출
-                          console.log('refreshTable 함수 호출 시도...');
-                          console.log('typeof refreshTable:', typeof refreshTable);
-                          console.log('typeof window.refreshTable:', typeof window.refreshTable);
                           
                           let refreshFunction = null;
                           if (typeof refreshTable === 'function') {
                               refreshFunction = refreshTable;
-                              console.log('refreshTable 함수를 직접 사용');
                           } else if (typeof window.refreshTable === 'function') {
                               refreshFunction = window.refreshTable;
-                              console.log('window.refreshTable 함수를 사용');
                           }
                           
                           if (refreshFunction) {
-                              console.log('refreshTable 함수 호출 시작...');
                               try {
                                   refreshFunction();
-                                  console.log('refreshTable 함수 호출 완료');
                               } catch (error) {
                                   console.error('refreshTable 함수 실행 중 오류:', error);
-                                  console.log('오류로 인해 location.reload() 호출');
                                   location.reload();
                               }
                           } else {
                               console.error('refreshTable 함수가 정의되지 않음');
-                              console.log('location.reload() 호출');
                               location.reload();
                           }
                       } else {
@@ -2735,7 +2702,6 @@ document.head.appendChild(style);
                   })
                   .finally(function() {
                       window.isAddingNewRow = false;
-                      console.log('=== addNewRow 함수 완료 ===');
                   });
               }
       }
@@ -2749,7 +2715,6 @@ document.head.appendChild(style);
 
   // 기존 데이터 정리 함수
   function cleanupExistingData() {
-      console.log('기존 데이터 정리 시작');
       // 모든 드롭다운 필드의 data-value를 확인하고 정리
       const dropdownFields = getDropdownFields();
       dropdownFields.forEach(field => {
@@ -2788,7 +2753,6 @@ document.head.appendChild(style);
               }
           });
       });
-      console.log('기존 데이터 정리 완료');
   }
 
   // 페이지 로드 시 데이터 정리
@@ -2813,7 +2777,6 @@ document.head.appendChild(style);
 
   // === 다중선택 드롭다운 셀을 옵션명 pill로 변환하는 함수 ===
   function renderDropdownPills() {
-      console.log('renderDropdownPills 함수 시작');
       
       // 다중선택 드롭다운 필드 목록 동적 추출
       const dropdownFields = getDropdownFields();
@@ -2876,14 +2839,12 @@ document.head.appendChild(style);
           });
       });
       
-      console.log('renderDropdownPills 함수 완료');
   }
 
   
   
   // 행 드래그앤드롭 재초기화 함수
   function reinitializeRowDragDrop() {
-      console.log('행 드래그앤드롭 재초기화 시작');
       
       // 기존 Sortable 인스턴스 제거
       if (window.rowSortable) {
@@ -2911,9 +2872,6 @@ document.head.appendChild(style);
                           }).catch(() => alert('순서 저장 중 오류 발생'));
                       }
                   });
-                  console.log('행 드래그앤드롭 재초기화 완료');
-              } else {
-                  console.log('tbody 또는 Sortable을 찾을 수 없음');
               }
           } catch (error) {
               console.error('행 드래그앤드롭 재초기화 오류:', error);
@@ -2977,7 +2935,6 @@ function deleteAttribute(attrName) {
 
 // 속성 관리 모달 닫기
 function closeAttributeVisibilityModal() {
-    console.log('속성 관리 모달 닫기');
     const modal = document.getElementById('attributeVisibilityModal');
     modal.style.display = 'none';
 }
@@ -3549,7 +3506,6 @@ function setTableEditingState(editing) {
     if (editing) {
         console.log('테이블 편집 모드 활성화 - 칸반보드 업데이트 일시 중지');
     } else {
-        console.log('테이블 편집 모드 비활성화 - 칸반보드 업데이트 재개');
         // 편집이 끝나면 대기 중인 칸반보드 업데이트 처리
         if (pendingKanbanUpdates.size > 0) {
             const nextUpdate = Array.from(pendingKanbanUpdates)[0];
@@ -3862,7 +3818,6 @@ function makeCompanyNameSticky() {
         }
     });
     
-    console.log(`회사명 컬럼 ${companyNameCells.length}개 sticky 설정 완료`);
 }
 
 // sticky 상태에 따른 테두리 스타일을 추가하는 함수

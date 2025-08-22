@@ -279,7 +279,6 @@ function loadStatusTabsForModal() {
 
 // 모달용 상태 탭 생성
 function createStatusTabsForModal(options) {
-  console.log('모달용 상태 탭 생성:', options);
   const container = document.getElementById('statusTabsContainer');
   if (!container) {
       console.error('statusTabsContainer를 찾을 수 없습니다.');

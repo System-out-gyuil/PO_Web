@@ -535,8 +535,6 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // 이벤트 리스너 등록
         menuBtn.addEventListener('click', menuClickHandler);
-    } else {
-        console.error('메뉴 버튼을 찾을 수 없습니다!');
     }
     
     // 알림 배지 초기화

@@ -458,9 +458,6 @@ function generateDetailModalContent(attributes, rowData, rowId) {
                 filesData.forEach((fileInfo, index) => {
                     const displayFileName = fileInfo.original_filename || fileInfo.stored_filename || fileInfo.filename || 'unknown';
                     
-                    // 디버깅: 각 파일 정보 로그
-                    console.log(`파일 ${index}:`, fileInfo);
-                    console.log(`파일 ${index} displayFileName:`, displayFileName);
                     
                     // 파일의 고유 ID 생성 (기존 ID가 없으면 stored_filename 사용)
                     const fileId = fileInfo.id || fileInfo.stored_filename || `file_${index}`;
@@ -3906,29 +3903,20 @@ function bindCheckboxEvents() {
         };
     });
     
-    console.log(`개별 체크박스 ${rowCheckboxes.length}개 이벤트 바인딩 완료`);
 }
 
 // 상세보기 버튼 이벤트 바인딩 함수
 function bindDetailButtonEvents() {
-    console.log('=== bindDetailButtonEvents 함수 시작 ===');
     
     // 회사명 셀의 상세보기 버튼들
     const moreButtons = document.querySelectorAll('td[data-field="회사명"] .more-btn');
     
     if (moreButtons.length === 0) {
-        console.log('상세보기 버튼을 찾을 수 없습니다. DOM 구조 확인 필요.');
         // DOM 구조 디버깅
         const companyCells = document.querySelectorAll('td[data-field="회사명"]');
-        console.log(`회사명 셀 개수: ${companyCells.length}`);
         companyCells.forEach((cell, index) => {
             const nameContainer = cell.querySelector('.name-container');
             const moreBtn = cell.querySelector('.more-btn');
-            console.log(`회사명 셀 ${index}:`, {
-                hasNameContainer: !!nameContainer,
-                hasMoreBtn: !!moreBtn,
-                cellHTML: cell.innerHTML.substring(0, 100) + '...'
-            });
         });
         return;
     }
@@ -3960,13 +3948,11 @@ function bindDetailButtonEvents() {
         
         // 새 버튼에 단일 이벤트만 바인딩
         newBtn.addEventListener('click', function(e) {
-            console.log(`상세보기 버튼 ${index} 클릭됨!`);
             e.stopPropagation();
             e.preventDefault();
             
             const tr = this.closest('tr');
             const id = tr.getAttribute('data-id') || tr.getAttribute('data-row-id');
-            console.log(`클릭된 행 ID: ${id}`);
             
             if (!id) { 
                 console.error('ID 정보가 없습니다.');
@@ -3974,12 +3960,8 @@ function bindDetailButtonEvents() {
                 return; 
             }
             
-            console.log(`상세보기 버튼 클릭: ID = ${id}`);
-            console.log('fetch 요청 시작...');
-            
             fetch('/sales/get_row_details/' + id + '/')
                 .then(r => {
-                    console.log('fetch 응답 받음:', r.status);
                     return r.json();
                 })
                 .then(function(data) {
@@ -3998,12 +3980,10 @@ function bindDetailButtonEvents() {
         processedCount++;
     });
     
-    console.log(`=== bindDetailButtonEvents 완료: 처리됨 ${processedCount}개, 건너뜀 ${skippedCount}개 ===`);
 }
 
 // 종속된 행들을 찾아서 업데이트하는 함수
 function updateDependentRows(updatedRowId, fieldName, value) {
-    console.log('종속된 행들 업데이트 시작:', {updatedRowId, fieldName, value});
     
     // 드롭다운 필드인지 확인
     const dropdownFields = (window.ATTR_FIELDS || [])
@@ -4021,13 +4001,11 @@ function updateDependentRows(updatedRowId, fieldName, value) {
     .then(response => response.json())
     .then(data => {
         if (data.success && data.dependent_rows) {
-            console.log('종속된 행들:', data.dependent_rows);
             
             // 드롭다운 필드가 아닌 경우 즉시 업데이트
             if (!isDropdownField) {
                 data.dependent_rows.forEach(depRow => {
                     if (depRow.row_id && depRow.field && depRow.value !== undefined) {
-                        console.log('종속된 행 업데이트:', depRow);
                         if (typeof updateTableCell === 'function') {
                             updateTableCell(depRow.row_id, depRow.field, depRow.value);
                         }
@@ -4045,7 +4023,6 @@ function updateDependentRows(updatedRowId, fieldName, value) {
                         
                         data.dependent_rows.forEach(depRow => {
                             if (depRow.row_id && depRow.field && depRow.value !== undefined) {
-                                console.log('종속된 행 업데이트:', depRow);
                                 
                                 let displayValue = depRow.value;
                                 if (depRow.value && !isNaN(depRow.value)) {
@@ -4228,8 +4205,6 @@ if (!window.downloadFileWithFreshUrl) {
             alert('row_id가 없습니다.');
             return;
         }
-        console.log(fileId, fileName);
-        console.log('window.currentDetailRowId', window.currentDetailRowId);
         fetch(`/sales/download_file/${fileId}/?row_id=${window.currentDetailRowId}`)
             .then(response => response.json())
             .then(data => {
@@ -4296,7 +4271,6 @@ async function checkKanbanAndRefresh(fieldName) {
     
     // 해당 필드가 관련 속성인 경우 칸반보드 리프레시
     if (allRelevantAttrs.includes(fieldName)) {
-        console.log('칸반보드 관련 속성이 변경되어 새로고침합니다:', fieldName);
         if (typeof refreshKanban === 'function') {
             refreshKanban();
         }
@@ -4349,7 +4323,6 @@ function getBizRecommendations(rowId) {
 
 // 추천 지원사업을 위한 필수 필드 유효성 검사 함수
 function validateRequiredFieldsForBizRecommendation(rowId) {
-    console.log('=== 추천 지원사업 필수 필드 유효성 검사 시작 ===');
     
     const requiredFields = ['지역', '상세지역', '업종', '매출', '개업년월'];
     const missingFields = [];
@@ -4357,11 +4330,9 @@ function validateRequiredFieldsForBizRecommendation(rowId) {
     const detailModal = document.getElementById('detailModal');
     
     if (detailModal && detailModal.style.display !== 'none') {
-        console.log('모달이 열려있음 - 모달 내 검증 시작');
         
         // 각 필수 필드 검증
         for (const fieldName of requiredFields) {
-            console.log(`\n--- ${fieldName} 필드 검증 시작 ---`);
             
             if (fieldName === '지역' || fieldName === '상세지역') {
                 // 지역과 상세지역은 특별한 버튼 형태로 처리
@@ -4376,14 +4347,12 @@ function validateRequiredFieldsForBizRecommendation(rowId) {
                 });
                 
                 if (!hasValidRegion) {
-                    console.log(`${fieldName} - 누락됨`);
                     missingFields.push(fieldName);
                     // 지역 관련 버튼들에 빨간 테두리 표시
                     regionButtons.forEach(btn => {
                         highlightRequiredField(btn, true);
                     });
                 } else {
-                    console.log(`${fieldName} - 정상`);
                     // 정상인 경우 원래 스타일로 복원
                     regionButtons.forEach(btn => {
                         highlightRequiredField(btn, false);
@@ -4392,47 +4361,27 @@ function validateRequiredFieldsForBizRecommendation(rowId) {
                 
             } else if (fieldName === '업종') {
                 const industrySelect = detailModal.querySelector('select[onchange*="업종"]');
-                console.log('업종 select 요소:', {
-                    found: !!industrySelect,
-                    value: industrySelect ? industrySelect.value : 'N/A'
-                });
                 
                 if (industrySelect && (!industrySelect.value || industrySelect.value === '')) {
-                    console.log('업종 - 누락됨');
                     missingFields.push(fieldName);
                     // 빨간 테두리 표시
                     highlightRequiredField(industrySelect, true);
                 } else if (industrySelect) {
-                    console.log('업종 - 정상');
                     // 정상인 경우 원래 스타일로 복원
                     highlightRequiredField(industrySelect, false);
                 } else {
-                    console.log('업종 select를 찾을 수 없음');
                     missingFields.push(fieldName);
                 }
                 
             } else if (fieldName === '매출') {
-                console.log('매출 필드 특별 처리 시작');
                 
                 // sales-field-container를 직접 찾기
                 const salesContainer = detailModal.querySelector('.sales-field-container[data-field="매출"]');
                 const salesInput = detailModal.querySelector('input[data-field="매출"]');
                 
-                console.log('매출 필드 검색 결과:', {
-                    salesContainer: !!salesContainer,
-                    salesInput: !!salesInput
-                });
-                
                 if (salesContainer) {
                     const rawValue = salesContainer.getAttribute('data-raw');
                     const displayText = salesContainer.textContent.trim();
-                    
-                    console.log('매출 컨테이너 검증 디버깅:', {
-                        rawValue: rawValue,
-                        displayText: displayText,
-                        hasDataRaw: salesContainer.hasAttribute('data-raw'),
-                        containerHTML: salesContainer.innerHTML
-                    });
                     
                     // 더 정확한 검증 로직
                     const hasValidValue = (
@@ -4444,25 +4393,18 @@ function validateRequiredFieldsForBizRecommendation(rowId) {
                         displayText !== ''
                     );
                     
-                    console.log('매출 컨테이너 유효성 검사 결과:', hasValidValue);
                     
                     if (!hasValidValue) {
-                        console.log('매출 - 누락됨 (컨테이너)');
                         missingFields.push(fieldName);
                         // 빨간 테두리 표시
                         highlightRequiredField(salesContainer, true);
                     } else {
-                        console.log('매출 - 정상 (컨테이너)');
                         // 정상인 경우 원래 스타일로 복원
                         highlightRequiredField(salesContainer, false);
                     }
                 } else if (salesInput) {
                     // input 형태의 매출 필드 처리
                     const inputValue = salesInput.value.trim();
-                    console.log('매출 input 검증 디버깅:', {
-                        inputValue: inputValue,
-                        inputType: salesInput.type
-                    });
                     
                     const hasValidInputValue = (
                         inputValue && 
@@ -4472,20 +4414,16 @@ function validateRequiredFieldsForBizRecommendation(rowId) {
                         parseInt(inputValue.replace(/[^\d]/g, ''), 10) > 0
                     );
                     
-                    console.log('매출 input 유효성 검사 결과:', hasValidInputValue);
                     
                     if (!hasValidInputValue) {
-                        console.log('매출 - 누락됨 (input)');
                         missingFields.push(fieldName);
                         // 빨간 테두리 표시
                         highlightRequiredField(salesInput, true);
                     } else {
-                        console.log('매출 - 정상 (input)');
                         // 정상인 경우 원래 스타일로 복원
                         highlightRequiredField(salesInput, false);
                     }
                 } else {
-                    console.log('매출 필드를 찾을 수 없음');
                     missingFields.push(fieldName);
                 }
                 
@@ -4506,43 +4444,33 @@ function validateRequiredFieldsForBizRecommendation(rowId) {
                         );
                         
                         if (!hasValidValue) {
-                            console.log('개업년월 - 누락됨');
                             missingFields.push(fieldName);
                             // 빨간 테두리 표시
                             highlightRequiredField(businessElement, true);
                         } else {
-                            console.log('개업년월 - 정상');
                             // 정상인 경우 원래 스타일로 복원
                             highlightRequiredField(businessElement, false);
                         }
                     } catch (e) {
-                        console.log('개업년월 데이터 파싱 오류:', e);
                         missingFields.push(fieldName);
                         highlightRequiredField(businessElement, true);
                     }
                 } else {
-                    console.log('개업년월 필드를 찾을 수 없음');
                     missingFields.push(fieldName);
                 }
             }
         }
         
-        console.log('\n=== 모달 내 검증 완료 ===');
-        console.log('누락된 필드들:', missingFields);
-        
     } else {
-        console.log('모달이 닫혀있음 - 서버에서 데이터 가져와서 검증');
         
         // 모달이 닫혀있는 경우 서버에서 데이터를 가져와서 확인
         return new Promise((resolve) => {
             fetch(`/sales/get_row_details/${rowId}/`)
                 .then(response => response.json())
                 .then(data => {
-                    console.log('서버 응답:', data);
                     
                     if (data.success) {
                         const rowData = data.row_data;
-                        console.log('행 데이터:', rowData);
                         
                         // 필수값 확인
                         if (!rowData['지역'] || rowData['지역'] === '') {
@@ -4585,7 +4513,6 @@ function validateRequiredFieldsForBizRecommendation(rowId) {
                             missingFields.push('개업년월');
                         }
                         
-                        console.log('서버 검증 결과 - 누락된 필드들:', missingFields);
                         
                         // 필수값이 누락된 경우 알림 표시
                         if (missingFields.length > 0) {
@@ -4608,17 +4535,11 @@ function validateRequiredFieldsForBizRecommendation(rowId) {
         });
     }
     
-    // 모달이 열려있는 경우 즉시 검증
-    console.log('\n=== 최종 검증 결과 ===');
-    console.log('누락된 필드들:', missingFields);
-    
     if (missingFields.length > 0) {
-        console.log('필수값 누락 - 알림 표시');
         showNotification(`다음 필수 항목을 입력해주세요: ${missingFields.join(', ')}`, 'error');
         return false;
     }
     
-    console.log('모든 필수값 확인됨 - 추천 요청 진행');
     return true;
 }
 
@@ -4639,7 +4560,6 @@ function getSavedBizRecommendations(rowId) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            console.log('저장된 추천 지원사업 데이터:', data);
             // 데이터가 실제로 있는지 확인
             if (data.data && data.data.length > 0) {
                 showRecommendModal('저장된 추천 지원사업', '', false, data.data, rowId, 'view');
@@ -4657,7 +4577,6 @@ function getSavedBizRecommendations(rowId) {
 }
 
 function showRecommendModal(title, message, isLoading, data = null, rowId = null, type = null) {
-    console.log('showRecommendModal 호출됨:', { title, message, isLoading, data, rowId, type });
     // 기존 모달이 있으면 제거
     const existingModal = document.getElementById('recommendModal');
     if (existingModal) {
@@ -4825,7 +4744,6 @@ function saveSelectedRecommendations(rowId) {
         }
     })
     .catch(error => {
-        console.error('Error:', error);
         modalBody.innerHTML = `
             <div style="text-align: center; padding: 40px;">
                 <div style="color: #dc3545; font-size: 48px; margin-bottom: 20px;">✗</div>
@@ -4937,7 +4855,6 @@ function openRecommendModalWithAlertClear(rowId, type) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            console.log('알림 제거 성공:', data.message);
             
             // 상세보기 모달의 버튼에서 빨간 동그라미 제거
             const detailButton = document.querySelector(`button[onclick*="openRecommendModalWithAlertClear('${rowId}', 'view')"]`);

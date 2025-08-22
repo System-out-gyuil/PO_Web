@@ -41,7 +41,6 @@ function initializeColumnDragDrop(force) {
     }
     
     isColumnDragInitialized = true;
-    console.log('컬럼 드래그앤드롭 초기화 완료');
 }
 
 // 컬럼 드래그 이벤트 바인딩
@@ -277,7 +276,6 @@ function reinitializeDragDrop() {
     setTimeout(() => {
         try {
             initializeColumnDragDrop(true);
-            console.log('드래그앤드롭 재초기화 완료');
         } catch (error) {
             console.error('드래그앤드롭 재초기화 오류:', error);
         }

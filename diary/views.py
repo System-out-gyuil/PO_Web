@@ -419,8 +419,6 @@ def diary_list(request):
             else:
                 # 캐시에 없는 경우에만 쿼리 실행
                 dropdown_options[attr.name] = list(attr.dropdown_attributes.values('id', 'option', 'color', 'order').order_by('order'))
-    
-    
 
     context = {
         'rows': rows_data,

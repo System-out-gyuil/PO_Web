@@ -16,20 +16,14 @@ function generateRandomColor() {
 }
 
 function closeAllDropdowns() {
-    console.log('모든 드롭다운 닫기 실행');
-    console.trace('closeAllDropdowns 호출 스택');
     
     // 지역/상세지역 드롭다운 보호 로직
     const regionDropdowns = document.querySelectorAll('.dropdown-edit[data-region-type]');
     if (regionDropdowns.length > 0) {
-        console.log('지역/상세지역 드롭다운이 열려있음, 보호 모드로 닫기');
-        console.log('현재 열린 지역 드롭다운들:', regionDropdowns);
         // 지역 드롭다운은 즉시 닫지 않고 약간의 지연 후 닫기
         setTimeout(() => {
-            console.log('지연 후 지역 드롭다운 닫기 실행');
             // 전역 dropdown 변수 정리
             if (window.dropdown && window.dropdown.parentNode) {
-                console.log('window.dropdown 제거');
                 window.dropdown.parentNode.removeChild(window.dropdown);
                 window.dropdown = null;
             }
@@ -37,7 +31,6 @@ function closeAllDropdowns() {
             // 모든 드롭다운 요소들 제거
             document.querySelectorAll('.dropdown-edit').forEach(el => {
                 if (el.parentNode) {
-                    console.log('드롭다운 요소 제거:', el);
                     el.parentNode.removeChild(el);
                 }
             });
@@ -70,7 +63,6 @@ function closeAllDropdowns() {
     // 모든 드롭다운 요소들 제거
     document.querySelectorAll('.dropdown-edit').forEach(el => {
         if (el.parentNode) {
-            console.log('드롭다운 요소 제거 (일반 모드):', el);
             el.parentNode.removeChild(el);
         }
     });
@@ -78,7 +70,6 @@ function closeAllDropdowns() {
     // 모든 모달 드롭다운 제거
     document.querySelectorAll('[id^="modal-"]').forEach(el => {
         if (el.parentNode) {
-            console.log('모달 드롭다운 제거 (일반 모드):', el);
             el.parentNode.removeChild(el);
         }
     });
@@ -120,14 +111,6 @@ function addGlobalClickHandler(dropdown, triggerElement) {
         // 지역/상세지역 드롭다운인 경우 특별한 보호 로직 적용
         const isRegionDropdown = dropdown && dropdown.getAttribute('data-region-type');
         
-        console.log('전역 클릭 핸들러 실행:', {
-            target: e.target,
-            isRegionDropdown: isRegionDropdown,
-            dropdown: dropdown,
-            triggerElement: triggerElement,
-            dropdownContainsTarget: dropdown && dropdown.contains(e.target),
-            triggerContainsTarget: triggerElement && triggerElement.contains(e.target)
-        });
         
         // 드롭다운 내부의 컨트롤 버튼들 클릭 시에는 닫지 않음
         const isControlButton = e.target.closest('input[type="color"]') || 
@@ -137,7 +120,6 @@ function addGlobalClickHandler(dropdown, triggerElement) {
                                e.target.closest('.new-option-input');
         
         if (isControlButton) {
-            console.log('컨트롤 버튼 클릭 감지, 드롭다운 유지');
             return;
         }
         
@@ -169,7 +151,6 @@ function addGlobalClickHandler(dropdown, triggerElement) {
     // 지역/상세지역 드롭다운인 경우 더 긴 지연 시간 적용
     const delay = dropdown && dropdown.getAttribute('data-region-type') ? 500 : 100; // 300ms에서 500ms로 증가
     
-    console.log('전역 클릭 핸들러 등록:', {delay, isRegionDropdown: dropdown && dropdown.getAttribute('data-region-type')});
     
     setTimeout(() => {
         document.addEventListener('mousedown', globalClickHandler);
@@ -177,18 +158,15 @@ function addGlobalClickHandler(dropdown, triggerElement) {
 }
 
 function openDropdown(td, type, id, currentId, currentSubregion) {
-    console.log('openDropdown 호출됨:', {td, type, id, currentId, currentSubregion});
     
     // 이미 같은 셀에서 드롭다운이 열려있는지 확인
     if (currentOpenDropdown && currentTriggerElement === td) {
-        console.log('같은 셀에서 이미 드롭다운이 열려있음, 닫기만 실행');
         closeAllDropdowns();
         return;
     }
     
     // 기존 드롭다운이 열려있고 다른 셀에서 클릭한 경우, 기존 드롭다운을 먼저 닫고 새 드롭다운 생성
     if (currentOpenDropdown && currentTriggerElement !== td) {
-        console.log('다른 셀에서 드롭다운 클릭, 기존 드롭다운 닫고 새 드롭다운 생성');
         // 기존 드롭다운을 즉시 닫기
         if (window.dropdown && window.dropdown.parentNode) {
             window.dropdown.parentNode.removeChild(window.dropdown);
@@ -312,7 +290,6 @@ function createNewDropdown(td, type, id, currentId, currentSubregion) {
         color: '#333'
     });
     
-    console.log('드롭다운 위치 설정:', {top: adjustedTop, left: adjustedLeft, cellWidth: rect.width});
     
     // 전역 클릭 핸들러 추가
     addGlobalClickHandler(currentDropdown, td);
@@ -693,7 +670,6 @@ function createNewDropdown(td, type, id, currentId, currentSubregion) {
         
     } else {
         // 일반 드롭다운 (구분, 영업진행 등) 및 지역/상세지역 처리
-        console.log('일반 드롭다운 처리 시작:', {type, id});
         
         let options = [];
         
@@ -719,7 +695,6 @@ function createNewDropdown(td, type, id, currentId, currentSubregion) {
             fetch('/sales/dropdown_options/?field=' + encodeURIComponent(type))
                 .then(r => r.json())
                 .then(function(data) {
-                    console.log('드롭다운 옵션 로드됨:', data);
                     
                     if (data.options) {
                         options = data.options;
@@ -1013,7 +988,6 @@ function processModalDropdownOptions(data, rowId, fieldName, btn) {
             e.stopPropagation();
             const optionId = this.getAttribute('data-color-edit');
             const newColor = this.value;
-            console.log('모달 색상 변경 요청:', optionId, newColor);
             updateModalDropdownOptionColor(fieldName, optionId, newColor);
         });
     });
@@ -1023,14 +997,12 @@ function processModalDropdownOptions(data, rowId, fieldName, btn) {
         editBtn.addEventListener('mousedown', function(e) {
             e.stopPropagation();
             e.preventDefault();
-            console.log('수정 버튼 mousedown:', this.getAttribute('data-edit'));
         });
         
         editBtn.addEventListener('click', function(e) {
             e.stopPropagation();
             e.preventDefault();
             const optionId = this.getAttribute('data-edit');
-            console.log('모달 수정 버튼 클릭됨:', optionId);
             editModalDropdownOption(fieldName, optionId);
         });
     });
@@ -1949,11 +1921,6 @@ function selectModalDropdownOption(rowId, fieldName, optionId, optionText, btn, 
                 saveNewRowField(td.parentElement, type, optionId);
                 this.dataset.processing = 'false';
             } else {
-                console.log('update_row_field_modal2');
-                console.log('전송할 값:', {optionId, type, id});
-                console.log('optionId 타입:', typeof optionId);
-                console.log('optionId 길이:', optionId.length);
-                console.log('optionId === "":', optionId === '');
                 
                 fetch('/sales/update_row_field/', {
                     method: 'POST',
@@ -2028,7 +1995,6 @@ function selectModalDropdownOption(rowId, fieldName, optionId, optionText, btn, 
                 e.stopPropagation();
                 const optionId = this.getAttribute('data-color-edit');
                 const newColor = this.value;
-                console.log('색상 변경됨:', optionId, newColor);
                 
                 // 서버에 색상 업데이트 요청
                 updateDropdownOptionColor(type, optionId, newColor, td, currentDropdown);
@@ -2048,7 +2014,6 @@ function selectModalDropdownOption(rowId, fieldName, optionId, optionText, btn, 
                 e.stopPropagation();
                 e.preventDefault();
                 const optionId = this.getAttribute('data-edit');
-                console.log('수정 버튼 클릭됨:', optionId);
                 
                 // 옵션 수정 처리
                 editDropdownOption(type, optionId, td, currentDropdown);
@@ -2545,7 +2510,6 @@ function editModalDropdownOption(fieldName, optionId) {
 
 // 상세보기 모달용 드롭다운 옵션 이름 업데이트 함수
 function updateModalDropdownOptionName(fieldName, optionId, newName) {
-    console.log('모달 옵션 이름 업데이트 요청:', fieldName, optionId, newName);
     
     fetch('/sales/dropdown_options/?field=' + encodeURIComponent(fieldName) + '&id=' + optionId + '&name=' + encodeURIComponent(newName), {
         method: 'PUT',
@@ -2853,6 +2817,5 @@ function addModalDropdownOption(fieldName, optionName) {
 function handleDropdownOptionChange(event) {
     const { fieldName, newValue, rowId } = event.detail;
     
-    console.log('드롭다운 옵션 변경 감지:', { fieldName, newValue, rowId });
     
 }
