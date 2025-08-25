@@ -67,7 +67,7 @@ function WatingNoneSearchResult() {
 // 지역별 상세지역 데이터
 const regionDetails = {
   "서울": ["강남구", "강동구", "강북구", "강서구", "관악구", "광진구", "구로구", "금천구", "노원구", "도봉구", "동대문구", "동작구", "마포구", "서대문구", "서초구", "성동구", "성북구", "송파구", "양천구", "영등포구", "용산구", "은평구", "종로구", "중구", "중랑구"],
-  "경기": ["수원시", "성남시", "의정부시", "안양시", "부천시", "광명시", "평택시", "동두천시", "안산시", "고양시", "과천시", "구리시", "남양주시", "오산시", "시흥시", "군포시", "의왕시", "하남시", "용인시", "파주시", "이천시", "안성시", "김포시", "화성시", "광주시", "여주시", "양평군", "고양군", "연천군", "포천군", "가평군"],
+  "경기": ["수원시", "성남시", "의정부시", "안양시", "부천시", "광명시", "평택시", "동두천시", "안산시", "고양시", "과천시", "구리시", "남양주시", "오산시", "시흥시", "군포시", "의왕시", "하남시", "용인시", "파주시", "이천시", "안성시", "김포시", "화성시", "광주시", "여주시", "양평군", "연천군", "포천시", "가평군", "양주시"],
   "인천": ["중구", "동구", "미추홀구", "연수구", "남동구", "부평구", "계양구", "서구", "강화군", "옹진군"],
   "강원": ["춘천시", "원주시", "강릉시", "동해시", "태백시", "속초시", "삼척시", "홍천군", "횡성군", "영월군", "평창군", "정선군", "철원군", "화천군", "양구군", "인제군", "고성군", "양양군"],
   "경북": ["포항시", "경주시", "김천시", "안동시", "구미시", "영주시", "영천시", "상주시", "문경시", "경산시", "군위군", "의성군", "청송군", "영양군", "영덕군", "청도군", "고령군", "성주군", "칠곡군", "예천군", "봉화군", "울진군", "울릉군"],
@@ -390,19 +390,71 @@ function businessPeriod() {
 
 // 사업개시일 선택 시 사업개시일 전달
 businessPeriodButton.addEventListener('click', () => {
-  businessPeriod = `${businessPeriodYear.value}.${businessPeriodMonth.value}`
-
+  const year = businessPeriodYear.value.trim();
+  const month = businessPeriodMonth.value.trim();
   
+  // 에러 스타일 초기화
+  businessPeriodYear.classList.remove('error');
+  businessPeriodMonth.classList.remove('error');
+  
+  // 년도와 월이 모두 입력되었는지 확인
+  if (!year || !month) {
+    if (!year) businessPeriodYear.classList.add('error');
+    if (!month) businessPeriodMonth.classList.add('error');
+    showCustomWarning('개업일의 년도와 월을 모두 입력해주세요.');
+    return;
+  }
+  
+  // 년도가 2자리 숫자인지 확인
+  if (year.length !== 2 || !/^\d{2}$/.test(year)) {
+    businessPeriodYear.classList.add('error');
+    showCustomWarning('년도를 2자리 숫자로 입력해주세요. (예: 25)');
+    return;
+  }
+  
+  // 월이 1~12 범위인지 확인
+  const monthNum = parseInt(month, 10);
+  if (monthNum < 1 || monthNum > 12) {
+    businessPeriodMonth.classList.add('error');
+    showCustomWarning('월을 1~12 사이의 숫자로 입력해주세요. (예: 03)');
+    return;
+  }
+  
+  businessPeriod = `${year}.${month}`;
   selectedConditions.business_period = businessPeriod;
   console.log(selectedConditions.business_period);
 
-  if (!selectedConditions.business_period) {
-    warning();
-  } else {
-    billingLastYear();
-    animatePercent(80);
-  }
+  billingLastYear();
+  animatePercent(80);
 });
+
+// 입력 필드에 입력할 때 에러 스타일 제거
+businessPeriodYear.addEventListener('input', () => {
+  businessPeriodYear.classList.remove('error');
+});
+
+businessPeriodMonth.addEventListener('input', () => {
+  businessPeriodMonth.classList.remove('error');
+});
+
+// 커스텀 경고 메시지 표시 함수
+function showCustomWarning(message) {
+  const warningContainer = document.querySelector('#select-warning-section');
+  const warningText = warningContainer.querySelector('.select-warning-text');
+  
+  // 기존 메시지를 새로운 메시지로 변경
+  warningText.innerText = message;
+  
+  // 경고 표시
+  warningContainer.style.display = 'block';
+  
+  // 3초 후 자동으로 숨김
+  setTimeout(() => {
+    warningContainer.style.display = 'none';
+    // 원래 메시지로 복원
+    warningText.innerText = '옵션을 선택해주세요!';
+  }, 3000);
+}
 
 // 전년도 매출 선택 창
 const billingLastYearItems = document.querySelectorAll('.billing-last-year-item');

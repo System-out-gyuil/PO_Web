@@ -541,6 +541,23 @@ def delete_audio_file(request):
             attr_value.value = ''
             attr_value.save()
         
+        # Cascade 기능: cascade가 true인 속성이 수정되면 원본 행과 복제된 행들을 동기화
+        if audio_attribute.cascade:
+            print(f"=== Cascade 동기화 시작 (delete_audio_file) ===")
+            print(f"속성 '음성파일'의 cascade 값: {audio_attribute.cascade}")
+            print(f"수정된 행 ID: {row_id}")
+            new_value = json.dumps(current_data, ensure_ascii=False) if current_data else ''
+            print(f"새 값: {new_value}")
+            
+            synced_count = sync_cascade_attributes(request, row_id, '음성파일', new_value)
+            if synced_count > 0:
+                print(f"Cascade 동기화 완료: 음성파일 속성이 {synced_count}개 행에 동기화됨")
+            else:
+                print(f"Cascade 동기화 실패 또는 동기화할 행이 없음")
+            print(f"=== Cascade 동기화 종료 (delete_audio_file) ===")
+        else:
+            print(f"속성 '음성파일'의 cascade 값: {audio_attribute.cascade} - 동기화하지 않음")
+        
         logger.info(f"음성파일 삭제 완료 - Row: {row_id}, Date: {date}, File: {file_id}")
         
         return JsonResponse({
@@ -625,6 +642,22 @@ def update_audio_file_order(request):
         # 업데이트된 데이터 저장
         attr_value.value = json.dumps(current_data, ensure_ascii=False)
         attr_value.save()
+        
+        # Cascade 기능: cascade가 true인 속성이 수정되면 원본 행과 복제된 행들을 동기화
+        if audio_attribute.cascade:
+            print(f"=== Cascade 동기화 시작 (update_audio_file_order) ===")
+            print(f"속성 '음성파일'의 cascade 값: {audio_attribute.cascade}")
+            print(f"수정된 행 ID: {row_id}")
+            print(f"새 값: {json.dumps(current_data, ensure_ascii=False)}")
+            
+            synced_count = sync_cascade_attributes(request, row_id, '음성파일', json.dumps(current_data, ensure_ascii=False))
+            if synced_count > 0:
+                print(f"Cascade 동기화 완료: 음성파일 속성이 {synced_count}개 행에 동기화됨")
+            else:
+                print(f"Cascade 동기화 실패 또는 동기화할 행이 없음")
+            print(f"=== Cascade 동기화 종료 (update_audio_file_order) ===")
+        else:
+            print(f"속성 '음성파일'의 cascade 값: {audio_attribute.cascade} - 동기화하지 않음")
         
         logger.info(f"음성파일 순서 업데이트 완료 - Row: {row_id}")
         
@@ -848,6 +881,22 @@ def delete_note_file(request):
             # 업데이트된 데이터 저장
             attr_value.value = json.dumps(current_data, ensure_ascii=False)
             attr_value.save()
+            
+            # Cascade 기능: cascade가 true인 속성이 수정되면 원본 행과 복제된 행들을 동기화
+            if audio_attr.cascade:
+                print(f"=== Cascade 동기화 시작 (delete_note_file) ===")
+                print(f"속성 '음성파일'의 cascade 값: {audio_attr.cascade}")
+                print(f"수정된 행 ID: {row_id}")
+                print(f"새 값: {json.dumps(current_data, ensure_ascii=False)}")
+                
+                synced_count = sync_cascade_attributes(request, row_id, '음성파일', json.dumps(current_data, ensure_ascii=False))
+                if synced_count > 0:
+                    print(f"Cascade 동기화 완료: 음성파일 속성이 {synced_count}개 행에 동기화됨")
+                else:
+                    print(f"Cascade 동기화 실패 또는 동기화할 행이 없음")
+                print(f"=== Cascade 동기화 종료 (delete_note_file) ===")
+            else:
+                print(f"속성 '음성파일'의 cascade 값: {audio_attr.cascade} - 동기화하지 않음")
             
             return JsonResponse({
                 'success': True,
@@ -1526,6 +1575,22 @@ def update_audio_text(request):
             attr_value.value = json.dumps(audio_data, ensure_ascii=False)
             attr_value.save()
             
+            # Cascade 기능: cascade가 true인 속성이 수정되면 원본 행과 복제된 행들을 동기화
+            if audio_attribute.cascade:
+                print(f"=== Cascade 동기화 시작 (update_audio_text) ===")
+                print(f"속성 '음성파일'의 cascade 값: {audio_attribute.cascade}")
+                print(f"수정된 행 ID: {row_id}")
+                print(f"새 값: {json.dumps(audio_data, ensure_ascii=False)}")
+                
+                synced_count = sync_cascade_attributes(request, row_id, '음성파일', json.dumps(audio_data, ensure_ascii=False))
+                if synced_count > 0:
+                    print(f"Cascade 동기화 완료: 음성파일 속성이 {synced_count}개 행에 동기화됨")
+                else:
+                    print(f"Cascade 동기화 실패 또는 동기화할 행이 없음")
+                print(f"=== Cascade 동기화 종료 (update_audio_text) ===")
+            else:
+                print(f"속성 '음성파일'의 cascade 값: {audio_attribute.cascade} - 동기화하지 않음")
+            
             logger.info(f"음성파일 텍스트 업데이트 성공 - Row ID: {row_id}, Date: {date}, File ID: {file_id}")
             
             return JsonResponse({
@@ -1595,6 +1660,22 @@ def update_audio_memo(request):
             audio_attr_value.value = json.dumps(audio_data, ensure_ascii=False)
             audio_attr_value.save()
             
+            # Cascade 기능: cascade가 true인 속성이 수정되면 원본 행과 복제된 행들을 동기화
+            if audio_attr.cascade:
+                print(f"=== Cascade 동기화 시작 (update_audio_memo) ===")
+                print(f"속성 '음성파일'의 cascade 값: {audio_attr.cascade}")
+                print(f"수정된 행 ID: {row_id}")
+                print(f"새 값: {json.dumps(audio_data, ensure_ascii=False)}")
+                
+                synced_count = sync_cascade_attributes(request, row_id, '음성파일', json.dumps(audio_data, ensure_ascii=False))
+                if synced_count > 0:
+                    print(f"Cascade 동기화 완료: 음성파일 속성이 {synced_count}개 행에 동기화됨")
+                else:
+                    print(f"Cascade 동기화 실패 또는 동기화할 행이 없음")
+                print(f"=== Cascade 동기화 종료 (update_audio_memo) ===")
+            else:
+                print(f"속성 '음성파일'의 cascade 값: {audio_attr.cascade} - 동기화하지 않음")
+            
             logger.info(f"음성파일 메모 업데이트 성공: Row {row_id}, Date {date}, File {file_id}")
             return JsonResponse({'success': True, 'message': '메모가 성공적으로 저장되었습니다.'})
         else:
@@ -1659,6 +1740,22 @@ def update_audio_text_notes(request):
                 }
         attr_value.value = json.dumps(data, ensure_ascii=False)
         attr_value.save()
+        
+        # Cascade 기능: cascade가 true인 속성이 수정되면 원본 행과 복제된 행들을 동기화
+        if audio_attr.cascade:
+            print(f"=== Cascade 동기화 시작 (update_audio_text_notes) ===")
+            print(f"속성 '음성파일'의 cascade 값: {audio_attr.cascade}")
+            print(f"수정된 행 ID: {row_id}")
+            print(f"새 값: {json.dumps(data, ensure_ascii=False)}")
+            
+            synced_count = sync_cascade_attributes(request, row_id, '음성파일', json.dumps(data, ensure_ascii=False))
+            if synced_count > 0:
+                print(f"Cascade 동기화 완료: 음성파일 속성이 {synced_count}개 행에 동기화됨")
+            else:
+                print(f"Cascade 동기화 실패 또는 동기화할 행이 없음")
+            print(f"=== Cascade 동기화 종료 (update_audio_text_notes) ===")
+        else:
+            print(f"속성 '음성파일'의 cascade 값: {audio_attr.cascade} - 동기화하지 않음")
         
         return JsonResponse({'success': True})
     except Exception as e:
@@ -1749,6 +1846,22 @@ def update_audio_file_order_and_notes(request):
 
         attr_value.value = json.dumps(value, ensure_ascii=False)
         attr_value.save()
+
+        # Cascade 기능: cascade가 true인 속성이 수정되면 원본 행과 복제된 행들을 동기화
+        if attr.cascade:
+            print(f"=== Cascade 동기화 시작 (update_audio_file_order_and_notes) ===")
+            print(f"속성 '음성파일'의 cascade 값: {attr.cascade}")
+            print(f"수정된 행 ID: {row_id}")
+            print(f"새 값: {json.dumps(value, ensure_ascii=False)}")
+            
+            synced_count = sync_cascade_attributes(request, row_id, '음성파일', json.dumps(value, ensure_ascii=False))
+            if synced_count > 0:
+                print(f"Cascade 동기화 완료: 음성파일 속성이 {synced_count}개 행에 동기화됨")
+            else:
+                print(f"Cascade 동기화 실패 또는 동기화할 행이 없음")
+            print(f"=== Cascade 동기화 종료 (update_audio_file_order_and_notes) ===")
+        else:
+            print(f"속성 '음성파일'의 cascade 값: {attr.cascade} - 동기화하지 않음")
 
         return JsonResponse({'success': True})
 

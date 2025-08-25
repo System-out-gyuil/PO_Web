@@ -739,6 +739,12 @@ body {
   font-family: 'Nanum Barun Gothic', sans-serif;
   font-size: 18px;
   font-weight: 600;
+  transition: border-color 0.3s ease;
+}
+
+.business-period-year-wrapper input.error {
+  border: 2px solid #ff4444;
+  box-shadow: 0 0 5px rgba(255, 68, 68, 0.3);
 }
 
 .business-period-month-wrapper {
@@ -767,6 +773,12 @@ body {
   font-family: 'Nanum Barun Gothic', sans-serif;
   font-size: 18px;
   font-weight: 600;
+  transition: border-color 0.3s ease;
+}
+
+.business-period-month-wrapper input.error {
+  border: 2px solid #ff4444;
+  box-shadow: 0 0 5px rgba(255, 68, 68, 0.3);
 }
 
 .billing-last-year-item {

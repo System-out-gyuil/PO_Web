@@ -593,14 +593,14 @@
       document.getElementById('termsModal').style.display = 'none';
     }
     
-    // 모달 외부 클릭 시 닫기
-    window.onclick = function(event) {
-      var signupModal = document.getElementById('signupModal');
-      
-      if (event.target == signupModal) {
-        closeSignupModal();
-      }
-    }
+    // 모달 외부 클릭 시 닫기 기능 제거
+    // window.onclick = function(event) {
+    //   var signupModal = document.getElementById('signupModal');
+    //   
+    //   if (event.target == signupModal) {
+    //     closeSignupModal();
+    //   }
+    // }
     
     // 로그인 폼 제출
     document.getElementById('loginForm').addEventListener('submit', function(e) {
