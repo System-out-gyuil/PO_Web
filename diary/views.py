@@ -18,8 +18,6 @@ from datetime import date, timedelta
 import json
 import random
 import time
-import uuid
-import os
 import logging
 from datetime import datetime
 import boto3
@@ -1668,106 +1666,21 @@ def duplicate_row(request):
         
         for source_value in source_values:
             try:
-                # 파일 타입인 경우 S3에서 파일 복사
+                # 파일 타입인 경우 기존 파일 정보 그대로 복사
                 if (source_value.attribute and 
                     source_value.attribute.attributeType and 
                     source_value.attribute.attributeType.name == 'file' and 
                     source_value.value):
                     
-                    
-                    try:
-                        # 기존 파일 정보 파싱
-                        file_data = json.loads(source_value.value)
-                        logger.debug(f"파일 데이터 파싱 성공: {file_data}")
-                        
-                        original_filename = file_data.get('original_filename', '')
-                        stored_filename = file_data.get('stored_filename', '')
-                        s3_key = file_data.get('s3_key', '')
-                        
-                        logger.debug(f"파일 정보 - 원본명: {original_filename}, 저장명: {stored_filename}, S3키: {s3_key}")
-                        
-                        if s3_key and stored_filename:
-                            # 새로운 파일명 생성 (UUID 사용)
-                            file_extension = os.path.splitext(original_filename)[1] if original_filename else ''
-                            new_filename = f"{uuid.uuid4()}{file_extension}"
-                            logger.debug(f"새 파일명 생성: {new_filename}")
-                            
-                            # S3에서 파일 복사
-                            logger.debug(f"S3 파일 복사 시작: {s3_key} -> {new_filename}")
-                            copy_result = copy_s3_file(s3_key, new_filename)
-                            logger.debug(f"S3 복사 결과: {copy_result}")
-                            
-                            if copy_result and isinstance(copy_result, dict) and copy_result.get('success'):
-                                # 새로운 파일 정보 생성 (upload_time 추가)
-                                new_file_data = {
-                                    'original_filename': original_filename,
-                                    'stored_filename': new_filename,
-                                    's3_key': copy_result.get('new_s3_key', ''),
-                                    'download_url': copy_result.get('new_download_url', ''),
-                                    'preview_url': copy_result.get('new_preview_url', ''),
-                                    'public_url': copy_result.get('new_public_url', ''),
-                                    'file_size': file_data.get('file_size', 0),
-                                    'content_type': file_data.get('content_type', ''),
-                                    'type': file_data.get('type', 'file'),
-                                    'upload_time': copy_result.get('upload_time', timezone.now().isoformat())  # copy_s3_file에서 반환된 시간 사용
-                                }
-                                
-                                logger.debug(f"새 파일 데이터 생성: {new_file_data}")
-                                
-                                # 새로운 파일 정보로 AttributeValue 생성
-                                new_attr_value = AttributeValue.objects.create(
-                                    row=new_row,
-                                    attribute=source_value.attribute,
-                                    value=json.dumps(new_file_data, ensure_ascii=False),
-                                    copy_from=source_row.id  # 원본 행 ID 저장
-                                )
-                                logger.debug(f"새 AttributeValue 생성 완료: ID {new_attr_value.id}")
-                            else:
-                                # S3 복사 실패 시 새로운 파일명으로 원본 파일 정보 복사
-                                error_msg = '알 수 없는 오류'
-                                if isinstance(copy_result, dict):
-                                    error_msg = copy_result.get('error', '알 수 없는 오류')
-                                logger.warning(f"파일 복사 실패, 새로운 파일명으로 원본 정보 복사: {error_msg}")
-                                
-                                # 새로운 파일명으로 원본 파일 정보 복사
-                                new_file_data = {
-                                    'original_filename': original_filename,
-                                    'stored_filename': new_filename,  # 새로운 파일명 사용
-                                    's3_key': s3_key,  # 원본 S3 키 유지
-                                    'download_url': file_data.get('download_url', ''),
-                                    'preview_url': file_data.get('preview_url', ''),
-                                    'public_url': file_data.get('public_url', ''),
-                                    'file_size': file_data.get('file_size', 0),
-                                    'content_type': file_data.get('content_type', ''),
-                                    'type': file_data.get('type', 'file')
-                                }
-                                
-                                AttributeValue.objects.create(
-                                    row=new_row,
-                                    attribute=source_value.attribute,
-                                    value=json.dumps(new_file_data, ensure_ascii=False),
-                                    copy_from=source_row.id  # 원본 행 ID 저장
-                                )
-                                logger.debug(f"원본 파일 정보로 새 AttributeValue 생성 완료")
-                        else:
-                            # 파일 정보가 없거나 불완전한 경우 원본 그대로 복사
-                            logger.warning(f"파일 정보 불완전, 원본 그대로 복사")
-                            AttributeValue.objects.create(
-                                row=new_row,
-                                attribute=source_value.attribute,
-                                value=source_value.value,
-                                copy_from=source_row.id  # 원본 행 ID 저장
-                            )
-                            
-                    except (json.JSONDecodeError, KeyError) as e:
-                        # JSON 파싱 실패 시 원본 그대로 복사
-                        logger.error(f"파일 정보 파싱 실패, 원본 그대로 복사: {e}")
-                        AttributeValue.objects.create(
-                            row=new_row,
-                            attribute=source_value.attribute,
-                            value=source_value.value,
-                            copy_from=source_row.id  # 원본 행 ID 저장
-                        )
+                    logger.debug(f"파일 속성 복사: {source_value.attribute.name}")
+                    # 파일 정보를 그대로 복사 (S3에서 새로 복사하지 않음)
+                    AttributeValue.objects.create(
+                        row=new_row,
+                        attribute=source_value.attribute,
+                        value=source_value.value,
+                        copy_from=source_row.id  # 원본 행 ID 저장
+                    )
+                    logger.debug(f"파일 속성 복사 완료: {source_value.attribute.name}")
                 else:
                     # 파일이 아닌 경우 원본 그대로 복사
                     logger.debug(f"일반 속성 복사: {source_value.attribute.name if source_value.attribute else 'None'}")
@@ -1795,94 +1708,6 @@ def duplicate_row(request):
         return JsonResponse({'success': False, 'error': '잘못된 JSON 형식입니다.'})
     except Exception as e:
         return JsonResponse({'success': False, 'error': f'복제 중 오류가 발생했습니다: {str(e)}'})
-
-def copy_s3_file(source_s3_key, new_filename):
-    """S3에서 파일을 복사하는 함수"""
-    logger.info(f"=== S3 파일 복사 시작 ===")
-    logger.info(f"소스 S3 키: {source_s3_key}")
-    logger.info(f"새 파일명: {new_filename}")
-    
-    try:
-        # S3 클라이언트 생성
-        logger.debug("S3 클라이언트 생성 중...")
-        s3_client = boto3.client(
-            's3',
-            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-            region_name=settings.AWS_S3_REGION_NAME
-        )
-        logger.debug("S3 클라이언트 생성 완료")
-        
-        # 새로운 S3 키 생성
-        new_s3_key = f"{settings.AWS_LOCATION}/{new_filename}"
-        logger.debug(f"새 S3 키: {new_s3_key}")
-        
-        # S3에서 파일 복사
-        logger.debug("S3 파일 복사 실행 중...")
-        s3_client.copy_object(
-            Bucket=settings.AWS_STORAGE_BUCKET_NAME,
-            CopySource={'Bucket': settings.AWS_STORAGE_BUCKET_NAME, 'Key': source_s3_key},
-            Key=new_s3_key
-        )
-        logger.debug("S3 파일 복사 완료")
-        
-        # 새로운 다운로드 URL 생성
-        new_download_url = f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{new_s3_key}"
-        logger.debug(f"새 다운로드 URL: {new_download_url}")
-        
-        # 새로운 서명된 다운로드 URL 생성
-        try:
-            logger.debug("서명된 다운로드 URL 생성 중...")
-            new_signed_download_url = s3_client.generate_presigned_url(
-                'get_object',
-                Params={
-                    'Bucket': settings.AWS_STORAGE_BUCKET_NAME,
-                    'Key': new_s3_key
-                },
-                ExpiresIn=300  # 5분
-            )
-            logger.debug("서명된 다운로드 URL 생성 완료")
-        except Exception as e:
-            logger.error(f"새로운 서명된 다운로드 URL 생성 실패: {e}")
-            new_signed_download_url = new_download_url
-        
-        # 새로운 서명된 미리보기 URL 생성
-        try:
-            logger.debug("서명된 미리보기 URL 생성 중...")
-            new_signed_preview_url = s3_client.generate_presigned_url(
-                'get_object',
-                Params={
-                    'Bucket': settings.AWS_STORAGE_BUCKET_NAME,
-                    'Key': new_s3_key,
-                    'ResponseContentDisposition': 'inline'
-                },
-                ExpiresIn=300  # 5분
-            )
-            logger.debug("서명된 미리보기 URL 생성 완료")
-        except Exception as e:
-            logger.error(f"새로운 서명된 미리보기 URL 생성 실패: {e}")
-            new_signed_preview_url = new_download_url
-        
-        # 현재 시간을 ISO 형식으로 생성
-        current_time = timezone.now().isoformat()
-        
-        result = {
-            'success': True,
-            'new_s3_key': new_s3_key,
-            'new_download_url': new_signed_download_url,
-            'new_preview_url': new_signed_preview_url,
-            'new_public_url': new_download_url,
-            'upload_time': current_time  # upload_time 필드 추가
-        }
-        logger.info(f"S3 파일 복사 성공: {result}")
-        return result
-        
-    except Exception as e:
-        logger.error(f"S3 파일 복사 실패: {e}")
-        return {
-            'success': False,
-            'error': str(e)
-        }
 
 @require_GET
 def get_status_tabs(request):
