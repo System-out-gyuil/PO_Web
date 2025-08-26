@@ -9,6 +9,30 @@ let pendingRequests = new Map();
 let requestTimeout = 5000; // 5초로 증가
 let isProcessingRequest = false; // 전역 처리 상태 플래그
 
+// 행 복제 후 드롭다운 상태 초기화를 위한 함수
+function resetDropdownStateAfterRowClone() {
+    console.log('행 복제 후 드롭다운 상태 초기화');
+    pendingRequests.clear();
+    isProcessingRequest = false;
+    currentOpenDropdown = null;
+    currentTriggerElement = null;
+    
+    // 기존 드롭다운 요소들 정리
+    if (window.dropdown && window.dropdown.parentNode) {
+        window.dropdown.parentNode.removeChild(window.dropdown);
+        window.dropdown = null;
+    }
+    
+    document.querySelectorAll('.dropdown-edit').forEach(el => {
+        if (el.parentNode) {
+            el.parentNode.removeChild(el);
+        }
+    });
+    
+    // 전역 클릭 핸들러 제거
+    removeGlobalClickHandler();
+}
+
 // 랜덤 색상 생성 함수
 function generateRandomColor() {
     // 완전히 랜덤한 16진수 색상 생성
@@ -151,14 +175,22 @@ function addGlobalClickHandler(dropdown, triggerElement) {
 
 function openDropdown(td, type, id, currentId, currentSubregion) {
     
+    // 행 복제 후 상태 초기화가 필요한지 확인
+    if (id && id.startsWith('temp_')) {
+        console.log('새로 생성된 행(temp_)에서 드롭다운 열기, 상태 초기화');
+        resetDropdownStateAfterRowClone();
+    }
+    
     // 이미 같은 셀에서 드롭다운이 열려있는지 확인
     if (currentOpenDropdown && currentTriggerElement === td) {
+        console.log('이미 같은 셀에서 드롭다운이 열려있음');
         closeAllDropdowns();
         return;
     }
     
     // 기존 드롭다운이 열려있고 다른 셀에서 클릭한 경우, 기존 드롭다운을 먼저 닫고 새 드롭다운 생성
     if (currentOpenDropdown && currentTriggerElement !== td) {
+        console.log('기존 드롭다운이 열려있고 다른 셀에서 클릭한 경우, 기존 드롭다운을 먼저 닫고 새 드롭다운 생성');
         // 기존 드롭다운을 즉시 닫기
         if (window.dropdown && window.dropdown.parentNode) {
             window.dropdown.parentNode.removeChild(window.dropdown);
@@ -1062,6 +1094,12 @@ function processModalDropdownOptions(data, rowId, fieldName, btn) {
 function selectModalDropdownOption(rowId, fieldName, optionId, optionText, btn, color) {
     console.log('selectModalDropdownOption 호출됨:', rowId, fieldName, optionId, optionText);
     
+    // 행 복제 후 상태 초기화가 필요한지 확인
+    if (rowId && rowId.startsWith('temp_')) {
+        console.log('새로 생성된 행(temp_)에서 모달 드롭다운 옵션 선택, 상태 초기화');
+        resetDropdownStateAfterRowClone();
+    }
+    
     // 중복 요청 방지를 위한 디바운싱
     const requestKey = `${rowId}_${fieldName}_${optionId}`;
     if (pendingRequests.has(requestKey)) {
@@ -1075,6 +1113,7 @@ function selectModalDropdownOption(rowId, fieldName, optionId, optionText, btn, 
     // 타임아웃 설정
     setTimeout(() => {
       pendingRequests.delete(requestKey);
+      isProcessingRequest = false;
     }, requestTimeout);
     
     // 버튼 텍스트 즉시 업데이트
@@ -1138,12 +1177,12 @@ function selectModalDropdownOption(rowId, fieldName, optionId, optionText, btn, 
             checkKanbanAndRefresh(fieldName);
             
             // 상태 필터가 활성화되어 있고, 변경된 필드가 상태 속성인 경우
-            if (window.currentStatusTab !== null && type === window.statusAttributeName) {
+            if (window.currentStatusTab !== null && fieldName === window.statusAttributeName) {
                 console.log('상태 속성 변경 감지, 안전한 필터 적용 시작');
                 
                 // 상태 셀 강제 업데이트
                 if (typeof forceUpdateStatusCellValue === 'function') {
-                    const updateSuccess = forceUpdateStatusCellValue(id, type, optionId);
+                    const updateSuccess = forceUpdateStatusCellValue(rowId, fieldName, optionId);
                     if (updateSuccess) {
                         // 안전한 상태 필터 재적용
                         if (typeof safeApplyStatusFilterAfterChange === 'function') {
@@ -1159,9 +1198,9 @@ function selectModalDropdownOption(rowId, fieldName, optionId, optionText, btn, 
                     }
                 } else {
                     // fallback: 기존 방식 사용
-                    const row = document.querySelector(`tr[data-id="${id}"]`);
+                    const row = document.querySelector(`tr[data-id="${rowId}"]`);
                     if (row) {
-                        const statusCell = row.querySelector(`td[data-field="${type}"]`);
+                        const statusCell = row.querySelector(`td[data-field="${fieldName}"]`);
                         if (statusCell) {
                             statusCell.setAttribute('data-value', optionId);
                             setTimeout(() => {
@@ -1623,6 +1662,12 @@ function selectModalDropdownOption(rowId, fieldName, optionId, optionText, btn, 
     
     const currentValue = td.getAttribute('data-value') || '';
     const id = td.parentElement.getAttribute('data-id');
+    
+    // 행 복제 후 상태 초기화가 필요한지 확인
+    if (id && id.startsWith('temp_')) {
+        console.log('새로 생성된 행(temp_)에서 드롭다운 옵션 렌더링, 상태 초기화');
+        resetDropdownStateAfterRowClone();
+    }
     
     // 모달과 동일한 깔끔한 구조로 변경
     let html = `<div style="padding: 8px; border-bottom: 1px solid #eee;"><b>${type} 선택</b></div>`;
@@ -2313,6 +2358,13 @@ function deleteDropdownOption(fieldName, optionId, td, currentDropdown) {
 function addDropdownOption(fieldName, optionName, td, currentDropdown) {
     console.log('새 옵션 추가 요청:', fieldName, optionName);
     
+    // 행 복제 후 상태 초기화가 필요한지 확인
+    const id = td ? td.parentElement.getAttribute('data-id') : null;
+    if (id && id.startsWith('temp_')) {
+        console.log('새로 생성된 행(temp_)에서 새 옵션 추가, 상태 초기화');
+        resetDropdownStateAfterRowClone();
+    }
+    
     // 랜덤 색상 생성
     const randomColor = generateRandomColor();
     
@@ -2744,6 +2796,12 @@ function updateModalDropdownOptionColor(fieldName, optionId, newColor) {
 function addModalDropdownOption(fieldName, optionName) {
     console.log('모달 새 옵션 추가 요청:', fieldName, optionName);
     
+    // 행 복제 후 상태 초기화가 필요한지 확인 (현재 모달의 행 ID 확인)
+    if (window.currentDetailRowId && window.currentDetailRowId.startsWith('temp_')) {
+        console.log('새로 생성된 행(temp_)에서 모달 새 옵션 추가, 상태 초기화');
+        resetDropdownStateAfterRowClone();
+    }
+    
     // 랜덤 색상 생성
     const randomColor = generateRandomColor();
     
@@ -2803,3 +2861,6 @@ function handleDropdownOptionChange(event) {
     
     
 }
+
+// 전역 함수로 노출 (다른 스크립트에서 호출 가능)
+window.resetDropdownStateAfterRowClone = resetDropdownStateAfterRowClone;

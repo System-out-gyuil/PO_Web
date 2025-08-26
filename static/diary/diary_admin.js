@@ -724,7 +724,7 @@ function renderUsersTable(users, currentUserId, isSuperAdmin, currentPage = 1, p
     tbody.innerHTML = '';
     
     if (users.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">사용자가 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted">사용자가 없습니다.</td></tr>';
         return;
     }
     
@@ -748,6 +748,15 @@ function renderUsersTable(users, currentUserId, isSuperAdmin, currentPage = 1, p
                 : `<span class="badge bg-secondary">일반</span>`;
         }
         
+        // 활성화 토글 버튼
+        const activateToggleBtn = `
+            <button class="btn btn-sm ${user.activate ? 'btn-success' : 'btn-secondary'} activate-toggle-btn" 
+                    onclick="toggleActivateStatus(${user.id}, '${user.name || '사용자'}', '${user.email}', ${!user.activate})">
+                <i class="fas fa-${user.activate ? 'check-circle' : 'times-circle'}"></i>
+                ${user.activate ? '활성' : '비활성'}
+            </button>
+        `;
+        
         // 사용 기간 표시 및 수정 버튼
         const useDate = user.use_date ? formatDateOnly(user.use_date) : '미설정';
         const useDateCell = `
@@ -768,6 +777,7 @@ function renderUsersTable(users, currentUserId, isSuperAdmin, currentPage = 1, p
             <td>${user.phone_number || '-'}</td>
             <td>${formatDateOnly(user.created_at)}</td>
             <td>${useDateCell}</td>
+            <td>${activateToggleBtn}</td>
             <td>${adminToggleBtn}</td>
             <td>
                 <button class="btn btn-sm btn-outline-danger" onclick="confirmDeleteUser(${user.id}, '${user.name || '사용자'}', '${user.email}')">
@@ -1537,5 +1547,44 @@ function updateCountTypeDisplay() {
         const displayText = currentCountType === 'main' ? '메인 페이지' : '다이어리 페이지';
         countTypeDisplay.textContent = displayText;
         console.log('Updated count type display:', displayText);
+    }
+}
+
+// 활성화 상태 토글 함수
+function toggleActivateStatus(userId, userName, userEmail, makeActive) {
+    const currentStatus = makeActive ? '비활성' : '활성';
+    const targetStatus = makeActive ? '활성' : '비활성';
+    
+    if (confirm(`사용자 "${userName}"의 계정을 ${targetStatus}화하시겠습니까?`)) {
+        changeActivateStatus(userId, makeActive);
+    }
+}
+
+// 활성화 상태 변경 실행 함수
+async function changeActivateStatus(userId, makeActive) {
+    try {
+        const response = await fetch(`/sales/diary_admin/users/${userId}/toggle_activate/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                make_active: makeActive
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showAlert(data.message, 'success');
+            // 사용자 목록 새로고침
+            loadUsers();
+        } else {
+            showAlert(data.message, 'danger');
+        }
+    } catch (error) {
+        console.error('Error changing activate status:', error);
+        showAlert('계정 활성화 상태 변경에 실패했습니다.', 'danger');
     }
 }

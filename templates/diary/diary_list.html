@@ -2122,21 +2122,7 @@ function refreshTable() {
                 // 이벤트 위임을 통한 동적 요소 이벤트 처리
                 document.addEventListener('click', function(e) {
                     // 드롭다운 셀 클릭 처리 - openDropdown 함수 사용
-                    if (e.target.closest('td[data-type="dropdown"]')) {
-                        const cell = e.target.closest('td[data-type="dropdown"]');
-                        const rowId = cell.closest('tr').getAttribute('data-id');
-                        const fieldName = cell.getAttribute('data-field');
-                        const currentValue = cell.getAttribute('data-value') || '';
-                        
-                        // 이미 드롭다운이 열려있으면 무시
-                        if (document.querySelector('.dropdown-edit')) {
-                            return;
-                        }
-                        
-                        if (typeof openDropdown === 'function') {
-                            openDropdown(cell, fieldName, rowId, currentValue);
-                        }
-                    }
+                    
                     
                     // 회사명 셀 클릭 처리 (상세보기)
                     if (e.target.closest('.more-btn')) {

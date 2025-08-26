@@ -152,6 +152,32 @@
 
 /* ------------------------------ */
 
+@media (max-width: 1100px) {
+    .text-2xl {
+        font-size: 1.2rem;
+    }
+
+    .features-inner-text {
+        font-size: 10px;
+    }
+
+    .name-intro {
+        font-size: 11px;
+    }
+
+    .p-8 {
+        padding: 1rem;
+    }
+
+    .features-inner-text-2 {
+        font-size: 11px;
+    }
+
+    .p-6 {
+        padding: 1.2rem;
+    }
+}
+
 @media (max-width: 768px) {
     .container {
         padding-left: 5px;
