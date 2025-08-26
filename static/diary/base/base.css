@@ -840,6 +840,7 @@
   }
 
   .notification-badge {
+    font-size: 9px;
     width: 15px;
     height: 15px;
     top: -5px;
