@@ -1144,14 +1144,6 @@ function detailUpdateRowFieldWithKoreanCurrency(rowId, fieldName, value) {
     });
 }
 
-
-
-
-
-
-
-
-
 // 모달용 지역 옵션 선택 함수
 function selectModalRegionOption(rowId, regionText, element) {
   // 서버에 업데이트 요청

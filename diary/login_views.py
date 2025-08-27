@@ -9,7 +9,7 @@ from django.utils import timezone
 from datetime import timedelta
 import random
 import re
-from .models import User, BaseAttribute, BaseAttributeDetail, Attribute, AttributeValue, DropdownAttribute, Row, CalendarSettings, KanbanSettings, EmailVerification, CountUser
+from .models import User, BaseAttribute, BaseAttributeDetail, Attribute, AttributeValue, DropdownAttribute, Row, CalendarSettings, KanbanSettings, EmailVerification, CountUser, CountUserIP
 import json
 from config import EMAIL_AUTH_VALID_TIME, SENDER_EMAIL
 
@@ -79,7 +79,19 @@ class LoginView(View):
                     except Exception as e:
                         print(f"CountUser 업데이트 중 오류: {str(e)}")
 
+                    print(f"IP: {request.META.get('REMOTE_ADDR')}")
+
+                    # CountUserIP 테이블에 로그인 기록 추가
+                    try:
+                        count_user_ip = CountUserIP.objects.create(
+                            ip=request.META.get('REMOTE_ADDR'),
+                            user=member
+                        )
+                    except Exception as e:
+                        print(f"CountUserIP 업데이트 중 오류: {str(e)}")
+
                     print(f"로그인 성공: {member.id}")
+
 
                     return JsonResponse({
                         'success': True,
