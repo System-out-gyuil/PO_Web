@@ -9,9 +9,10 @@ import json
 import os
 import uuid
 import boto3
+import urllib.parse
 from django.conf import settings
 from botocore.exceptions import ClientError
-from .models import Inquiry, Alarm, UserAlarm, User, Diary_main_count, Diary_diary_count, ClassForm
+from .models import Inquiry, Alarm, UserAlarm, User, Diary_main_count, Diary_diary_count, ClassForm, CountUser, CountUserIP
 from django.core.paginator import Paginator
 from django.core.serializers import serialize
 from django.forms.models import model_to_dict
@@ -1091,3 +1092,199 @@ def class_form_delete(request, class_form_id):
         return JsonResponse({'success': False, 'message': '삭제할 클래스 신청을 찾을 수 없습니다.'})
     except Exception as e:
         return JsonResponse({'success': False, 'message': f'클래스 신청 삭제 중 오류가 발생했습니다: {str(e)}'})
+
+def log_list(request):
+    """로그 목록 API"""
+    user_id = request.session.get('diary_member_id')
+    
+    if not user_id:
+        return JsonResponse({'success': False, 'message': '로그인이 필요합니다.'})
+    
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'message': '사용자를 찾을 수 없습니다.'})
+
+    if not user.is_admin:
+        return JsonResponse({'success': False, 'message': '권한이 없습니다.'})
+    
+    # 검색 및 정렬 파라미터
+    search_query = request.GET.get('search', '')
+    sort_by = request.GET.get('sort', '-created_at')
+    page = request.GET.get('page', 1)
+    start_date = request.GET.get('start_date', '')
+    end_date = request.GET.get('end_date', '')
+    
+    # CountUserIP 쿼리셋
+    logs = CountUserIP.objects.all()
+    
+    # 날짜 필터링
+    if start_date and end_date:
+        try:
+            from datetime import datetime
+            start_datetime = datetime.strptime(start_date, '%Y-%m-%d')
+            end_datetime = datetime.strptime(end_date, '%Y-%m-%d')
+            # end_date는 해당 날짜의 마지막 시간까지 포함
+            end_datetime = end_datetime.replace(hour=23, minute=59, second=59)
+            logs = logs.filter(created_at__range=[start_datetime, end_datetime])
+        except ValueError:
+            pass
+    
+    # 검색 필터링
+    if search_query:
+        logs = logs.filter(
+            Q(ip__icontains=search_query) |
+            Q(user__name__icontains=search_query) |
+            Q(user__email__icontains=search_query)
+        )
+    
+    # 정렬
+    if sort_by:
+        logs = logs.order_by(sort_by)
+    else:
+        # 기본값: 최신순
+        logs = logs.order_by('-created_at')
+    
+    # 페이지네이션
+    paginator = Paginator(logs, 20)  # 페이지당 20개
+    try:
+        logs_page = paginator.page(page)
+    except:
+        logs_page = paginator.page(1)
+    
+    # 로그 데이터 직렬화
+    logs_data = []
+    for log in logs_page:
+        log_dict = {
+            'id': log.id,
+            'ip': log.ip,
+            'user_name': log.user.name if log.user else '알 수 없음',
+            'user_email': log.user.email if log.user else '알 수 없음',
+            'created_at': log.created_at.isoformat(),
+            'updated_at': log.updated_at.isoformat(),
+        }
+        logs_data.append(log_dict)
+    
+    # 페이지네이션 정보
+    pagination = {
+        'number': logs_page.number,
+        'num_pages': logs_page.paginator.num_pages,
+        'has_previous': logs_page.has_previous(),
+        'has_next': logs_page.has_next(),
+        'previous_page_number': logs_page.previous_page_number() if logs_page.has_previous() else None,
+        'next_page_number': logs_page.next_page_number() if logs_page.has_next() else None,
+    }
+    
+    # 총계 정보
+    total_count = logs.count()
+    
+    return JsonResponse({
+        'success': True,
+        'logs': logs_data,
+        'pagination': pagination,
+        'total_count': total_count
+    })
+
+def log_export_excel(request):
+    """로그 데이터 엑셀 다운로드"""
+    user_id = request.session.get('diary_member_id')
+    
+    if not user_id:
+        return JsonResponse({'success': False, 'message': '로그인이 필요합니다.'})
+    
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'message': '사용자를 찾을 수 없습니다.'})
+
+    if not user.is_admin:
+        return JsonResponse({'success': False, 'message': '권한이 없습니다.'})
+    
+    try:
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill, Alignment
+        from django.http import HttpResponse
+        import io
+        
+        # 파라미터 가져오기
+        start_date = request.GET.get('start_date', '')
+        end_date = request.GET.get('end_date', '')
+        
+        # CountUserIP 데이터 조회
+        logs = CountUserIP.objects.all()
+        
+        # 날짜 필터링
+        if start_date and end_date:
+            try:
+                from datetime import datetime
+                start_datetime = datetime.strptime(start_date, '%Y-%m-%d')
+                end_datetime = datetime.strptime(end_date, '%Y-%m-%d')
+                # end_date는 해당 날짜의 마지막 시간까지 포함
+                end_datetime = end_datetime.replace(hour=23, minute=59, second=59)
+                logs = logs.filter(created_at__range=[start_datetime, end_datetime])
+            except ValueError:
+                pass
+        
+        # 워크북 생성
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "사용자 접속 로그"
+        
+        # 헤더 스타일 설정
+        header_font = Font(bold=True, color="FFFFFF")
+        header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+        header_alignment = Alignment(horizontal="center", vertical="center")
+        
+        # 헤더 작성
+        headers = ["번호", "IP 주소", "사용자명", "이메일", "접속일"]
+        for col, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col, value=header)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = header_alignment
+        
+        # 데이터 작성
+        for row, log in enumerate(logs, 2):
+            ws.cell(row=row, column=1, value=row-1)  # 번호
+            ws.cell(row=row, column=2, value=log.ip)  # IP 주소
+            ws.cell(row=row, column=3, value=log.user.name if log.user else '알 수 없음')  # 사용자명
+            ws.cell(row=row, column=4, value=log.user.email if log.user else '알 수 없음')  # 이메일
+            ws.cell(row=row, column=5, value=log.created_at.strftime('%Y-%m-%d %H:%M:%S'))  # 최초 접속
+        
+        # 열 너비 자동 조정
+        for column in ws.columns:
+            max_length = 0
+            column_letter = column[0].column_letter
+            for cell in column:
+                try:
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(str(cell.value))
+                except:
+                    pass
+            adjusted_width = min(max_length + 2, 50)
+            ws.column_dimensions[column_letter].width = adjusted_width
+        
+        # 파일 저장
+        output = io.BytesIO()
+        wb.save(output)
+        output.seek(0)
+        
+        # 파일명 생성
+        if start_date and end_date:
+            filename = f"사용자_접속_로그_{start_date}_to_{end_date}.xlsx"
+        else:
+            filename = f"사용자_접속_로그_전체_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        
+        # HTTP 응답 생성
+        response = HttpResponse(
+            output.getvalue(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        # 파일명을 UTF-8로 인코딩하여 헤더에 설정
+        filename_encoded = urllib.parse.quote(filename)
+        response['Content-Disposition'] = f'attachment; filename="{filename_encoded}"; filename*=UTF-8\'\'{filename_encoded}'
+        
+        return response
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'엑셀 생성 중 오류가 발생했습니다: {str(e)}'})

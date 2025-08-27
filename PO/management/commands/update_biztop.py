@@ -57,7 +57,7 @@ class Command(BaseCommand):
             adjusted[api_id] = (views, views * factor)
 
         # Top-20 추출
-        top_ids = sorted(adjusted, key=lambda k: adjusted[k][1], reverse=True)[:20]
+        top_ids = sorted(adjusted, key=lambda k: adjusted[k][1], reverse=True)[:30]
         top_items = [it for it in recent_items if it["pblancId"] in top_ids]
 
         self.save_to_db(top_items)

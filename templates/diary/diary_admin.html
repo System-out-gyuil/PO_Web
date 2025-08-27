@@ -292,6 +292,9 @@
                         <a class="nav-link" href="javascript:void(0)" onclick="showClassForms(); return false;">
                             <i class="fas fa-graduation-cap me-2"></i> 원데이 클래스
                         </a>
+                        <a class="nav-link" href="javascript:void(0)" onclick="showLogs(); return false;">
+                            <i class="fas fa-file-alt me-2"></i> 접속 로그
+                        </a>
                     </nav>
                 </div>
             </div>
@@ -915,6 +918,137 @@
                                 </div>
                                 <nav aria-label="클래스 신청 페이지네이션">
                                     <ul class="pagination justify-content-center" id="class-forms-pagination">
+                                        <!-- JavaScript로 동적 생성 -->
+                                    </ul>
+                                </nav>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Logs Content -->
+                    <div id="logs-content" style="display: none;">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h2><i class="fas fa-file-alt"></i> 사용자 접속 로그</h2>
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-success" onclick="exportLogsToExcel()">
+                                    <i class="fas fa-download"></i> 엑셀 다운로드
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Date Range Selection -->
+                        <div class="card mb-4">
+                            <div class="card-body">
+                                <h5 class="card-title mb-3">기간 선택</h5>
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <label for="log-start-date" class="form-label">시작 날짜</label>
+                                        <input type="date" class="form-control" id="log-start-date">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="log-end-date" class="form-label">종료 날짜</label>
+                                        <input type="date" class="form-control" id="log-end-date">
+                                    </div>
+                                    <div class="col-md-4 d-flex align-items-end gap-2">
+                                        <button type="button" class="btn btn-primary" onclick="loadLogs()">
+                                            <i class="fas fa-search"></i> 조회
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary" onclick="clearLogDates()">
+                                            <i class="fas fa-times"></i> 초기화
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="form-text mt-2">
+                                    <i class="fas fa-info-circle"></i> 날짜를 선택하지 않으면 전체 기간의 데이터가 표시됩니다.
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Summary Cards -->
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <div class="card border-primary">
+                                    <div class="card-body text-center">
+                                        <h5 class="card-title text-primary">
+                                            <i class="fas fa-list me-2"></i>총 로그 수
+                                        </h5>
+                                        <h3 class="text-primary" id="total-logs-display">0</h3>
+                                        <p class="text-muted mb-0">전체 접속 기록</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card border-success">
+                                    <div class="card-body text-center">
+                                        <h5 class="card-title text-success">
+                                            <i class="fas fa-users me-2"></i>고유 사용자
+                                        </h5>
+                                        <h3 class="text-success" id="unique-users-display">0</h3>
+                                        <p class="text-muted mb-0">접속한 사용자 수</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card border-info">
+                                    <div class="card-body text-center">
+                                        <h5 class="card-title text-info">
+                                            <i class="fas fa-globe me-2"></i>고유 IP
+                                        </h5>
+                                        <h3 class="text-info" id="unique-ips-display">0</h3>
+                                        <p class="text-muted mb-0">접속한 IP 수</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Search and Sort Controls -->
+                        <div class="card mb-4">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <label for="log-search" class="form-label">검색</label>
+                                        <input type="text" class="form-control" id="log-search" placeholder="IP, 사용자명, 이메일로 검색...">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="log-sort" class="form-label">정렬 기준</label>
+                                        <select class="form-select" id="log-sort">
+                                            <option value="-created_at">최신순</option>
+                                            <option value="created_at">오래된순</option>
+                                            <option value="ip">IP순</option>
+                                            <option value="user__name">사용자명순</option>
+                                            <option value="user__email">이메일순</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Data Table -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">
+                                    <i class="fas fa-table me-2"></i>접속 로그 목록
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>번호</th>
+                                                <th>IP 주소</th>
+                                                <th>사용자명</th>
+                                                <th>이메일</th>
+                                                <th>접속일</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="logs-table-body">
+                                            <!-- JavaScript로 동적 로드 -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <nav aria-label="로그 페이지네이션">
+                                    <ul class="pagination justify-content-center" id="logs-pagination">
                                         <!-- JavaScript로 동적 생성 -->
                                     </ul>
                                 </nav>

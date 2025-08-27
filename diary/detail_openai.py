@@ -185,7 +185,7 @@ def extract_text_from_file_optimized(file_path):
     print(f"파일 크기: {file_size} bytes")
     
     # 매우 큰 파일은 처리 제한
-    if file_size > 50 * 1024 * 1024:  # 50MB
+    if file_size > 100 * 1024 * 1024:  # 100MB
         print(f"파일이 너무 큼: {file_size / (1024*1024):.1f}MB")
         return f"파일이 너무 커서 텍스트 추출을 건너뜁니다. (크기: {file_size / (1024*1024):.1f}MB)"
     
@@ -244,7 +244,7 @@ def extract_pdf_text_optimized(file_path, file_hash):
             num_pages = len(pdf.pages)
             
             if num_pages > 50:  # 50페이지 이상은 첫 10페이지만 처리
-                pages_to_process = pdf.pages[:10]
+                pages_to_process = pdf.pages[:30]
                 result = "대용량 PDF - 첫 10페이지만 처리됨\n\n"
             else:
                 pages_to_process = pdf.pages
@@ -421,9 +421,9 @@ def extract_text_file_optimized(file_path, file_hash):
     try:
         # 파일 크기 체크
         file_size = os.path.getsize(file_path)
-        if file_size > 10 * 1024 * 1024:  # 10MB 이상은 첫 1MB만 읽기
+        if file_size > 10 * 1024 * 1024:  # 10MB 이상은 첫 10MB만 읽기
             with open(file_path, 'r', encoding='utf-8') as f:
-                content = f.read(1024 * 1024) + "\n\n[파일이 너무 커서 일부만 표시됩니다.]"
+                content = f.read(10 * 1024 * 1024) + "\n\n[파일이 너무 커서 일부만 표시됩니다.]"
         else:
             # 메모리 매핑을 사용한 효율적인 읽기
             content = ""
@@ -488,9 +488,9 @@ def extract_structured_text_optimized(file_path, file_hash):
     """최적화된 구조화된 데이터 파일 추출"""
     try:
         file_size = os.path.getsize(file_path)
-        if file_size > 5 * 1024 * 1024:  # 5MB 이상은 일부만 읽기
+        if file_size > 10 * 1024 * 1024:  # 10MB 이상은 일부만 읽기
             with open(file_path, 'r', encoding='utf-8') as f:
-                content = f.read(1024 * 1024) + "\n\n[파일이 너무 커서 일부만 표시됩니다.]"
+                content = f.read(10 * 1024 * 1024) + "\n\n[파일이 너무 커서 일부만 표시됩니다.]"
         else:
             # 메모리 매핑을 사용한 효율적인 읽기
             with open(file_path, 'rb') as f:
@@ -923,9 +923,9 @@ def ai_chat(request):
                                             filename = file_info.get('original_filename', '파일')
                                             print(f"파일 감지 (data 구조): {filename} (속성: {attr_name}) - 타입: {file_info.get('type')}")
                                             
-                                            # 파일 크기 체크 (30MB 제한)
+                                            # 파일 크기 체크 (50MB 제한)
                                             file_size = file_info.get('file_size', 0)
-                                            if file_size > 30 * 1024 * 1024:  # 30MB
+                                            if file_size > 50 * 1024 * 1024:  # 50MB
                                                 file_texts.append(f"[{attr_name} - {file_info.get('original_filename', '파일')}]: 파일이 너무 커서 텍스트 추출을 건너뜁니다.")
                                                 print(f"파일 크기 초과로 건너뜀: {filename} ({file_size / (1024*1024):.1f}MB)")
                                                 continue
@@ -950,9 +950,9 @@ def ai_chat(request):
                                         filename = file_info.get('original_filename', '파일')
                                         print(f"파일 감지 (배열 구조): {filename} (속성: {attr_name})")
                                         
-                                        # 파일 크기 체크 (10MB 제한)
+                                        # 파일 크기 체크 (50MB 제한)
                                         file_size = file_info.get('file_size', 0)
-                                        if file_size > 10 * 1024 * 1024:  # 10MB
+                                        if file_size > 50 * 1024 * 1024:  # 50MB
                                             file_texts.append(f"[{attr_name} - {file_info.get('original_filename', '파일')}]: 파일이 너무 커서 텍스트 추출을 건너뜁니다.")
                                             print(f"파일 크기 초과로 건너뜀: {filename} ({file_size / (1024*1024):.1f}MB)")
                                             continue
@@ -1405,7 +1405,7 @@ def extract_file_text(field_name, file_info):
     try:
         # 파일 크기 체크 (10MB 제한)
         file_size = file_info.get('file_size', 0)
-        if file_size > 10 * 1024 * 1024:  # 10MB
+        if file_size > 50 * 1024 * 1024:  # 50MB
             return f"[{field_name} - {file_info.get('original_filename', '파일')}]: 파일이 너무 커서 텍스트 추출을 건너뜁니다.", None
         
         file_path = None
@@ -2347,7 +2347,7 @@ def call_openai_api_optimized(messages, retry_count=0):
         payload = {
             'model': 'gpt-4.1-mini',  # 더 빠른 모델 사용
             'messages': messages,
-            'max_tokens': 2000,  # 1500 -> 2000으로 증가
+            'max_tokens': 3000,  # 1500 -> 3000으로 증가
             'temperature': 0.1,  # 0.7 -> 0.3으로 감소 (더 정확한 응답)
             'stream': False  # 스트리밍 비활성화로 응답 속도 향상
         }

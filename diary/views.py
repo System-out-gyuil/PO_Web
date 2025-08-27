@@ -458,8 +458,8 @@ def random_color():
 def bizinfo(request):
     if request.method == 'GET':
         try:
-            biz_list_10 = BizInfo.objects.all().order_by('-registered_at')[:15]
-            biz_top_10 = BizTop.objects.all().order_by('-update_date')[:15]
+            biz_list_10 = BizInfo.objects.all().order_by('-registered_at')[:20]
+            biz_top_10 = BizTop.objects.all().order_by('-update_date')[:20]
 
             pblanc_ids = [biz.pblanc_id for biz in biz_top_10]
             biz_top_10 = list(BizTop.objects.filter(pblanc_id__in=pblanc_ids))

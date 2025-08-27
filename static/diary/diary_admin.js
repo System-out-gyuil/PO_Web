@@ -221,6 +221,7 @@ function initializeEventListeners() {
     const userSearch = document.getElementById('user-search');
     const countSearch = document.getElementById('count-search');
     const classFormSearch = document.getElementById('class-form-search');
+    const logSearch = document.getElementById('log-search');
     
     if (inquirySearch) {
         inquirySearch.addEventListener('input', debounce(loadInquiries, 500));
@@ -237,6 +238,9 @@ function initializeEventListeners() {
     if (classFormSearch) {
         classFormSearch.addEventListener('input', debounce(loadClassForms, 500));
     }
+    if (logSearch) {
+        logSearch.addEventListener('input', debounce(loadLogs, 500));
+    }
     
     // 정렬 이벤트
     const inquirySort = document.getElementById('inquiry-sort');
@@ -244,6 +248,7 @@ function initializeEventListeners() {
     const userSort = document.getElementById('user-sort');
     const countSort = document.getElementById('count-sort');
     const classFormSort = document.getElementById('class-form-sort');
+    const logSort = document.getElementById('log-sort');
     
     if (inquirySort) {
         inquirySort.addEventListener('change', loadInquiries);
@@ -259,6 +264,9 @@ function initializeEventListeners() {
     }
     if (classFormSort) {
         classFormSort.addEventListener('change', loadClassForms);
+    }
+    if (logSort) {
+        logSort.addEventListener('change', loadLogs);
     }
     
     // 조회수 타입 변경 이벤트
@@ -432,7 +440,8 @@ function hideAllContent() {
         'create-alarm-content',
         'users-content',
         'view-counts-content',
-        'class-forms-content'
+        'class-forms-content',
+        'logs-content'
     ];
     
     contents.forEach(id => {
@@ -476,6 +485,9 @@ function updateActiveNav(activeSection) {
             break;
         case 'class-forms':
             targetLink = document.querySelector('.nav-link[onclick*="showClassForms"]');
+            break;
+        case 'logs':
+            targetLink = document.querySelector('.nav-link[onclick*="showLogs"]');
             break;
     }
     
@@ -1587,4 +1599,171 @@ async function changeActivateStatus(userId, makeActive) {
         console.error('Error changing activate status:', error);
         showAlert('계정 활성화 상태 변경에 실패했습니다.', 'danger');
     }
+}
+
+// 로그 관련 함수들
+async function loadLogs(page = 1) {
+    try {
+        const searchQuery = document.getElementById('log-search')?.value || '';
+        const sortBy = document.getElementById('log-sort')?.value || '-created_at';
+        const startDate = document.getElementById('log-start-date')?.value || '';
+        const endDate = document.getElementById('log-end-date')?.value || '';
+        
+        const params = new URLSearchParams({
+            search: searchQuery,
+            sort: sortBy,
+            page: page
+        });
+        
+        if (startDate) params.append('start_date', startDate);
+        if (endDate) params.append('end_date', endDate);
+        
+        const response = await fetch(`/sales/diary_admin/logs/?${params}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            renderLogsTable(data.logs, page, 20);
+            renderPagination(data.pagination, 'logs-pagination', loadLogs);
+            updateLogsSummary(data.total_count, data.logs);
+        } else {
+            showAlert('로그를 불러오는데 실패했습니다.', 'danger');
+        }
+    } catch (error) {
+        console.error('Error loading logs:', error);
+        showAlert('로그를 불러오는데 실패했습니다.', 'danger');
+    }
+}
+
+// 로그 테이블 렌더링
+function renderLogsTable(logs, currentPage = 1, pageSize = 20) {
+    const tbody = document.getElementById('logs-table-body');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '';
+    
+    if (logs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">로그가 없습니다.</td></tr>';
+        return;
+    }
+    
+    logs.forEach((log, index) => {
+        const row = document.createElement('tr');
+        const displayNumber = (currentPage - 1) * pageSize + (logs.length - index);
+        
+        row.innerHTML = `
+            <td>${displayNumber}</td>
+            <td><code>${log.ip}</code></td>
+            <td>${log.user_name || '-'}</td>
+            <td>${log.user_email || '-'}</td>
+            <td>${formatDate(log.created_at)}</td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+// 로그 요약 정보 업데이트
+function updateLogsSummary(totalCount, logs) {
+    const totalLogsDisplay = document.getElementById('total-logs-display');
+    const uniqueUsersDisplay = document.getElementById('unique-users-display');
+    const uniqueIPsDisplay = document.getElementById('unique-ips-display');
+    
+    if (totalLogsDisplay) {
+        totalLogsDisplay.textContent = totalCount.toLocaleString();
+    }
+    
+    if (uniqueUsersDisplay && logs) {
+        const uniqueUsers = new Set(logs.map(log => log.user_email).filter(email => email && email !== '알 수 없음'));
+        uniqueUsersDisplay.textContent = uniqueUsers.size.toLocaleString();
+    }
+    
+    if (uniqueIPsDisplay && logs) {
+        const uniqueIPs = new Set(logs.map(log => log.ip));
+        uniqueIPsDisplay.textContent = uniqueIPs.size.toLocaleString();
+    }
+}
+
+// 로그 엑셀 다운로드
+function exportLogsToExcel() {
+    const startDate = document.getElementById('log-start-date')?.value || '';
+    const endDate = document.getElementById('log-end-date')?.value || '';
+    
+    let url = '/sales/diary_admin/logs/export/';
+    const params = new URLSearchParams();
+    
+    if (startDate) params.append('start_date', startDate);
+    if (endDate) params.append('end_date', endDate);
+    
+    if (params.toString()) {
+        url += '?' + params.toString();
+    }
+    
+    // 파일명 생성
+    let filename = '사용자_접속_로그';
+    if (startDate && endDate) {
+        filename += `_${startDate}_to_${endDate}`;
+    } else {
+        const today = new Date();
+        filename += `_전체_${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
+    }
+    filename += '.xlsx';
+    
+    // fetch를 사용하여 파일 다운로드
+    fetch(url)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.blob();
+        })
+        .then(blob => {
+            // Blob URL 생성
+            const blobUrl = window.URL.createObjectURL(blob);
+            
+            // 다운로드 링크 생성
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.download = filename;
+            link.style.display = 'none';
+            
+            // DOM에 추가하고 클릭
+            document.body.appendChild(link);
+            link.click();
+            
+            // 정리
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(blobUrl);
+        })
+        .catch(error => {
+            console.error('엑셀 다운로드 중 오류:', error);
+            showAlert('엑셀 다운로드에 실패했습니다.', 'danger');
+        });
+}
+
+// 로그 날짜 초기화
+function clearLogDates() {
+    document.getElementById('log-start-date').value = '';
+    document.getElementById('log-end-date').value = '';
+    loadLogs(); // 전체 기간 데이터 로드
+}
+
+// 로그 보기 탭 표시
+function showLogs() {
+    hideAllContent();
+    const logsContent = document.getElementById('logs-content');
+    if (logsContent) {
+        logsContent.style.display = 'block';
+    }
+    document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
+    document.querySelector('a[onclick="showLogs(); return false;"]').classList.add('active');
+    updateActiveNav('logs');
+    
+    // 페이지 로드 시 기본 날짜 설정
+    const today = new Date();
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(today.getDate() - 7);
+    
+    document.getElementById('log-end-date').value = today.toISOString().split('T')[0];
+    document.getElementById('log-start-date').value = sevenDaysAgo.toISOString().split('T')[0];
+    
+    loadLogs();
 }

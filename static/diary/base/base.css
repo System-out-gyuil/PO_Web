@@ -577,7 +577,7 @@
 
 .bizinfo-content-1,
 .bizinfo-content-2 {
-  width: 55%;
+  width: 50%;
   height: 100%;
 }
 
@@ -773,9 +773,6 @@
   border: none;
 }
 
-.bizinfo-modal .bizinfo-contents {
-  gap: 30px;
-}
 
 .diary-btn {
   background-color:#10b981;

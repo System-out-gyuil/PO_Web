@@ -425,6 +425,7 @@
           <div class="detail-modal-header">
             <h3>영업노트</h3>
             <div>
+                {% comment %} <button onclick="openAutoDocx()" class="auto-docx-btn">docx</button> {% endcomment %}
                 <button onclick="openAIChatModalFromDetail()" class="ai-chat-btn">
                 🤖 AI 대화하기
                 </button>
@@ -811,6 +812,7 @@
 <script src="{% static 'diary/detail_openai.js' %}"></script>
 <script src="{% static 'diary/diary_inquiry.js' %}"></script>
 <script src="{% static 'diary/base/base.js' %}"></script>
+<script src="{% static 'diary/diary_docx.js' %}"></script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
