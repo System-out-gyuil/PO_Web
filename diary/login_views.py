@@ -15,6 +15,33 @@ from config import EMAIL_AUTH_VALID_TIME, SENDER_EMAIL
 
 @method_decorator(csrf_exempt, name='dispatch')
 class LoginView(View):
+    def _get_client_ip(self, request):
+        """클라이언트의 실제 IP 주소를 가져오는 메서드"""
+        # 프록시 환경에서 실제 클라이언트 IP를 가져오기 위한 헤더들
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            # X-Forwarded-For 헤더가 있으면 첫 번째 IP가 실제 클라이언트 IP
+            client_ip = x_forwarded_for.split(',')[0].strip()
+            return client_ip
+        
+        # X-Real-IP 헤더 확인 (Nginx에서 설정)
+        x_real_ip = request.META.get('HTTP_X_REAL_IP')
+        if x_real_ip:
+            return x_real_ip
+        
+        # HTTP_CLIENT_IP 헤더 확인
+        http_client_ip = request.META.get('HTTP_CLIENT_IP')
+        if http_client_ip:
+            return http_client_ip
+        
+        # 기본값으로 REMOTE_ADDR 사용
+        remote_addr = request.META.get('REMOTE_ADDR')
+        if remote_addr:
+            return remote_addr
+        
+        # 모든 방법이 실패하면 기본값 반환
+        return 'unknown'
+    
     def get(self, request):
         # 이미 로그인된 사용자인지 확인
         if request.session.get('diary_authenticated') and request.session.get('diary_member_id'):
@@ -79,14 +106,20 @@ class LoginView(View):
                     except Exception as e:
                         print(f"CountUser 업데이트 중 오류: {str(e)}")
 
-                    print(f"IP: {request.META.get('REMOTE_ADDR')}")
+                    # IP 주소 가져오기 (프록시 환경 고려)
+                    client_ip = self._get_client_ip(request)
+                    print(f"Client IP: {client_ip}")
+                    print(f"REMOTE_ADDR: {request.META.get('REMOTE_ADDR')}")
+                    print(f"HTTP_X_FORWARDED_FOR: {request.META.get('HTTP_X_FORWARDED_FOR')}")
+                    print(f"HTTP_X_REAL_IP: {request.META.get('HTTP_X_REAL_IP')}")
 
                     # CountUserIP 테이블에 로그인 기록 추가
                     try:
                         count_user_ip = CountUserIP.objects.create(
-                            ip=request.META.get('REMOTE_ADDR'),
+                            ip=client_ip,
                             user=member
                         )
+                        print(f"CountUserIP 저장 성공: IP={client_ip}, User={member.name}")
                     except Exception as e:
                         print(f"CountUserIP 업데이트 중 오류: {str(e)}")
 
