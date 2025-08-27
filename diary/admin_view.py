@@ -1093,6 +1093,7 @@ def class_form_delete(request, class_form_id):
     except Exception as e:
         return JsonResponse({'success': False, 'message': f'클래스 신청 삭제 중 오류가 발생했습니다: {str(e)}'})
 
+
 def log_list(request):
     """로그 목록 API"""
     user_id = request.session.get('diary_member_id')
