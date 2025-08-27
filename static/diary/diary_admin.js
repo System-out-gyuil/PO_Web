@@ -1649,13 +1649,14 @@ function renderLogsTable(logs, currentPage = 1, pageSize = 20) {
     logs.forEach((log, index) => {
         const row = document.createElement('tr');
         const displayNumber = (currentPage - 1) * pageSize + (logs.length - index);
+        const created_at = log.created_at.split('T')[0]+' '+log.created_at.split('T')[1].split('.')[0];
         
         row.innerHTML = `
             <td>${displayNumber}</td>
             <td><code>${log.ip}</code></td>
             <td>${log.user_name || '-'}</td>
             <td>${log.user_email || '-'}</td>
-            <td>${formatDate(log.created_at)}</td>
+            <td>${created_at}</td>
         `;
         tbody.appendChild(row);
     });
