@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>다이어리 사용 방법 - 자금왕</title>
+  <!-- PDF.js 라이브러리 추가 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <style>
+    body {
+      font-family: 'NanumSquareNeo', Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+    
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 30px;
+      text-align: center;
+    }
+    
+    .header h1 {
+      margin: 0;
+      font-size: 2.5em;
+      font-weight: 700;
+    }
+    
+    .header p {
+      margin: 10px 0 0 0;
+      font-size: 1.2em;
+      opacity: 0.9;
+    }
+    
+    .content {
+      padding: 30px;
+    }
+    
+    .download-section {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 30px;
+      text-align: center;
+    }
+    
+    .download-btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      border-radius: 25px;
+      font-size: 1.1em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-decoration: none;
+      display: inline-block;
+      margin: 0 10px;
+    }
+    
+    .download-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+    
+    .file-info {
+      margin-top: 15px;
+      color: #666;
+      font-size: 0.9em;
+    }
+    
+    .pdf-container {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      overflow: hidden;
+      margin-top: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      background: #f8f9fa;
+      min-height: 600px;
+    }
+    
+    .pdf-pages-container {
+      padding: 20px;
+      text-align: center;
+    }
+    
+    .pdf-page {
+      margin-bottom: 20px;
+      display: inline-block;
+      border: 1px solid #ddd;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      background: white;
+    }
+    
+    .pdf-page:last-child {
+      margin-bottom: 0;
+    }
+    
+    .page-number {
+      background: #667eea;
+      color: white;
+      padding: 8px 16px;
+      border-radius: 0 0 8px 8px;
+      font-size: 0.9em;
+      font-weight: 600;
+      display: inline-block;
+      margin-bottom: 10px;
+    }
+    
+    .error-message {
+      background: #f8d7da;
+      color: #721c24;
+      padding: 20px;
+      border-radius: 8px;
+      text-align: center;
+      margin: 20px 0;
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #666;
+    }
+    
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #667eea;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .progress-bar {
+      width: 100%;
+      height: 4px;
+      background-color: #e9ecef;
+      border-radius: 2px;
+      margin: 20px 0;
+      overflow: hidden;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+    
+    .progress-text {
+      text-align: center;
+      color: #666;
+      font-size: 0.9em;
+      margin-bottom: 20px;
+    }
+    
+    @media (max-width: 768px) {
+      .header h1 {
+        font-size: 2em;
+      }
+      
+      .content {
+        padding: 20px;
+      }
+      
+      .download-btn {
+        display: block;
+        margin: 10px auto;
+        width: 200px;
+      }
+      
+      .pdf-page {
+        max-width: 100%;
+        height: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📖 다이어리 사용 방법</h1>
+      <p>자금왕 시스템의 모든 기능을 쉽게 배워보세요</p>
+    </div>
+    
+    <div class="content">
+      {% if error %}
+        <div class="error-message">
+          <h3>⚠️ 오류가 발생했습니다</h3>
+          <p>{{ error }}</p>
+        </div>
+      {% elif pdf_base64 %}
+        <div class="download-section">
+          <h3>📥 사용 설명서 다운로드</h3>
+          <p>아래 버튼을 클릭하여 PDF 파일을 다운로드하세요</p>
+          <a href="data:application/pdf;base64,{{ pdf_base64 }}" 
+             download="{{ filename }}" 
+             class="download-btn">
+            📄 PDF 다운로드
+          </a>
+          <a href="{{ s3_url }}" 
+             target="_blank" 
+             class="download-btn">
+            🔗 새 창에서 열기
+          </a>
+          <div class="file-info">
+            <strong>파일명:</strong> {{ filename }} | 
+            <strong>크기:</strong> {{ file_size|filesizeformat }}
+          </div>
+        </div>
+        
+        <div class="pdf-container" id="pdfContainer">
+          <!-- PDF.js 미리보기가 여기에 표시됩니다 -->
+        </div>
+        
+      {% else %}
+        <div class="loading">
+          <div class="spinner"></div>
+          <p>PDF 파일을 불러오는 중입니다...</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+  
+  <script>
+    // PDF.js 설정
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    
+    let currentPdf = null;
+    let totalPages = 0;
+    
+    // PDF.js를 사용한 연속 미리보기
+    async function showPdfJs() {
+      const container = document.getElementById('pdfContainer');
+      container.innerHTML = '<div class="loading"><div class="spinner"></div><p>PDF를 로딩하는 중입니다...</p></div>';
+      
+      try {
+        // base64 데이터를 Uint8Array로 변환
+        const pdfData = atob('{{ pdf_base64 }}');
+        const pdfArray = new Uint8Array(pdfData.length);
+        for (let i = 0; i < pdfData.length; i++) {
+          pdfArray[i] = pdfData.charCodeAt(i);
+        }
+        
+        // PDF 로드
+        const loadingTask = pdfjsLib.getDocument({data: pdfArray});
+        currentPdf = await loadingTask.promise;
+        totalPages = currentPdf.numPages;
+        
+        // 진행률 표시
+        container.innerHTML = `
+          <div class="progress-text">PDF 페이지를 렌더링하는 중입니다... (0/${totalPages})</div>
+          <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+        `;
+        
+        // 모든 페이지를 연속으로 렌더링
+        await renderAllPages();
+        
+      } catch (error) {
+        console.error('PDF 로딩 오류:', error);
+        container.innerHTML = '<div class="error-message"><h3>PDF 로딩 실패</h3><p>PDF를 불러올 수 없습니다. 다운로드 후 확인해주세요.</p></div>';
+      }
+    }
+    
+    // 모든 페이지를 연속으로 렌더링
+    async function renderAllPages() {
+      const container = document.getElementById('pdfContainer');
+      const pagesContainer = document.createElement('div');
+      pagesContainer.className = 'pdf-pages-container';
+      
+      container.innerHTML = '';
+      container.appendChild(pagesContainer);
+      
+      for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+        try {
+          // 진행률 업데이트
+          updateProgress(pageNum, totalPages);
+          
+          // 페이지 렌더링
+          const page = await currentPdf.getPage(pageNum);
+          const viewport = page.getViewport({scale: 1.2});
+          
+          // 페이지 컨테이너 생성
+          const pageDiv = document.createElement('div');
+          pageDiv.className = 'pdf-page';
+          
+          // 페이지 번호 표시
+          const pageNumber = document.createElement('div');
+          pageNumber.className = 'page-number';
+          pageNumber.textContent = `페이지 ${pageNum}`;
+          pageDiv.appendChild(pageNumber);
+          
+          // Canvas 생성
+          const canvas = document.createElement('canvas');
+          const context = canvas.getContext('2d');
+          canvas.height = viewport.height;
+          canvas.width = viewport.width;
+          
+          pageDiv.appendChild(canvas);
+          pagesContainer.appendChild(pageDiv);
+          
+          // 페이지 렌더링
+          const renderContext = {
+            canvasContext: context,
+            viewport: viewport
+          };
+          
+          await page.render(renderContext).promise;
+          
+        } catch (error) {
+          console.error(`페이지 ${pageNum} 렌더링 오류:`, error);
+        }
+      }
+      
+      // 완료 메시지
+      const completeMessage = document.createElement('div');
+      completeMessage.style.textAlign = 'center';
+      completeMessage.style.padding = '20px';
+      completeMessage.style.color = '#28a745';
+      completeMessage.innerHTML = `
+        <h3>✅ PDF 로딩 완료</h3>
+        <p>총 ${totalPages}페이지가 로드되었습니다. 스크롤하여 모든 내용을 확인하세요.</p>
+      `;
+      pagesContainer.appendChild(completeMessage);
+    }
+    
+    // 진행률 업데이트
+    function updateProgress(current, total) {
+      const progressText = document.querySelector('.progress-text');
+      const progressFill = document.getElementById('progressFill');
+      
+      if (progressText && progressFill) {
+        const percentage = Math.round((current / total) * 100);
+        progressText.textContent = `PDF 페이지를 렌더링하는 중입니다... (${current}/${total})`;
+        progressFill.style.width = percentage + '%';
+      }
+    }
+    
+    // 페이지 로드 시 자동으로 PDF.js 미리보기 시작
+    document.addEventListener('DOMContentLoaded', function() {
+      if (document.getElementById('pdfContainer')) {
+        showPdfJs();
+      }
+    });
+  </script>
+</body>
+</html>
