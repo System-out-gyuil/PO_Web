@@ -951,6 +951,33 @@ def get_row_files_text(row):
     
     return file_texts
 
+def summarize_file_texts(file_texts, max_length=8000):
+    """파일 텍스트들을 요약하여 길이 제한"""
+    if not file_texts:
+        return []
+    
+    summarized_texts = []
+    total_length = 0
+    
+    for file_text in file_texts:
+        # 파일 텍스트가 너무 길면 요약
+        if len(file_text) > max_length:
+            # 첫 부분과 마지막 부분을 유지하고 중간은 요약
+            first_part = file_text[:max_length//2]
+            last_part = file_text[-(max_length//2):]
+            summary = f"{first_part}\n\n[중간 내용 생략...]\n\n{last_part}"
+            summarized_texts.append(summary)
+            total_length += len(summary)
+        else:
+            summarized_texts.append(file_text)
+            total_length += len(file_text)
+        
+        # 전체 길이가 제한을 초과하면 중단
+        if total_length > max_length * 1.5:  # 더 엄격한 제한
+            break
+    
+    return summarized_texts
+
 # ==========================
 # OpenAI API 연동 함수들
 # ==========================
@@ -966,9 +993,16 @@ def generate_business_overview_with_openai(row_data, service_product, row=None, 
             file_texts = get_row_files_text(row)
             print(f"행에서 파일 텍스트 추출: {len(file_texts)}개")
         
+        # 파일 텍스트 요약 (너무 길면 OpenAI API 제한 초과)
+        if file_texts:
+            original_length = sum(len(text) for text in file_texts)
+            file_texts = summarize_file_texts(file_texts, max_length=3000)  # 더 엄격한 제한
+            summarized_length = sum(len(text) for text in file_texts)
+            print(f"파일 텍스트 요약: {original_length} -> {summarized_length} characters")
+        
         # 기업 정보를 OpenAI에 전달할 프롬프트 구성
-        company_info = format_company_info_for_openai(row_data, file_texts)
-        print(f"기업 정보: {company_info}")
+        company_info = format_company_info_for_openai(row_data, file_texts, max_file_length=3000)
+        print(f"기업 정보 길이: {len(company_info)} characters")
         
         # 기업 정보에서 매출액 추출
         revenue = row_data.get("매출액", row_data.get("매출액(백만원)", 0))
@@ -1010,25 +1044,46 @@ def generate_business_overview_with_openai(row_data, service_product, row=None, 
         }
         
         payload = {
-            'model': 'gpt-4',
+            'model': 'gpt-4.1-mini',  # 더 안정적인 모델
             'messages': [
                 {'role': 'system', 'content': system_prompt},
                 {'role': 'user', 'content': user_message}
             ],
-            'max_tokens': 1000,
+            'max_tokens': 500,  # 토큰 제한 줄임
             'temperature': 0.3
         }
         
-        response = requests.post(
-            'https://api.openai.com/v1/chat/completions',
-            headers=headers,
-            json=payload,
-            timeout=60
-        )
+        print(f"=== OpenAI API 호출 정보 ===")
+        print(f"API 키 존재: {'예' if OPEN_AI_API_KEY else '아니오'}")
+        print(f"API 키 길이: {len(OPEN_AI_API_KEY) if OPEN_AI_API_KEY else 0}")
+        print(f"모델: {payload['model']}")
+        print(f"최대 토큰: {payload['max_tokens']}")
+        print(f"시스템 프롬프트 길이: {len(system_prompt)}")
+        print(f"사용자 메시지 길이: {len(user_message)}")
+        print(f"전체 요청 크기: {len(str(payload))}")
         
-        if response.status_code == 200:
+        try:
+            response = requests.post(
+                'https://api.openai.com/v1/chat/completions',
+                headers=headers,
+                json=payload,
+                timeout=60
+            )
+            
+            print(f"=== OpenAI API 응답 정보 ===")
+            print(f"상태 코드: {response.status_code}")
+            print(f"응답 헤더: {dict(response.headers)}")
+            print(f"응답 본문 길이: {len(response.text)}")
+            
+            if response.status_code != 200:
+                print(f"응답 본문: {response.text}")
+                return None
+            
             result = response.json()
             ai_response = result['choices'][0]['message']['content'].strip()
+            
+            print(f"AI 응답 길이: {len(ai_response)}")
+            print(f"AI 응답 내용: {ai_response}")
             
             # JSON 응답 파싱
             try:
@@ -1043,16 +1098,23 @@ def generate_business_overview_with_openai(row_data, service_product, row=None, 
                 else:
                     json_str = ai_response
                 
+                print(f"파싱할 JSON 문자열: {json_str}")
+                
                 recommendation_data = json.loads(json_str)
                 print(f"OpenAI 추천 응답 파싱 성공: {recommendation_data}")
                 return recommendation_data
                 
             except json.JSONDecodeError as e:
                 print(f"JSON 파싱 실패: {e}")
+                print(f"파싱 시도한 문자열: {json_str}")
                 print(f"AI 응답: {ai_response}")
                 return None
-        else:
-            print(f"OpenAI API 호출 실패: {response.status_code}")
+                
+        except requests.exceptions.Timeout:
+            print("OpenAI API 호출 타임아웃")
+            return None
+        except requests.exceptions.RequestException as e:
+            print(f"OpenAI API 요청 오류: {e}")
             return None
             
     except Exception as e:
@@ -1113,25 +1175,46 @@ def generate_business_plan_with_openai(row_data):
         }
         
         payload = {
-            'model': 'gpt-4',
+            'model': 'gpt-3.5-turbo',  # 더 안정적인 모델
             'messages': [
                 {'role': 'system', 'content': system_prompt},
                 {'role': 'user', 'content': user_message}
             ],
-            'max_tokens': 2000,
+            'max_tokens': 500,  # 토큰 제한 줄임
             'temperature': 0.3
         }
         
-        response = requests.post(
-            'https://api.openai.com/v1/chat/completions',
-            headers=headers,
-            json=payload,
-            timeout=60
-        )
+        print(f"=== OpenAI API 호출 정보 ===")
+        print(f"API 키 존재: {'예' if OPEN_AI_API_KEY else '아니오'}")
+        print(f"API 키 길이: {len(OPEN_AI_API_KEY) if OPEN_AI_API_KEY else 0}")
+        print(f"모델: {payload['model']}")
+        print(f"최대 토큰: {payload['max_tokens']}")
+        print(f"시스템 프롬프트 길이: {len(system_prompt)}")
+        print(f"사용자 메시지 길이: {len(user_message)}")
+        print(f"전체 요청 크기: {len(str(payload))}")
         
-        if response.status_code == 200:
+        try:
+            response = requests.post(
+                'https://api.openai.com/v1/chat/completions',
+                headers=headers,
+                json=payload,
+                timeout=60
+            )
+            
+            print(f"=== OpenAI API 응답 정보 ===")
+            print(f"상태 코드: {response.status_code}")
+            print(f"응답 헤더: {dict(response.headers)}")
+            print(f"응답 본문 길이: {len(response.text)}")
+            
+            if response.status_code != 200:
+                print(f"응답 본문: {response.text}")
+                return None
+            
             result = response.json()
             ai_response = result['choices'][0]['message']['content'].strip()
+            
+            print(f"AI 응답 길이: {len(ai_response)}")
+            print(f"AI 응답 내용: {ai_response}")
             
             # JSON 응답 파싱
             try:
@@ -1146,23 +1229,30 @@ def generate_business_plan_with_openai(row_data):
                 else:
                     json_str = ai_response
                 
+                print(f"파싱할 JSON 문자열: {json_str}")
+                
                 business_plan_data = json.loads(json_str)
                 print(f"OpenAI 응답 파싱 성공: {business_plan_data}")
                 return business_plan_data
                 
             except json.JSONDecodeError as e:
                 print(f"JSON 파싱 실패: {e}")
+                print(f"파싱 시도한 문자열: {json_str}")
                 print(f"AI 응답: {ai_response}")
                 return None
-        else:
-            print(f"OpenAI API 호출 실패: {response.status_code}")
+                
+        except requests.exceptions.Timeout:
+            print("OpenAI API 호출 타임아웃")
+            return None
+        except requests.exceptions.RequestException as e:
+            print(f"OpenAI API 요청 오류: {e}")
             return None
             
     except Exception as e:
         print(f"OpenAI API 연동 중 오류: {e}")
         return None
 
-def format_company_info_for_openai(row_data, file_texts=None):
+def format_company_info_for_openai(row_data, file_texts=None, max_file_length=8000):
     """기업 정보를 OpenAI에 전달하기 위한 형식으로 변환"""
     formatted_info = []
     
@@ -1170,10 +1260,12 @@ def format_company_info_for_openai(row_data, file_texts=None):
         if value and str(value).strip() and key != "파일_텍스트":  # 파일_텍스트는 별도 처리
             formatted_info.append(f"{key}: {value}")
     
-    # 파일 텍스트가 있으면 추가
+    # 파일 텍스트가 있으면 요약하여 추가
     if file_texts and isinstance(file_texts, list):
+        # 파일 텍스트 요약
+        summarized_file_texts = summarize_file_texts(file_texts, max_file_length)
         formatted_info.append("\n첨부 파일 내용:")
-        for file_text in file_texts:
+        for file_text in summarized_file_texts:
             formatted_info.append(file_text)
     
     return "\n".join(formatted_info)

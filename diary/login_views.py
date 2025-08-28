@@ -12,6 +12,8 @@ import re
 from .models import User, BaseAttribute, BaseAttributeDetail, Attribute, AttributeValue, DropdownAttribute, Row, CalendarSettings, KanbanSettings, EmailVerification, CountUser, CountUserIP
 import json
 from config import EMAIL_AUTH_VALID_TIME, SENDER_EMAIL
+from .solapi import solapi_api
+
 
 @method_decorator(csrf_exempt, name='dispatch')
 class LoginView(View):
@@ -234,6 +236,10 @@ class SignupView(View):
             verification.delete()
             
             success_message = '회원가입이 완료되었습니다.'
+
+
+            solapi_api("signup", phone_number)
+
             if sample_data_created:
                 success_message += ' 샘플 데이터가 추가되었습니다.'
             
