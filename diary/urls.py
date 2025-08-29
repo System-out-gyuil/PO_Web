@@ -21,7 +21,7 @@ from .order import reorder_entries, save_column_order, update_detail_sort_order
 from .hwp_convert import convert_hwp_to_pdf_board, convert_hwp_to_pdf
 from .ai_class import ai_class, class_form, class_form_end
 from .attribute_handlers import get_hidden_attributes, add_attribute, delete_attribute, update_attribute_name, update_attribute_visibility, get_dropdown_attributes, get_all_attributes
-from .auto_docx import auto_docx, auto_docx_recommend
+from .auto_docx import auto_docx, auto_docx_recommend, auto_docx_innovation, auto_docx_innovation_recommend
 from .diary_use_preview import diary_use_preview
 
 urlpatterns = [
@@ -250,6 +250,8 @@ urlpatterns = [
     # 자동 docx 생성
     path('auto_docx/', auto_docx, name='auto_docx'),
     path('auto_docx_recommend/', auto_docx_recommend, name='auto_docx_recommend'),
+    path('auto_docx_innovation/', auto_docx_innovation, name='auto_docx_innovation'),
+    path('auto_docx_innovation_recommend/', auto_docx_innovation_recommend, name='auto_docx_innovation_recommend'),
 
     # 다이어리 사용법 미리보기
     path('diary_use_preview/', diary_use_preview, name='diary_use_preview'),

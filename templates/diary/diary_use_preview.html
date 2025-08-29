@@ -215,11 +215,11 @@
              class="download-btn">
             📄 PDF 다운로드
           </a>
-          <a href="{{ s3_url }}" 
+          {% comment %} <a href="{{ s3_url }}" 
              target="_blank" 
              class="download-btn">
             🔗 새 창에서 열기
-          </a>
+          </a> {% endcomment %}
           <div class="file-info">
             <strong>파일명:</strong> {{ filename }} | 
             <strong>크기:</strong> {{ file_size|filesizeformat }}

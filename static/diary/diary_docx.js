@@ -20,9 +20,10 @@ const modalStyles = `
       padding: 0;
       border: 1px solid #888;
       width: 90%;
-      max-width: 600px;
+      max-width: 900px;
       border-radius: 8px;
       box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      overflow: hidden;
     }
     
     .docx-modal-header {
@@ -54,7 +55,59 @@ const modalStyles = `
     }
     
     .docx-modal-body {
+      padding: 0;
+    }
+    
+    .tab-container {
+      width: 100%;
+    }
+    
+    .tab-buttons {
+      display: flex;
+      width: 100%;
+      background-color: #f8f9fa;
+      border-bottom: 1px solid #ddd;
+    }
+    
+    .tab-button {
+      flex: 1;
+      padding: 15px 20px;
+      border: none;
+      background: none;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      color: #666;
+      border-bottom: 3px solid transparent;
+      transition: all 0.3s ease;
+      text-align: center;
+      position: relative;
+    }
+    
+    .docx-modal .tab-button.active {
+      color: #007bff;
+      border-bottom-color: #007bff;
+      background-color: white;
+      z-index: 10;
+      font-weight: bold;
+    }
+    
+    .docx-modal .tab-button:hover:not(.active) {
+      color: #007bff;
+      background-color: #e9ecef;
+    }
+    
+    .docx-modal .tab-content {
+      display: none;
       padding: 20px;
+      background-color: white;
+      min-height: 400px;
+      margin: 0 auto;
+      width: 70%;
+    }
+    
+    .docx-modal .tab-content.active {
+      display: block;
     }
     
     .form-group {
@@ -69,7 +122,8 @@ const modalStyles = `
     }
     
     .form-group input,
-    .form-group textarea {
+    .form-group textarea,
+    .form-group select {
       width: 100%;
       padding: 12px;
       border: 1px solid #ddd;
@@ -79,7 +133,8 @@ const modalStyles = `
     }
     
     .form-group input:focus,
-    .form-group textarea:focus {
+    .form-group textarea:focus,
+    .form-group select:focus {
       outline: none;
       border-color: #007bff;
       box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
@@ -88,7 +143,17 @@ const modalStyles = `
     .form-group textarea {
       resize: vertical;
       min-height: 100px;
-      height: 350px;
+      height: 200px;
+    }
+    
+    .select-group {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    
+    .select-group select {
+      flex: 1;
     }
     
     .button-group {
@@ -133,6 +198,25 @@ const modalStyles = `
       cursor: not-allowed;
     }
     
+    .innovation-result {
+      background-color: #f8f9fa;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 15px;
+      margin-top: 15px;
+    }
+    
+    .innovation-result h4 {
+      margin: 0 0 10px 0;
+      color: #333;
+      font-size: 16px;
+    }
+    
+    .innovation-result p {
+      margin: 5px 0;
+      color: #666;
+    }
+    
     @media (max-width: 768px) {
       .docx-modal-content {
         width: 95%;
@@ -147,6 +231,23 @@ const modalStyles = `
       .btn-generate {
         width: 100%;
       }
+      
+      .select-group {
+        flex-direction: column;
+      }
+      
+      .tab-buttons {
+        flex-direction: column;
+      }
+      
+      .tab-button {
+        border-radius: 0;
+        border-bottom: 1px solid #ddd;
+      }
+      
+      .tab-button.active {
+        border-radius: 0;
+      }
     }
   </style>
 `;
@@ -159,82 +260,213 @@ if (!document.getElementById('docxModalStyles')) {
   document.head.appendChild(styleElement);
 }
 
+// window 할당은 함수 정의 후에 수행됩니다
+
 function openAutoDocx() {
   console.log("openAutoDocx 함수 호출됨");
   
-  if (window.currentDetailRowId) {
-    console.log('행 ID:', window.currentDetailRowId);
-    
-    // 모달창 HTML 생성
-    const modalHTML = `
-      <div id="docxModal" class="docx-modal" style="display: none;">
-        <div class="docx-modal-content">
-          <div class="docx-modal-header">
-            <h3>사업계획서 생성</h3>
-            <span class="docx-modal-close" onclick="closeDocxModal()">&times;</span>
-          </div>
-          <div class="docx-modal-body">
-            <div class="form-group">
-              <label for="serviceProduct">주 서비스·생산품목 *</label>
-              <input type="text" id="serviceProduct" placeholder="예: 웹사이트 개발, 커피 제조 등" required>
-            </div>
-            <div class="form-group">
-              <label for="businessOverview">사업 개요</label>
-              <textarea id="businessOverview" rows="4" placeholder="AI 추천을 받으려면 '추천받기' 버튼을 클릭하세요" readonly></textarea>
-            </div>
-            <div class="button-group">
-              <button type="button" onclick="getOpenAIRecommendation()" class="btn-recommend">추천받기</button>
-              <button type="button" onclick="generateDocx()" class="btn-generate">DOCX 생성</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-    
-    // 모달창이 이미 존재하면 제거
-    const existingModal = document.getElementById('docxModal');
-    if (existingModal) {
-      existingModal.remove();
-    }
-    
-    // 모달창 추가
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
-    
-    // 모달창 표시
-    const modal = document.getElementById('docxModal');
-    modal.style.display = 'block';
-    
-    // 모달창 표시 후 입력 필드 확인
-    setTimeout(() => {
-      const serviceProductField = document.getElementById('serviceProduct');
-      const businessOverviewField = document.getElementById('businessOverview');
-      
-      console.log('모달창 표시 후 필드 상태:');
-      console.log('  - serviceProduct:', serviceProductField);
-      console.log('  - businessOverview:', businessOverviewField);
-      
-      if (serviceProductField) {
-        serviceProductField.focus();
-        console.log('주 서비스·생산품목 필드에 포커스 설정됨');
-      }
-    }, 100);
-    
-    // 모달창 외부 클릭 시 닫기
-    modal.addEventListener('click', function(e) {
-      if (e.target === modal) {
-        closeDocxModal();
-      }
-    });
-    
-  } else {
+  if (!window.currentDetailRowId) {
     alert('현재 행 정보를 찾을 수 없습니다. 상세보기를 다시 열어주세요.');
+    return;
   }
+  
+  console.log('행 ID:', window.currentDetailRowId);
+  
+  // 기존 모달창 표시
+  const modal = document.getElementById('docxModal');
+  if (!modal) {
+    console.error('docxModal을 찾을 수 없습니다.');
+    alert('모달창을 찾을 수 없습니다. 페이지를 새로고침해주세요.');
+    return;
+  }
+  
+  // 모달 표시
+  modal.style.display = 'flex';
+  console.log('모달창 표시됨');
+  
+  // 입력 필드 초기화
+  const serviceProductField = document.getElementById('serviceProduct');
+  const businessOverviewField = document.getElementById('businessOverview');
+  
+  if (serviceProductField) {
+    serviceProductField.value = '';
+    serviceProductField.focus();
+    console.log('주 서비스·생산품목 필드 초기화 및 포커스 설정');
+  } else {
+    console.error('serviceProduct 필드를 찾을 수 없습니다.');
+  }
+  
+  if (businessOverviewField) {
+    businessOverviewField.value = '';
+    console.log('사업 개요 필드 초기화');
+  } else {
+    console.error('businessOverview 필드를 찾을 수 없습니다.');
+  }
+  
+  // 혁신성장 탭 초기화
+  const innovationTypeSelect = document.getElementById('innovationType');
+  const innovationCategorySelect = document.getElementById('innovationCategory');
+  const innovationResult = document.getElementById('innovationResult');
+  
+  if (innovationTypeSelect) {
+    innovationTypeSelect.value = '';
+    console.log('혁신성장 유형 선택 초기화');
+  }
+  
+  if (innovationCategorySelect) {
+    innovationCategorySelect.innerHTML = '<option value="">먼저 혁신성장 유형을 선택해주세요</option>';
+    innovationCategorySelect.disabled = true;
+    console.log('혁신성장 카테고리 선택 초기화');
+  }
+  
+  if (innovationResult) {
+    innovationResult.style.display = 'none';
+    console.log('혁신성장 결과 숨김');
+  }
+  
+  // 탭 초기화 (신용취약 탭 활성화) - HTML에 직접 정의된 함수 사용
+  console.log('신용취약 탭으로 초기화 시작');
+  if (typeof switchTabDirect === 'function') {
+    switchTabDirect('credit');
+  } else {
+    console.error('switchTabDirect 함수를 찾을 수 없습니다.');
+  }
+  
+  console.log('openAutoDocx 함수 완료');
+}
+
+function switchTab(tabName) {
+  console.log('=== switchTab 함수 시작 ===');
+  console.log('탭 전환 요청:', tabName);
+  
+  // 모든 탭 버튼 비활성화
+  const tabButtons = document.querySelectorAll('.tab-button');
+  console.log('찾은 탭 버튼 개수:', tabButtons.length);
+  
+  tabButtons.forEach(btn => {
+    btn.classList.remove('active');
+    console.log('버튼 active 제거:', btn.textContent);
+  });
+  
+  // 모든 탭 콘텐츠 숨기기
+  const tabContents = document.querySelectorAll('.tab-content');
+  console.log('찾은 탭 콘텐츠 개수:', tabContents.length);
+  
+  tabContents.forEach(content => {
+    content.classList.remove('active');
+    content.style.display = 'none';
+    console.log('콘텐츠 숨김:', content.id);
+  });
+  
+  // 선택된 탭 활성화
+  if (tabName === 'credit') {
+    const creditButton = document.querySelector('.tab-button[data-tab="credit"]');
+    const creditTab = document.getElementById('credit-tab');
+    
+    console.log('신용취약 탭 요소들:', { creditButton, creditTab });
+    
+    if (creditButton && creditTab) {
+      creditButton.classList.add('active');
+      creditTab.classList.add('active');
+      creditTab.style.display = 'block';
+      console.log('신용취약 탭 활성화됨');
+    } else {
+      console.error('신용취약 탭 요소를 찾을 수 없습니다');
+    }
+  } else if (tabName === 'innovation') {
+    const innovationButton = document.querySelector('.tab-button[data-tab="innovation"]');
+    const innovationTab = document.getElementById('innovation-tab');
+    
+    console.log('혁신성장 탭 요소들:', { innovationButton, innovationTab });
+    
+    if (innovationButton && innovationTab) {
+      innovationButton.classList.add('active');
+      innovationTab.classList.add('active');
+      innovationTab.style.display = 'block';
+      console.log('혁신성장 탭 활성화됨');
+    } else {
+      console.error('혁신성장 탭 요소를 찾을 수 없습니다');
+    }
+  }
+  
+  console.log('=== switchTab 함수 완료 ===');
+  
+  // 디버깅을 위한 최종 상태 확인
+  setTimeout(() => {
+    const activeTab = document.querySelector('.tab-content.active');
+    const activeButton = document.querySelector('.tab-button.active');
+    console.log('최종 상태 확인:');
+    console.log('  - 활성 탭:', activeTab ? activeTab.id : '없음');
+    console.log('  - 활성 버튼:', activeButton ? activeButton.textContent : '없음');
+    
+    if (activeTab) {
+      console.log('  - 활성 탭 display:', activeTab.style.display);
+    }
+  }, 100);
+}
+
+// window 할당은 함수 정의 후에 수행됩니다
+
+function updateInnovationCategories() {
+  const modal = document.getElementById('docxModal');
+  if (!modal) {
+    console.error('모달을 찾을 수 없습니다.');
+    return;
+  }
+  
+  const innovationType = modal.querySelector('#innovationType').value;
+  const categorySelect = modal.querySelector('#innovationCategory');
+  
+  console.log('updateInnovationCategories 호출됨:', innovationType);
+  
+  // 기존 옵션 제거
+  categorySelect.innerHTML = '';
+  
+  if (innovationType === '혁신형') {
+    const options = [
+      '수출 소상공인',
+      '2년 연속 매출 10%이상 신장',
+      '스마트 공장 도입',
+      '강한 소상공인, 로컬 크리에이터',
+      '소상공인 졸업후보기업'
+    ];
+    
+    options.forEach((option, index) => {
+      const optionElement = document.createElement('option');
+      optionElement.value = option;
+      optionElement.textContent = `${index + 1}. ${option}`;
+      categorySelect.appendChild(optionElement);
+    });
+  } else if (innovationType === '일반형') {
+    const options = [
+      '스마트 기술',
+      '백년소공인, 백년가게',
+      '사회적경제기업',
+      '신사업 창업 사관학교 수료생'
+    ];
+    
+    options.forEach((option, index) => {
+      const optionElement = document.createElement('option');
+      optionElement.value = option;
+      optionElement.textContent = `${index + 1}. ${option}`;
+      categorySelect.appendChild(optionElement);
+    });
+  }
+  
+  // 카테고리 선택 활성화
+  categorySelect.disabled = false;
+  console.log('카테고리 업데이트 완료');
 }
 
 function closeDocxModal() {
+  console.log('closeDocxModal 함수 호출됨');
+  
   const modal = document.getElementById('docxModal');
   if (modal) {
-    modal.remove();
+    modal.style.display = 'none';
+    console.log('모달창 닫힘');
+  } else {
+    console.error('docxModal을 찾을 수 없습니다.');
   }
 }
 
@@ -379,7 +611,7 @@ function generateDocx() {
         console.log('파일 다운로드 완료:', filename);
         
         // 모달창 닫기
-        closeDocxModal();
+        window.closeDocxModal();
       });
     }
   })
@@ -393,3 +625,238 @@ function generateDocx() {
     generateBtn.disabled = false;
   });
 }
+
+function getInnovationRecommendation() {
+  const modal = document.getElementById('docxModal');
+  if (!modal) {
+    console.error('모달을 찾을 수 없습니다.');
+    return;
+  }
+  
+  const innovationType = modal.querySelector('#innovationType').value;
+  const innovationCategory = modal.querySelector('#innovationCategory').value;
+  
+  if (!innovationType || !innovationCategory) {
+    alert('혁신성장 유형과 세부 카테고리를 모두 선택해주세요.');
+    return;
+  }
+  
+  // 로딩 상태 표시
+  const recommendBtn = modal.querySelector('#innovationRecommendBtn');
+  const originalText = recommendBtn.textContent;
+  recommendBtn.textContent = '추천 중...';
+  recommendBtn.disabled = true;
+  
+  const requestData = {
+    row_id: window.currentDetailRowId,
+    innovation_type: innovationType,
+    innovation_category: innovationCategory
+  };
+  
+  console.log('혁신성장 추천 요청 데이터:', requestData);
+  
+  // 혁신성장 추천 API 호출
+  fetch(`/sales/auto_docx_innovation_recommend/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': getCsrfToken()
+    },
+    body: JSON.stringify(requestData)
+  })
+  .then(response => {
+    console.log('응답 상태:', response.status);
+    return response.json();
+  })
+  .then(data => {
+    console.log('혁신성장 추천 응답:', data);
+    
+    if (data.success) {
+      // 결과 표시
+      displayInnovationRecommendationResult(data);
+    } else {
+      alert('혁신성장 추천을 받는 중 오류가 발생했습니다: ' + (data.error || '알 수 없는 오류'));
+    }
+  })
+  .catch(error => {
+    console.error('혁신성장 추천 요청 중 오류:', error);
+    alert('혁신성장 추천을 받는 중 오류가 발생했습니다.');
+  })
+  .finally(() => {
+    // 버튼 상태 복원
+    recommendBtn.textContent = originalText;
+    recommendBtn.disabled = false;
+  });
+}
+
+function displayInnovationRecommendationResult(data) {
+  const modal = document.getElementById('docxModal');
+  if (!modal) {
+    console.error('모달을 찾을 수 없습니다.');
+    return;
+  }
+  
+  const resultDiv = modal.querySelector('#innovationResult');
+  
+  if (!data || !data.company_info) {
+    resultDiv.innerHTML = '<h4>오류</h4><p>추천 정보를 가져올 수 없습니다.</p>';
+    resultDiv.style.display = 'block';
+    return;
+  }
+  
+  const companyInfo = data.company_info;
+  const businessOverview = companyInfo.business_overview || '추천 정보가 없습니다.';
+  
+  const resultHTML = `
+    <div style="max-height: 400px; overflow-y: auto; padding-right: 10px;">
+      <h4>AI 추천 결과</h4>
+      <div style="margin-bottom: 20px;">
+        <p><strong>혁신성장 유형:</strong> ${data.innovation_type || '정보 없음'}</p>
+        <p><strong>세부 카테고리:</strong> ${data.innovation_category || '정보 없음'}</p>
+      </div>
+      
+      <h5>기업 기본 정보</h5>
+      <div style="background-color: #f8f9fa; padding: 15px; border-radius: 4px; margin-bottom: 15px;">
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 10px; font-size: 14px;">
+          <div><strong>업체명:</strong> ${companyInfo.업체명 || '정보 없음'}</div>
+          <div><strong>대표자명:</strong> ${companyInfo.대표자명 || '정보 없음'}</div>
+          <div><strong>설립일자:</strong> ${companyInfo.설립일자 || '정보 없음'}</div>
+          <div><strong>법인번호:</strong> ${companyInfo.법인번호 || '정보 없음'}</div>
+          <div><strong>주민번호:</strong> ${companyInfo.주민번호 || '정보 없음'}</div>
+          <div><strong>사업자번호:</strong> ${companyInfo.사업자번호 || '정보 없음'}</div>
+          <div><strong>본사주소:</strong> ${companyInfo.본사주소 || '정보 없음'}</div>
+          <div><strong>전화번호:</strong> ${companyInfo.전화번호 || '정보 없음'}</div>
+          <div><strong>이메일:</strong> ${companyInfo.email || '정보 없음'}</div>
+          <div><strong>팩스번호:</strong> ${companyInfo.팩스번호 || '정보 없음'}</div>
+        </div>
+        <div style="margin-top: 15px;">
+          <strong>사업내용:</strong><br>
+          <span style="color: #666;">${companyInfo.사업내용 || '정보 없음'}</span>
+        </div>
+      </div>
+      
+      <h5>AI 추천 사업 개요</h5>
+      <div style="background-color: #e8f4fd; padding: 15px; border-radius: 4px; border-left: 4px solid #007bff;">
+        <p style="margin: 0; line-height: 1.6; color: #333;">${businessOverview}</p>
+      </div>
+    </div>
+  `;
+  
+  resultDiv.innerHTML = resultHTML;
+  resultDiv.style.display = 'block';
+  console.log('혁신성장 추천 결과 표시됨 (기업 정보 포함, 스크롤 적용)');
+}
+
+function generateInnovationDocx() {
+  const innovationType = document.getElementById('innovationType').value.trim();
+  const innovationCategory = document.getElementById('innovationCategory').value.trim();
+  const innovationBusinessOverview = document.getElementById('innovationBusinessOverview').value.trim();
+  
+  if (!innovationType || !innovationCategory) {
+    alert('혁신성장 유형과 세부 카테고리를 모두 선택해주세요.');
+    return;
+  }
+  
+  if (!innovationBusinessOverview) {
+    alert('AI 추천을 먼저 받아주세요.');
+    return;
+  }
+  
+  // 로딩 상태 표시
+  const generateBtn = document.querySelector('#innovation-tab .btn-generate');
+  const originalText = generateBtn.textContent;
+  generateBtn.textContent = '생성 중...';
+  generateBtn.disabled = true;
+  
+  // 혁신성장 DOCX 생성 API 호출
+  fetch(`/sales/auto_docx_innovation/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': getCsrfToken()
+    },
+    body: JSON.stringify({
+      row_id: window.currentDetailRowId,
+      innovation_type: innovationType,
+      innovation_category: innovationCategory,
+      business_overview: innovationBusinessOverview
+    })
+  })
+  .then(response => {
+    // 응답 타입 확인
+    const contentType = response.headers.get('content-type');
+    console.log('응답 타입:', contentType);
+    console.log('응답 헤더:', Object.fromEntries(response.headers.entries()));
+    
+    if (contentType && contentType.includes('application/json')) {
+      // JSON 응답인 경우 (에러 등)
+      return response.json().then(data => {
+        console.log('API 응답:', data);
+        if (!data.success) {
+          alert('오류: ' + (data.error || '알 수 없는 오류가 발생했습니다.'));
+        }
+      });
+    } else {
+      // 파일 응답인 경우
+      console.log('혁신성장 DOCX 파일 다운로드 시작...');
+      
+      // 파일명 추출
+      const contentDisposition = response.headers.get('content-disposition');
+      let filename = '혁신성장_사업계획서.docx';
+      if (contentDisposition) {
+        console.log('Content-Disposition:', contentDisposition);
+        const filenameMatch = contentDisposition.match(/filename\*=UTF-8''(.+)/);
+        if (filenameMatch) {
+          filename = decodeURIComponent(filenameMatch[1]);
+          console.log('추출된 파일명:', filename);
+        }
+      }
+      
+      // 파일 다운로드 처리
+      return response.blob().then(blob => {
+        console.log('Blob 생성 완료:', blob.size, 'bytes');
+        
+        // 다운로드 링크 생성
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = filename;
+        
+        console.log('다운로드 링크 생성:', url);
+        
+        // 링크 클릭하여 다운로드 시작
+        document.body.appendChild(a);
+        a.click();
+        
+        // 정리
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        console.log('혁신성장 DOCX 파일 다운로드 완료:', filename);
+        
+        // 모달창 닫기
+        window.closeDocxModal();
+      });
+    }
+  })
+  .catch(error => {
+    console.error('혁신성장 DOCX 생성 중 오류:', error);
+    alert('혁신성장 DOCX 생성 중 오류가 발생했습니다.');
+  })
+  .finally(() => {
+    // 버튼 상태 복원
+    generateBtn.textContent = originalText;
+    generateBtn.disabled = false;
+  });
+}
+
+// 전역에서 접근할 수 있도록 window 객체에 할당
+window.switchTab = switchTab;
+window.updateInnovationCategories = updateInnovationCategories;
+window.closeDocxModal = closeDocxModal;
+window.getOpenAIRecommendation = getOpenAIRecommendation;
+window.generateDocx = generateDocx;
+window.getInnovationRecommendation = getInnovationRecommendation;
+window.displayInnovationRecommendationResult = displayInnovationRecommendationResult;
+window.generateInnovationDocx = generateInnovationDocx;

@@ -10,6 +10,244 @@
     <link rel="stylesheet" href="{% static 'diary/diary_styles.css' %}">
     <link rel="stylesheet" href="{% static 'diary/base/base.css' %}">
     <link rel="icon" href="{% static 'images/자금왕_favicon.png' %}">
+    
+    <!-- 사업계획서 생성 모달 스타일 -->
+    <style>
+        .docx-modal {
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .docx-modal-content {
+            background-color: #fefefe;
+            margin: auto;
+            padding: 0;
+            border: 1px solid #888;
+            width: 90%;
+            max-width: 700px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .docx-modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #f8f9fa;
+            border-radius: 8px 8px 0 0;
+        }
+        
+        .docx-modal-header h3 {
+            margin: 0;
+            color: #333;
+            font-size: 18px;
+        }
+        
+        .docx-modal-close {
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+        }
+        
+        .docx-modal-close:hover {
+            color: #000;
+        }
+        
+        .docx-modal-body {
+            padding: 0;
+        }
+        
+        .tab-container {
+            width: 100%;
+        }
+        
+        .tab-buttons {
+            display: flex;
+            width: 100%;
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .tab-button {
+            flex: 1;
+            padding: 15px 20px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            color: #666;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+            text-align: center;
+            position: relative;
+        }
+        
+        .tab-button.active {
+            color: #007bff;
+            border-bottom-color: #007bff;
+            background-color: white;
+            z-index: 10;
+            font-weight: bold;
+        }
+        
+        .tab-button:hover:not(.active) {
+            color: #007bff;
+            background-color: #e9ecef;
+        }
+        
+        .tab-content {
+            display: none;
+            padding: 20px;
+            background-color: white;
+            min-height: 400px;
+            margin: 0 auto;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+        }
+        
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+            height: 200px;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 30px;
+        }
+        
+        .btn-recommend,
+        .btn-generate {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .btn-recommend {
+            background-color: #28a745;
+            color: white;
+        }
+        
+        .btn-recommend:hover:not(:disabled) {
+            background-color: #218838;
+        }
+        
+        .btn-generate {
+            background-color: #007bff;
+            color: white;
+        }
+        
+        .btn-generate:hover:not(:disabled) {
+            background-color: #0056b3;
+        }
+        
+        .btn-recommend:disabled,
+        .btn-generate:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .innovation-result {
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+        
+        .innovation-result h4 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 16px;
+        }
+        
+        .innovation-result p {
+            margin: 5px 0;
+            color: #666;
+        }
+        
+        @media (max-width: 768px) {
+            .docx-modal-content {
+                width: 95%;
+                margin: 20px;
+            }
+            
+            .button-group {
+                flex-direction: column;
+            }
+            
+            .btn-recommend,
+            .btn-generate {
+                width: 100%;
+            }
+            
+            .tab-buttons {
+                flex-direction: column;
+            }
+            
+            .tab-button {
+                border-radius: 0;
+                border-bottom: 1px solid #ddd;
+            }
+            
+            .tab-button.active {
+                border-radius: 0;
+            }
+        }
+    </style>
+    
     <script>
         window.ATTR_FIELDS = JSON.parse('{{ attributes_json|default:"[]"|escapejs }}');
         window.DROPDOWN_OPTIONS = JSON.parse('{{ dropdown_options_json|default:"{}"|escapejs }}');
@@ -735,6 +973,66 @@
                 <div id="aiChatLoading" style="display:none;text-align:center;padding:10px;color:#6c757d;">
                     <div style="display:inline-block;width:20px;height:20px;border:2px solid #f3f3f3;border-top:2px solid #007bff;border-radius:50%;animation:spin 1s linear infinite;"></div>
                     AI가 파일을 읽고 응답을 생성하고 있습니다...
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 사업계획서 생성 모달 -->
+    <div id="docxModal" class="docx-modal" style="display: none;">
+        <div class="docx-modal-content">
+            <div class="docx-modal-header">
+                <h3>사업계획서 생성</h3>
+                <span class="docx-modal-close" onclick="closeDocxModal()">&times;</span>
+            </div>
+            <div class="docx-modal-body">
+                <div class="tab-container">
+                    <div class="tab-buttons">
+                        <button class="tab-button active" data-tab="credit" onclick="switchTabDirect('credit')">신용취약</button>
+                        <button class="tab-button" data-tab="innovation" onclick="switchTabDirect('innovation')">혁신성장</button>
+                    </div>
+                    
+                    <!-- 신용취약 탭 -->
+                    <div id="credit-tab" class="tab-content active">
+                        <div class="form-group">
+                            <label for="serviceProduct">주 서비스·생산품목 *</label>
+                            <input type="text" id="serviceProduct" placeholder="예: 웹사이트 개발, 커피 제조 등" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="businessOverview">사업 개요</label>
+                            <textarea id="businessOverview" rows="4" placeholder="AI 추천을 받으려면 '추천받기' 버튼을 클릭하세요" readonly></textarea>
+                        </div>
+                        <div class="button-group">
+                            <button type="button" onclick="getOpenAIRecommendation()" class="btn-recommend">추천받기</button>
+                            <button type="button" onclick="generateDocx()" class="btn-generate">DOCX 생성</button>
+                        </div>
+                    </div>
+                    
+                    <!-- 혁신성장 탭 -->
+                    <div id="innovation-tab" class="tab-content">
+                        <div class="form-group">
+                            <label for="innovationType">혁신성장 유형 *</label>
+                            <select id="innovationType" required onchange="updateInnovationCategories()">
+                                <option value="">선택해주세요</option>
+                                <option value="혁신형">1. 혁신형</option>
+                                <option value="일반형">2. 일반형</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="innovationCategory">세부 카테고리 *</label>
+                            <select id="innovationCategory" required disabled>
+                                <option value="">먼저 혁신성장 유형을 선택해주세요</option>
+                            </select>
+                        </div>
+
+                        <div class="button-group">
+                            <button type="button" class="btn-recommend" id="innovationRecommendBtn" onclick="getInnovationRecommendation()">추천받기</button>
+                            <button type="button" onclick="generateInnovationDocx()" class="btn-generate">DOCX 생성</button>
+                        </div>
+                        <div id="innovationResult" class="innovation-result" style="display: none;">
+                            <!-- 결과가 여기에 표시됩니다 -->
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -3179,6 +3477,93 @@ function downloadUserManualFromBackend() {
 <script src="{% static 'diary/auto_blog.js' %}"></script>
 <script src="{% static 'diary/detail_openai.js' %}"></script>
 <script src="{% static 'diary/diary_inquiry.js' %}"></script>
+
+    <script>
+    // 사업계획서 모달 외부 클릭 시 닫기
+    document.addEventListener('DOMContentLoaded', function() {
+        const docxModal = document.getElementById('docxModal');
+        if (docxModal) {
+            docxModal.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeDocxModal();
+                }
+            });
+        }
+    });
+    </script>
+
+    <!-- 탭 전환 함수 (직접 HTML에 포함) -->
+    <script>
+        function switchTabDirect(tabName) {
+            console.log('=== switchTabDirect 함수 시작 ===');
+            console.log('탭 전환 요청:', tabName);
+            
+            // 모든 탭 버튼 비활성화
+            const tabButtons = document.querySelectorAll('.tab-button');
+            console.log('찾은 탭 버튼 개수:', tabButtons.length);
+            
+            tabButtons.forEach(btn => {
+                btn.classList.remove('active');
+                console.log('버튼 active 제거:', btn.textContent);
+            });
+            
+            // 모든 탭 콘텐츠 숨기기
+            const tabContents = document.querySelectorAll('.tab-content');
+            console.log('찾은 탭 콘텐츠 개수:', tabContents.length);
+            
+            tabContents.forEach(content => {
+                content.classList.remove('active');
+                content.style.display = 'none';
+                console.log('콘텐츠 숨김:', content.id);
+            });
+            
+            // 선택된 탭 활성화
+            if (tabName === 'credit') {
+                const creditButton = document.querySelector('.tab-button[data-tab="credit"]');
+                const creditTab = document.getElementById('credit-tab');
+                
+                console.log('신용취약 탭 요소들:', { creditButton, creditTab });
+                
+                if (creditButton && creditTab) {
+                    creditButton.classList.add('active');
+                    creditTab.classList.add('active');
+                    creditTab.style.display = 'block';
+                    console.log('신용취약 탭 활성화됨');
+                } else {
+                    console.error('신용취약 탭 요소를 찾을 수 없습니다');
+                }
+            } else if (tabName === 'innovation') {
+                const innovationButton = document.querySelector('.tab-button[data-tab="innovation"]');
+                const innovationTab = document.getElementById('innovation-tab');
+                
+                console.log('혁신성장 탭 요소들:', { innovationButton, innovationTab });
+                
+                if (innovationButton && innovationTab) {
+                    innovationButton.classList.add('active');
+                    innovationTab.classList.add('active');
+                    innovationTab.style.display = 'block';
+                    console.log('혁신성장 탭 활성화됨');
+                } else {
+                    console.error('혁신성장 탭 요소를 찾을 수 없습니다');
+                }
+            }
+            
+            console.log('=== switchTabDirect 함수 완료 ===');
+            
+            // 디버깅을 위한 최종 상태 확인
+            setTimeout(() => {
+                const activeTab = document.querySelector('.tab-content.active');
+                const activeButton = document.querySelector('.tab-button.active');
+                console.log('최종 상태 확인:');
+                console.log('  - 활성 탭:', activeTab ? activeTab.id : '없음');
+                console.log('  - 활성 버튼:', activeButton ? activeButton.textContent : '없음');
+                
+                if (activeTab) {
+                    console.log('  - 활성 탭 display:', activeTab.style.display);
+                }
+            }, 100);
+        }
+    </script>
 
 </body>
 </html> 

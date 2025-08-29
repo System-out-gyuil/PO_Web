@@ -1,5 +1,5 @@
 import json
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from .models import User, Row, AttributeValue
@@ -25,6 +25,11 @@ import pdfplumber
 import mmap
 from io import BytesIO
 import mimetypes
+# import openai  # 새로운 OpenAI 클라이언트 사용
+from docx.shared import Pt
+from django.utils.http import quote
+from django.conf import settings
+from openai import OpenAI
 
 warnings.filterwarnings("ignore", category=UserWarning)
 
@@ -1016,6 +1021,13 @@ def generate_business_overview_with_openai(row_data, service_product, row=None, 
         3. 사업 개요는 구체적이고 현실적으로 작성해주세요.
         4. 해당 서비스/제품의 용도와 특성을 명확히 설명해주세요.
         5. 200-300자 내외로 작성해주세요.
+
+        '사업개요(주 서비스·생산품목의 용도 및 특성)' 항목에 들어갈 문단을 작성해주세요.
+        조건: 
+        - 공식적이고 객관적인 톤  
+        - 제3자 시점에서 설명 ('~을 하고 있습니다' 스타일)  
+        - 회사의 주력 사업, 대표 제품, 기술 및 플랫폼, 사업 영역(제조, 소프트웨어, 서비스 등)을 빠짐없이 정리  
+        - 사업의 다양성과 인지도까지 강조  
         
         다음 JSON 형식으로 응답해주세요:
         {
@@ -1029,13 +1041,15 @@ def generate_business_overview_with_openai(row_data, service_product, row=None, 
         
         user_message = f"""다음 기업 정보와 사용자 입력 정보를 바탕으로 사업 개요를 작성해주세요:
 
-**사용자 입력 정보:**
-- 주 서비스·생산품목: {service_product}
+        **사용자 입력 정보:**
+        - 주 서비스·생산품목: {service_product}
 
-**기업 정보:**
-{company_info}{file_context}
+        **기업 정보:**
+        {company_info}{file_context}
 
-위 정보를 바탕으로 사업 개요를 작성해주세요."""
+        위 정보를 바탕으로 사업 개요를 작성해주세요."""
+
+        print(f"사용자 메시지: {user_message}")
         
         # OpenAI API 호출
         headers = {
@@ -1049,7 +1063,7 @@ def generate_business_overview_with_openai(row_data, service_product, row=None, 
                 {'role': 'system', 'content': system_prompt},
                 {'role': 'user', 'content': user_message}
             ],
-            'max_tokens': 500,  # 토큰 제한 줄임
+            'max_tokens': 3000,  # 토큰 제한 줄임
             'temperature': 0.3
         }
         
@@ -1175,7 +1189,7 @@ def generate_business_plan_with_openai(row_data):
         }
         
         payload = {
-            'model': 'gpt-3.5-turbo',  # 더 안정적인 모델
+            'model': 'gpt-4.1-mini',  # 더 안정적인 모델
             'messages': [
                 {'role': 'system', 'content': system_prompt},
                 {'role': 'user', 'content': user_message}
@@ -1700,3 +1714,574 @@ def fill_business_plan_docx(doc, business_plan_data):
     except Exception as e:
         print(f"사업계획서 DOCX 채우기 중 전체 오류: {e}")
         raise
+
+@csrf_exempt
+@require_http_methods(["GET", "POST"])
+def auto_docx_innovation(request):
+    """혁신성장 DOCX 생성 API"""
+    print("=== auto_docx_innovation 함수 호출됨 ===")
+    
+    try:
+        # 세션에서 사용자 ID 가져오기
+        user_id = request.session.get('diary_member_id')
+        if not user_id:
+            return JsonResponse({
+                'success': False,
+                'error': '로그인이 필요합니다.'
+            })
+        
+        # 사용자 정보 조회
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'error': '사용자를 찾을 수 없습니다.'
+            })
+        
+        print(f"사용자: {user.name} (ID: {user_id})")
+        
+        if request.method == "POST":
+            try:
+                print(f"요청 본문: {request.body}")
+                data = json.loads(request.body)
+                print(f"파싱된 데이터: {data}")
+                
+                row_id = data.get('row_id')
+                innovation_type = data.get('innovation_type', '').strip()
+                innovation_category = data.get('innovation_category', '').strip()
+                business_overview = data.get('business_overview', '').strip()
+                
+                print(f"추출된 값들:")
+                print(f"  - row_id: {row_id} (타입: {type(row_id)})")
+                print(f"  - innovation_type: '{innovation_type}' (타입: {type(innovation_type)})")
+                print(f"  - innovation_category: '{innovation_category}' (타입: {type(innovation_category)})")
+                print(f"  - business_overview: '{business_overview[:100]}...' (길이: {len(business_overview)})")
+                
+                if not row_id:
+                    return JsonResponse({
+                        'success': False,
+                        'error': 'row_id가 필요합니다.'
+                    })
+                
+                if not innovation_type:
+                    return JsonResponse({
+                        'success': False,
+                        'error': '혁신성장 유형이 필요합니다.'
+                    })
+                
+                if not innovation_category:
+                    return JsonResponse({
+                        'success': False,
+                        'error': '세부 카테고리가 필요합니다.'
+                    })
+                
+                if not business_overview:
+                    return JsonResponse({
+                        'success': False,
+                        'error': '사업 개요가 필요합니다. 먼저 AI 추천을 받아주세요.'
+                    })
+                
+                print(f"요청된 row_id: {row_id}")
+                print(f"혁신성장 유형: {innovation_type}")
+                print(f"세부 카테고리: {innovation_category}")
+                
+                # 특정 행 조회
+                try:
+                    row = Row.objects.filter(id=row_id, user=user).select_related('user').prefetch_related(
+                        'values__attribute__attributeType',
+                        'values__attribute__dropdown_attributes'
+                    ).first()
+                    
+                    if not row:
+                        return JsonResponse({
+                            'success': False,
+                            'error': '해당 행을 찾을 수 없습니다.'
+                        })
+                    
+                    print(f"행 데이터 조회 성공: {row.id}")
+                    
+                    # 행의 모든 속성값들을 딕셔너리로 변환
+                    row_data = {}
+                    for attr_value in row.values.all():
+                        if attr_value.attribute:
+                            attr_name = attr_value.attribute.name
+                            attr_value_text = attr_value.value
+                            row_data[attr_name] = attr_value_text
+                    
+                    print(f"행 데이터: {row_data}")
+                    
+                    # 파일 텍스트 추출
+                    file_texts = get_row_files_text(row)
+                    print(f"추출된 파일 텍스트 개수: {len(file_texts)}")
+                    
+                    # 혁신성장 DOCX 생성
+                    docx_file = generate_innovation_docx(
+                        row_data, innovation_type, innovation_category, business_overview, row, file_texts
+                    )
+                    
+                    if docx_file:
+                        # 파일명 생성
+                        company_name = row_data.get('업체명', '기업') or '기업'
+                        filename = f"{company_name}_혁신성장_사업계획서.docx"
+                        filename = filename.replace('/', '_').replace('\\', '_').replace(':', '_')
+                        
+                        # 파일 응답
+                        response = HttpResponse(docx_file, content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+                        response['Content-Disposition'] = f'attachment; filename*=UTF-8\'\'{quote(filename)}'
+                        
+                        print(f"혁신성장 DOCX 파일 생성 완료: {filename}")
+                        return response
+                    else:
+                        return JsonResponse({
+                            'success': False,
+                            'error': 'DOCX 파일 생성에 실패했습니다.'
+                        })
+                        
+                except Row.DoesNotExist:
+                    return JsonResponse({
+                        'success': False,
+                        'error': '해당 행을 찾을 수 없습니다.'
+                    })
+                except Exception as e:
+                    print(f"행 조회 중 오류: {e}")
+                    return JsonResponse({
+                        'success': False,
+                        'error': f'행 조회 중 오류가 발생했습니다: {str(e)}'
+                    })
+                    
+            except json.JSONDecodeError as e:
+                print(f"JSON 파싱 오류: {e}")
+                return JsonResponse({
+                    'success': False,
+                    'error': '잘못된 JSON 형식입니다.'
+                })
+            except Exception as e:
+                print(f"요청 처리 중 오류: {e}")
+                return JsonResponse({
+                    'success': False,
+                    'error': f'요청 처리 중 오류가 발생했습니다: {str(e)}'
+                })
+        else:
+            return JsonResponse({
+                'success': False,
+                'error': 'POST 요청만 허용됩니다.'
+            })
+            
+    except Exception as e:
+        print(f"auto_docx_innovation 함수 전체 오류: {e}")
+        return JsonResponse({
+            'success': False,
+            'error': f'서버 오류가 발생했습니다: {str(e)}'
+        })
+
+def generate_innovation_docx(row_data, innovation_type, innovation_category, business_overview, row, file_texts):
+    """혁신성장 사업계획서 DOCX 생성"""
+    try:
+        print("=== generate_innovation_docx 함수 시작 ===")
+        
+        # DOCX 템플릿 로드
+        template_path = os.path.join(settings.BASE_DIR, 'diary', '사업계획서_양식.docx')
+        if not os.path.exists(template_path):
+            print(f"템플릿 파일을 찾을 수 없습니다: {template_path}")
+            return None
+        
+        # 템플릿 로드
+        doc = Document(template_path)
+        print("DOCX 템플릿 로드 완료")
+        
+        # 기본 기업 정보로 템플릿 채우기
+        fill_company_info_in_docx(doc, row_data)
+        
+        # 혁신성장 정보 추가
+        add_innovation_info_to_docx(doc, innovation_type, innovation_category, business_overview)
+        
+        # 파일 정보 추가 (있는 경우)
+        if file_texts:
+            add_file_info_to_docx(doc, file_texts)
+        
+        # DOCX 파일을 바이트로 변환
+        docx_buffer = BytesIO()
+        doc.save(docx_buffer)
+        docx_buffer.seek(0)
+        
+        print("혁신성장 DOCX 파일 생성 완료")
+        return docx_buffer.getvalue()
+        
+    except Exception as e:
+        print(f"generate_innovation_docx 함수 오류: {e}")
+        return None
+
+def add_innovation_info_to_docx(doc, innovation_type, innovation_category, business_overview):
+    """DOCX에 혁신성장 정보 추가"""
+    try:
+        print("=== add_innovation_info_to_docx 함수 시작 ===")
+        
+        # 혁신성장 섹션 찾기 또는 생성
+        innovation_section = None
+        
+        # 기존 혁신성장 섹션 찾기
+        for paragraph in doc.paragraphs:
+            if '혁신성장' in paragraph.text or '혁신' in paragraph.text:
+                innovation_section = paragraph
+                break
+        
+        # 혁신성장 섹션이 없으면 새로 생성
+        if not innovation_section:
+            # 문서 끝에 새로운 섹션 추가
+            innovation_section = doc.add_paragraph()
+            innovation_section.add_run('\n').bold = True
+        
+        # 혁신성장 정보 추가
+        innovation_text = f"""
+혁신성장 지원사업 정보
+
+• 지원 유형: {innovation_type}
+• 세부 카테고리: {innovation_category}
+
+사업 개요:
+{business_overview}
+
+위 내용은 AI 추천을 통해 생성된 전문적인 사업 개요입니다.
+        """
+        
+        # 기존 텍스트 교체
+        innovation_section.text = innovation_text.strip()
+        
+        # 스타일 적용
+        for run in innovation_section.runs:
+            run.font.size = Pt(11)
+            run.font.name = '맑은 고딕'
+        
+        print("혁신성장 정보 DOCX 추가 완료")
+        
+    except Exception as e:
+        print(f"add_innovation_info_to_docx 함수 오류: {e}")
+
+def add_file_info_to_docx(doc, file_texts):
+    """DOCX에 파일 정보 추가"""
+    try:
+        print("=== add_file_info_to_docx 함수 시작 ===")
+        
+        # 파일 정보 섹션 추가
+        file_section = doc.add_paragraph()
+        file_section.add_run('\n첨부 파일 정보').bold = True
+        
+        for i, file_text in enumerate(file_texts, 1):
+            if file_text and len(file_text.strip()) > 10:
+                # 파일 텍스트 요약 (너무 길면 제한)
+                summary = file_text[:500] + "..." if len(file_text) > 500 else file_text
+                file_section.add_run(f'\n\n파일 {i}:\n{summary}')
+        
+        print("파일 정보 DOCX 추가 완료")
+        
+    except Exception as e:
+        print(f"add_file_info_to_docx 함수 오류: {e}")
+
+@csrf_exempt
+@require_http_methods(["GET", "POST"])
+def auto_docx_innovation_recommend(request):
+    """혁신성장 AI 추천 API"""
+    print("=== auto_docx_innovation_recommend 함수 호출됨 ===")
+    
+    try:
+        # 세션에서 사용자 ID 가져오기
+        user_id = request.session.get('diary_member_id')
+        if not user_id:
+            return JsonResponse({
+                'success': False,
+                'error': '로그인이 필요합니다.'
+            })
+        
+        # 사용자 정보 조회
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'error': '사용자를 찾을 수 없습니다.'
+            })
+        
+        print(f"사용자: {user.name} (ID: {user_id})")
+        
+        if request.method == "POST":
+            try:
+                print(f"요청 본문: {request.body}")
+                data = json.loads(request.body)
+                print(f"파싱된 데이터: {data}")
+                
+                row_id = data.get('row_id')
+                innovation_type = data.get('innovation_type', '').strip()
+                innovation_category = data.get('innovation_category', '').strip()
+                
+                print(f"추출된 값들:")
+                print(f"  - row_id: {row_id} (타입: {type(row_id)})")
+                print(f"  - innovation_type: '{innovation_type}' (타입: {type(innovation_type)})")
+                print(f"  - innovation_category: '{innovation_category}' (타입: {type(innovation_category)})")
+                
+                if not row_id:
+                    return JsonResponse({
+                        'success': False,
+                        'error': 'row_id가 필요합니다.'
+                    })
+                
+                if not innovation_type:
+                    return JsonResponse({
+                        'success': False,
+                        'error': '혁신성장 유형이 필요합니다.'
+                    })
+                
+                if not innovation_category:
+                    return JsonResponse({
+                        'success': False,
+                        'error': '세부 카테고리가 필요합니다.'
+                    })
+                
+                print(f"요청된 row_id: {row_id}")
+                print(f"혁신성장 유형: {innovation_type}")
+                print(f"세부 카테고리: {innovation_category}")
+                
+                # 특정 행 조회
+                try:
+                    row = Row.objects.filter(id=row_id, user=user).select_related('user').prefetch_related(
+                        'values__attribute__attributeType',
+                        'values__attribute__dropdown_attributes'
+                    ).first()
+                    
+                    if not row:
+                        return JsonResponse({
+                            'success': False,
+                            'error': '해당 행을 찾을 수 없습니다.'
+                        })
+                    
+                    print(f"행 데이터 조회 성공: {row.id}")
+                    
+                    # 행의 모든 속성값들을 딕셔너리로 변환
+                    row_data = {}
+                    for attr_value in row.values.all():
+                        if attr_value.attribute:
+                            attr_name = attr_value.attribute.name
+                            attr_value_text = attr_value.value
+                            row_data[attr_name] = attr_value_text
+                    
+                    print(f"행 데이터: {row_data}")
+                    
+                    # 파일 텍스트 추출
+                    file_texts = get_row_files_text(row)
+                    print(f"추출된 파일 텍스트 개수: {len(file_texts)}")
+                    
+                    # OpenAI API를 통해 혁신성장 사업 개요 생성
+                    company_info = generate_innovation_business_overview_with_openai(
+                        row_data, innovation_type, innovation_category, row, file_texts
+                    )
+                    
+                    if company_info:
+                        return JsonResponse({
+                            'success': True,
+                            'company_info': company_info,
+                            'business_overview': company_info.get('business_overview', ''),
+                            'innovation_type': innovation_type,
+                            'innovation_category': innovation_category
+                        })
+                    else:
+                        return JsonResponse({
+                            'success': False,
+                            'error': '기업 정보 및 사업 개요 생성에 실패했습니다.'
+                        })
+                        
+                except Row.DoesNotExist:
+                    return JsonResponse({
+                        'success': False,
+                        'error': '해당 행을 찾을 수 없습니다.'
+                    })
+                except Exception as e:
+                    print(f"행 조회 중 오류: {e}")
+                    return JsonResponse({
+                        'success': False,
+                        'error': f'행 조회 중 오류가 발생했습니다: {str(e)}'
+                    })
+                    
+            except json.JSONDecodeError as e:
+                print(f"JSON 파싱 오류: {e}")
+                return JsonResponse({
+                    'success': False,
+                    'error': '잘못된 JSON 형식입니다.'
+                })
+            except Exception as e:
+                print(f"요청 처리 중 오류: {e}")
+                return JsonResponse({
+                    'success': False,
+                    'error': f'요청 처리 중 오류가 발생했습니다: {str(e)}'
+                })
+        else:
+            return JsonResponse({
+                'success': False,
+                'error': 'POST 요청만 허용됩니다.'
+            })
+            
+    except Exception as e:
+        print(f"auto_docx_innovation_recommend 함수 전체 오류: {e}")
+        return JsonResponse({
+            'success': False,
+            'error': f'서버 오류가 발생했습니다: {str(e)}'
+        })
+
+def generate_innovation_business_overview_with_openai(row_data, innovation_type, innovation_category, row, file_texts):
+    """OpenAI API를 사용하여 혁신성장 사업 개요 및 기업 정보 생성"""
+    try:
+        print("=== generate_innovation_business_overview_with_openai 함수 시작 ===")
+        
+        # 행 데이터와 파일 텍스트를 결합하여 프롬프트 생성
+        context_text = ""
+        
+        # 행 데이터 추가
+        if row_data:
+            context_text += "=== 기업 기본 정보 ===\n"
+            for key, value in row_data.items():
+                if value and str(value).strip():
+                    context_text += f"{key}: {value}\n"
+            context_text += "\n"
+        
+        # 파일 텍스트 추가
+        if file_texts:
+            context_text += "=== 첨부 파일 내용 ===\n"
+            for i, file_text in enumerate(file_texts, 1):
+                if file_text and len(file_text.strip()) > 10:  # 의미있는 텍스트만 포함
+                    context_text += f"파일 {i}:\n{file_text[:1000]}...\n\n"  # 파일당 최대 1000자
+        
+        # 혁신성장 유형별 프롬프트 생성
+        if innovation_type == "혁신형":
+            innovation_prompt = f"""
+            다음은 혁신형 소상공인 지원사업에 대한 정보입니다:
+            
+            혁신형 소상공인 지원사업은 다음과 같은 기업들을 대상으로 합니다:
+            1. 수출 소상공인: 해외시장 진출을 위한 지원
+            2. 2년 연속 매출 10%이상 신장: 지속적 성장 기업 지원
+            3. 스마트 공장 도입: 디지털 전환 기업 지원
+            4. 강한 소상공인, 로컬 크리에이터: 지역경제 활성화 기업 지원
+            5. 소상공인 졸업후보기업: 성장 단계별 맞춤 지원
+            
+            선택된 세부 카테고리: {innovation_category}
+            
+            위 기업 정보와 첨부 파일을 바탕으로 다음을 수행해주세요:
+            
+            1. 기업의 기본 정보를 추출하여 정리
+            2. {innovation_category}에 해당하는 혁신형 소상공인 지원사업 신청을 위한 전문적이고 구체적인 사업 개요 작성
+            
+            **중요한 지침:**
+            - 기업의 현재 상황과 혁신성장 가능성을 강조
+            - 선택된 카테고리와의 연관성을 명확히 표현
+            - 구체적인 사업 계획과 성장 전략 포함
+            - 지원사업 신청에 적합한 내용으로 구성
+            - 전문적이면서도 이해하기 쉬운 문체 사용
+            - 사업 개요는 200-300자 내외로 작성
+            """
+        else:  # 일반형
+            innovation_prompt = f"""
+            다음은 일반형 소상공인 지원사업에 대한 정보입니다:
+            
+            일반형 소상공인 지원사업은 다음과 같은 기업들을 대상으로 합니다:
+            1. 스마트 기술: ICT 기술 활용 기업 지원
+            2. 백년소공인, 백년가게: 전통과 혁신을 결합한 기업 지원
+            3. 사회적경제기업: 사회적 가치 창출 기업 지원
+            4. 신사업 창업 사관학교 수료생: 창업 역량 강화 기업 지원
+            
+            선택된 세부 카테고리: {innovation_category}
+            
+            위 기업 정보와 첨부 파일을 바탕으로 다음을 수행해주세요:
+            
+            1. 기업의 기본 정보를 추출하여 정리
+            2. {innovation_category}에 해당하는 일반형 소상공인 지원사업 신청을 위한 전문적이고 구체적인 사업 개요 작성
+            
+            **중요한 지침:**
+            - 기업의 현재 상황과 성장 가능성을 강조
+            - 선택된 카테고리와의 연관성을 명확히 표현
+            - 구체적인 사업 계획과 발전 전략 포함
+            - 지원사업 신청에 적합한 내용으로 구성
+            - 전문적이면서도 이해하기 쉬운 문체 사용
+            - 사업 개요는 200-300자 내외로 작성
+            """
+        
+        # 최종 프롬프트 조합
+        final_prompt = f"""
+        {innovation_prompt}
+        
+        === 기업 정보 및 첨부 파일 ===
+        {context_text}
+        
+        위 정보를 바탕으로 다음 JSON 형식으로 응답해주세요:
+        {{
+            "업체명": "기업의 공식 명칭 (정보 부족시 '정보 없음')",
+            "대표자명": "대표자 이름 (정보 부족시 '정보 없음')",
+            "설립일자": "설립일 또는 설립년도 (정보 부족시 '정보 없음')",
+            "법인번호": "법인등록번호 (정보 부족시 '정보 없음')",
+            "주민번호": "대표자 주민등록번호 (정보 부족시 '정보 없음')",
+            "사업자번호": "사업자등록번호 (정보 부족시 '정보 없음')",
+            "본사주소": "본사 또는 사업장 주소 (정보 부족시 '정보 없음')",
+            "전화번호": "대표 전화번호 (정보 부족시 '정보 없음')",
+            "email": "대표 이메일 주소 (정보 부족시 '정보 없음')",
+            "팩스번호": "팩스 번호 (정보 부족시 '정보 없음')",
+            "사업내용": "주요 사업 내용 및 특징 (정보 부족시 '정보 없음')",
+            "business_overview": "200-300자 내외의 전문적이고 구체적인 사업 개요"
+        }}
+        
+        **중요한 지침:**
+        1. 제공된 기업 정보만을 기반으로 답변하세요.
+        2. 정보가 부족한 경우 "정보 없음"이라고 명시하세요.
+        3. 추측하지 말고 확실한 정보만 사용하세요.
+        4. 모든 값은 정확하고 구체적으로 작성해주세요.
+        5. 사업내용은 기존 정보를 바탕으로 작성하되, 첨부 파일 내용도 참고해주세요.
+        6. business_overview는 혁신성장 지원사업 신청에 적합한 전문적인 내용으로 작성해주세요.
+        """
+        
+        print(f"OpenAI 프롬프트 생성 완료 (길이: {len(final_prompt)}자)")
+        
+        # OpenAI API 호출
+        try:
+            client = OpenAI(api_key=OPEN_AI_API_KEY)
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "당신은 소상공인 지원사업 전문 컨설턴트이자 기업 정보 분석 전문가입니다. 기업 정보를 바탕으로 정확한 기업 기본 정보를 추출하고, 전문적이고 구체적인 사업 개요를 작성해주세요."},
+                    {"role": "user", "content": final_prompt}
+                ],
+                max_tokens=1500,
+                temperature=0.3
+            )
+            
+            ai_response = response.choices[0].message.content.strip()
+            print(f"OpenAI 응답 성공 (길이: {len(ai_response)}자)")
+            print(f"생성된 응답: {ai_response[:200]}...")
+            
+            # JSON 응답 파싱
+            try:
+                # JSON 블록 추출 (```json ... ``` 형태일 수 있음)
+                if '```json' in ai_response:
+                    json_start = ai_response.find('```json') + 7
+                    json_end = ai_response.find('```', json_start)
+                    if json_end != -1:
+                        json_str = ai_response[json_start:json_end].strip()
+                    else:
+                        json_str = ai_response[json_start:].strip()
+                else:
+                    json_str = ai_response
+                
+                print(f"파싱할 JSON 문자열: {json_str}")
+                
+                company_info = json.loads(json_str)
+                print(f"OpenAI 기업정보 응답 파싱 성공: {company_info}")
+                return company_info
+                
+            except json.JSONDecodeError as e:
+                print(f"JSON 파싱 실패: {e}")
+                print(f"파싱 시도한 문자열: {json_str}")
+                print(f"AI 응답: {ai_response}")
+                return None
+            
+        except Exception as e:
+            print(f"OpenAI API 호출 중 오류: {e}")
+            return None
+            
+    except Exception as e:
+        print(f"generate_innovation_business_overview_with_openai 함수 오류: {e}")
+        return None
