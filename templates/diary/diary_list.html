@@ -663,7 +663,7 @@
           <div class="detail-modal-header">
             <h3>영업노트</h3>
             <div>
-                {% comment %} <button onclick="openAutoDocx()" class="auto-docx-btn">docx</button> {% endcomment %}
+                <button onclick="openAutoDocx()" class="auto-docx-btn ai-chat-btn">사업계획서</button>
                 <button onclick="openAIChatModalFromDetail()" class="ai-chat-btn">
                 🤖 AI 대화하기
                 </button>
@@ -1004,7 +1004,7 @@
                         </div>
                         <div class="button-group">
                             <button type="button" onclick="getOpenAIRecommendation()" class="btn-recommend">추천받기</button>
-                            <button type="button" onclick="generateDocx()" class="btn-generate">DOCX 생성</button>
+                            {% comment %} <button type="button" onclick="generateDocx()" class="btn-generate">DOCX 생성</button> {% endcomment %}
                         </div>
                     </div>
                     
@@ -1027,7 +1027,7 @@
 
                         <div class="button-group">
                             <button type="button" class="btn-recommend" id="innovationRecommendBtn" onclick="getInnovationRecommendation()">추천받기</button>
-                            <button type="button" onclick="generateInnovationDocx()" class="btn-generate">DOCX 생성</button>
+                            {% comment %} <button type="button" onclick="generateInnovationDocx()" class="btn-generate">DOCX 생성</button> {% endcomment %}
                         </div>
                         <div id="innovationResult" class="innovation-result" style="display: none;">
                             <!-- 결과가 여기에 표시됩니다 -->
@@ -3409,10 +3409,7 @@ function downloadExcelTemplate() {
 
 // 사용 메뉴얼 다운로드 함수
 function downloadUserManual() {
-    if (confirm('사용 메뉴얼을 다운로드하시겠습니까?')) {
-        // 백엔드 API 호출
-        downloadUserManualFromBackend();
-    }
+    window.location.href = '/sales/diary_use_preview/';
 }
 
 // 백엔드에서 사용 메뉴얼 다운로드하는 함수

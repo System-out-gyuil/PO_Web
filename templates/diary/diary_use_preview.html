@@ -7,12 +7,13 @@
   <title>다이어리 사용 방법 - 자금왕</title>
   <!-- PDF.js 라이브러리 추가 -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
   <link rel="icon" href="{% static 'images/자금왕_favicon.png' %}">
   <style>
     body {
       font-family: 'NanumSquareNeo', Arial, sans-serif;
       margin: 0;
-      padding: 20px;
       background-color: #f5f5f5;
     }
     
@@ -194,8 +195,11 @@
       }
     }
   </style>
+  <link rel="stylesheet" href="{% static 'diary/base/base.css' %}">
+
 </head>
 <body>
+  {% include 'diary/header.html' %}
   <div class="container">
     <div class="header">
       <h1>📖 다이어리 사용 방법</h1>
@@ -240,7 +244,7 @@
       {% endif %}
     </div>
   </div>
-  
+  <script src="{% static 'diary/base/base.js' %}"></script>
   <script>
     // PDF.js 설정
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';

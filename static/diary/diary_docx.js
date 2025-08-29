@@ -103,7 +103,7 @@ const modalStyles = `
       background-color: white;
       min-height: 400px;
       margin: 0 auto;
-      width: 70%;
+      width: 85%;
     }
     
     .docx-modal .tab-content.active {
@@ -323,6 +323,15 @@ function openAutoDocx() {
     innovationResult.style.display = 'none';
     console.log('혁신성장 결과 숨김');
   }
+  
+  // 입력 필드들과 버튼을 다시 보이기
+  const innovationTypeField = innovationTypeSelect ? innovationTypeSelect.closest('.form-group') : null;
+  const innovationCategoryField = innovationCategorySelect ? innovationCategorySelect.closest('.form-group') : null;
+  const buttonGroup = document.querySelector('#innovation-tab .button-group');
+  
+  if (innovationTypeField) innovationTypeField.style.display = 'block';
+  if (innovationCategoryField) innovationCategoryField.style.display = 'block';
+  if (buttonGroup) buttonGroup.style.display = 'flex';
   
   // 탭 초기화 (신용취약 탭 활성화) - HTML에 직접 정의된 함수 사용
   console.log('신용취약 탭으로 초기화 시작');
@@ -707,8 +716,17 @@ function displayInnovationRecommendationResult(data) {
   const companyInfo = data.company_info;
   const businessOverview = companyInfo.business_overview || '추천 정보가 없습니다.';
   
+  // 입력 필드들과 버튼을 숨기기
+  const innovationTypeField = modal.querySelector('#innovationType').closest('.form-group');
+  const innovationCategoryField = modal.querySelector('#innovationCategory').closest('.form-group');
+  const buttonGroup = modal.querySelector('#innovation-tab .button-group');
+  
+  if (innovationTypeField) innovationTypeField.style.display = 'none';
+  if (innovationCategoryField) innovationCategoryField.style.display = 'none';
+  if (buttonGroup) buttonGroup.style.display = 'none';
+  
   const resultHTML = `
-    <div style="max-height: 400px; overflow-y: auto; padding-right: 10px;">
+    <div style="max-height: 500px; overflow-y: auto; padding-right: 10px;">
       <h4>AI 추천 결과</h4>
       <div style="margin-bottom: 20px;">
         <p><strong>혁신성장 유형:</strong> ${data.innovation_type || '정보 없음'}</p>
@@ -736,15 +754,35 @@ function displayInnovationRecommendationResult(data) {
       </div>
       
       <h5>AI 추천 사업 개요</h5>
-      <div style="background-color: #e8f4fd; padding: 15px; border-radius: 4px; border-left: 4px solid #007bff;">
+      <div style="background-color: #e8f4fd; padding: 15px; border-radius: 4px; border-left: 4px solid #007bff; margin-bottom: 20px;">
         <p style="margin: 0; line-height: 1.6; color: #333;">${businessOverview}</p>
+      </div>
+      
+      <h5>주요 생산 제품</h5>
+      <div style="background-color: #f0f8ff; padding: 15px; border-radius: 4px; border-left: 4px solid #28a745; margin-bottom: 20px;">
+        <p style="margin: 0; line-height: 1.6; color: #333;">${companyInfo.주요_생산_제품 || '정보 없음'}</p>
+      </div>
+      
+      <h5>기술, 제품(상품), 공간(점포)의 경쟁력</h5>
+      <div style="background-color: #fff8f0; padding: 15px; border-radius: 4px; border-left: 4px solid #ffc107; margin-bottom: 20px;">
+        <p style="margin: 0; line-height: 1.6; color: #333;">${companyInfo.기술_제품_공간_경쟁력 || '정보 없음'}</p>
+      </div>
+      
+      <h5>시장 상황</h5>
+      <div style="background-color: #f8f0ff; padding: 15px; border-radius: 4px; border-left: 4px solid #6f42c1; margin-bottom: 20px;">
+        <p style="margin: 0; line-height: 1.6; color: #333;">${companyInfo.시장상황 || '정보 없음'}</p>
+      </div>
+      
+      <h5>생산 및 판매계획</h5>
+      <div style="background-color: #f0fff0; padding: 15px; border-radius: 4px; border-left: 4px solid #20c997; margin-bottom: 20px;">
+        <p style="margin: 0; line-height: 1.6; color: #333;">${companyInfo.생산_판매계획 || '정보 없음'}</p>
       </div>
     </div>
   `;
   
   resultDiv.innerHTML = resultHTML;
   resultDiv.style.display = 'block';
-  console.log('혁신성장 추천 결과 표시됨 (기업 정보 포함, 스크롤 적용)');
+  console.log('혁신성장 추천 결과 표시됨 (입력 필드 숨김, 결과가 위로 올라옴)');
 }
 
 function generateInnovationDocx() {

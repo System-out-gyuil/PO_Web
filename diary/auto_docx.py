@@ -1893,8 +1893,8 @@ def generate_innovation_docx(row_data, innovation_type, innovation_category, bus
         # 기본 기업 정보로 템플릿 채우기
         fill_company_info_in_docx(doc, row_data)
         
-        # 혁신성장 정보 추가
-        add_innovation_info_to_docx(doc, innovation_type, innovation_category, business_overview)
+        # 혁신성장 정보 추가 (company_info 포함)
+        add_innovation_info_to_docx(doc, innovation_type, innovation_category, business_overview, row_data)
         
         # 파일 정보 추가 (있는 경우)
         if file_texts:
@@ -1912,7 +1912,7 @@ def generate_innovation_docx(row_data, innovation_type, innovation_category, bus
         print(f"generate_innovation_docx 함수 오류: {e}")
         return None
 
-def add_innovation_info_to_docx(doc, innovation_type, innovation_category, business_overview):
+def add_innovation_info_to_docx(doc, innovation_type, innovation_category, business_overview, company_info=None):
     """DOCX에 혁신성장 정보 추가"""
     try:
         print("=== add_innovation_info_to_docx 함수 시작 ===")
@@ -1932,7 +1932,7 @@ def add_innovation_info_to_docx(doc, innovation_type, innovation_category, busin
             innovation_section = doc.add_paragraph()
             innovation_section.add_run('\n').bold = True
         
-        # 혁신성장 정보 추가
+        # 기본 혁신성장 정보
         innovation_text = f"""
 혁신성장 지원사업 정보
 
@@ -1941,9 +1941,27 @@ def add_innovation_info_to_docx(doc, innovation_type, innovation_category, busin
 
 사업 개요:
 {business_overview}
-
-위 내용은 AI 추천을 통해 생성된 전문적인 사업 개요입니다.
         """
+        
+        # 추가 항목들이 있으면 포함
+        if company_info:
+            additional_info = f"""
+
+주요 생산 제품:
+{company_info.get('주요_생산_제품', '정보 없음')}
+
+기술, 제품(상품), 공간(점포)의 경쟁력:
+{company_info.get('기술_제품_공간_경쟁력', '정보 없음')}
+
+시장 상황:
+{company_info.get('시장상황', '정보 없음')}
+
+생산 및 판매계획:
+{company_info.get('생산_판매계획', '정보 없음')}
+            """
+            innovation_text += additional_info
+        
+        innovation_text += "\n\n위 내용은 AI 추천을 통해 생성된 전문적인 사업 계획 정보입니다."
         
         # 기존 텍스트 교체
         innovation_section.text = innovation_text.strip()
@@ -2222,7 +2240,11 @@ def generate_innovation_business_overview_with_openai(row_data, innovation_type,
             "email": "대표 이메일 주소 (정보 부족시 '정보 없음')",
             "팩스번호": "팩스 번호 (정보 부족시 '정보 없음')",
             "사업내용": "주요 사업 내용 및 특징 (정보 부족시 '정보 없음')",
-            "business_overview": "200-300자 내외의 전문적이고 구체적인 사업 개요"
+            "business_overview": "200-300자 내외의 전문적이고 구체적인 사업 개요",
+            "주요_생산_제품": "기업의 주요 생산 제품이나 서비스를 500-600자로 상세히 설명 (정보 부족시 '정보 없음')",
+            "기술_제품_공간_경쟁력": "핵심기술내용, 제품 및 시설(점포)의 차별성, 품질 및 가격 경쟁력, 접근성 등을 500-600자로 상세히 설명 (정보 부족시 '정보 없음')",
+            "시장상황": "동업종 시장동향 및 전망, 시장규모, 주요 수요처, 시장변화에 따른 대응성, 경쟁업체 현황 등을 500-600자로 상세히 설명 (정보 부족시 '정보 없음')",
+            "생산_판매계획": "생산 및 시설관리계획, 목표달성을 위한 판매처 확보, 마케팅 및 고객만족 전략 등을 500-600자로 상세히 설명 (정보 부족시 '정보 없음')"
         }}
         
         **중요한 지침:**
@@ -2232,6 +2254,8 @@ def generate_innovation_business_overview_with_openai(row_data, innovation_type,
         4. 모든 값은 정확하고 구체적으로 작성해주세요.
         5. 사업내용은 기존 정보를 바탕으로 작성하되, 첨부 파일 내용도 참고해주세요.
         6. business_overview는 혁신성장 지원사업 신청에 적합한 전문적인 내용으로 작성해주세요.
+        7. 추가 항목들(주요_생산_제품, 기술_제품_공간_경쟁력, 시장상황, 생산_판매계획)은 각각 500-600자로 작성하여 혁신성장 지원사업 신청에 필요한 전문적이고 구체적인 내용을 포함해주세요.
+        8. 각 항목은 독립적이고 완성된 내용으로 작성하여 혁신성장 지원사업 신청 시 바로 활용할 수 있도록 해주세요.
         """
         
         print(f"OpenAI 프롬프트 생성 완료 (길이: {len(final_prompt)}자)")
@@ -2240,12 +2264,12 @@ def generate_innovation_business_overview_with_openai(row_data, innovation_type,
         try:
             client = OpenAI(api_key=OPEN_AI_API_KEY)
             response = client.chat.completions.create(
-                model="gpt-4o-mini",
+                model="gpt-4.1-mini",
                 messages=[
                     {"role": "system", "content": "당신은 소상공인 지원사업 전문 컨설턴트이자 기업 정보 분석 전문가입니다. 기업 정보를 바탕으로 정확한 기업 기본 정보를 추출하고, 전문적이고 구체적인 사업 개요를 작성해주세요."},
                     {"role": "user", "content": final_prompt}
                 ],
-                max_tokens=1500,
+                max_tokens=4000,
                 temperature=0.3
             )
             
