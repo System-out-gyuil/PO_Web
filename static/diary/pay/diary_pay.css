@@ -10,7 +10,7 @@ body {
   justify-content: center;
   align-items: center;
   width: 100%;
-  height: 100vh;
+  height: 100%;
   background-color: #ebebeb;
 }
 
@@ -81,4 +81,23 @@ body {
   font-weight: 600;
   color: #000000;
   margin-right: 5px;
+}
+
+@media (max-width: 900px) {
+  body {
+    height: 175vh;
+  }
+
+  .pay-box-container {
+    flex-direction: column;
+  }
+
+  .pay-box {
+    width: 95%;
+    margin-top: 20px;
+  }
+
+  .main-header {
+    margin-bottom: 0px !important;
+  }
 }

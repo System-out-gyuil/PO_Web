@@ -852,6 +852,18 @@
     top: -5px;
     right: -5px;
   }
+
+  .header-sub-title {
+    display: none;
+  }
+
+  .w-10 {
+    width: 2rem;
+  }
+
+  .h-10 {
+    height: 2rem;
+  }
 }
 
 

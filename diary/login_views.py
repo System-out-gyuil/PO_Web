@@ -531,6 +531,7 @@ class LogoutView(View):
         # 세션에서 diary_member_id, diary_authenticated 제거
         request.session.pop('diary_member_id', None)
         request.session.pop('diary_authenticated', None)
+        request.session.pop('admin_switch', None)
         request.session.save()
         
         # 로그인 페이지로 리다이렉트
@@ -541,6 +542,7 @@ class LogoutView(View):
             # 세션에서 diary_member_id, diary_authenticated 제거
             request.session.pop('diary_member_id', None)
             request.session.pop('diary_authenticated', None)
+            request.session.pop('admin_switch', None)
             request.session.save()
             
             # JSON 응답 반환
