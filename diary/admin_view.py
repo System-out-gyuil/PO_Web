@@ -897,16 +897,8 @@ def user_login_switch(request, user_id):
     except User.DoesNotExist:
         return JsonResponse({'success': False, 'message': '전환할 사용자를 찾을 수 없습니다.'})
     
-    # 계정이 비활성화된 경우 전환 불가
-    if not target_user.activate:
-        return JsonResponse({'success': False, 'message': '비활성화된 계정으로는 전환할 수 없습니다.'})
-    
-    # 사용 기간이 만료된 경우 전환 불가
-    if target_user.use_date:
-        current_date = timezone.now().date()
-        use_date = target_user.use_date.date() if hasattr(target_user.use_date, 'date') else target_user.use_date
-        if current_date > use_date:
-            return JsonResponse({'success': False, 'message': '사용 기간이 만료된 계정으로는 전환할 수 없습니다.'})
+    # 관리자 페이지에서 전환하는 경우 사용 기간과 활성화 여부 체크를 하지 않음
+    # (일반 사용자 로그인과 달리 관리자는 모든 계정에 접근 가능)
     
     try:
         # 기존 세션 정보 제거 (flush 대신 개별 키만 삭제)

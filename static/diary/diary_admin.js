@@ -780,12 +780,10 @@ function renderUsersTable(users, currentUserId, isSuperAdmin, currentPage = 1, p
             </div>
         `;
         
-        // 사용자 이름을 클릭 가능한 링크로 만들기 (활성화된 계정만)
-        const userNameCell = user.activate 
-            ? `<a href="javascript:void(0)" onclick="switchToUserAccount(${user.id}, '${user.name || '사용자'}', '${user.email}')" class="text-primary fw-bold" style="cursor: pointer; text-decoration: none;" title="클릭하여 이 계정으로 로그인 전환">
+        // 사용자 이름을 클릭 가능한 링크로 만들기 (관리자는 모든 계정에 접근 가능)
+        const userNameCell = `<a href="javascript:void(0)" onclick="switchToUserAccount(${user.id}, '${user.name || '사용자'}', '${user.email}')" class="text-primary fw-bold" style="cursor: pointer; text-decoration: none;" title="클릭하여 이 계정으로 로그인 전환">
                  <i class="fas fa-sign-in-alt me-1"></i>${user.name || '-'}
-               </a>`
-            : `<span class="text-muted">${user.name || '-'}</span>`;
+               </a>`;
         
         const row = document.createElement('tr');
         row.innerHTML = `

@@ -1,7 +1,7 @@
 from solapi import SolapiMessageService
 from solapi.model import RequestMessage
 from solapi.model.kakao.kakao_option import KakaoOption
-from config import SOLAPI_API_KEY, SOLAPI_SECRET_KEY, SEND_NUMBER, KAKAO_PF_ID, KAKAO_SIGNUP_TEMPLATE_ID, KAKAO_USE_DATE_OVER_TEMPLATE_ID
+from config import SOLAPI_API_KEY, SOLAPI_SECRET_KEY, SEND_NUMBER, KAKAO_PF_ID, KAKAO_SIGNUP_TEMPLATE_ID, KAKAO_USE_DATE_OVER_TEMPLATE_ID, KAKAO_USE_DATE_OVER_TEMPLATE_ID_TODAY
 
 
 def solapi_api(send_type, to):
@@ -14,6 +14,9 @@ def solapi_api(send_type, to):
 
   elif send_type == "use_date_over":
     template_id = KAKAO_USE_DATE_OVER_TEMPLATE_ID
+
+  elif send_type == "use_date_over_today":
+    template_id = KAKAO_USE_DATE_OVER_TEMPLATE_ID_TODAY
 
   # API 키와 API Secret을 설정합니다
   message_service = SolapiMessageService(
