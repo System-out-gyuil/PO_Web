@@ -3,7 +3,7 @@ from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from .models import User, Row, AttributeValue
-import json
+from datetime import datetime
 from docx import Document
 from docx.table import _Cell
 from docx.text.paragraph import Paragraph
@@ -115,6 +115,8 @@ def auto_docx_recommend(request):
                     # 파일 텍스트 추출
                     file_texts = get_row_files_text(row)
                     print(f"추출된 파일 텍스트 개수: {len(file_texts)}")
+                    print(f"추출된 파일 텍스트: {file_texts}")
+
                     
                     # OpenAI API를 통해 사업 개요 추천 생성
                     recommendation_data = generate_business_overview_with_openai(
@@ -238,6 +240,7 @@ def auto_docx(request):
                     # 파일 텍스트 추출
                     file_texts = get_row_files_text(row)
                     print(f"추출된 파일 텍스트 개수: {len(file_texts)}")
+                    print(f"추출된 파일 텍스트: {file_texts}")
 
                     # 사용자 입력값을 포함한 사업계획서 데이터 생성
                     business_plan_data = {
@@ -1814,7 +1817,8 @@ def auto_docx_innovation(request):
                     # 파일 텍스트 추출
                     file_texts = get_row_files_text(row)
                     print(f"추출된 파일 텍스트 개수: {len(file_texts)}")
-                    
+                    print(f"추출된 파일 텍스트: {file_texts}")
+
                     # 혁신성장 DOCX 생성
                     docx_file = generate_innovation_docx(
                         row_data, innovation_type, innovation_category, business_overview, row, file_texts
@@ -2082,11 +2086,11 @@ def auto_docx_innovation_recommend(request):
                             attr_value_text = attr_value.value
                             row_data[attr_name] = attr_value_text
                     
-                    print(f"행 데이터: {row_data}")
                     
                     # 파일 텍스트 추출
                     file_texts = get_row_files_text(row)
                     print(f"추출된 파일 텍스트 개수: {len(file_texts)}")
+                    print(f"추출된 파일 텍스트: {file_texts}")
                     
                     # OpenAI API를 통해 혁신성장 사업 개요 생성
                     company_info = generate_innovation_business_overview_with_openai(
@@ -2146,6 +2150,7 @@ def auto_docx_innovation_recommend(request):
 
 def generate_innovation_business_overview_with_openai(row_data, innovation_type, innovation_category, row, file_texts):
     """OpenAI API를 사용하여 혁신성장 사업 개요 및 기업 정보 생성"""
+
     try:
         print("=== generate_innovation_business_overview_with_openai 함수 시작 ===")
         
@@ -2155,10 +2160,38 @@ def generate_innovation_business_overview_with_openai(row_data, innovation_type,
         # 행 데이터 추가
         if row_data:
             context_text += "=== 기업 기본 정보 ===\n"
+            
+            # 현재 연도 계산
+            current_year = datetime.now().year
+            
             for key, value in row_data.items():
+                # 음성파일과 지원사업은 제외
+                if key in ['음성파일', '지원사업']:
+                    continue
+                    
                 if value and str(value).strip():
-                    context_text += f"{key}: {value}\n"
+                    # 개업년월 특별 처리
+                    if key == '개업년월':
+                        try:
+                            opening_info = json.loads(str(value))
+                            if 'years_ago' in opening_info and opening_info['years_ago']:
+                                # years_ago가 있으면 현재 연도에서 빼서 설립년도 계산
+                                years_ago = int(opening_info['years_ago'])
+                                founding_year = current_year - years_ago
+                                context_text += f"{key}: {founding_year}년 설립 ({years_ago}년 전)\n"
+                            elif 'opening_date' in opening_info and opening_info['opening_date']:
+                                # opening_date가 있으면 그대로 사용
+                                context_text += f"{key}: {opening_info['opening_date']}\n"
+                            else:
+                                context_text += f"{key}: {value}\n"
+                        except (json.JSONDecodeError, ValueError, TypeError):
+                            # JSON 파싱 실패시 원본 값 사용
+                            context_text += f"{key}: {value}\n"
+                    else:
+                        context_text += f"{key}: {value}\n"
             context_text += "\n"
+
+        print(f"context_text: {context_text}")
         
         # 파일 텍스트 추가
         if file_texts:
@@ -2233,7 +2266,7 @@ def generate_innovation_business_overview_with_openai(row_data, innovation_type,
             "대표자명": "대표자 이름 (정보 부족시 '정보 없음')",
             "설립일자": "설립일 또는 설립년도 (정보 부족시 '정보 없음')",
             "법인번호": "법인등록번호 (정보 부족시 '정보 없음')",
-            "주민번호": "대표자 주민등록번호 (정보 부족시 '정보 없음')",
+            "주민번호": "대표자 주민등록번호 (주민등록증의 번호, 정보 부족시 '정보 없음')",
             "사업자번호": "사업자등록번호 (정보 부족시 '정보 없음')",
             "본사주소": "본사 또는 사업장 주소 (정보 부족시 '정보 없음')",
             "전화번호": "대표 전화번호 (정보 부족시 '정보 없음')",
