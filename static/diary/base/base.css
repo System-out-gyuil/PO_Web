@@ -1,3 +1,7 @@
+.diary-btn-container {
+  text-decoration: none;
+}
+
 /* 헤더 스타일 */
 .main-header {
   background: #fff;
@@ -821,6 +825,11 @@
   width: 98%;
 }
 
+
+.pay-btn {
+  background-color: #373737;
+  color: white;
+}
 
 
 @media (max-width: 900px) {

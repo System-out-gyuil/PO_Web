@@ -780,10 +780,17 @@ function renderUsersTable(users, currentUserId, isSuperAdmin, currentPage = 1, p
             </div>
         `;
         
+        // 사용자 이름을 클릭 가능한 링크로 만들기 (활성화된 계정만)
+        const userNameCell = user.activate 
+            ? `<a href="javascript:void(0)" onclick="switchToUserAccount(${user.id}, '${user.name || '사용자'}', '${user.email}')" class="text-primary fw-bold" style="cursor: pointer; text-decoration: none;" title="클릭하여 이 계정으로 로그인 전환">
+                 <i class="fas fa-sign-in-alt me-1"></i>${user.name || '-'}
+               </a>`
+            : `<span class="text-muted">${user.name || '-'}</span>`;
+        
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${displayNumber}</td>
-            <td>${user.name || '-'}</td>
+            <td>${userNameCell}</td>
             <td>${user.email}</td>
             <td>${user.company_name || '-'}</td>
             <td>${user.phone_number || '-'}</td>
@@ -1767,4 +1774,75 @@ function showLogs() {
     document.getElementById('log-start-date').value = sevenDaysAgo.toISOString().split('T')[0];
     
     loadLogs();
+}
+
+// 사용자 계정으로 로그인 전환
+async function switchToUserAccount(userId, userName, userEmail) {
+    if (!confirm(`"${userName}" 계정으로 로그인 전환하시겠습니까?\n\n현재 관리자 세션이 종료되고 해당 사용자 계정으로 로그인됩니다.`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/sales/diary_admin/users/${userId}/login_switch/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showAlert(data.message, 'success');
+            
+            // 세션 정보 확인
+            console.log('계정 전환 성공:', data.user_info);
+            
+            // 세션 상태 확인
+            await verifySessionStatus();
+            
+            // 잠시 후 리다이렉트 (세션이 서버에 저장될 시간을 줌)
+            setTimeout(() => {
+                if (data.redirect_url) {
+                    console.log('다이어리 페이지로 리다이렉트 중...');
+                    // window.location.replace를 사용하여 더 안전한 리다이렉트
+                    window.location.replace(data.redirect_url);
+                }
+            }, 2000); // 2초 대기
+        } else {
+            showAlert(data.message, 'error');
+        }
+    } catch (error) {
+        console.error('계정 전환 중 오류:', error);
+        showAlert('계정 전환 중 오류가 발생했습니다.', 'error');
+    }
+}
+
+// 세션 상태 확인
+async function verifySessionStatus() {
+    try {
+        console.log('세션 상태 확인 중...');
+        const response = await fetch('/sales/check_login_status/', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        });
+        
+        const data = await response.json();
+        console.log('세션 상태 확인 결과:', data);
+        
+        if (data.is_authenticated) {
+            console.log('세션이 정상적으로 설정되었습니다.');
+        } else {
+            console.log('세션 설정에 문제가 있습니다.');
+        }
+        
+        return data.is_authenticated;
+    } catch (error) {
+        console.error('세션 상태 확인 중 오류:', error);
+        return false;
+    }
 }

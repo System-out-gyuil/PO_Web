@@ -876,6 +876,104 @@ def user_update_use_date(request, user_id):
     
     return JsonResponse({'success': False, 'message': '잘못된 요청입니다.'})
 
+@csrf_exempt
+def user_login_switch(request, user_id):
+    """관리자가 다른 사용자 계정으로 로그인 전환"""
+    admin_user_id = request.session.get('diary_member_id')
+    
+    if not admin_user_id:
+        return JsonResponse({'success': False, 'message': '로그인이 필요합니다.'})
+    
+    try:
+        admin_user = User.objects.get(id=admin_user_id)
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'message': '관리자를 찾을 수 없습니다.'})
+
+    if not admin_user.is_admin:
+        return JsonResponse({'success': False, 'message': '권한이 없습니다.'})
+    
+    try:
+        target_user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'message': '전환할 사용자를 찾을 수 없습니다.'})
+    
+    # 계정이 비활성화된 경우 전환 불가
+    if not target_user.activate:
+        return JsonResponse({'success': False, 'message': '비활성화된 계정으로는 전환할 수 없습니다.'})
+    
+    # 사용 기간이 만료된 경우 전환 불가
+    if target_user.use_date:
+        current_date = timezone.now().date()
+        use_date = target_user.use_date.date() if hasattr(target_user.use_date, 'date') else target_user.use_date
+        if current_date > use_date:
+            return JsonResponse({'success': False, 'message': '사용 기간이 만료된 계정으로는 전환할 수 없습니다.'})
+    
+    try:
+        # 기존 세션 정보 제거 (flush 대신 개별 키만 삭제)
+        print(f"기존 세션 정보 제거 전: {dict(request.session)}")
+        
+        # 기존 세션 키들을 개별적으로 삭제
+        keys_to_remove = [
+            'diary_member_id', 'diary_member_name', 'diary_member_email', 
+            'diary_member_company', 'diary_member_is_admin', 'diary_authenticated'
+        ]
+        for key in keys_to_remove:
+            if key in request.session:
+                del request.session[key]
+        
+        print(f"기존 세션 정보 제거 후: {dict(request.session)}")
+        
+        # 새로운 사용자 정보로 세션 설정
+        request.session['diary_member_id'] = target_user.id
+        request.session['diary_member_name'] = target_user.name or target_user.email
+        request.session['diary_member_email'] = target_user.email
+        request.session['diary_member_company'] = target_user.company_name or ''
+        request.session['diary_member_is_admin'] = target_user.is_admin
+        request.session['diary_authenticated'] = True  # 다이어리 페이지 인증 키 추가
+        request.session['admin_switch'] = True  # 관리자 페이지에서 전환된 계정임을 표시
+        
+        print(f"새로운 세션 정보 설정 후: {dict(request.session)}")
+        
+        # 세션 만료 시간 설정 (24시간)
+        request.session.set_expiry(86400)
+        
+        # 세션 저장
+        request.session.save()
+        
+        print(f"세션 저장 후: {dict(request.session)}")
+        
+        # 세션이 제대로 설정되었는지 확인
+        if (request.session.get('diary_member_id') == target_user.id and 
+            request.session.get('diary_authenticated') == True):
+            print(f"세션 설정 성공: {target_user.id}")
+            print(f"최종 세션 상태: {dict(request.session)}")
+            
+            # 응답 생성
+            response = JsonResponse({
+                'success': True, 
+                'message': f'{target_user.name or target_user.email} 계정으로 전환되었습니다.',
+                'redirect_url': '/sales/diary/',  # 다이어리 페이지로 리다이렉트
+                'user_info': {
+                    'id': target_user.id,
+                    'name': target_user.name or target_user.email,
+                    'email': target_user.email,
+                    'is_admin': target_user.is_admin
+                }
+            })
+            
+            # 세션 쿠키가 제대로 설정되도록 보장
+            if hasattr(request.session, 'session_key') and request.session.session_key:
+                print(f"세션 키: {request.session.session_key}")
+            
+            return response
+        else:
+            print(f"세션 설정 실패: 기대값 {target_user.id}, 실제값 {request.session.get('diary_member_id')}, 인증값 {request.session.get('diary_authenticated')}")
+            print(f"전체 세션 내용: {dict(request.session)}")
+            return JsonResponse({'success': False, 'message': '세션 설정에 실패했습니다.'})
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'계정 전환 중 오류가 발생했습니다: {str(e)}'})
+
 def diary_count_list(request):
     """다이어리 조회수 목록 API"""
     user_id = request.session.get('diary_member_id')

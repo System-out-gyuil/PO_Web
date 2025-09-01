@@ -718,3 +718,10 @@ document.addEventListener('click', function(event) {
         closeBizInfoModal();
     }
 });
+
+document.addEventListener('click', function(event) {
+    const payBtn = document.getElementById('payBtn');
+    if (payBtn && event.target === payBtn) {
+        window.location.href = '/sales/pay/';
+    }
+});
