@@ -38,10 +38,10 @@ class MainView(View):
         host = request.get_host()
 
         if 'xn--jj0bw47b70a.com' in host:
-            return redirect('diary_main')
+            return redirect('/sales/')
 
         elif 'salesmate.ai.kr' in host:
-            return redirect('salesmate_main')
+            return redirect('/salesmate/')
 
         else:
 
