@@ -41,10 +41,9 @@ class MainView(View):
             return redirect('diary_main')
 
         elif 'salesmate.ai.kr' in host:
-            return redirect('salesmate')
+            return redirect('salesmate:salesmate')
 
         else:
-
 
             biz_list_10 = BizInfo.objects.all().order_by('-registered_at')[:15]
 
