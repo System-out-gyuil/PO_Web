@@ -1,6 +1,6 @@
 from django.urls import path
 from . import views
-from .login_views import LoginView, LogoutView, SignupView, ChangePasswordView, SendVerificationEmailView, VerifyEmailView, ForgotPasswordView, ResetPasswordView, CheckEmailDuplicateView
+from .login_views import LoginView, LogoutView, SignupView, ChangePasswordView, SendVerificationEmailView, VerifyEmailView, ForgotPasswordView, ResetPasswordView, CheckEmailDuplicateView, login_popup
 from .main_views import DiaryMainView
 from .file_handler import upload_file, delete_file, download_file, download_file_note
 from .calendar_handlers import get_datetime_attributes, get_calendar_settings, save_calendar_settings, calendar_events
@@ -33,6 +33,7 @@ urlpatterns = [
     path('login/', LoginView.as_view(), name='login'),
     path('logout/', LogoutView.as_view(), name='logout'),
     path('signup/', SignupView.as_view(), name='signup'),
+    path('login_popup/', login_popup, name='login_popup'),
     path('change_password/', ChangePasswordView.as_view(), name='change_password'),
 
     path('check_login_status/', views.check_login_status, name='check_login_status'),

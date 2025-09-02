@@ -89,29 +89,28 @@ def check_login_status(request):
                     is_admin_switch = request.session.get('admin_switch', False)
                     print(f"관리자 전환 계정 여부: {is_admin_switch}")
                     
-                    # 관리자 전환이 아닌 경우에만 사용 기간 체크
-                    if not is_admin_switch:
-                        # 사용자의 남은 이용기간
-                        use_date = user.use_date
+                    # 사용자의 남은 이용기간 (관리자 전환이어도 표시는 함)
+                    use_date = user.use_date
+                    
+                    # use_date를 YYYY-MM-DD 형식으로 변환하고 남은 일수 계산
+                    if use_date:
+                        current_date = timezone.now().date()
+                        use_date_date = use_date.date() if hasattr(use_date, 'date') else use_date
                         
-                        # use_date를 YYYY-MM-DD 형식으로 변환하고 남은 일수 계산
-                        if use_date:
-                            current_date = timezone.now().date()
-                            use_date_date = use_date.date() if hasattr(use_date, 'date') else use_date
-                            
-                            if current_date > use_date_date:
-                                print(f"사용 기간이 만료되어 로그인 페이지로 리다이렉트")
-                                request.session.flush()
-                                return redirect('login')
-                            
-                            # 남은 일수 계산
-                            remaining_days = (use_date_date - current_date).days
-                            formatted_use_date = use_date_date.strftime('%Y-%m-%d')
-                        else:
-                            remaining_days = None
-                            formatted_use_date = None
+                        # 관리자 전환이 아닌 경우에만 만료 시 로그인 페이지로 리다이렉트
+                        if not is_admin_switch and current_date > use_date_date:
+                            print(f"사용 기간이 만료되어 로그인 페이지로 리다이렉트")
+                            request.session.flush()
+                            return redirect('login')
+                        
+                        # 남은 일수 계산
+                        remaining_days = (use_date_date - current_date).days
+                        formatted_use_date = use_date_date.strftime('%Y-%m-%d')
+                        
+                        # 만료된 경우 remaining_days를 음수로 표시
+                        if remaining_days < 0:
+                            print(f"사용 기간이 만료됨: {remaining_days}일 지남")
                     else:
-                        print(f"관리자 전환 계정이므로 사용 기간 체크 건너뛰기")
                         remaining_days = None
                         formatted_use_date = None
                 except User.DoesNotExist:
@@ -125,10 +124,31 @@ def check_login_status(request):
                     })
         
         print(f"최종 응답: is_authenticated={is_authenticated}")
-        return JsonResponse({
+        response_data = {
             'is_authenticated': is_authenticated,
             'success': True
-        })
+        }
+        
+        # 로그인된 경우 만료 기간 정보 추가
+        if is_authenticated and user_id:
+            try:
+                user = User.objects.get(id=user_id)
+                use_date = user.use_date
+                if use_date:
+                    current_date = timezone.now().date()
+                    use_date_date = use_date.date() if hasattr(use_date, 'date') else use_date
+                    remaining_days = (use_date_date - current_date).days
+                    response_data['remaining_days'] = remaining_days
+                    response_data['formatted_use_date'] = use_date_date.strftime('%Y-%m-%d')
+                    response_data['is_expired'] = remaining_days < 0
+                else:
+                    response_data['remaining_days'] = None
+                    response_data['formatted_use_date'] = None
+                    response_data['is_expired'] = False
+            except User.DoesNotExist:
+                pass
+        
+        return JsonResponse(response_data)
     except Exception as e:
         print(f"check_login_status 오류: {e}")
         logger.error(f'로그인 상태 확인 오류: {e}')
@@ -230,29 +250,28 @@ def diary_list(request):
         is_admin_switch = request.session.get('admin_switch', False)
         print(f"관리자 전환 계정 여부: {is_admin_switch}")
         
-        # 관리자 전환이 아닌 경우에만 사용 기간 체크
-        if not is_admin_switch:
-            # 사용자의 남은 이용기간
-            use_date = user.use_date
+        # 사용자의 남은 이용기간 (관리자 전환이어도 표시는 함)
+        use_date = user.use_date
+        
+        # use_date를 YYYY-MM-DD 형식으로 변환하고 남은 일수 계산
+        if use_date:
+            current_date = timezone.now().date()
+            use_date_date = use_date.date() if hasattr(use_date, 'date') else use_date
             
-            # use_date를 YYYY-MM-DD 형식으로 변환하고 남은 일수 계산
-            if use_date:
-                current_date = timezone.now().date()
-                use_date_date = use_date.date() if hasattr(use_date, 'date') else use_date
-                
-                if current_date > use_date_date:
-                    print(f"사용 기간이 만료되어 로그인 페이지로 리다이렉트")
-                    request.session.flush()
-                    return redirect('login')
-                
-                # 남은 일수 계산
-                remaining_days = (use_date_date - current_date).days
-                formatted_use_date = use_date_date.strftime('%Y-%m-%d')
-            else:
-                remaining_days = None
-                formatted_use_date = None
+            # 관리자 전환이 아닌 경우에만 만료 시 로그인 페이지로 리다이렉트
+            if not is_admin_switch and current_date > use_date_date:
+                print(f"사용 기간이 만료되어 로그인 페이지로 리다이렉트")
+                request.session.flush()
+                return redirect('login')
+            
+            # 남은 일수 계산
+            remaining_days = (use_date_date - current_date).days
+            formatted_use_date = use_date_date.strftime('%Y-%m-%d')
+            
+            # 만료된 경우 remaining_days를 음수로 표시
+            if remaining_days < 0:
+                print(f"사용 기간이 만료됨: {remaining_days}일 지남")
         else:
-            print(f"관리자 전환 계정이므로 사용 기간 체크 건너뛰기")
             remaining_days = None
             formatted_use_date = None
     except User.DoesNotExist:
@@ -490,6 +509,8 @@ def diary_list(request):
         'is_mobile': is_mobile,  # 모바일 여부 추가
         'formatted_use_date': formatted_use_date,  # 사용 가능 기간 (YYYY-MM-DD 형식)
         'remaining_days': remaining_days,  # 남은 일수
+        'is_expired': remaining_days is not None and remaining_days < 0,  # 만료 여부
+        'is_admin_switch': is_admin_switch,  # 관리자 전환 여부
     }
     context['attributes_json'] = json.dumps(context['attributes'], ensure_ascii=False)
     context['dropdown_options_json'] = json.dumps(dropdown_options, ensure_ascii=False)  # JSON 형태로도 추가

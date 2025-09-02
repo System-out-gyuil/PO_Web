@@ -986,3 +986,6 @@ class CheckEmailDuplicateView(View):
                 'success': False,
                 'error': f'중복 검사 중 오류가 발생했습니다: {str(e)}'
             })
+
+def login_popup(request):
+    return render(request, 'diary/diary_login_popup.html')

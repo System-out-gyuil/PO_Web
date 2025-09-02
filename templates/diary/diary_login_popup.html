@@ -1,0 +1,35 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>자금왕</title>
+  <link rel="icon" href="{% static 'images/자금왕_favicon.png' %}">
+
+  <style>
+    .login-popup {
+      width: 500px;
+      height: 400px;
+      background-image: url("{% static 'images/ai_consel_img.jpg' %}");
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-popup">
+    
+  </div>
+  
+  <script>
+    // ESC 키로 창 닫기
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        window.close();
+      }
+    });
+  </script>
+</body>
+</html>

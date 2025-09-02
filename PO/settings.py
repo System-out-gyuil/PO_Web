@@ -52,7 +52,7 @@ NAVER_EMAIL_PORT = 587
 DAUM_EMAIL_PORT = 465
 
 
-ALLOWED_HOSTS = ['localhost', '192.168.100.76', '172.30.1.19', '127.0.0.1', '13.124.116.146', '43.203.40.252', 'namatji.com', 'www.namatji.com', 'xn--jj0bw47b70a.com', 'www.xn--jj0bw47b70a.com']
+ALLOWED_HOSTS = ['localhost', '192.168.100.76', '172.30.1.19', '127.0.0.1', '13.124.116.146', '43.203.40.252', 'namatji.com', 'www.namatji.com', 'xn--jj0bw47b70a.com', 'www.xn--jj0bw47b70a.com', 'salesmate.ai.kr', 'www.salesmate.ai.kr']
 
 
 INSTALLED_APPS = [

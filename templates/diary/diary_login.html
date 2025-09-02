@@ -154,6 +154,8 @@
       font-size: 13px;
     }
 
+
+
   </style>
   <link rel="stylesheet" href="{% static 'diary/base/base.css' %}">
   <script>
@@ -651,6 +653,9 @@
           document.getElementById('loginSuccess').textContent = data.message;
           document.getElementById('loginSuccess').style.display = 'block';
           
+          // 새 크롬 창 열기
+          // window.open('/sales/login_popup/', '_blank', 'width=500,height=400,scrollbars=yes,resizable=yes,menubar=no,toolbar=no,location=no,status=no');
+          
           // 성공 시 리다이렉트
           setTimeout(() => {
             window.location.href = data.redirect_url;
@@ -711,6 +716,8 @@
     document.addEventListener('DOMContentLoaded', function() {
       document.getElementById('send_verification_btn').disabled = true;
     });
+
+
   </script>
 
   <script>
