@@ -1,0 +1,309 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>관리자 페이지 - Salesmate</title>
+    <link rel="icon" href="{% static 'images/자금왕_favicon.png' %}">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #4f46e5;
+            padding-bottom: 10px;
+            margin-bottom: 30px;
+        }
+        h2 {
+            color: #4f46e5;
+            margin-top: 30px;
+            margin-bottom: 20px;
+        }
+        .user-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+        .user-table th,
+        .user-table td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        .user-table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+        .user-table tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 5px;
+            font-size: 14px;
+        }
+        .btn-approve {
+            background-color: #28a745;
+            color: white;
+        }
+        .btn-approve:hover {
+            background-color: #218838;
+        }
+        .btn-reject {
+            background-color: #dc3545;
+            color: white;
+        }
+        .btn-reject:hover {
+            background-color: #c82333;
+        }
+        .status-pending {
+            color: #ffc107;
+            font-weight: bold;
+        }
+        .status-approved {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .message {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            display: none;
+        }
+        .message.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .logout-btn {
+            background-color: #6c757d;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            float: right;
+            margin-bottom: 20px;
+        }
+        .logout-btn:hover {
+            background-color: #5a6268;
+        }
+        .empty-message {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <button class="logout-btn" onclick="logout()">로그아웃</button>
+        
+        <h1>Salesmate 관리자 페이지</h1>
+        
+        <div id="message" class="message"></div>
+        
+        <h2>승인 대기 중인 사용자</h2>
+        {% if pending_users %}
+        <table class="user-table">
+            <thead>
+                <tr>
+                    <th>이름</th>
+                    <th>이메일</th>
+                    <th>회사명</th>
+                    <th>전화번호</th>
+                    <th>가입일</th>
+                    <th>상태</th>
+                    <th>액션</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in pending_users %}
+                <tr>
+                    <td>{{ user.name }}</td>
+                    <td>{{ user.email }}</td>
+                    <td>{{ user.company_name }}</td>
+                    <td>{{ user.phone_number }}</td>
+                    <td>{{ user.created_at|date:"Y-m-d H:i" }}</td>
+                    <td><span class="status-pending">승인 대기</span></td>
+                    <td>
+                        <button class="btn btn-approve" onclick="approveUser({{ user.id }}, '{{ user.name }}')">승인</button>
+                        <button class="btn btn-reject" onclick="rejectUser({{ user.id }}, '{{ user.name }}')">거부</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-message">승인 대기 중인 사용자가 없습니다.</div>
+        {% endif %}
+        
+        <h2>승인된 사용자</h2>
+        {% if approved_users %}
+        <table class="user-table">
+            <thead>
+                <tr>
+                    <th>이름</th>
+                    <th>이메일</th>
+                    <th>회사명</th>
+                    <th>전화번호</th>
+                    <th>가입일</th>
+                    <th>상태</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in approved_users %}
+                <tr>
+                    <td>{{ user.name }}</td>
+                    <td>{{ user.email }}</td>
+                    <td>{{ user.company_name }}</td>
+                    <td>{{ user.phone_number }}</td>
+                    <td>{{ user.created_at|date:"Y-m-d H:i" }}</td>
+                    <td><span class="status-approved">승인됨</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-message">승인된 사용자가 없습니다.</div>
+        {% endif %}
+    </div>
+
+    <!-- CSRF 토큰 -->
+    <input type="hidden" name="csrfmiddlewaretoken" value="{% csrf_token %}">
+
+    <script>
+        // 메시지 표시
+        function showMessage(message, type) {
+            const messageElement = document.getElementById('message');
+            messageElement.textContent = message;
+            messageElement.className = `message ${type}`;
+            messageElement.style.display = 'block';
+            
+            // 3초 후 자동 숨김
+            setTimeout(() => {
+                messageElement.style.display = 'none';
+            }, 3000);
+        }
+
+        // 사용자 승인
+        async function approveUser(userId, userName) {
+            if (!confirm(`${userName}님의 회원가입을 승인하시겠습니까?`)) {
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('user_id', userId);
+                formData.append('csrfmiddlewaretoken', getCSRFToken());
+
+                const response = await fetch('/salesmate/admin/approve_user/', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showMessage(data.message, 'success');
+                    // 페이지 새로고침
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1000);
+                } else {
+                    showMessage(data.message, 'error');
+                }
+            } catch (error) {
+                showMessage('승인 처리 중 오류가 발생했습니다.', 'error');
+            }
+        }
+
+        // 사용자 거부
+        async function rejectUser(userId, userName) {
+            if (!confirm(`${userName}님의 회원가입을 거부하시겠습니까? 이 작업은 되돌릴 수 없습니다.`)) {
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('user_id', userId);
+                formData.append('csrfmiddlewaretoken', getCSRFToken());
+
+                const response = await fetch('/salesmate/admin/reject_user/', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showMessage(data.message, 'success');
+                    // 페이지 새로고침
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1000);
+                } else {
+                    showMessage(data.message, 'error');
+                }
+            } catch (error) {
+                showMessage('거부 처리 중 오류가 발생했습니다.', 'error');
+            }
+        }
+
+        // 로그아웃
+        async function logout() {
+            if (!confirm('로그아웃하시겠습니까?')) {
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('csrfmiddlewaretoken', getCSRFToken());
+
+                const response = await fetch('/salesmate/logout/', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    window.location.href = '/salesmate/login/';
+                } else {
+                    showMessage(data.message, 'error');
+                }
+            } catch (error) {
+                showMessage('로그아웃 중 오류가 발생했습니다.', 'error');
+            }
+        }
+
+        // CSRF 토큰 가져오기
+        function getCSRFToken() {
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+            return csrfToken ? csrfToken.value : '';
+        }
+    </script>
+</body>
+</html>

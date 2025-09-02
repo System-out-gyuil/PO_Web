@@ -55,8 +55,16 @@
           <a href="#contact" class="text-gray-600 hover:text-indigo-600 font-medium">지원센터</a>
         </div>
         <div class="flex space-x-4">
-          <button class="text-indigo-600 hover:text-indigo-800 font-medium">로그인</button>
-          <button class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg font-medium transition">회원가입</button>
+          {% if user_name %}
+            <span class="text-indigo-600 font-medium" style="display: flex; align-items: center;">안녕하세요, {{ user_name }}님</span>
+            {% if is_admin %}
+            <a href="/salesmate/admin/" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition">관리자</a>
+            {% endif %}
+            <button onclick="logout()" class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg font-medium transition">로그아웃</button>
+          {% else %}
+            <a href="/salesmate/login/" class="text-indigo-600 hover:text-indigo-800 font-medium">로그인</a>
+            <button onclick="openSignupModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg font-medium transition">회원가입</button>
+          {% endif %}
         </div>
       </div>
     </nav>
@@ -503,38 +511,29 @@
 <!-- Footer -->
 <footer id="contact" class="bg-gray-900 text-white py-16">
   <div class="container mx-auto px-6">
-      <div class="grid md:grid-cols-4 gap-8">
+      <div class="grid md:grid-cols-3 gap-8">
           <div>
               <div class="text-2xl font-bold mb-4">
                   <i class="fas fa-handshake mr-2"></i>세일즈메이트
               </div>
               <p class="text-gray-400 mb-4">영업의 모든 것을 한 번에 관리하는 스마트 CRM 솔루션</p>
-              <div class="flex space-x-4">
+              {% comment %} <div class="flex space-x-4">
                   <i class="fab fa-facebook text-xl hover:text-blue-400 cursor-pointer transition"></i>
                   <i class="fab fa-twitter text-xl hover:text-blue-400 cursor-pointer transition"></i>
                   <i class="fab fa-linkedin text-xl hover:text-blue-400 cursor-pointer transition"></i>
-              </div>
+              </div> {% endcomment %}
           </div>
 
           <div>
-              <h4 class="font-semibold mb-4">제품</h4>
-              <ul class="space-y-2 text-gray-400">
-                  <li><a href="#" class="hover:text-white transition">기능 소개</a></li>
-                  <li><a href="#" class="hover:text-white transition">요금제</a></li>
-                  <li><a href="#" class="hover:text-white transition">API 문서</a></li>
-                  <li><a href="#" class="hover:text-white transition">업데이트</a></li>
-              </ul>
+            <h4 class="text-lg font-bold mb-4">연락처</h4>
+            <div class="space-y-2 text-gray-400">
+                <p><i class="fas fa-building mr-2"></i> 상호명: (주)피오코퍼레이션</p>
+                <p><i class="fas fa-phone mr-2"></i> 고객센터: 0507-1474-1679 </p>
+                <p><i class="fas fa-envelope mr-2"></i> 이메일: nicepo.corp@gmail.com</p>
+            </div>
           </div>
 
-          <div>
-              <h4 class="font-semibold mb-4">지원</h4>
-              <ul class="space-y-2 text-gray-400">
-                  <li><a href="#" class="hover:text-white transition">도움말 센터</a></li>
-                  <li><a href="#" class="hover:text-white transition">사용자 가이드</a></li>
-                  <li><a href="#" class="hover:text-white transition">고객 지원</a></li>
-                  <li><a href="#" class="hover:text-white transition">문의하기</a></li>
-              </ul>
-          </div>
+          
 
           <div>
               <h4 class="font-semibold mb-4">회사</h4>
@@ -552,6 +551,9 @@
       </div>
   </div>
 </footer>
+
+<!-- CSRF 토큰 -->
+<input type="hidden" name="csrfmiddlewaretoken" value="{% csrf_token %}">
 
 <script>
   // Smooth scrolling for navigation links
@@ -576,6 +578,44 @@
           navbar.classList.add('shadow-lg');
       }
   });
+
+  // 로그아웃 함수
+  async function logout() {
+      if (!confirm('로그아웃하시겠습니까?')) {
+          return;
+      }
+
+      try {
+          const formData = new FormData();
+          formData.append('csrfmiddlewaretoken', getCSRFToken());
+
+          const response = await fetch('/salesmate/logout/', {
+              method: 'POST',
+              body: formData
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+              window.location.href = '/salesmate/';
+          } else {
+              alert('로그아웃 중 오류가 발생했습니다: ' + data.message);
+          }
+      } catch (error) {
+          alert('로그아웃 중 오류가 발생했습니다.');
+      }
+  }
+
+  // 회원가입 모달 열기
+  function openSignupModal() {
+      window.location.href = '/salesmate/login/';
+  }
+
+  // CSRF 토큰 가져오기
+  function getCSRFToken() {
+      const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+      return csrfToken ? csrfToken.value : '';
+  }
 </script>
 
 </body>

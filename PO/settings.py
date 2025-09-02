@@ -65,6 +65,7 @@ INSTALLED_APPS = [
     "member",
     "blog",
     "diary",
+    "salesmate",
     
     "rest_framework",
     "django.contrib.admin",

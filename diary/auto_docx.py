@@ -1028,8 +1028,52 @@ def generate_credit_business_overview_with_openai(row_data, service_product, row
             current_year = datetime.now().year
             
             for key, value in row_data.items():
-                # 음성파일과 지원사업은 제외
-                if key in ['음성파일', '지원사업']:
+                # 지원사업은 제외
+                if key == '지원사업':
+                    continue
+                
+                # 음성파일 특별 처리
+                if key == '음성파일':
+                    if value and str(value).strip():
+                        try:
+                            # JSON 파싱 시도
+                            audio_data = json.loads(str(value)) if isinstance(value, str) else value
+                            
+                            if isinstance(audio_data, dict) and 'data' in audio_data:
+                                # data 안의 각 항목들을 처리
+                                for item_id, item_data in audio_data['data'].items():
+                                    if isinstance(item_data, dict):
+                                        item_type = item_data.get('type', '')
+                                        
+                                        if item_type == 'text' and 'text' in item_data:
+                                            # 텍스트는 그대로 추가
+                                            context_text += f"{key} (텍스트):\n{item_data['text']}\n"
+                                        elif item_type in ['file', 'image']:
+                                            # 파일이 있으면 텍스트 추출 함수로 처리
+                                            file_text, file_hash = extract_file_text(key, item_data)
+                                            if file_text:
+                                                context_text += f"{key} (파일):\n{file_text}\n"
+                            else:
+                                # 기존 구조 (data가 없는 경우) 처리
+                                if isinstance(audio_data, dict):
+                                    # 파일과 텍스트를 구분해서 처리
+                                    if 'file' in audio_data and audio_data['file']:
+                                        # 파일이 있으면 텍스트 추출 함수로 처리
+                                        file_info = audio_data['file']
+                                        if isinstance(file_info, dict):
+                                            file_text, file_hash = extract_file_text(key, file_info)
+                                            if file_text:
+                                                context_text += f"{key} (파일):\n{file_text}\n"
+                                    
+                                    if 'text' in audio_data and audio_data['text']:
+                                        # 텍스트는 그대로 추가
+                                        context_text += f"{key} (텍스트):\n{audio_data['text']}\n"
+                                else:
+                                    # JSON이 아닌 경우 원본 값 사용
+                                    context_text += f"{key}: {value}\n"
+                        except (json.JSONDecodeError, ValueError, TypeError):
+                            # JSON 파싱 실패시 원본 값 사용
+                            context_text += f"{key}: {value}\n"
                     continue
                     
                 if value and str(value).strip():
@@ -1187,8 +1231,8 @@ def generate_business_overview_with_openai(row_data, service_product, row=None, 
             summarized_length = sum(len(text) for text in file_texts)
             print(f"파일 텍스트 요약: {original_length} -> {summarized_length} characters")
         
-        # 기업 정보를 OpenAI에 전달할 프롬프트 구성
-        company_info = format_company_info_for_openai(row_data, file_texts, max_file_length=3000)
+        # 기업 정보를 OpenAI에 전달할 프롬프트 구성 (음성파일 처리 포함)
+        company_info = format_company_info_for_openai_with_audio(row_data, file_texts, max_file_length=3000)
         print(f"기업 정보 길이: {len(company_info)} characters")
         
         
@@ -1325,8 +1369,8 @@ def generate_business_plan_with_openai(row_data):
             print("OpenAI API 키가 설정되지 않았습니다.")
             return None
         
-        # 기업 정보를 OpenAI에 전달할 프롬프트 구성
-        company_info = format_company_info_for_openai(row_data)
+        # 기업 정보를 OpenAI에 전달할 프롬프트 구성 (음성파일 처리 포함)
+        company_info = format_company_info_for_openai_with_audio(row_data)
         
         system_prompt = """당신은 사업계획서 작성 전문가입니다. 
         제공된 기업 정보를 바탕으로 신용취약 소상공인 자금 사업계획서에 필요한 모든 정보를 생성해주세요.
@@ -1456,6 +1500,66 @@ def format_company_info_for_openai(row_data, file_texts=None, max_file_length=80
     for key, value in row_data.items():
         if value and str(value).strip() and key != "파일_텍스트":  # 파일_텍스트는 별도 처리
             formatted_info.append(f"{key}: {value}")
+    
+    # 파일 텍스트가 있으면 요약하여 추가
+    if file_texts and isinstance(file_texts, list):
+        # 파일 텍스트 요약
+        summarized_file_texts = summarize_file_texts(file_texts, max_file_length)
+        formatted_info.append("\n첨부 파일 내용:")
+        for file_text in summarized_file_texts:
+            formatted_info.append(file_text)
+    
+    return "\n".join(formatted_info)
+
+def format_company_info_for_openai_with_audio(row_data, file_texts=None, max_file_length=8000):
+    """기업 정보를 OpenAI에 전달하기 위한 형식으로 변환 (음성파일 처리 포함)"""
+    formatted_info = []
+    
+    for key, value in row_data.items():
+        if value and str(value).strip() and key != "파일_텍스트":  # 파일_텍스트는 별도 처리
+            # 음성파일 특별 처리
+            if key == '음성파일':
+                try:
+                    # JSON 파싱 시도
+                    audio_data = json.loads(str(value)) if isinstance(value, str) else value
+                    
+                    if isinstance(audio_data, dict) and 'data' in audio_data:
+                        # data 안의 각 항목들을 처리
+                        for item_id, item_data in audio_data['data'].items():
+                            if isinstance(item_data, dict):
+                                item_type = item_data.get('type', '')
+                                
+                                if item_type == 'text' and 'text' in item_data:
+                                    # 텍스트는 그대로 추가
+                                    formatted_info.append(f"{key} (텍스트):\n{item_data['text']}")
+                                elif item_type in ['file', 'image']:
+                                    # 파일이 있으면 텍스트 추출 함수로 처리
+                                    file_text, file_hash = extract_file_text(key, item_data)
+                                    if file_text:
+                                        formatted_info.append(f"{key} (파일):\n{file_text}")
+                    else:
+                        # 기존 구조 (data가 없는 경우) 처리
+                        if isinstance(audio_data, dict):
+                            # 파일과 텍스트를 구분해서 처리
+                            if 'file' in audio_data and audio_data['file']:
+                                # 파일이 있으면 텍스트 추출 함수로 처리
+                                file_info = audio_data['file']
+                                if isinstance(file_info, dict):
+                                    file_text, file_hash = extract_file_text(key, file_info)
+                                    if file_text:
+                                        formatted_info.append(f"{key} (파일):\n{file_text}")
+                            
+                            if 'text' in audio_data and audio_data['text']:
+                                # 텍스트는 그대로 추가
+                                formatted_info.append(f"{key} (텍스트):\n{audio_data['text']}")
+                        else:
+                            # JSON이 아닌 경우 원본 값 사용
+                            formatted_info.append(f"{key}: {value}")
+                except (json.JSONDecodeError, ValueError, TypeError):
+                    # JSON 파싱 실패시 원본 값 사용
+                    formatted_info.append(f"{key}: {value}")
+            else:
+                formatted_info.append(f"{key}: {value}")
     
     # 파일 텍스트가 있으면 요약하여 추가
     if file_texts and isinstance(file_texts, list):
@@ -2180,6 +2284,29 @@ def add_file_info_to_docx(doc, file_texts):
     except Exception as e:
         print(f"add_file_info_to_docx 함수 오류: {e}")
 
+def fill_company_info_in_docx(doc, row_data):
+    """DOCX에 기본 기업 정보 채우기"""
+    try:
+        print("=== fill_company_info_in_docx 함수 시작 ===")
+        
+        # 기본 기업 정보 매핑
+        basic_info_map = {
+            "업체명": row_data.get("업체명", "정보 없음"),
+            "대표자명": row_data.get("대표자명", "정보 없음"),
+            "사업자번호": row_data.get("사업자번호", "정보 없음"),
+            "본사주소": row_data.get("본사주소", "정보 없음"),
+            "전화번호": row_data.get("전화번호", "정보 없음"),
+            "email": row_data.get("email", "정보 없음"),
+        }
+        
+        # 간단한 라벨-값 매핑으로 기본 정보 채우기
+        find_and_fill_simple_labels(doc, basic_info_map)
+        
+        print("기본 기업 정보 DOCX 채우기 완료")
+        
+    except Exception as e:
+        print(f"fill_company_info_in_docx 함수 오류: {e}")
+
 @csrf_exempt
 @require_http_methods(["GET", "POST"])
 def auto_docx_innovation_recommend(request):
@@ -2345,8 +2472,52 @@ def generate_innovation_business_overview_with_openai(row_data, innovation_type,
             current_year = datetime.now().year
             
             for key, value in row_data.items():
-                # 음성파일과 지원사업은 제외
-                if key in ['음성파일', '지원사업']:
+                # 지원사업은 제외
+                if key == '지원사업':
+                    continue
+                
+                # 음성파일 특별 처리
+                if key == '음성파일':
+                    if value and str(value).strip():
+                        try:
+                            # JSON 파싱 시도
+                            audio_data = json.loads(str(value)) if isinstance(value, str) else value
+                            
+                            if isinstance(audio_data, dict) and 'data' in audio_data:
+                                # data 안의 각 항목들을 처리
+                                for item_id, item_data in audio_data['data'].items():
+                                    if isinstance(item_data, dict):
+                                        item_type = item_data.get('type', '')
+                                        
+                                        if item_type == 'text' and 'text' in item_data:
+                                            # 텍스트는 그대로 추가
+                                            context_text += f"{key} (텍스트):\n{item_data['text']}\n"
+                                        elif item_type in ['file', 'image']:
+                                            # 파일이 있으면 텍스트 추출 함수로 처리
+                                            file_text, file_hash = extract_file_text(key, item_data)
+                                            if file_text:
+                                                context_text += f"{key} (파일):\n{file_text}\n"
+                            else:
+                                # 기존 구조 (data가 없는 경우) 처리
+                                if isinstance(audio_data, dict):
+                                    # 파일과 텍스트를 구분해서 처리
+                                    if 'file' in audio_data and audio_data['file']:
+                                        # 파일이 있으면 텍스트 추출 함수로 처리
+                                        file_info = audio_data['file']
+                                        if isinstance(file_info, dict):
+                                            file_text, file_hash = extract_file_text(key, file_info)
+                                            if file_text:
+                                                context_text += f"{key} (파일):\n{file_text}\n"
+                                    
+                                    if 'text' in audio_data and audio_data['text']:
+                                        # 텍스트는 그대로 추가
+                                        context_text += f"{key} (텍스트):\n{audio_data['text']}\n"
+                                else:
+                                    # JSON이 아닌 경우 원본 값 사용
+                                    context_text += f"{key}: {value}\n"
+                        except (json.JSONDecodeError, ValueError, TypeError):
+                            # JSON 파싱 실패시 원본 값 사용
+                            context_text += f"{key}: {value}\n"
                     continue
                     
                 if value and str(value).strip():
