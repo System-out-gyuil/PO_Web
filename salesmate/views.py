@@ -5,6 +5,8 @@ from django.contrib.auth.hashers import make_password, check_password
 from django.utils import timezone
 from django.core.mail import send_mail
 from django.conf import settings
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 import random
 import string
 from datetime import timedelta
@@ -13,27 +15,31 @@ from .models import User, EmailVerification
 # Create your views here.
 class SalesmateView(View):
     def get(self, request):
-        # 로그인 상태 확인
-        if not request.session.get('salesmate_authenticated'):
-            return redirect('/salesmate/login/')
-        
+        # 로그인 상태 확인 (선택적)
         user_id = request.session.get('salesmate_member_id')
-        user_name = request.session.get('salesmate_member_name', '사용자')
+        user_name = request.session.get('salesmate_member_name', '게스트')
+        is_admin = False
         
-        try:
-            user = User.objects.get(id=user_id)
-            if not user.activate:
-                # 비활성화된 사용자는 로그인 페이지로 리다이렉트
+        # 로그인된 사용자가 있는 경우에만 사용자 정보 확인
+        if user_id:
+            try:
+                user = User.objects.get(id=user_id)
+                if user.activate:
+                    user_name = user.name
+                    is_admin = user.is_admin
+                else:
+                    # 비활성화된 사용자는 세션만 정리하고 게스트로 처리
+                    request.session.flush()
+                    user_name = '게스트'
+            except User.DoesNotExist:
+                # 사용자가 존재하지 않으면 세션만 정리하고 게스트로 처리
                 request.session.flush()
-                return redirect('/salesmate/login/')
-        except User.DoesNotExist:
-            # 사용자가 존재하지 않으면 세션 정리 후 로그인 페이지로 리다이렉트
-            request.session.flush()
-            return redirect('/salesmate/login/')
+                user_name = '게스트'
         
         context = {
             'user_name': user_name,
-            'is_admin': user.is_admin,
+            'is_admin': is_admin,
+            'is_logged_in': bool(user_id and request.session.get('salesmate_authenticated')),
         }
         
         return render(request, 'salesmate/salesmate_main.html', context)
@@ -303,6 +309,7 @@ class SalesmateVerifyEmailView(View):
                 'message': f'이메일 인증 중 오류가 발생했습니다: {str(e)}'
             })
 
+@method_decorator(csrf_exempt, name='dispatch')
 class SalesmateLogoutView(View):
     def post(self, request):
         try:
