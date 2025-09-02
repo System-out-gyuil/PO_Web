@@ -1,111 +1,132 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>로그인</title>
-  <link rel="icon" href="{% static 'images/자금왕_favicon.png' %}">
-  <link rel="stylesheet" href="{% static 'salesmate/salesmate_login.css' %}">
-  
-</head>
-<body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>로그인</title>
+    <link rel="icon" href="{% static 'images/자금왕_favicon.png' %}" />
+    <link rel="stylesheet" href="{% static 'salesmate/salesmate_login.css' %}" />
+  </head>
+  <body>
+    <section class="login-section">
+      <div class="login-container">
+        <h2>로그인</h2>
 
+        <div id="loginError" class="error" style="display: none"></div>
+        <div id="loginSuccess" class="success" style="display: none"></div>
 
-  <section class="login-section">
-  <div class="login-container">
-    <h2>로그인</h2>
-    
-    <div id="loginError" class="error" style="display: none;"></div>
-    <div id="loginSuccess" class="success" style="display: none;"></div>
-    
-    <form id="loginForm">
-      {% csrf_token %}
-      <div class="form-group">
-        <input type="text" name="member_id" placeholder="이메일 입력" required>
-      </div>
-      <div class="form-group">
-        <input type="password" name="member_pw" placeholder="비밀번호 입력" required autocomplete="off">
-      </div>
-      <button type="submit" style="margin-bottom: 10px;">로그인</button>
-    </form>
-    
-    
-    <button class="signup-btn" onclick="openSignupModal()">회원가입</button>
-    <div style="text-align: center; margin: 15px 0;">
-      <a href="/sales/forgot_password/" style="color: #007bff; text-decoration: none; font-size: 14px;">비밀번호 찾기</a>
-    </div>
-  </div>
-
-  <!-- 회원가입 모달 -->
-  <div id="signupModal" class="modal">
-    <div class="modal-content">
-      <span class="close" onclick="closeSignupModal()">&times;</span>
-      <h2>회원가입</h2>
-      
-      <div id="signupError" class="error" style="display: none;"></div>
-      <div id="signupSuccess" class="success" style="display: none;"></div>
-      
-      <form id="signupForm">
-        {% csrf_token %}
-        <div class="form-group">
-          <div style="display: flex; gap: 10px; align-items: center;">
-            <input type="email" id="signup_id" name="signup_id" placeholder="이메일 입력" required style="flex: 1;">
-            <button type="button" id="check_duplicate_btn" onclick="checkEmailDuplicate()" style="width: auto; padding: 10px 15px;">중복 검사</button>
+        <form id="loginForm">
+          {% csrf_token %}
+          <div class="form-group">
+            <input type="text" name="member_id" placeholder="이메일 입력" required />
           </div>
-          <div id="email_status" style="margin-top: 5px; font-size: 12px;"></div>
-        </div>
-
-        <!-- 이메일 인증 섹션 -->
-        <div class="form-group">
-          <div style="display: flex; gap: 10px; align-items: center;">
-            <input type="text" id="verification_code" name="verification_code" placeholder="입력한 이메일로 발송된 6자리 인증번호" maxlength="6" style="flex: 1;">
-            <button type="button" id="send_verification_btn" onclick="sendVerificationCode()" style="width: auto; padding: 10px 15px;">인증번호 발송</button>
+          <div class="form-group">
+            <input type="password" name="member_pw" placeholder="비밀번호 입력" required autocomplete="off" />
           </div>
-          <div id="verification_status" style="margin-top: 5px; font-size: 12px;"></div>
-          <div id="countdown_timer" style="margin-top: 5px; font-size: 12px; color: #dc3545; display: none;"></div>
-        </div>
+          <button type="submit" style="margin-bottom: 10px">로그인</button>
+        </form>
 
-        <div class="form-group">
-          <input type="password" id="signup_pw" name="signup_pw" placeholder="비밀번호 입력" required autocomplete="off">
+        <button class="signup-btn" onclick="openSignupModal()">회원가입</button>
+        <div style="text-align: center; margin: 15px 0">
+          <a href="/sales/forgot_password/" style="color: #007bff; text-decoration: none; font-size: 14px">비밀번호 찾기</a>
         </div>
-        <div class="form-group">
-          <input type="password" id="signup_pw_confirm" name="signup_pw_confirm" placeholder="비밀번호 확인" required autocomplete="off">
+      </div>
+
+      <!-- 회원가입 모달 -->
+      <div id="signupModal" class="modal">
+        <div class="modal-content">
+          <span class="close" onclick="closeSignupModal()">&times;</span>
+          <h2>회원가입</h2>
+
+          <div id="signupError" class="error" style="display: none"></div>
+          <div id="signupSuccess" class="success" style="display: none"></div>
+
+          <form id="signupForm">
+            {% csrf_token %}
+            <div class="form-group">
+              <div style="display: flex; gap: 10px; align-items: center">
+                <input type="email" id="signup_id" name="signup_id" placeholder="이메일 입력" required style="flex: 1" />
+                <button type="button" id="check_duplicate_btn" onclick="checkEmailDuplicate()" style="width: auto; padding: 10px 15px">
+                  중복 검사
+                </button>
+              </div>
+              <div id="email_status" style="margin-top: 5px; font-size: 12px"></div>
+            </div>
+
+            <!-- 이메일 인증 섹션 -->
+            <div class="form-group">
+              <div style="display: flex; gap: 10px; align-items: center">
+                <input
+                  type="text"
+                  id="verification_code"
+                  name="verification_code"
+                  placeholder="입력한 이메일로 발송된 6자리 인증번호"
+                  maxlength="6"
+                  style="flex: 1"
+                />
+                <button type="button" id="send_verification_btn" onclick="sendVerificationCode()" style="width: auto; padding: 10px 15px">
+                  인증번호 발송
+                </button>
+              </div>
+              <div id="verification_status" style="margin-top: 5px; font-size: 12px"></div>
+              <div id="countdown_timer" style="margin-top: 5px; font-size: 12px; color: #dc3545; display: none"></div>
+            </div>
+
+            <div class="form-group">
+              <input type="password" id="signup_pw" name="signup_pw" placeholder="비밀번호 입력" required autocomplete="off" />
+            </div>
+            <div class="form-group">
+              <input type="password" id="signup_pw_confirm" name="signup_pw_confirm" placeholder="비밀번호 확인" required autocomplete="off" />
+            </div>
+            <div class="form-group">
+              <input type="text" id="signup_manager_name" name="signup_manager_name" placeholder="이름" required />
+            </div>
+            <div class="form-group">
+              <input type="text" id="signup_company_name" name="signup_company_name" placeholder="회사명" required />
+            </div>
+            <div class="form-group">
+              <input type="tel" id="signup_phone" name="signup_phone" placeholder="전화번호 (010-1234-1234)" required />
+            </div>
+
+            <!-- 개인정보처리방침 체크박스 -->
+            <div class="form-group" style="display: flex; align-items: center; gap: 10px">
+              <input type="checkbox" id="privacy_check" name="privacy_check" required />
+              <label for="privacy_check" style="margin: 0; flex: 1">개인정보처리방침에 동의합니다</label>
+              <button type="button" onclick="openPrivacyModal()" style="width: auto; padding: 5px 10px; font-size: 12px">전문 보기</button>
+            </div>
+
+            <!-- 이용약관 체크박스 -->
+            <div class="form-group" style="display: flex; align-items: center; gap: 10px">
+              <input type="checkbox" id="terms_check" name="terms_check" required />
+              <label for="terms_check" style="margin: 0; flex: 1">이용약관에 동의합니다</label>
+              <button type="button" onclick="openTermsModal()" style="width: auto; padding: 5px 10px; font-size: 12px">전문 보기</button>
+            </div>
+
+            <button type="submit">회원가입</button>
+          </form>
         </div>
-        <div class="form-group">
-          <input type="text" id="signup_manager_name" name="signup_manager_name" placeholder="이름" required>
-        </div>
-        <div class="form-group">
-          <input type="text" id="signup_company_name" name="signup_company_name" placeholder="회사명" required>
-        </div>
-        <div class="form-group">
-          <input type="tel" id="signup_phone" name="signup_phone" placeholder="전화번호 (010-1234-1234)" required>
-        </div>
-        
-        
-        
-        <!-- 개인정보처리방침 체크박스 -->
-        <div class="form-group" style="display: flex; align-items: center; gap: 10px;">
-          <input type="checkbox" id="privacy_check" name="privacy_check" required>
-          <label for="privacy_check" style="margin: 0; flex: 1;">개인정보처리방침에 동의합니다</label>
-          <button type="button" onclick="openPrivacyModal()" style="width: auto; padding: 5px 10px; font-size: 12px;">전문 보기</button>
-        </div>
-        
-        <!-- 이용약관 체크박스 -->
-        <div class="form-group" style="display: flex; align-items: center; gap: 10px;">
-          <input type="checkbox" id="terms_check" name="terms_check" required>
-          <label for="terms_check" style="margin: 0; flex: 1;">이용약관에 동의합니다</label>
-          <button type="button" onclick="openTermsModal()" style="width: auto; padding: 5px 10px; font-size: 12px;">전문 보기</button>
-        </div>
-        
-        <button type="submit">회원가입</button>
-      </form>
-    </div>
-  </div>
-  </section>
-  
-  <!-- CSRF 토큰 -->
-  
-  <script src="{% static 'salesmate/salesmate_login.js' %}"></script>
-</body>
+      </div>
+    </section>
+
+    <!-- CSRF 토큰 -->
+
+    <script src="{% static 'salesmate/salesmate_login.js' %}"></script>
+
+    <script>
+      // 페이지 로드 시 로그인 상태 확인
+      document.addEventListener("DOMContentLoaded", function () {
+        // URL 파라미터에서 action=signup이 있는지 확인
+        const urlParams = new URLSearchParams(window.location.search);
+        const action = urlParams.get("action");
+
+        if (action === "signup") {
+          // 회원가입 모달 열기
+          setTimeout(function () {
+            openSignupModal();
+          }, 100);
+        }
+      });
+    </script>
+  </body>
 </html>

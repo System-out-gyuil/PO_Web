@@ -46,6 +46,18 @@ class SalesmateView(View):
 
 class SalesmateLoginView(View):
     def get(self, request):
+        # 로그인된 사용자인지 확인
+        if request.session.get('salesmate_authenticated'):
+            user_id = request.session.get('salesmate_member_id')
+            try:
+                user = User.objects.get(id=user_id)
+                if user.activate:
+                    # 로그인된 사용자는 메인 페이지로 리다이렉트
+                    return redirect('/salesmate/')
+            except User.DoesNotExist:
+                # 사용자가 존재하지 않으면 세션 정리
+                request.session.flush()
+        
         return render(request, 'salesmate/salesmate_login.html')
     
     def post(self, request):
