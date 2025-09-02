@@ -110,7 +110,11 @@ def auto_docx_recommend(request):
                             attr_value_text = attr_value.value
                             row_data[attr_name] = attr_value_text
                     
-                    print(f"행 데이터: {row_data}")
+                    print(f"=== 행 데이터 상세 정보 ===")
+                    print(f"총 속성 개수: {len(row_data)}")
+                    for key, value in row_data.items():
+                        print(f"  {key}: {value}")
+                    print(f"=== 행 데이터 끝 ===")
                     
                     # 파일 텍스트 추출
                     file_texts = get_row_files_text(row)
@@ -118,22 +122,23 @@ def auto_docx_recommend(request):
                     print(f"추출된 파일 텍스트: {file_texts}")
 
                     
-                    # OpenAI API를 통해 사업 개요 추천 생성
-                    recommendation_data = generate_business_overview_with_openai(
+                    # OpenAI API를 통해 사업 개요 및 기업 정보 생성
+                    company_info = generate_credit_business_overview_with_openai(
                         row_data, service_product, row, file_texts
                     )
                     
-                    if not recommendation_data:
+                    if not company_info:
                         return JsonResponse({
                             'success': False,
-                            'error': '사업 개요 추천 생성에 실패했습니다.'
+                            'error': '사업 개요 및 기업 정보 생성에 실패했습니다.'
                         })
                     
-                    print(f"OpenAI 추천 응답: {recommendation_data}")
+                    print(f"OpenAI 추천 응답: {company_info}")
                     
                     return JsonResponse({
                         'success': True,
-                        'business_overview': recommendation_data.get('business_overview', '')
+                        'business_overview': company_info.get('business_overview', ''),
+                        'company_info': company_info
                     })
                     
                 except Row.DoesNotExist:
@@ -506,6 +511,8 @@ def get_company_name_from_row(row):
         return f"회사_{row.id}"
     except:
         return f"회사_{row.id}"
+
+
 
 # ==========================
 # 파일 텍스트 추출 함수들
@@ -989,6 +996,178 @@ def summarize_file_texts(file_texts, max_length=8000):
 # ==========================
 # OpenAI API 연동 함수들
 # ==========================
+def generate_credit_business_overview_with_openai(row_data, service_product, row=None, file_texts=None):
+    """OpenAI API를 사용하여 신용취약 사업 개요 및 기업 정보 생성"""
+    try:
+        print("=== generate_credit_business_overview_with_openai 함수 시작 ===")
+        
+        if not OPEN_AI_API_KEY:
+            print("OpenAI API 키가 설정되지 않았습니다.")
+            return None
+        
+        # 파일 텍스트가 없으면 행에서 추출
+        if file_texts is None and row:
+            file_texts = get_row_files_text(row)
+            print(f"행에서 파일 텍스트 추출: {len(file_texts)}개")
+        
+        # 파일 텍스트 요약 (너무 길면 OpenAI API 제한 초과)
+        if file_texts:
+            original_length = sum(len(text) for text in file_texts)
+            file_texts = summarize_file_texts(file_texts, max_length=3000)
+            summarized_length = sum(len(text) for text in file_texts)
+            print(f"파일 텍스트 요약: {original_length} -> {summarized_length} characters")
+        
+        # 행 데이터와 파일 텍스트를 결합하여 프롬프트 생성
+        context_text = ""
+        
+        # 행 데이터 추가
+        if row_data:
+            context_text += "=== 기업 기본 정보 ===\n"
+            
+            # 현재 연도 계산
+            current_year = datetime.now().year
+            
+            for key, value in row_data.items():
+                # 음성파일과 지원사업은 제외
+                if key in ['음성파일', '지원사업']:
+                    continue
+                    
+                if value and str(value).strip():
+                    # 개업년월 특별 처리
+                    if key == '개업년월':
+                        try:
+                            opening_info = json.loads(str(value))
+                            if 'years_ago' in opening_info and opening_info['years_ago']:
+                                # years_ago가 있으면 현재 연도에서 빼서 설립년도 계산
+                                years_ago = int(opening_info['years_ago'])
+                                founding_year = current_year - years_ago
+                                context_text += f"{key}: {founding_year}년 설립 ({years_ago}년 전)\n"
+                            elif 'opening_date' in opening_info and opening_info['opening_date']:
+                                # opening_date가 있으면 그대로 사용
+                                context_text += f"{key}: {opening_info['opening_date']}\n"
+                            else:
+                                context_text += f"{key}: {value}\n"
+                        except (json.JSONDecodeError, ValueError, TypeError):
+                            # JSON 파싱 실패시 원본 값 사용
+                            context_text += f"{key}: {value}\n"
+                    else:
+                        context_text += f"{key}: {value}\n"
+            context_text += "\n"
+
+        print(f"context_text: {context_text}")
+        
+        # 파일 텍스트 추가
+        if file_texts:
+            context_text += "=== 첨부 파일 내용 ===\n"
+            for i, file_text in enumerate(file_texts, 1):
+                if file_text and len(file_text.strip()) > 10:  # 의미있는 텍스트만 포함
+                    context_text += f"파일 {i}:\n{file_text[:1000]}...\n\n"  # 파일당 최대 1000자
+        
+        # 신용취약 소상공인 지원사업 프롬프트
+        credit_prompt = f"""
+        다음은 신용취약 소상공인 지원사업에 대한 정보입니다:
+        
+        신용취약 소상공인 지원사업은 신용도가 낮거나 자금 조달이 어려운 소상공인을 대상으로 하는 지원사업입니다.
+        
+        사용자 입력 정보:
+        - 주 서비스·생산품목: {service_product}
+        
+        위 기업 정보와 첨부 파일을 바탕으로 다음을 수행해주세요:
+        
+        1. 기업의 기본 정보를 추출하여 정리
+        2. 신용취약 소상공인 지원사업 신청을 위한 전문적이고 구체적인 사업 개요 작성
+        
+        **중요한 지침:**
+        - 기업의 현재 상황과 사업 내용을 강조
+        - 신용취약 소상공인 지원사업 신청에 적합한 내용으로 구성
+        - 전문적이면서도 이해하기 쉬운 문체 사용
+        - 사업 개요는 200-300자 내외로 작성
+        """
+        
+        # 최종 프롬프트 조합
+        final_prompt = f"""
+        {credit_prompt}
+        
+        === 기업 정보 및 첨부 파일 ===
+        {context_text}
+        
+        위 정보를 바탕으로 다음 JSON 형식으로 응답해주세요:
+        {{
+            "업체명": "기업의 공식 명칭 (정보 부족시 '정보 없음')",
+            "대표자명": "대표자 이름 (정보 부족시 '정보 없음')",
+            "설립일자": "설립일 또는 설립년도 (정보 부족시 '정보 없음')",
+            "법인번호": "법인등록번호 (정보 부족시 '정보 없음')",
+            "주민번호": "대표자 주민등록번호 (주민등록증의 번호, 정보 부족시 '정보 없음')",
+            "사업자번호": "사업자등록번호 (정보 부족시 '정보 없음')",
+            "본사주소": "본사 또는 사업장 주소 (정보 부족시 '정보 없음')",
+            "전화번호": "대표 전화번호 (정보 부족시 '정보 없음')",
+            "email": "대표 이메일 주소 (정보 부족시 '정보 없음')",
+            "팩스번호": "팩스 번호 (정보 부족시 '정보 없음')",
+            "사업내용": "주요 사업 내용 및 특징 (정보 부족시 '정보 없음')",
+            "business_overview": "200-300자 내외의 전문적이고 구체적인 사업 개요"
+        }}
+        
+        **중요한 지침:**
+        1. 제공된 기업 정보만을 기반으로 답변하세요.
+        2. 정보가 부족한 경우 "정보 없음"이라고 명시하세요.
+        3. 추측하지 말고 확실한 정보만 사용하세요.
+        4. 모든 값은 정확하고 구체적으로 작성해주세요.
+        5. 사업내용은 기존 정보를 바탕으로 작성하되, 첨부 파일 내용도 참고해주세요.
+        6. business_overview는 신용취약 소상공인 지원사업 신청에 적합한 전문적인 내용으로 작성해주세요.
+        """
+        
+        print(f"OpenAI 프롬프트 생성 완료 (길이: {len(final_prompt)}자)")
+        
+        # OpenAI API 호출
+        try:
+            client = OpenAI(api_key=OPEN_AI_API_KEY)
+            response = client.chat.completions.create(
+                model="gpt-4.1-mini",
+                messages=[
+                    {"role": "system", "content": "당신은 소상공인 지원사업 전문 컨설턴트이자 기업 정보 분석 전문가입니다. 기업 정보를 바탕으로 정확한 기업 기본 정보를 추출하고, 전문적이고 구체적인 사업 개요를 작성해주세요."},
+                    {"role": "user", "content": final_prompt}
+                ],
+                max_tokens=5000,
+                temperature=0.3
+            )
+            
+            ai_response = response.choices[0].message.content.strip()
+            print(f"OpenAI 응답 성공 (길이: {len(ai_response)}자)")
+            print(f"생성된 응답: {ai_response[:200]}...")
+            
+            # JSON 응답 파싱
+            try:
+                # JSON 블록 추출 (```json ... ``` 형태일 수 있음)
+                if '```json' in ai_response:
+                    json_start = ai_response.find('```json') + 7
+                    json_end = ai_response.find('```', json_start)
+                    if json_end != -1:
+                        json_str = ai_response[json_start:json_end].strip()
+                    else:
+                        json_str = ai_response[json_start:].strip()
+                else:
+                    json_str = ai_response
+                
+                print(f"파싱할 JSON 문자열: {json_str}")
+                
+                company_info = json.loads(json_str)
+                print(f"OpenAI 기업정보 응답 파싱 성공: {company_info}")
+                return company_info
+                
+            except json.JSONDecodeError as e:
+                print(f"JSON 파싱 실패: {e}")
+                print(f"파싱 시도한 문자열: {json_str}")
+                print(f"AI 응답: {ai_response}")
+                return None
+            
+        except Exception as e:
+            print(f"OpenAI API 호출 중 오류: {e}")
+            return None
+            
+    except Exception as e:
+        print(f"generate_credit_business_overview_with_openai 함수 오류: {e}")
+        return None
+
 def generate_business_overview_with_openai(row_data, service_product, row=None, file_texts=None):
     """OpenAI API를 통해 사업 개요 추천 생성"""
     try:
@@ -1011,6 +1190,7 @@ def generate_business_overview_with_openai(row_data, service_product, row=None, 
         # 기업 정보를 OpenAI에 전달할 프롬프트 구성
         company_info = format_company_info_for_openai(row_data, file_texts, max_file_length=3000)
         print(f"기업 정보 길이: {len(company_info)} characters")
+        
         
         # 기업 정보에서 매출액 추출
         revenue = row_data.get("매출액", row_data.get("매출액(백만원)", 0))
@@ -1066,7 +1246,7 @@ def generate_business_overview_with_openai(row_data, service_product, row=None, 
                 {'role': 'system', 'content': system_prompt},
                 {'role': 'user', 'content': user_message}
             ],
-            'max_tokens': 3000,  # 토큰 제한 줄임
+            'max_tokens': 5000,  # 토큰 제한 줄임
             'temperature': 0.3
         }
         
@@ -2274,10 +2454,10 @@ def generate_innovation_business_overview_with_openai(row_data, innovation_type,
             "팩스번호": "팩스 번호 (정보 부족시 '정보 없음')",
             "사업내용": "주요 사업 내용 및 특징 (정보 부족시 '정보 없음')",
             "business_overview": "200-300자 내외의 전문적이고 구체적인 사업 개요",
-            "주요_생산_제품": "기업의 주요 생산 제품이나 서비스를 500-600자로 상세히 설명 (정보 부족시 '정보 없음')",
-            "기술_제품_공간_경쟁력": "핵심기술내용, 제품 및 시설(점포)의 차별성, 품질 및 가격 경쟁력, 접근성 등을 500-600자로 상세히 설명 (정보 부족시 '정보 없음')",
-            "시장상황": "동업종 시장동향 및 전망, 시장규모, 주요 수요처, 시장변화에 따른 대응성, 경쟁업체 현황 등을 500-600자로 상세히 설명 (정보 부족시 '정보 없음')",
-            "생산_판매계획": "생산 및 시설관리계획, 목표달성을 위한 판매처 확보, 마케팅 및 고객만족 전략 등을 500-600자로 상세히 설명 (정보 부족시 '정보 없음')"
+            "주요_생산_제품": "기업의 주요 생산 제품이나 서비스를 **공백 포함 600-650자 이상으로 상세히 설명**(정보 부족시 '정보 없음')",
+            "기술_제품_공간_경쟁력": "핵심기술내용, 제품 및 시설(점포)의 차별성, 품질 및 가격 경쟁력, 접근성 등을 **공백 포함 600-650자 이상으로 상세히 설명**(정보 부족시 '정보 없음')",
+            "시장상황": "동업종 시장동향 및 전망, 시장규모, 주요 수요처, 시장변화에 따른 대응성, 경쟁업체 현황 등을 **공백 포함 600-650자 이상으로 상세히 설명**(정보 부족시 '정보 없음')",
+            "생산_판매계획": "생산 및 시설관리계획, 목표달성을 위한 판매처 확보, 마케팅 및 고객만족 전략 등을 **공백 포함 600-650자 이상으로 상세히 설명**(정보 부족시 '정보 없음')"
         }}
         
         **중요한 지침:**
@@ -2287,8 +2467,9 @@ def generate_innovation_business_overview_with_openai(row_data, innovation_type,
         4. 모든 값은 정확하고 구체적으로 작성해주세요.
         5. 사업내용은 기존 정보를 바탕으로 작성하되, 첨부 파일 내용도 참고해주세요.
         6. business_overview는 혁신성장 지원사업 신청에 적합한 전문적인 내용으로 작성해주세요.
-        7. 추가 항목들(주요_생산_제품, 기술_제품_공간_경쟁력, 시장상황, 생산_판매계획)은 각각 500-600자로 작성하여 혁신성장 지원사업 신청에 필요한 전문적이고 구체적인 내용을 포함해주세요.
+        7. 추가 항목들(주요_생산_제품, 기술_제품_공간_경쟁력, 시장상황, 생산_판매계획)은 각각 600-650자 이상으로 작성하여 혁신성장 지원사업 신청에 필요한 전문적이고 구체적인 내용을 포함해주세요.
         8. 각 항목은 독립적이고 완성된 내용으로 작성하여 혁신성장 지원사업 신청 시 바로 활용할 수 있도록 해주세요.
+        9. **중요**: 600-650자로 명시된 항목들은 반드시 해당 글자 수에 맞게 충분히 상세하고 구체적으로 작성해주세요. 절대 600자 미만으로 작성하지 마세요.
         """
         
         print(f"OpenAI 프롬프트 생성 완료 (길이: {len(final_prompt)}자)")
@@ -2299,10 +2480,10 @@ def generate_innovation_business_overview_with_openai(row_data, innovation_type,
             response = client.chat.completions.create(
                 model="gpt-4.1-mini",
                 messages=[
-                    {"role": "system", "content": "당신은 소상공인 지원사업 전문 컨설턴트이자 기업 정보 분석 전문가입니다. 기업 정보를 바탕으로 정확한 기업 기본 정보를 추출하고, 전문적이고 구체적인 사업 개요를 작성해주세요."},
+                    {"role": "system", "content": "당신은 소상공인 지원사업 전문 컨설턴트이자 기업 정보 분석 전문가입니다. 기업 정보를 바탕으로 정확한 기업 기본 정보를 추출하고, 전문적이고 구체적인 사업 개요를 작성해주세요. 특히 500-600자로 요청된 항목들은 반드시 해당 글자 수에 맞게 상세하고 구체적으로 작성해주세요."},
                     {"role": "user", "content": final_prompt}
                 ],
-                max_tokens=4000,
+                max_tokens=8000,
                 temperature=0.3
             )
             

@@ -523,6 +523,11 @@ function getOpenAIRecommendation() {
       // 사업 개요 업데이트
       document.getElementById('businessOverview').value = data.business_overview || '추천 정보를 받을 수 없습니다.';
       
+      // 기업 정보가 있으면 표시
+      if (data.company_info) {
+        displayCreditRecommendationResult(data);
+      }
+      
     } else {
       alert('추천을 받는 중 오류가 발생했습니다: ' + (data.error || '알 수 없는 오류'));
     }
@@ -696,6 +701,85 @@ function getInnovationRecommendation() {
     recommendBtn.textContent = originalText;
     recommendBtn.disabled = false;
   });
+}
+
+function displayCreditRecommendationResult(data) {
+  const modal = document.getElementById('docxModal');
+  if (!modal) {
+    console.error('모달을 찾을 수 없습니다.');
+    return;
+  }
+  
+  // 신용취약 탭에서 결과를 표시할 영역 생성 또는 찾기
+  let resultDiv = modal.querySelector('#creditResult');
+  if (!resultDiv) {
+    // 결과를 표시할 div가 없으면 생성
+    const creditTab = modal.querySelector('#credit-tab');
+    if (creditTab) {
+      resultDiv = document.createElement('div');
+      resultDiv.id = 'creditResult';
+      resultDiv.style.cssText = `
+        background-color: #f8f9fa;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 15px;
+        margin-top: 15px;
+        display: none;
+      `;
+      creditTab.appendChild(resultDiv);
+    }
+  }
+  
+  if (!data || !data.company_info) {
+    if (resultDiv) {
+      resultDiv.innerHTML = '<h4>오류</h4><p>추천 정보를 가져올 수 없습니다.</p>';
+      resultDiv.style.display = 'block';
+    }
+    return;
+  }
+  
+  const companyInfo = data.company_info;
+  const businessOverview = data.business_overview || '추천 정보가 없습니다.';
+  
+  const resultHTML = `
+    <div style="max-height: 500px; overflow-y: auto; padding-right: 10px;">
+      <h4>AI 추천 결과</h4>
+      <div style="margin-bottom: 20px;">
+        <p><strong>신용취약 소상공인 지원사업</strong></p>
+      </div>
+      
+      <h5>기업 기본 정보</h5>
+      <div style="background-color: #f8f9fa; padding: 15px; border-radius: 4px; margin-bottom: 15px;">
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 10px; font-size: 14px;">
+          <div><strong>업체명:</strong> ${companyInfo.업체명 || '정보 없음'}</div>
+          <div><strong>대표자명:</strong> ${companyInfo.대표자명 || '정보 없음'}</div>
+          <div><strong>설립일자:</strong> ${companyInfo.설립일자 || '정보 없음'}</div>
+          <div><strong>법인번호:</strong> ${companyInfo.법인번호 || '정보 없음'}</div>
+          <div><strong>주민번호:</strong> ${companyInfo.주민번호 || '정보 없음'}</div>
+          <div><strong>사업자번호:</strong> ${companyInfo.사업자번호 || '정보 없음'}</div>
+          <div><strong>본사주소:</strong> ${companyInfo.본사주소 || '정보 없음'}</div>
+          <div><strong>전화번호:</strong> ${companyInfo.전화번호 || '정보 없음'}</div>
+          <div><strong>이메일:</strong> ${companyInfo.email || '정보 없음'}</div>
+          <div><strong>팩스번호:</strong> ${companyInfo.팩스번호 || '정보 없음'}</div>
+        </div>
+        <div style="margin-top: 15px;">
+          <strong>사업내용:</strong><br>
+          <span style="color: #666;">${companyInfo.사업내용 || '정보 없음'}</span>
+        </div>
+      </div>
+      
+      <h5>AI 추천 사업 개요</h5>
+      <div style="background-color: #e8f4fd; padding: 15px; border-radius: 4px; border-left: 4px solid #007bff; margin-bottom: 20px;">
+        <p style="margin: 0; line-height: 1.6; color: #333;">${businessOverview}</p>
+      </div>
+    </div>
+  `;
+  
+  if (resultDiv) {
+    resultDiv.innerHTML = resultHTML;
+    resultDiv.style.display = 'block';
+    console.log('신용취약 추천 결과 표시됨');
+  }
 }
 
 function displayInnovationRecommendationResult(data) {
@@ -896,5 +980,6 @@ window.closeDocxModal = closeDocxModal;
 window.getOpenAIRecommendation = getOpenAIRecommendation;
 window.generateDocx = generateDocx;
 window.getInnovationRecommendation = getInnovationRecommendation;
+window.displayCreditRecommendationResult = displayCreditRecommendationResult;
 window.displayInnovationRecommendationResult = displayInnovationRecommendationResult;
 window.generateInnovationDocx = generateInnovationDocx;
