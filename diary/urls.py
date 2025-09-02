@@ -24,6 +24,7 @@ from .attribute_handlers import get_hidden_attributes, add_attribute, delete_att
 from .auto_docx import auto_docx, auto_docx_recommend, auto_docx_innovation, auto_docx_innovation_recommend
 from .diary_use_preview import diary_use_preview
 from .diary_pay import diary_pay
+from .facebook_meta_db import facebook_meta_db
 
 app_name = 'sales'
 
@@ -261,4 +262,7 @@ urlpatterns = [
 
     # 다이어리 사용법 미리보기
     path('diary_use_preview/', diary_use_preview, name='diary_use_preview'),
+
+    # 페이스북 메타 데이터
+    path('facebook_meta_db/', facebook_meta_db, name='facebook_meta_db'),
 ] 

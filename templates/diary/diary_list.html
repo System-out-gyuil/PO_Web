@@ -392,8 +392,10 @@
 
 <div class="container">
     <div class="use-date-container">
+        {% comment %} <div onclick="facebook_meta()">test</div> {% endcomment %}
         <div class="manual-container">
             <div class="manual-title" onclick="downloadUserManual()" style="cursor: pointer; transition: all 0.3s ease; user-select: none;" onmouseover="this.style.opacity='0.8'; this.style.transform='scale(1.05)'" onmouseout="this.style.opacity='1'; this.style.transform='scale(1)'">사용메뉴얼</div>
+            {% comment %} <div class="manual-title" onclick="window.open('https://nebula-skate-c17.notion.site/23fcc4788b6b80d8a8c4fe973ca4edf7?pvs=74', '_blank')" style="cursor: pointer; transition: all 0.3s ease; user-select: none;" onmouseover="this.style.opacity='0.8'; this.style.transform='scale(1.05)'" onmouseout="this.style.opacity='1'; this.style.transform='scale(1)'">사용메뉴얼</div> {% endcomment %}
         </div>
         <div class="use-date-value-container">
             <span class="use-date-value">만료 기간 : {{ formatted_use_date }} </span>
@@ -1111,6 +1113,7 @@
 <script src="{% static 'diary/diary_inquiry.js' %}"></script>
 <script src="{% static 'diary/base/base.js' %}"></script>
 <script src="{% static 'diary/diary_docx.js' %}"></script>
+<script src="{% static 'diary/facebook_meta_db.js' %}"></script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
