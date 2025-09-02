@@ -39,6 +39,10 @@ class MainView(View):
 
         if 'xn--jj0bw47b70a.com' in host:
             return redirect('diary_main')
+
+        elif 'salesmate.ai.kr' in host:
+            return redirect('salesmate')
+
         else:
 
 

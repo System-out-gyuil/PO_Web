@@ -27,6 +27,7 @@ urlpatterns = [
     path('search/', include('search.urls')),
     path('imweb/', ImWeb.as_view(), name='imweb'),
     path('sales/', include('diary.urls')),
+    path('salesmate/', include('salesmate.urls')),
 
     path('accounts/', include('allauth.urls')),
 ]

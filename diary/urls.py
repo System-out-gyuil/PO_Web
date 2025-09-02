@@ -25,6 +25,8 @@ from .auto_docx import auto_docx, auto_docx_recommend, auto_docx_innovation, aut
 from .diary_use_preview import diary_use_preview
 from .diary_pay import diary_pay
 
+app_name = 'sales'
+
 urlpatterns = [
     path('', DiaryMainView.as_view(), name='diary_main'),
     path('pay/', diary_pay, name='diary_pay'),

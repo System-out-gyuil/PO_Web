@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>세일즈메이트 - 영업의 모든 것을 한 번에</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+    font-family: 'Noto Sans KR', sans-serif;
+    }
+    .gradient-bg {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    .card-hover {
+    transition: all 0.3s ease;
+    }
+    .card-hover:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    }
+    .hero-bg {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 50%, #4facfe 100%);
+    }
+    .feature-card {
+    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    .pricing-card {
+    transition: all 0.3s ease;
+    }
+    .pricing-card:hover {
+    transform: scale(1.05);
+    }
+    .scroll-smooth {
+    scroll-behavior: smooth;
+    }
+  </style>
+</head>
+<body class="scroll-smooth">
+  <!-- Header -->
+  <header class="bg-white shadow-lg fixed w-full z-50">
+    <nav class="container mx-auto px-6 py-4">
+      <div class="flex justify-between items-center">
+        <div class="text-2xl font-bold text-indigo-600">
+          <i class="fas fa-handshake mr-2"></i>세일즈메이트
+        </div>
+        <div class="hidden md:flex space-x-8">
+          <a href="#features" class="text-gray-600 hover:text-indigo-600 font-medium">기능소개</a>
+          <a href="#pricing" class="text-gray-600 hover:text-indigo-600 font-medium">요금제</a>
+          <a href="#testimonials" class="text-gray-600 hover:text-indigo-600 font-medium">고객사례</a>
+          <a href="#contact" class="text-gray-600 hover:text-indigo-600 font-medium">지원센터</a>
+        </div>
+        <div class="flex space-x-4">
+          <button class="text-indigo-600 hover:text-indigo-800 font-medium">로그인</button>
+          <button class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg font-medium transition">회원가입</button>
+        </div>
+      </div>
+    </nav>
+  </header>
+  <!-- Hero Section -->
+<section class="hero-bg min-h-screen flex items-center pt-20">
+  <div class="container mx-auto px-6">
+      <div class="grid md:grid-cols-2 gap-12 items-center">
+          <div class="text-white">
+              <h1 class="text-5xl md:text-6xl font-bold mb-6 leading-tight">
+                  영업의 모든 것을<br>
+                  <span class="text-yellow-300">한 번에</span>
+              </h1>
+              <p class="text-xl mb-8 opacity-90 leading-relaxed">
+                  AI가 도와주는 스마트한 영업관리<br>
+                  고객 관계를 넘어 성과까지
+              </p>
+              <div class="flex flex-col sm:flex-row gap-4">
+                  <button class="bg-white text-indigo-600 hover:bg-gray-100 px-8 py-4 rounded-xl font-bold text-lg transition transform hover:scale-105">
+                      <i class="fas fa-play-circle mr-2"></i>무료 체험 시작하기
+                  </button>
+                  <button class="border-2 border-white text-white hover:bg-white hover:text-indigo-600 px-8 py-4 rounded-xl font-bold text-lg transition">
+                      <i class="fas fa-desktop mr-2"></i>데모 보기
+                  </button>
+              </div>
+          </div>
+          <div class="flex justify-center">
+              <img src="https://cdn1.genspark.ai/user-upload-image/5_generated/90555b94-2628-4e41-999a-01e3a4034f22" alt="세일즈메이트 대시보드" class="w-full max-w-2xl rounded-2xl shadow-2xl">
+          </div>
+      </div>
+  </div>
+</section>
+
+<!-- Value Proposition Section -->
+<section class="py-20 bg-gray-50">
+  <div class="container mx-auto px-6">
+      <div class="text-center mb-16">
+          <h2 class="text-4xl font-bold text-gray-800 mb-6">왜 세일즈메이트인가?</h2>
+          <p class="text-xl text-gray-600 max-w-3xl mx-auto">영업자를 위한 완전한 솔루션으로 고객 관리부터 성과 분석까지 모든 것을 제공합니다</p>
+      </div>
+
+      <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div class="bg-white p-8 rounded-2xl shadow-lg card-hover text-center">
+              <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <i class="fas fa-database text-3xl text-blue-600"></i>
+              </div>
+              <h3 class="text-xl font-bold text-gray-800 mb-4">모든 고객 정보가 한눈에</h3>
+              <p class="text-gray-600">체계적인 고객 데이터 관리로 놓치는 정보 없이</p>
+          </div>
+
+          <div class="bg-white p-8 rounded-2xl shadow-lg card-hover text-center">
+              <div class="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <i class="fas fa-bell text-3xl text-green-600"></i>
+              </div>
+              <h3 class="text-xl font-bold text-gray-800 mb-4">놓치지 않는 영업 기회</h3>
+              <p class="text-gray-600">스마트한 리터치 알림으로 최적의 타이밍 안내</p>
+          </div>
+
+          <div class="bg-white p-8 rounded-2xl shadow-lg card-hover text-center">
+              <div class="bg-purple-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <i class="fas fa-brain text-3xl text-purple-600"></i>
+              </div>
+              <h3 class="text-xl font-bold text-gray-800 mb-4">AI가 찾아주는 정보</h3>
+              <p class="text-gray-600">필요한 순간 바로 검색되는 스마트 시스템</p>
+          </div>
+
+          <div class="bg-white p-8 rounded-2xl shadow-lg card-hover text-center">
+              <div class="bg-yellow-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <i class="fas fa-handshake text-3xl text-yellow-600"></i>
+              </div>
+              <h3 class="text-xl font-bold text-gray-800 mb-4">지속적인 고객 접점</h3>
+              <p class="text-gray-600">맞춤형 지원사업 추천으로 새로운 기회 창출</p>
+          </div>
+      </div>
+  </div>
+</section>
+
+<!-- Features Section -->
+<section id="features" class="py-20 bg-white">
+  <div class="container mx-auto px-6">
+      <div class="text-center mb-16">
+          <h2 class="text-4xl font-bold text-gray-800 mb-6">핵심 기능</h2>
+          <p class="text-xl text-gray-600 max-w-3xl mx-auto">영업 성과 향상을 위한 필수 기능들을 하나로 통합했습니다</p>
+      </div>
+
+      <div class="space-y-20">
+          <!-- Customer Management -->
+          <div class="grid md:grid-cols-2 gap-12 items-center">
+              <div>
+                  <h3 class="text-3xl font-bold text-gray-800 mb-6">
+                      <i class="fas fa-users text-blue-600 mr-3"></i>고객 데이터 관리
+                  </h3>
+                  <div class="space-y-4">
+                      <div class="flex items-start">
+                          <i class="fas fa-check-circle text-green-500 mt-1 mr-3"></i>
+                          <div>
+                              <h4 class="font-semibold text-gray-800">통합 고객 정보 관리</h4>
+                              <p class="text-gray-600">기본정보부터 거래 히스토리까지 한 곳에서</p>
+                          </div>
+                      </div>
+                      <div class="flex items-start">
+                          <i class="fas fa-check-circle text-green-500 mt-1 mr-3"></i>
+                          <div>
+                              <h4 class="font-semibold text-gray-800">스마트 분류 시스템</h4>
+                              <p class="text-gray-600">고객 중요도 및 등급별 자동 분류</p>
+                          </div>
+                      </div>
+                      <div class="flex items-start">
+                          <i class="fas fa-check-circle text-green-500 mt-1 mr-3"></i>
+                          <div>
+                              <h4 class="font-semibold text-gray-800">맞춤 프로필 생성</h4>
+                              <p class="text-gray-600">고객별 특성에 맞는 상세 프로필</p>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+              <div class="flex justify-center">
+                  <img src="https://cdn1.genspark.ai/user-upload-image/5_generated/91b72d27-2d77-4d69-8659-81bb5235a682" alt="고객 데이터 관리" class="w-full max-w-md rounded-2xl shadow-xl">
+              </div>
+          </div>
+
+          <!-- Schedule Management -->
+          <div class="grid md:grid-cols-2 gap-12 items-center">
+              <div class="order-2 md:order-1 flex justify-center">
+                  <img src="https://cdn1.genspark.ai/user-upload-image/5_generated/3187f0e5-a0fd-41d7-ae35-3d83fb8831c2" alt="스케줄 관리" class="w-full max-w-md rounded-2xl shadow-xl">
+              </div>
+              <div class="order-1 md:order-2">
+                  <h3 class="text-3xl font-bold text-gray-800 mb-6">
+                      <i class="fas fa-calendar-alt text-indigo-600 mr-3"></i>스케줄 & 캘린더 관리
+                  </h3>
+                  <div class="space-y-4">
+                      <div class="flex items-start">
+                          <i class="fas fa-check-circle text-green-500 mt-1 mr-3"></i>
+                          <div>
+                              <h4 class="font-semibold text-gray-800">통합 일정 관리</h4>
+                              <p class="text-gray-600">영업 활동과 고객 미팅을 한 번에</p>
+                          </div>
+                      </div>
+                      <div class="flex items-start">
+                          <i class="fas fa-check-circle text-green-500 mt-1 mr-3"></i>
+                          <div>
+                              <h4 class="font-semibold text-gray-800">스마트 알림</h4>
+                              <p class="text-gray-600">중요한 일정을 놓치지 않도록 미리 알림</p>
+                          </div>
+                      </div>
+                      <div class="flex items-start">
+                          <i class="fas fa-check-circle text-green-500 mt-1 mr-3"></i>
+                          <div>
+                              <h4 class="font-semibold text-gray-800">할 일 관리</h4>
+                              <p class="text-gray-600">우선순위별 업무 관리로 효율성 극대화</p>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+
+          <!-- AI Notes -->
+          <div class="grid md:grid-cols-2 gap-12 items-center">
+              <div>
+                  <h3 class="text-3xl font-bold text-gray-800 mb-6">
+                      <i class="fas fa-robot text-purple-600 mr-3"></i>AI 영업노트 시스템
+                  </h3>
+                  <div class="space-y-4">
+                      <div class="flex items-start">
+                          <i class="fas fa-check-circle text-green-500 mt-1 mr-3"></i>
+                          <div>
+                              <h4 class="font-semibold text-gray-800">스마트 기록 관리</h4>
+                              <p class="text-gray-600">음성, 텍스트, 사진까지 모든 형태로 기록</p>
+                          </div>
+                      </div>
+                      <div class="flex items-start">
+                          <i class="fas fa-check-circle text-green-500 mt-1 mr-3"></i>
+                          <div>
+                              <h4 class="font-semibold text-gray-800">AI 검색 엔진</h4>
+                              <p class="text-gray-600">필요한 정보를 즉시 찾아주는 지능형 검색</p>
+                          </div>
+                      </div>
+                      <div class="flex items-start">
+                          <i class="fas fa-check-circle text-green-500 mt-1 mr-3"></i>
+                          <div>
+                              <h4 class="font-semibold text-gray-800">문서 보관함</h4>
+                              <p class="text-gray-600">계약서, 제안서 등 모든 서류를 체계적으로</p>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+              <div class="flex justify-center">
+                  <img src="https://cdn1.genspark.ai/user-upload-image/5_generated/a5addb44-2927-45ea-b783-37c2c6bf1352" alt="AI 영업노트" class="w-full max-w-md rounded-2xl shadow-xl">
+              </div>
+          </div>
+
+          <!-- Support Funding -->
+          <div class="grid md:grid-cols-2 gap-12 items-center">
+              <div class="order-2 md:order-1 flex justify-center">
+                  <img src="https://cdn1.genspark.ai/user-upload-image/5_generated/88414de0-edc2-4e4c-80c8-3e0b5ee4d05a" alt="지원사업 추천" class="w-full max-w-md rounded-2xl shadow-xl">
+              </div>
+              <div class="order-1 md:order-2">
+                  <h3 class="text-3xl font-bold text-gray-800 mb-6">
+                      <i class="fas fa-coins text-yellow-600 mr-3"></i>지원사업 추천 시스템
+                  </h3>
+                  <div class="space-y-4">
+                      <div class="flex items-start">
+                          <i class="fas fa-check-circle text-green-500 mt-1 mr-3"></i>
+                          <div>
+                              <h4 class="font-semibold text-gray-800">맞춤형 지원사업 추천</h4>
+                              <p class="text-gray-600">고객 업종과 규모에 맞는 최적의 지원사업</p>
+                          </div>
+                      </div>
+                      <div class="flex items-start">
+                          <i class="fas fa-check-circle text-green-500 mt-1 mr-3"></i>
+                          <div>
+                              <h4 class="font-semibold text-gray-800">신청 일정 관리</h4>
+                              <p class="text-gray-600">중요한 신청 기한을 놓치지 않도록 관리</p>
+                          </div>
+                      </div>
+                      <div class="flex items-start">
+                          <i class="fas fa-check-circle text-green-500 mt-1 mr-3"></i>
+                          <div>
+                              <h4 class="font-semibold text-gray-800">지속적인 접점 창출</h4>
+                              <p class="text-gray-600">새로운 영업 기회로 고객 관계 강화</p>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      </div>
+  </div>
+</section>
+
+<!-- Customer Testimonials -->
+<section id="testimonials" class="py-20 bg-gray-50">
+  <div class="container mx-auto px-6">
+      <div class="text-center mb-16">
+          <h2 class="text-4xl font-bold text-gray-800 mb-6">고객 성공 사례</h2>
+          <p class="text-xl text-gray-600 max-w-3xl mx-auto">실제 사용자들이 경험한 세일즈메이트의 놀라운 효과</p>
+      </div>
+
+      <div class="grid md:grid-cols-3 gap-8">
+          <div class="bg-white p-8 rounded-2xl shadow-lg">
+              <div class="flex items-center mb-6">
+                  <div class="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold">김</div>
+                  <div class="ml-4">
+                      <h4 class="font-semibold text-gray-800">김영업 대리</h4>
+                      <p class="text-gray-600 text-sm">IT 솔루션 회사</p>
+                  </div>
+              </div>
+              <p class="text-gray-700 mb-4">"고객 정보가 흩어져서 매번 찾느라 시간을 낭비했는데, 이제는 모든 정보가 한 곳에! 영업 효율이 3배는 높아진 것 같아요."</p>
+              <div class="flex text-yellow-400">
+                  <i class="fas fa-star"></i>
+                  <i class="fas fa-star"></i>
+                  <i class="fas fa-star"></i>
+                  <i class="fas fa-star"></i>
+                  <i class="fas fa-star"></i>
+              </div>
+          </div>
+
+          <div class="bg-white p-8 rounded-2xl shadow-lg">
+              <div class="flex items-center mb-6">
+                  <div class="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center text-white font-bold">박</div>
+                  <div class="ml-4">
+                      <h4 class="font-semibold text-gray-800">박성공 팀장</h4>
+                      <p class="text-gray-600 text-sm">제조업체</p>
+                  </div>
+              </div>
+              <p class="text-gray-700 mb-4">"AI 검색 기능이 정말 신기해요. 2년 전 고객과의 통화 내용까지 바로 찾아줘서 고객이 깜짝 놀라더라고요. 신뢰도가 확실히 높아졌습니다."</p>
+              <div class="flex text-yellow-400">
+                  <i class="fas fa-star"></i>
+                  <i class="fas fa-star"></i>
+                  <i class="fas fa-star"></i>
+                  <i class="fas fa-star"></i>
+                  <i class="fas fa-star"></i>
+              </div>
+          </div>
+
+          <div class="bg-white p-8 rounded-2xl shadow-lg">
+              <div class="flex items-center mb-6">
+                  <div class="w-12 h-12 bg-purple-500 rounded-full flex items-center justify-center text-white font-bold">이</div>
+                  <div class="ml-4">
+                      <h4 class="font-semibold text-gray-800">이성과 대표</h4>
+                      <p class="text-gray-600 text-sm">마케팅 에이전시</p>
+                  </div>
+              </div>
+              <p class="text-gray-700 mb-4">"지원사업 추천 기능으로 고객에게 제공할 수 있는 가치가 늘어났어요. 고객들이 먼저 연락을 주는 경우가 많아졌습니다."</p>
+              <div class="flex text-yellow-400">
+                  <i class="fas fa-star"></i>
+                  <i class="fas fa-star"></i>
+                  <i class="fas fa-star"></i>
+                  <i class="fas fa-star"></i>
+                  <i class="fas fa-star"></i>
+              </div>
+          </div>
+      </div>
+  </div>
+</section>
+
+<!-- Pricing Section -->
+<section id="pricing" class="py-20 bg-white">
+  <div class="container mx-auto px-6">
+      <div class="text-center mb-16">
+          <h2 class="text-4xl font-bold text-gray-800 mb-6">요금제</h2>
+          <p class="text-xl text-gray-600 max-w-3xl mx-auto">규모와 필요에 따라 선택할 수 있는 유연한 요금제</p>
+      </div>
+
+      <div class="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+          <!-- Starter Plan -->
+          <div class="bg-white border-2 border-gray-200 rounded-2xl p-8 pricing-card">
+              <div class="text-center mb-8">
+                  <h3 class="text-2xl font-bold text-gray-800 mb-2">스타터</h3>
+                  <p class="text-gray-600 mb-6">개인 영업자를 위한</p>
+                  <div class="text-4xl font-bold text-gray-800">
+                      ₩29,000
+                      <span class="text-lg font-normal text-gray-600">/월</span>
+                  </div>
+              </div>
+              <ul class="space-y-4 mb-8">
+                  <li class="flex items-center">
+                      <i class="fas fa-check text-green-500 mr-3"></i>
+                      <span>고객 100명까지</span>
+                  </li>
+                  <li class="flex items-center">
+                      <i class="fas fa-check text-green-500 mr-3"></i>
+                      <span>기본 CRM 기능</span>
+                  </li>
+                  <li class="flex items-center">
+                      <i class="fas fa-check text-green-500 mr-3"></i>
+                      <span>스케줄 관리</span>
+                  </li>
+                  <li class="flex items-center">
+                      <i class="fas fa-check text-green-500 mr-3"></i>
+                      <span>모바일 앱</span>
+                  </li>
+              </ul>
+              <button class="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 py-3 rounded-xl font-semibold transition">
+                  시작하기
+              </button>
+          </div>
+
+          <!-- Pro Plan -->
+          <div class="bg-indigo-600 text-white rounded-2xl p-8 pricing-card relative">
+              <div class="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                  <span class="bg-yellow-400 text-indigo-800 px-4 py-1 rounded-full text-sm font-bold">인기</span>
+              </div>
+              <div class="text-center mb-8">
+                  <h3 class="text-2xl font-bold mb-2">프로</h3>
+                  <p class="opacity-90 mb-6">전문 영업팀을 위한</p>
+                  <div class="text-4xl font-bold">
+                      ₩59,000
+                      <span class="text-lg font-normal opacity-75">/월</span>
+                  </div>
+              </div>
+              <ul class="space-y-4 mb-8">
+                  <li class="flex items-center">
+                      <i class="fas fa-check text-yellow-400 mr-3"></i>
+                      <span>고객 500명까지</span>
+                  </li>
+                  <li class="flex items-center">
+                      <i class="fas fa-check text-yellow-400 mr-3"></i>
+                      <span>AI 영업노트</span>
+                  </li>
+                  <li class="flex items-center">
+                      <i class="fas fa-check text-yellow-400 mr-3"></i>
+                      <span>지원사업 추천</span>
+                  </li>
+                  <li class="flex items-center">
+                      <i class="fas fa-check text-yellow-400 mr-3"></i>
+                      <span>팀 협업 기능</span>
+                  </li>
+                  <li class="flex items-center">
+                      <i class="fas fa-check text-yellow-400 mr-3"></i>
+                      <span>고급 분석 리포트</span>
+                  </li>
+              </ul>
+              <button class="w-full bg-white text-indigo-600 hover:bg-gray-100 py-3 rounded-xl font-semibold transition">
+                  시작하기
+              </button>
+          </div>
+
+          <!-- Enterprise Plan -->
+          <div class="bg-white border-2 border-gray-200 rounded-2xl p-8 pricing-card">
+              <div class="text-center mb-8">
+                  <h3 class="text-2xl font-bold text-gray-800 mb-2">엔터프라이즈</h3>
+                  <p class="text-gray-600 mb-6">대기업을 위한</p>
+                  <div class="text-4xl font-bold text-gray-800">
+                      맞춤형
+                      <span class="text-lg font-normal text-gray-600">견적</span>
+                  </div>
+              </div>
+              <ul class="space-y-4 mb-8">
+                  <li class="flex items-center">
+                      <i class="fas fa-check text-green-500 mr-3"></i>
+                      <span>무제한 고객</span>
+                  </li>
+                  <li class="flex items-center">
+                      <i class="fas fa-check text-green-500 mr-3"></i>
+                      <span>맞춤형 기능 개발</span>
+                  </li>
+                  <li class="flex items-center">
+                      <i class="fas fa-check text-green-500 mr-3"></i>
+                      <span>전용 서버</span>
+                  </li>
+                  <li class="flex items-center">
+                      <i class="fas fa-check text-green-500 mr-3"></i>
+                      <span>24/7 전담 지원</span>
+                  </li>
+                  <li class="flex items-center">
+                      <i class="fas fa-check text-green-500 mr-3"></i>
+                      <span>API 연동</span>
+                  </li>
+              </ul>
+              <button class="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 py-3 rounded-xl font-semibold transition">
+                  문의하기
+              </button>
+          </div>
+      </div>
+  </div>
+</section>
+
+<!-- Final CTA Section -->
+<section class="gradient-bg py-20">
+  <div class="container mx-auto px-6 text-center">
+      <div class="max-w-4xl mx-auto">
+          <h2 class="text-4xl md:text-5xl font-bold text-white mb-6">
+              지금 바로 시작해보세요
+          </h2>
+          <p class="text-xl text-white opacity-90 mb-8 leading-relaxed">
+              14일 무료 체험으로 세일즈메이트의 강력한 기능을 경험해보세요<br>
+              신용카드 등록 없이도 바로 시작할 수 있습니다
+          </p>
+          <div class="flex flex-col sm:flex-row gap-4 justify-center">
+              <button class="bg-white text-indigo-600 hover:bg-gray-100 px-8 py-4 rounded-xl font-bold text-lg transition transform hover:scale-105">
+                  <i class="fas fa-rocket mr-2"></i>무료로 시작하기
+              </button>
+              <button class="border-2 border-white text-white hover:bg-white hover:text-indigo-600 px-8 py-4 rounded-xl font-bold text-lg transition">
+                  <i class="fas fa-phone mr-2"></i>상담 받기
+              </button>
+          </div>
+          <p class="text-white opacity-75 mt-6">
+              <i class="fas fa-shield-alt mr-2"></i>안전한 데이터 보호 • 언제든지 취소 가능
+          </p>
+      </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer id="contact" class="bg-gray-900 text-white py-16">
+  <div class="container mx-auto px-6">
+      <div class="grid md:grid-cols-4 gap-8">
+          <div>
+              <div class="text-2xl font-bold mb-4">
+                  <i class="fas fa-handshake mr-2"></i>세일즈메이트
+              </div>
+              <p class="text-gray-400 mb-4">영업의 모든 것을 한 번에 관리하는 스마트 CRM 솔루션</p>
+              <div class="flex space-x-4">
+                  <i class="fab fa-facebook text-xl hover:text-blue-400 cursor-pointer transition"></i>
+                  <i class="fab fa-twitter text-xl hover:text-blue-400 cursor-pointer transition"></i>
+                  <i class="fab fa-linkedin text-xl hover:text-blue-400 cursor-pointer transition"></i>
+              </div>
+          </div>
+
+          <div>
+              <h4 class="font-semibold mb-4">제품</h4>
+              <ul class="space-y-2 text-gray-400">
+                  <li><a href="#" class="hover:text-white transition">기능 소개</a></li>
+                  <li><a href="#" class="hover:text-white transition">요금제</a></li>
+                  <li><a href="#" class="hover:text-white transition">API 문서</a></li>
+                  <li><a href="#" class="hover:text-white transition">업데이트</a></li>
+              </ul>
+          </div>
+
+          <div>
+              <h4 class="font-semibold mb-4">지원</h4>
+              <ul class="space-y-2 text-gray-400">
+                  <li><a href="#" class="hover:text-white transition">도움말 센터</a></li>
+                  <li><a href="#" class="hover:text-white transition">사용자 가이드</a></li>
+                  <li><a href="#" class="hover:text-white transition">고객 지원</a></li>
+                  <li><a href="#" class="hover:text-white transition">문의하기</a></li>
+              </ul>
+          </div>
+
+          <div>
+              <h4 class="font-semibold mb-4">회사</h4>
+              <ul class="space-y-2 text-gray-400">
+                  <li><a href="#" class="hover:text-white transition">회사 소개</a></li>
+                  <li><a href="#" class="hover:text-white transition">채용</a></li>
+                  <li><a href="#" class="hover:text-white transition">개인정보처리방침</a></li>
+                  <li><a href="#" class="hover:text-white transition">이용약관</a></li>
+              </ul>
+          </div>
+      </div>
+
+      <div class="border-t border-gray-800 mt-12 pt-8 text-center text-gray-400">
+          <p>&copy; 2024 세일즈메이트. All rights reserved.</p>
+      </div>
+  </div>
+</footer>
+
+<script>
+  // Smooth scrolling for navigation links
+  document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+          e.preventDefault();
+          const target = document.querySelector(this.getAttribute('href'));
+          if (target) {
+              target.scrollIntoView({
+                  behavior: 'smooth',
+                  block: 'start'
+              });
+          }
+      });
+  });
+
+  // Add scroll effect to navbar
+  window.addEventListener('scroll', function() {
+      const navbar = document.querySelector('header');
+      if (window.scrollY > 100) {
+          navbar.classList.add('bg-white');
+          navbar.classList.add('shadow-lg');
+      }
+  });
+</script>
+
+</body>
+</html>
