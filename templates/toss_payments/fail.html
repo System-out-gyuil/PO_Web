@@ -1,0 +1,236 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>결제 인증 실패 - 자금왕</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link rel="icon" href="{% static 'images/자금왕_favicon.png' %}" />
+    <style>
+      .fail-container {
+        background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .fail-card {
+        background: white;
+        border-radius: 20px;
+        padding: 3rem;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        text-align: center;
+        max-width: 500px;
+        width: 90%;
+      }
+      .fail-icon {
+        color: #ef4444;
+        font-size: 4rem;
+        margin-bottom: 1.5rem;
+      }
+      .error-box {
+        background: #fef2f2;
+        border: 1px solid #fecaca;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin: 1.5rem 0;
+        text-align: left;
+      }
+      .error-label {
+        font-weight: 600;
+        color: #dc2626;
+        margin-bottom: 0.5rem;
+      }
+      .error-value {
+        color: #7f1d1d;
+        font-family: "Courier New", monospace;
+        word-break: break-all;
+        background: white;
+        padding: 0.5rem;
+        border-radius: 5px;
+        border: 1px solid #fecaca;
+      }
+      .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1rem 2rem;
+        border-radius: 10px;
+        border: none;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.2s;
+        text-decoration: none;
+        display: inline-block;
+        margin: 0.5rem;
+      }
+      .btn-primary:hover {
+        transform: translateY(-2px);
+      }
+      .btn-secondary {
+        background: #f3f4f6;
+        color: #374151;
+        padding: 1rem 2rem;
+        border-radius: 10px;
+        border: 1px solid #d1d5db;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-decoration: none;
+        display: inline-block;
+        margin: 0.5rem;
+      }
+      .btn-secondary:hover {
+        background: #e5e7eb;
+      }
+      .error-message {
+        background: #fef2f2;
+        border-left: 4px solid #ef4444;
+        padding: 1rem;
+        margin: 1rem 0;
+        border-radius: 5px;
+      }
+      .error-code {
+        background: #fee2e2;
+        color: #dc2626;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        display: inline-block;
+        margin-bottom: 1rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="fail-container">
+      <div class="fail-card">
+        <div class="fail-icon">
+          <i class="fas fa-times-circle"></i>
+        </div>
+
+        <h1 class="text-3xl font-bold text-gray-800 mb-4">결제 인증 실패</h1>
+        <p class="text-gray-600 mb-8">카드 정보 인증에 실패했습니다.</p>
+
+        <div class="error-code" id="errorCode">{{ error_code|default:"ERROR_CODE" }}</div>
+
+        <div class="error-message" id="errorMessage">
+          {% if error_message %}{{ error_message }}{% else %}결제 정보를 확인하고 다시 시도해주세요.{% endif %}
+        </div>
+
+        <div class="mt-8">
+          <p class="text-sm text-gray-500 mb-4">
+            <i class="fas fa-info-circle"></i>
+            문제가 지속되면 고객센터로 문의해주세요.
+          </p>
+
+          <a href="{% url 'sales:diary_pay' %}" class="btn-primary"> <i class="fas fa-redo"></i> 다시 시도하기 </a>
+
+          <a href="{% url 'sales:diary_main' %}" class="btn-secondary"> <i class="fas fa-home"></i> 메인으로 돌아가기 </a>
+        </div>
+
+        <div class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <h3 class="font-semibold text-blue-800 mb-2"><i class="fas fa-phone"></i> 고객센터</h3>
+          <p class="text-blue-700 text-sm">
+            전화: 0507-1474-1679<br />
+            이메일: nicepo.corp@gmail.com
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // URL에서 쿼리 파라미터 추출
+      function getQueryParams() {
+        const urlParams = new URLSearchParams(window.location.search);
+        return {
+          code: urlParams.get("code"),
+          message: urlParams.get("message"),
+        };
+      }
+
+      // 에러 코드별 메시지 매핑
+      const errorMessages = {
+        PAY_PROCESS_CANCELED: "결제가 취소되었습니다.",
+        PAY_PROCESS_ABORTED: "결제가 중단되었습니다.",
+        REJECT_CARD_COMPANY: "카드사에서 결제를 거절했습니다.",
+        INVALID_CARD_NUMBER: "유효하지 않은 카드번호입니다.",
+        INVALID_CARD_EXPIRY: "유효하지 않은 카드 만료일입니다.",
+        INVALID_CARD_PASSWORD: "유효하지 않은 카드 비밀번호입니다.",
+        INSUFFICIENT_BALANCE: "잔액이 부족합니다.",
+        CARD_NOT_SUPPORTED: "지원하지 않는 카드입니다.",
+        NETWORK_ERROR: "네트워크 오류가 발생했습니다.",
+        TIMEOUT: "결제 시간이 초과되었습니다.",
+        UNKNOWN_ERROR: "알 수 없는 오류가 발생했습니다.",
+      };
+
+      // 페이지 로드 시 쿼리 파라미터 표시
+      document.addEventListener("DOMContentLoaded", function () {
+        const params = getQueryParams();
+
+        if (params.code) {
+          document.getElementById("errorCode").textContent = params.code;
+          document.getElementById("errorCodeValue").textContent = params.code;
+        }
+
+        if (params.message) {
+          const decodedMessage = decodeURIComponent(params.message);
+          document.getElementById("errorMessage").textContent = decodedMessage;
+          document.getElementById("errorMessageValue").textContent = decodedMessage;
+        }
+
+        // 에러 코드에 따른 사용자 친화적 메시지 표시
+        if (params.code && errorMessages[params.code]) {
+          const userFriendlyMessage = errorMessages[params.code];
+          document.getElementById("errorMessage").innerHTML = `<strong>${userFriendlyMessage}</strong><br><small>${
+            params.message ? decodeURIComponent(params.message) : ""
+          }</small>`;
+        }
+
+        // 서버로 에러 정보 전송 (선택사항)
+        if (params.code) {
+          sendToServer(params);
+        }
+      });
+
+      // 서버로 에러 정보 전송
+      function sendToServer(params) {
+        fetch("/sales/api/payment/auth-fail/", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": getCookie("csrftoken"),
+          },
+          body: JSON.stringify({
+            errorCode: params.code,
+            errorMessage: params.message,
+          }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            console.log("에러 정보 서버 전송 성공:", data);
+          })
+          .catch((error) => {
+            console.error("에러 정보 서버 전송 실패:", error);
+          });
+      }
+
+      // CSRF 토큰 가져오기
+      function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== "") {
+          const cookies = document.cookie.split(";");
+          for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === name + "=") {
+              cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+              break;
+            }
+          }
+        }
+        return cookieValue;
+      }
+    </script>
+  </body>
+</html>

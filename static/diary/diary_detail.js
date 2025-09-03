@@ -143,7 +143,7 @@ function generateDetailModalContent(attributes, rowData, rowId) {
                 { key: 'credit_foundation', label: '신용보증재단' },
                 { key: 'smba', label: '중진공' },
                 { key: 'semas_innovation', label: '소진공-혁신성장' },
-                { key: 'semas_lowcredit', label: '소진공-저신용' },
+                { key: 'semas_lowcredit', label: '소진공-신용취약' },
                 { key: 'collateral', label: '담보' },
                 { key: 'credit', label: '신용' }
             ];

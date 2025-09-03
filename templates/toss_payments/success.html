@@ -1,0 +1,271 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>결제 인증 성공 - 자금왕</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link rel="icon" href="{% static 'images/자금왕_favicon.png' %}" />
+    <style>
+      .success-container {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .success-card {
+        background: white;
+        border-radius: 20px;
+        padding: 3rem;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        text-align: center;
+        max-width: 500px;
+        width: 90%;
+      }
+      .success-icon {
+        color: #10b981;
+        font-size: 4rem;
+        margin-bottom: 1.5rem;
+      }
+      .info-box {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin: 1.5rem 0;
+        text-align: left;
+      }
+      .info-label {
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 0.5rem;
+      }
+      .info-value {
+        color: #6b7280;
+        font-family: "Courier New", monospace;
+        word-break: break-all;
+        background: white;
+        padding: 0.5rem;
+        border-radius: 5px;
+        border: 1px solid #d1d5db;
+      }
+      .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1rem 2rem;
+        border-radius: 10px;
+        border: none;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.2s;
+        text-decoration: none;
+        display: inline-block;
+        margin: 0.5rem;
+      }
+      .btn-primary:hover {
+        transform: translateY(-2px);
+      }
+      .btn-secondary {
+        background: #f3f4f6;
+        color: #374151;
+        padding: 1rem 2rem;
+        border-radius: 10px;
+        border: 1px solid #d1d5db;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-decoration: none;
+        display: inline-block;
+        margin: 0.5rem;
+      }
+      .btn-secondary:hover {
+        background: #e5e7eb;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="success-container">
+      <div class="success-card">
+        <div class="success-icon">
+          <i class="fas fa-check-circle"></i>
+        </div>
+
+        <h1 class="text-3xl font-bold text-gray-800 mb-4">결제 인증 성공!</h1>
+        <p class="text-gray-600 mb-8">카드 정보가 성공적으로 인증되었습니다.</p>
+
+        <div class="info-box">
+          <div class="info-label">구매자 ID (customerKey)</div>
+          <div class="info-value" id="customerKey">{{ customer_key|default:"-" }}</div>
+        </div>
+
+        <div class="info-box">
+          <div class="info-label">인증 키 (authKey)</div>
+          <div class="info-value" id="authKey">{{ auth_key|default:"-" }}</div>
+        </div>
+
+        <div class="mt-8">
+          <a href="{% url 'sales:diary_pay' %}" class="btn-primary"> <i class="fas fa-arrow-left"></i> 결제 페이지로 돌아가기 </a>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // URL에서 쿼리 파라미터 추출
+      function getQueryParams() {
+        const urlParams = new URLSearchParams(window.location.search);
+        return {
+          customerKey: urlParams.get("customerKey"),
+          authKey: urlParams.get("authKey"),
+        };
+      }
+
+      // 페이지 로드 시 쿼리 파라미터 표시
+      document.addEventListener("DOMContentLoaded", function () {
+        const params = getQueryParams();
+
+        if (params.customerKey) {
+          document.getElementById("customerKey").textContent = params.customerKey;
+        }
+
+        if (params.authKey) {
+          document.getElementById("authKey").textContent = params.authKey;
+        }
+
+        // 서버로 데이터 전송 (선택사항)
+        if (params.customerKey && params.authKey) {
+          sendToServer(params);
+        }
+      });
+
+      // 서버로 인증 정보 전송 및 빌링키 발급
+      function sendToServer(params) {
+        // 1. 먼저 인증 정보를 서버에 저장
+        fetch("/sales/api/payment/auth-success/", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": getCookie("csrftoken"),
+          },
+          body: JSON.stringify({
+            customerKey: params.customerKey,
+            authKey: params.authKey,
+          }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            console.log("인증 정보 서버 전송 성공:", data);
+
+            // 2. 빌링키 발급 요청
+            return issueBillingKey(params.customerKey, params.authKey);
+          })
+          .then((billingResult) => {
+            if (billingResult.success) {
+              console.log("빌링키 발급 성공:", billingResult.data);
+              showBillingKeySuccess(billingResult.data);
+            } else {
+              console.error("빌링키 발급 실패:", billingResult.error);
+              showBillingKeyError(billingResult.error);
+            }
+          })
+          .catch((error) => {
+            console.error("처리 중 오류:", error);
+            showBillingKeyError({ message: "처리 중 오류가 발생했습니다." });
+          });
+      }
+
+      // 빌링키 발급 요청
+      function issueBillingKey(customerKey, authKey) {
+        return fetch("/sales/api/payment/issue-billing-key/", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": getCookie("csrftoken"),
+          },
+          body: JSON.stringify({
+            customerKey: customerKey,
+            authKey: authKey,
+          }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.status === "success") {
+              return { success: true, data: data.data };
+            } else {
+              return { success: false, error: data.error || data.message };
+            }
+          });
+      }
+
+      // 빌링키 발급 성공 표시
+      function showBillingKeySuccess(billingData) {
+        const successMessage = document.createElement("div");
+        successMessage.className = "mt-4 p-4 bg-green-50 border border-green-200 rounded-lg";
+        successMessage.innerHTML = `
+           <h3 class="font-semibold text-green-800 mb-2">
+             <i class="fas fa-check-circle"></i> 빌링키 발급 완료
+           </h3>
+           <p class="text-green-700 text-sm">
+             카드사: ${billingData.cardCompany}<br>
+             카드번호: ${billingData.cardNumber}<br>
+             발급일시: ${new Date(billingData.authenticatedAt).toLocaleString("ko-KR")}
+           </p>
+         `;
+
+        const container = document.querySelector(".success-card");
+        container.appendChild(successMessage);
+      }
+
+      // 빌링키 발급 실패 표시
+      function showBillingKeyError(error) {
+        const errorMessage = document.createElement("div");
+        errorMessage.className = "mt-4 p-4 bg-red-50 border border-red-200 rounded-lg";
+        errorMessage.innerHTML = `
+           <h3 class="font-semibold text-red-800 mb-2">
+             <i class="fas fa-exclamation-triangle"></i> 빌링키 발급 실패
+           </h3>
+           <p class="text-red-700 text-sm">
+             ${error.message || "알 수 없는 오류가 발생했습니다."}
+           </p>
+         `;
+
+        const container = document.querySelector(".success-card");
+        container.appendChild(errorMessage);
+      }
+
+      // 정보 복사 기능
+      function copyToClipboard() {
+        const params = getQueryParams();
+        const text = `구매자 ID: ${params.customerKey}\n인증 키: ${params.authKey}`;
+
+        navigator.clipboard.writeText(text).then(
+          function () {
+            alert("정보가 클립보드에 복사되었습니다.");
+          },
+          function (err) {
+            console.error("복사 실패:", err);
+            alert("복사에 실패했습니다.");
+          }
+        );
+      }
+
+      // CSRF 토큰 가져오기
+      function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== "") {
+          const cookies = document.cookie.split(";");
+          for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === name + "=") {
+              cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+              break;
+            }
+          }
+        }
+        return cookieValue;
+      }
+    </script>
+  </body>
+</html>

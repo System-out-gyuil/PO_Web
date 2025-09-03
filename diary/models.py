@@ -578,3 +578,52 @@ class CountUserIP(models.Model):
 
     def __str__(self):
         return f"{self.ip} - {self.user.name}"
+
+class TossPaymentBillingKey(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='toss_user')
+    billing_key = models.CharField(max_length=255)
+    billing_data = models.JSONField(default=dict)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    # billing type
+    # 1: 1개월
+    # 2: 6개월
+    # 3: 12개월
+    billing_type = models.CharField(max_length=255)
+
+    # 마지막 결재 일시
+    last_billing_date = models.DateTimeField(null=True, blank=True)
+
+    # 재결제 일시
+    rebill_date = models.DateField(null=True, blank=True)
+
+    # 1이면 결재 완료, 0이면 결재 실패
+    billing_status = models.CharField(max_length=255)
+
+    # 활성화 시 재 결재
+    # 1이면 활성화, 0이면 비활성화
+    billing_activate = models.BooleanField(default=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['user', 'billing_key']),
+            models.Index(fields=['user']),
+        ]
+
+    def __str__(self):
+        return f"{self.user.name} - {self.billing_key}"
+
+class PayAmount(models.Model):
+    amount_name = models.CharField(max_length=255)
+    price = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['created_at']),
+        ]
+
+    def __str__(self):
+        return f"{self.amount_name} - {self.price}"

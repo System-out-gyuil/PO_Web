@@ -1,69 +1,73 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>이용권 구매 - 자금왕</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="{% static 'diary/pay/diary_pay.css' %}">
-  <link rel="stylesheet" href="{% static 'diary/base/base.css' %}">
-  <link rel="icon" href="{% static 'images/자금왕_favicon.png' %}">
-</head>
-<body>
-  {% include 'diary/header.html' %}
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>이용권 구매 - 자금왕</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link rel="stylesheet" href="{% static 'diary/pay/diary_pay.css' %}" />
+    <link rel="stylesheet" href="{% static 'diary/base/base.css' %}" />
+    <link rel="icon" href="{% static 'images/자금왕_favicon.png' %}" />
+  </head>
+  <body>
+    {% include 'diary/header.html' %}
 
-  <section class="container-section">
-    <div class="pay-box-container">
-
-      <div class="pay-box">
-        <div class="pay-box-title">1개월 이용권 구매<span class="pay-box-title-sub">자동정기결제</span></div>
-        <div class="pay-box-content">
-          <div class="pay-box-price"><span class="pay-box-price-number">15</span>만원</div>
-          <div class="pay-box-button-wrap">
-            <button class="pay-box-button">구매하기</button>
+    <section class="container-section">
+      <div class="pay-box-container">
+        <div class="pay-box">
+          <div class="pay-box-title">1개월 이용권 구매<span class="pay-box-title-sub">자동정기결제</span></div>
+          <div class="pay-box-content">
+            <div class="pay-box-price"><span class="pay-box-price-number">15</span>만원</div>
+            <div class="pay-box-button-wrap">
+              <button class="pay-box-button">구매하기</button>
+            </div>
+            <div class="pay-box-price-explain">계약율 평균 30% 향상</div>
+            <div class="pay-box-price-explain">자료 찾는 시간 90% 단축</div>
+            <div class="pay-box-price-explain">지속적인 고객 관계 유지로 추가 계약 기회 300% 증가</div>
+            <div class="pay-box-price-explain">검색엔진 최적화로 신규 고객 유입 200% 증가</div>
           </div>
-          <div class="pay-box-price-explain">계약율 평균 30% 향상</div>
-          <div class="pay-box-price-explain">자료 찾는 시간 90% 단축</div>
-          <div class="pay-box-price-explain">지속적인 고객 관계 유지로 추가 계약 기회 300% 증가</div>
-          <div class="pay-box-price-explain">검색엔진 최적화로 신규 고객 유입 200% 증가</div>
+        </div>
+        <div class="pay-box">
+          <div class="pay-box-title">6개월 이용권 구매<span class="pay-box-title-sub">일반결제</span></div>
+          <div class="pay-box-content">
+            <div class="pay-box-price"><span class="pay-box-price-number">72</span>만원</div>
+            <div class="pay-box-button-wrap">
+              <button class="pay-box-button">구매하기</button>
+            </div>
+            <div class="pay-box-price-explain">계약율 평균 30% 향상</div>
+            <div class="pay-box-price-explain">자료 찾는 시간 90% 단축</div>
+            <div class="pay-box-price-explain">지속적인 고객 관계 유지로 추가 계약 기회 300% 증가</div>
+            <div class="pay-box-price-explain">검색엔진 최적화로 신규 고객 유입 200% 증가</div>
+          </div>
+        </div>
+        <div class="pay-box">
+          <div class="pay-box-title">1년 이용권 구매<span class="pay-box-title-sub">일반결제</span></div>
+          <div class="pay-box-content">
+            <div class="pay-box-price"><span class="pay-box-price-number">120</span>만원</div>
+            <div class="pay-box-button-wrap">
+              <button class="pay-box-button">구매하기</button>
+            </div>
+            <div class="pay-box-price-explain">계약율 평균 30% 향상</div>
+            <div class="pay-box-price-explain">자료 찾는 시간 90% 단축</div>
+            <div class="pay-box-price-explain">지속적인 고객 관계 유지로 추가 계약 기회 300% 증가</div>
+            <div class="pay-box-price-explain">검색엔진 최적화로 신규 고객 유입 200% 증가</div>
+          </div>
         </div>
       </div>
-      <div class="pay-box">
-        <div class="pay-box-title">6개월 이용권 구매<span class="pay-box-title-sub">일반결제</span></div>
-        <div class="pay-box-content">
-          <div class="pay-box-price"><span class="pay-box-price-number">72</span>만원</div>
-          <div class="pay-box-button-wrap">
-            <button class="pay-box-button">구매하기</button>
-          </div>
-          <div class="pay-box-price-explain">계약율 평균 30% 향상</div>
-          <div class="pay-box-price-explain">자료 찾는 시간 90% 단축</div>
-          <div class="pay-box-price-explain">지속적인 고객 관계 유지로 추가 계약 기회 300% 증가</div>
-          <div class="pay-box-price-explain">검색엔진 최적화로 신규 고객 유입 200% 증가</div>
-        </div>
+      <div class="pay-box-price-explain-wrap">
+        <div class="pay-box-price-explain pay-box-price-explain-wrap-text">위 상품의 최대 이용기간은 1년입니다.</div>
+        <a class="pay-box-price-explain-link" href="{% url 'sales:terms_of_service' %}#section20">
+          <div class="pay-box-price-explain-link-text">환불 규정 안내 <i class="fa-solid fa-arrow-right"></i></div>
+        </a>
+        <a class="pay-box-price-explain-link" href="{% url 'sales:subscription_management' %}">
+          <div class="pay-box-price-explain-link-text">구독 관리 <i class="fa-solid fa-arrow-right"></i></div>
+        </a>
       </div>
-      <div class="pay-box">
-        <div class="pay-box-title">1년 이용권 구매<span class="pay-box-title-sub">일반결제</span></div>
-        <div class="pay-box-content">
-          <div class="pay-box-price"><span class="pay-box-price-number">120</span>만원</div>
-          <div class="pay-box-button-wrap">
-            <button class="pay-box-button">구매하기</button>
-          </div>
-          <div class="pay-box-price-explain">계약율 평균 30% 향상</div>
-          <div class="pay-box-price-explain">자료 찾는 시간 90% 단축</div>
-          <div class="pay-box-price-explain">지속적인 고객 관계 유지로 추가 계약 기회 300% 증가</div>
-          <div class="pay-box-price-explain">검색엔진 최적화로 신규 고객 유입 200% 증가</div>
-        </div>
-      </div>
+    </section>
 
-    </div>
-
-  </section>
-
-
-
-  <script src="{% static 'diary/base/base.js' %}"></script>
-  <script src="{% static 'diary/pay/diary_pay.js' %}"></script>
-</body>
+    <script src="{% static 'diary/base/base.js' %}"></script>
+    <script src="{% static 'diary/pay/diary_pay.js' %}"></script>
+  </body>
 </html>
