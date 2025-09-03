@@ -19,16 +19,16 @@ import warnings
 import boto3
 from botocore.exceptions import ClientError
 import hashlib
+from io import BytesIO
+from urllib.parse import quote
+from django.conf import settings
+from docx.shared import Pt
 import time
 import uuid
 import pdfplumber
 import mmap
-from io import BytesIO
 import mimetypes
 # import openai  # 새로운 OpenAI 클라이언트 사용
-from docx.shared import Pt
-from django.utils.http import quote
-from django.conf import settings
 from openai import OpenAI
 
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -1125,7 +1125,8 @@ def generate_credit_business_overview_with_openai(row_data, service_product, row
         - 기업의 현재 상황과 사업 내용을 강조
         - 신용취약 소상공인 지원사업 신청에 적합한 내용으로 구성
         - 전문적이면서도 이해하기 쉬운 문체 사용
-        - 사업 개요는 200-300자 내외로 작성
+        - 사업 개요는 400-600자 내외로 작성
+        - 주민번호는 가리지 않을 것.
         """
         
         # 최종 프롬프트 조합
@@ -1247,7 +1248,8 @@ def generate_business_overview_with_openai(row_data, service_product, row=None, 
         2. 첨부된 파일 내용이 있으면 이를 참고하여 더 구체적이고 정확한 사업 개요를 작성해주세요.
         3. 사업 개요는 구체적이고 현실적으로 작성해주세요.
         4. 해당 서비스/제품의 용도와 특성을 명확히 설명해주세요.
-        5. 200-300자 내외로 작성해주세요.
+        5. 300-400자 내외로 작성해주세요.
+        6. 주민번호는 가리지 않을 것.
 
         '사업개요(주 서비스·생산품목의 용도 및 특성)' 항목에 들어갈 문단을 작성해주세요.
         조건: 
@@ -2037,12 +2039,14 @@ def auto_docx_innovation(request):
                 row_id = data.get('row_id')
                 innovation_type = data.get('innovation_type', '').strip()
                 innovation_category = data.get('innovation_category', '').strip()
+                smart_tech_type = data.get('smart_tech_type', '').strip()
                 business_overview = data.get('business_overview', '').strip()
                 
                 print(f"추출된 값들:")
                 print(f"  - row_id: {row_id} (타입: {type(row_id)})")
                 print(f"  - innovation_type: '{innovation_type}' (타입: {type(innovation_type)})")
                 print(f"  - innovation_category: '{innovation_category}' (타입: {type(innovation_category)})")
+                print(f"  - smart_tech_type: '{smart_tech_type}' (타입: {type(smart_tech_type)})")
                 print(f"  - business_overview: '{business_overview[:100]}...' (길이: {len(business_overview)})")
                 
                 if not row_id:
@@ -2105,7 +2109,7 @@ def auto_docx_innovation(request):
 
                     # 혁신성장 DOCX 생성
                     docx_file = generate_innovation_docx(
-                        row_data, innovation_type, innovation_category, business_overview, row, file_texts
+                        row_data, innovation_type, innovation_category, business_overview, row, file_texts, smart_tech_type
                     )
                     
                     if docx_file:
@@ -2163,7 +2167,7 @@ def auto_docx_innovation(request):
             'error': f'서버 오류가 발생했습니다: {str(e)}'
         })
 
-def generate_innovation_docx(row_data, innovation_type, innovation_category, business_overview, row, file_texts):
+def generate_innovation_docx(row_data, innovation_type, innovation_category, business_overview, row, file_texts, smart_tech_type=None):
     """혁신성장 사업계획서 DOCX 생성"""
     try:
         print("=== generate_innovation_docx 함수 시작 ===")
@@ -2182,7 +2186,7 @@ def generate_innovation_docx(row_data, innovation_type, innovation_category, bus
         fill_company_info_in_docx(doc, row_data)
         
         # 혁신성장 정보 추가 (company_info 포함)
-        add_innovation_info_to_docx(doc, innovation_type, innovation_category, business_overview, row_data)
+        add_innovation_info_to_docx(doc, innovation_type, innovation_category, business_overview, row_data, smart_tech_type)
         
         # 파일 정보 추가 (있는 경우)
         if file_texts:
@@ -2200,7 +2204,7 @@ def generate_innovation_docx(row_data, innovation_type, innovation_category, bus
         print(f"generate_innovation_docx 함수 오류: {e}")
         return None
 
-def add_innovation_info_to_docx(doc, innovation_type, innovation_category, business_overview, company_info=None):
+def add_innovation_info_to_docx(doc, innovation_type, innovation_category, business_overview, company_info=None, smart_tech_type=None):
     """DOCX에 혁신성장 정보 추가"""
     try:
         print("=== add_innovation_info_to_docx 함수 시작 ===")
@@ -2225,7 +2229,14 @@ def add_innovation_info_to_docx(doc, innovation_type, innovation_category, busin
 혁신성장 지원사업 정보
 
 • 지원 유형: {innovation_type}
-• 세부 카테고리: {innovation_category}
+• 세부 카테고리: {innovation_category}"""
+        
+        # 스마트 기술 세부 정보 추가
+        if innovation_category == "스마트 기술" and smart_tech_type:
+            innovation_text += f"""
+• 스마트 기술 세부 유형: {smart_tech_type}"""
+        
+        innovation_text += f"""
 
 사업 개요:
 {business_overview}
@@ -2342,11 +2353,13 @@ def auto_docx_innovation_recommend(request):
                 row_id = data.get('row_id')
                 innovation_type = data.get('innovation_type', '').strip()
                 innovation_category = data.get('innovation_category', '').strip()
+                smart_tech_type = data.get('smart_tech_type', '').strip()
                 
                 print(f"추출된 값들:")
                 print(f"  - row_id: {row_id} (타입: {type(row_id)})")
                 print(f"  - innovation_type: '{innovation_type}' (타입: {type(innovation_type)})")
                 print(f"  - innovation_category: '{innovation_category}' (타입: {type(innovation_category)})")
+                print(f"  - smart_tech_type: '{smart_tech_type}' (타입: {type(smart_tech_type)})")
                 
                 if not row_id:
                     return JsonResponse({
@@ -2401,17 +2414,23 @@ def auto_docx_innovation_recommend(request):
                     
                     # OpenAI API를 통해 혁신성장 사업 개요 생성
                     company_info = generate_innovation_business_overview_with_openai(
-                        row_data, innovation_type, innovation_category, row, file_texts
+                        row_data, innovation_type, innovation_category, row, file_texts, smart_tech_type
                     )
                     
                     if company_info:
-                        return JsonResponse({
+                        response_data = {
                             'success': True,
                             'company_info': company_info,
                             'business_overview': company_info.get('business_overview', ''),
                             'innovation_type': innovation_type,
                             'innovation_category': innovation_category
-                        })
+                        }
+                        
+                        # 스마트 기술 세부 정보가 있으면 추가
+                        if smart_tech_type:
+                            response_data['smart_tech_type'] = smart_tech_type
+                        
+                        return JsonResponse(response_data)
                     else:
                         return JsonResponse({
                             'success': False,
@@ -2455,7 +2474,7 @@ def auto_docx_innovation_recommend(request):
             'error': f'서버 오류가 발생했습니다: {str(e)}'
         })
 
-def generate_innovation_business_overview_with_openai(row_data, innovation_type, innovation_category, row, file_texts):
+def generate_innovation_business_overview_with_openai(row_data, innovation_type, innovation_category, row, file_texts, smart_tech_type=None):
     """OpenAI API를 사용하여 혁신성장 사업 개요 및 기업 정보 생성"""
 
     try:
@@ -2579,6 +2598,17 @@ def generate_innovation_business_overview_with_openai(row_data, innovation_type,
             - 사업 개요는 200-300자 내외로 작성
             """
         else:  # 일반형
+            # 스마트 기술 세부 정보 추가
+            smart_tech_info = ""
+            if innovation_category == "스마트 기술" and smart_tech_type:
+                smart_tech_info = f"""
+                
+                **스마트 기술 세부 유형: {smart_tech_type}**
+                - 선택된 스마트 기술을 활용하여 사업의 효율성과 혁신성을 강조해야 합니다.
+                - {smart_tech_type} 기술을 통한 구체적인 사업 개선 방안을 제시해야 합니다.
+                - 해당 기술이 기업의 경쟁력 향상에 미치는 영향을 명확히 설명해야 합니다.
+                """
+            
             innovation_prompt = f"""
             다음은 일반형 소상공인 지원사업에 대한 정보입니다:
             
@@ -2588,7 +2618,7 @@ def generate_innovation_business_overview_with_openai(row_data, innovation_type,
             3. 사회적경제기업: 사회적 가치 창출 기업 지원
             4. 신사업 창업 사관학교 수료생: 창업 역량 강화 기업 지원
             
-            선택된 세부 카테고리: {innovation_category}
+            선택된 세부 카테고리: {innovation_category}{smart_tech_info}
             
             위 기업 정보와 첨부 파일을 바탕으로 다음을 수행해주세요:
             
