@@ -542,22 +542,37 @@ function showSmartTechDetails() {
 
       smartTechContainer.innerHTML = `
         <label for="smartTechType">스마트 기술 세부 유형</label>
-        <select id="smartTechType" name="smartTechType">
-          <option value="">스마트 기술 세부 유형을 선택해주세요</option>
-          <option value="3D">1. 3D</option>
-          <option value="AI, IoT">2. AI, IoT</option>
-          <option value="VR, AR">3. VR, AR</option>
-          <option value="키오스크">4. 키오스크</option>
-          <option value="디지털오더">5. 디지털오더</option>
-          <option value="무인판매기">6. 무인판매기</option>
-          <option value="로봇">7. 로봇</option>
-          <option value="사이니지">8. 사이니지</option>
-        </select>
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <input type="text" id="smartTechType" name="smartTechType" placeholder="스마트 기술 세부 유형을 입력해주세요" style="flex: 1;">
+          <button type="button" id="smartTechExamplesBtn" style="padding: 8px 12px; background-color: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='#5a6268'" onmouseout="this.style.backgroundColor='#6c757d'">예시 보기</button>
+        </div>
+        <div id="smartTechExamples" style="display: none; margin-top: 10px; padding: 10px; background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px;">
+          <p style="margin: 0 0 8px 0; font-weight: bold; color: #495057;">스마트 기술 예시:</p>
+          <div style="display: flex; flex-wrap: wrap; gap: 5px;">
+            <span class="smart-tech-example" style="padding: 4px 8px; background-color: #e9ecef; border-radius: 3px; cursor: pointer; font-size: 12px; border: 1px solid #ced4da; transition: all 0.2s;" onmouseover="this.style.backgroundColor='#dee2e6'; this.style.borderColor='#adb5bd'" onmouseout="this.style.backgroundColor='#e9ecef'; this.style.borderColor='#ced4da'">3D</span>
+            <span class="smart-tech-example" style="padding: 4px 8px; background-color: #e9ecef; border-radius: 3px; cursor: pointer; font-size: 12px; border: 1px solid #ced4da; transition: all 0.2s;" onmouseover="this.style.backgroundColor='#dee2e6'; this.style.borderColor='#adb5bd'" onmouseout="this.style.backgroundColor='#e9ecef'; this.style.borderColor='#ced4da'">AI, IoT</span>
+            <span class="smart-tech-example" style="padding: 4px 8px; background-color: #e9ecef; border-radius: 3px; cursor: pointer; font-size: 12px; border: 1px solid #ced4da; transition: all 0.2s;" onmouseover="this.style.backgroundColor='#dee2e6'; this.style.borderColor='#adb5bd'" onmouseout="this.style.backgroundColor='#e9ecef'; this.style.borderColor='#ced4da'">VR, AR</span>
+            <span class="smart-tech-example" style="padding: 4px 8px; background-color: #e9ecef; border-radius: 3px; cursor: pointer; font-size: 12px; border: 1px solid #ced4da; transition: all 0.2s;" onmouseover="this.style.backgroundColor='#dee2e6'; this.style.borderColor='#adb5bd'" onmouseout="this.style.backgroundColor='#e9ecef'; this.style.borderColor='#ced4da'">키오스크</span>
+            <span class="smart-tech-example" style="padding: 4px 8px; background-color: #e9ecef; border-radius: 3px; cursor: pointer; font-size: 12px; border: 1px solid #ced4da; transition: all 0.2s;" onmouseover="this.style.backgroundColor='#dee2e6'; this.style.borderColor='#adb5bd'" onmouseout="this.style.backgroundColor='#e9ecef'; this.style.borderColor='#ced4da'">디지털오더</span>
+            <span class="smart-tech-example" style="padding: 4px 8px; background-color: #e9ecef; border-radius: 3px; cursor: pointer; font-size: 12px; border: 1px solid #ced4da; transition: all 0.2s;" onmouseover="this.style.backgroundColor='#dee2e6'; this.style.borderColor='#adb5bd'" onmouseout="this.style.backgroundColor='#e9ecef'; this.style.borderColor='#ced4da'">무인판매기</span>
+            <span class="smart-tech-example" style="padding: 4px 8px; background-color: #e9ecef; border-radius: 3px; cursor: pointer; font-size: 12px; border: 1px solid #ced4da; transition: all 0.2s;" onmouseover="this.style.backgroundColor='#dee2e6'; this.style.borderColor='#adb5bd'" onmouseout="this.style.backgroundColor='#e9ecef'; this.style.borderColor='#ced4da'">로봇</span>
+            <span class="smart-tech-example" style="padding: 4px 8px; background-color: #e9ecef; border-radius: 3px; cursor: pointer; font-size: 12px; border: 1px solid #ced4da; transition: all 0.2s;" onmouseover="this.style.backgroundColor='#dee2e6'; this.style.borderColor='#adb5bd'" onmouseout="this.style.backgroundColor='#e9ecef'; this.style.borderColor='#ced4da'">사이니지</span>
+            <span class="smart-tech-example" style="padding: 4px 8px; background-color: #e9ecef; border-radius: 3px; cursor: pointer; font-size: 12px; border: 1px solid #ced4da; transition: all 0.2s;" onmouseover="this.style.backgroundColor='#dee2e6'; this.style.borderColor='#adb5bd'" onmouseout="this.style.backgroundColor='#e9ecef'; this.style.borderColor='#ced4da'">전자칠판</span>
+            <span class="smart-tech-example" style="padding: 4px 8px; background-color: #e9ecef; border-radius: 3px; cursor: pointer; font-size: 12px; border: 1px solid #ced4da; transition: all 0.2s;" onmouseover="this.style.backgroundColor='#dee2e6'; this.style.borderColor='#adb5bd'" onmouseout="this.style.backgroundColor='#e9ecef'; this.style.borderColor='#ced4da'">구독형 S/W</span>
+            <span class="smart-tech-example" style="padding: 4px 8px; background-color: #e9ecef; border-radius: 3px; cursor: pointer; font-size: 12px; border: 1px solid #ced4da; transition: all 0.2s;" onmouseover="this.style.backgroundColor='#dee2e6'; this.style.borderColor='#adb5bd'" onmouseout="this.style.backgroundColor='#e9ecef'; this.style.borderColor='#ced4da'">통합관리시스템</span>
+            <span class="smart-tech-example" style="padding: 4px 8px; background-color: #e9ecef; border-radius: 3px; cursor: pointer; font-size: 12px; border: 1px solid #ced4da; transition: all 0.2s;" onmouseover="this.style.backgroundColor='#dee2e6'; this.style.borderColor='#adb5bd'" onmouseout="this.style.backgroundColor='#e9ecef'; this.style.borderColor='#ced4da'">자동화</span>
+            <span class="smart-tech-example" style="padding: 4px 8px; background-color: #e9ecef; border-radius: 3px; cursor: pointer; font-size: 12px; border: 1px solid #ced4da; transition: all 0.2s;" onmouseover="this.style.backgroundColor='#dee2e6'; this.style.borderColor='#adb5bd'" onmouseout="this.style.backgroundColor='#e9ecef'; this.style.borderColor='#ced4da'">배달의 민족</span>
+            <span class="smart-tech-example" style="padding: 4px 8px; background-color: #e9ecef; border-radius: 3px; cursor: pointer; font-size: 12px; border: 1px solid #ced4da; transition: all 0.2s;" onmouseover="this.style.backgroundColor='#dee2e6'; this.style.borderColor='#adb5bd'" onmouseout="this.style.backgroundColor='#e9ecef'; this.style.borderColor='#ced4da'">네이버 스마트 플레이스</span>
+          </div>
+        </div>
       `;
 
       // 혁신성장 카테고리 필드 다음에 삽입
       innovationCategoryField.parentNode.insertBefore(smartTechContainer, innovationCategoryField.nextSibling);
       console.log("스마트 기술 컨테이너 생성 및 삽입 완료");
+
+      // 이벤트 리스너 추가
+      setupSmartTechEventListeners();
     } else {
       console.error("혁신성장 카테고리 필드를 찾을 수 없습니다.");
       return;
@@ -567,6 +582,9 @@ function showSmartTechDetails() {
   if (smartTechContainer) {
     smartTechContainer.style.display = "block";
     console.log("스마트 기술 세부 옵션 표시됨");
+
+    // 이벤트 리스너 설정
+    setupSmartTechEventListeners();
   } else {
     console.error("스마트 기술 컨테이너를 표시할 수 없습니다.");
   }
@@ -582,11 +600,81 @@ function hideSmartTechDetails() {
   if (smartTechContainer) {
     smartTechContainer.style.display = "none";
     // 값 초기화
-    const smartTechSelect = smartTechContainer.querySelector("#smartTechType");
-    if (smartTechSelect) {
-      smartTechSelect.value = "";
+    const smartTechInput = smartTechContainer.querySelector("#smartTechType");
+    if (smartTechInput) {
+      smartTechInput.value = "";
+    }
+    // 예시 숨기기
+    const examplesDiv = smartTechContainer.querySelector("#smartTechExamples");
+    if (examplesDiv) {
+      examplesDiv.style.display = "none";
     }
     console.log("스마트 기술 세부 옵션 숨김");
+  }
+}
+
+function setupSmartTechEventListeners() {
+  const modal = document.getElementById("docxModal");
+  if (!modal) {
+    return;
+  }
+
+  const smartTechContainer = modal.querySelector("#smartTechDetails");
+  if (!smartTechContainer) {
+    return;
+  }
+
+  // 예시 보기 버튼 이벤트
+  const examplesBtn = smartTechContainer.querySelector("#smartTechExamplesBtn");
+  if (examplesBtn) {
+    examplesBtn.removeEventListener("click", toggleSmartTechExamples);
+    examplesBtn.addEventListener("click", toggleSmartTechExamples);
+  }
+
+  // 예시 클릭 이벤트
+  const exampleSpans = smartTechContainer.querySelectorAll(".smart-tech-example");
+  exampleSpans.forEach((span) => {
+    span.removeEventListener("click", selectSmartTechExample);
+    span.addEventListener("click", selectSmartTechExample);
+  });
+}
+
+function toggleSmartTechExamples() {
+  const modal = document.getElementById("docxModal");
+  if (!modal) {
+    return;
+  }
+
+  const smartTechContainer = modal.querySelector("#smartTechDetails");
+  if (!smartTechContainer) {
+    return;
+  }
+
+  const examplesDiv = smartTechContainer.querySelector("#smartTechExamples");
+  const examplesBtn = smartTechContainer.querySelector("#smartTechExamplesBtn");
+
+  if (examplesDiv && examplesBtn) {
+    if (examplesDiv.style.display === "none" || examplesDiv.style.display === "") {
+      examplesDiv.style.display = "block";
+      examplesBtn.textContent = "예시 숨기기";
+    } else {
+      examplesDiv.style.display = "none";
+      examplesBtn.textContent = "예시 보기";
+    }
+  }
+}
+
+function selectSmartTechExample(event) {
+  const selectedText = event.target.textContent;
+  const modal = document.getElementById("docxModal");
+  if (!modal) {
+    return;
+  }
+
+  const smartTechInput = modal.querySelector("#smartTechType");
+  if (smartTechInput) {
+    smartTechInput.value = selectedText;
+    console.log("선택된 스마트 기술:", selectedText);
   }
 }
 
@@ -771,7 +859,7 @@ function getInnovationRecommendation() {
 
   const innovationType = modal.querySelector("#innovationType").value;
   const innovationCategory = modal.querySelector("#innovationCategory").value;
-  const smartTechType = modal.querySelector("#smartTechType") ? modal.querySelector("#smartTechType").value : "";
+  const smartTechType = modal.querySelector("#smartTechType") ? modal.querySelector("#smartTechType").value.trim() : "";
 
   if (!innovationType || !innovationCategory) {
     alert("혁신성장 유형과 세부 카테고리를 모두 선택해주세요.");
@@ -1121,6 +1209,9 @@ window.handleInnovationCategoryChange = handleInnovationCategoryChange;
 window.updateSmartTechDetails = updateSmartTechDetails;
 window.showSmartTechDetails = showSmartTechDetails;
 window.hideSmartTechDetails = hideSmartTechDetails;
+window.setupSmartTechEventListeners = setupSmartTechEventListeners;
+window.toggleSmartTechExamples = toggleSmartTechExamples;
+window.selectSmartTechExample = selectSmartTechExample;
 window.closeDocxModal = closeDocxModal;
 window.getOpenAIRecommendation = getOpenAIRecommendation;
 window.generateDocx = generateDocx;

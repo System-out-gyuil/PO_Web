@@ -2606,8 +2606,10 @@ def generate_innovation_business_overview_with_openai(row_data, innovation_type,
                 **스마트 기술 세부 유형: {smart_tech_type}**
                 - 선택된 스마트 기술을 활용하여 사업의 효율성과 혁신성을 강조해야 합니다.
                 - {smart_tech_type} 기술을 통한 구체적인 사업 개선 방안을 제시해야 합니다.
+                - 해당 기술은 개발하는 것이 아닌 사용중이라고 가정합니다.
                 - 해당 기술이 기업의 경쟁력 향상에 미치는 영향을 명확히 설명해야 합니다.
                 """
+            
             
             innovation_prompt = f"""
             다음은 일반형 소상공인 지원사업에 대한 정보입니다:
