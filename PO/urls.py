@@ -9,7 +9,7 @@ from .sitemap import sitemaps
 from django.contrib.sitemaps.views import sitemap
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    # path('admin/', admin.site.urls),
 
     path('', MainView.as_view(), name='main'),
     path('terms_of_service/', TermsOfServiceView.as_view(), name='terms_of_service'),

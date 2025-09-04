@@ -1,11 +1,9 @@
 User-agent: *
 Disallow: /board/*?page_index=
 Disallow: /po_admin/
-Allow: /board/detail/
 
 User-agent: Yeti
 Disallow: /board/*?page_index=
 Disallow: /po_admin/
-Allow: /board/detail/
 
 Sitemap: https://namatji.com/sitemap.xml
