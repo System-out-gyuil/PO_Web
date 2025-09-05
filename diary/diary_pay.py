@@ -18,6 +18,7 @@ def diary_pay(request):
 
     billing_type = None
     last_billing_date = None
+    rebill_date = None
     billing_activate = None
     has_active_subscription = False
     current_use_date = None
@@ -32,6 +33,7 @@ def diary_pay(request):
             print(f'true')
             billing_type = billing_key.billing_type
             last_billing_date = billing_key.last_billing_date
+            rebill_date = billing_key.rebill_date
             billing_activate = billing_key.billing_activate
             has_billing = True
 
@@ -91,6 +93,7 @@ def diary_pay(request):
       'customer_key': customer_key,
       'billing_type': billing_type,
       'last_billing_date': last_billing_date,
+      'rebill_date': rebill_date,
       'billing_activate': billing_activate,
       'has_active_subscription': has_active_subscription,
       'current_use_date': current_use_date,

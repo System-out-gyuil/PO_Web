@@ -394,7 +394,7 @@
             <p><strong>결제 주기:</strong> 매월 자동 결제</p>
             <p><strong>현재 사용 가능일:</strong> <span id="subCurrentDate">{{ current_use_date|date:"Y-m-d" }}</span></p>
             <p><strong>남은 기간:</strong> <span id="subRemainingDays">{{ remaining_days }}</span>일</p>
-            <p><strong>다음 결제일:</strong> <span id="subNextBillingDate">{{ last_billing_date|date:"Y-m-d" }}</span></p>
+            <p><strong>다음 결제일:</strong> <span id="subNextBillingDate">{{ rebill_date|date:"Y-m-d" }}</span></p>
             {% if card_info %}
             <div class="card-info" style="margin-top: 15px; padding: 10px; background-color: #f8f9fa; border-radius: 5px">
               <h5 style="margin: 0 0 10px 0; color: #495057">등록된 카드 정보</h5>
