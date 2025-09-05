@@ -25,25 +25,29 @@ from .auto_docx import auto_docx, auto_docx_recommend, auto_docx_innovation, aut
 from .diary_use_preview import diary_use_preview
 from .diary_pay import diary_pay
 from .facebook_meta_db import facebook_meta_db
-from .toss_payments import TossPaymentsView, TossPaymentsSuccessView, TossPaymentsFailView, PaymentAuthSuccessView, PaymentAuthFailView, IssueBillingKeyView, SubscriptionManagementView, CancelSubscriptionView, UpdateBillingTypeView
+from .toss_payments import TossPaymentsView, TossPaymentsSuccessView, TossPaymentsFailView, PaymentAuthSuccessView, PaymentAuthFailView, SubscriptionManagementView, CancelSubscriptionView, UpdateBillingTypeView, RequestPaymentView, UnlinkCardView, RequestBillingAuthView
 
 app_name = 'sales'
 
 urlpatterns = [
+    # API 엔드포인트를 최상단에 배치
+    path('api/payment/auth-success/', PaymentAuthSuccessView.as_view(), name='payment_auth_success'),
+    path('api/payment/auth-fail/', PaymentAuthFailView.as_view(), name='payment_auth_fail'),
+    path('api/payment/request-payment/', RequestPaymentView.as_view(), name='request_payment'),
+    path('api/payment/request-billing-auth/', RequestBillingAuthView.as_view(), name='request_billing_auth'),
+    path('api/payment/unlink-card/', UnlinkCardView.as_view(), name='unlink_card'),
+    path('test-payment/', RequestPaymentView.as_view(), name='test_payment'),
+    
+    # 일반 페이지들
     path('', DiaryMainView.as_view(), name='diary_main'),
     path('pay/', diary_pay, name='diary_pay'),
     path('toss_payments/', TossPaymentsView.as_view(), name='toss_payments'),
     path('toss-payments/success/', TossPaymentsSuccessView.as_view(), name='toss_payments_success'),
     path('toss-payments/fail/', TossPaymentsFailView.as_view(), name='toss_payments_fail'),
     
-    # 결제 인증 API 엔드포인트
-    path('api/payment/auth-success/', PaymentAuthSuccessView.as_view(), name='payment_auth_success'),
-    path('api/payment/auth-fail/', PaymentAuthFailView.as_view(), name='payment_auth_fail'),
-    path('api/payment/issue-billing-key/', IssueBillingKeyView.as_view(), name='issue_billing_key'),
-    
     # 구독 관리 관련 URL
     path('subscription/', SubscriptionManagementView.as_view(), name='subscription_management'),
-    path('api/subscription/cancel/', CancelSubscriptionView.as_view(), name='cancel_subscription'),
+    path('api/subscription/cancel-subscription/', CancelSubscriptionView.as_view(), name='cancel_subscription'),
     path('api/subscription/update-billing-type/', UpdateBillingTypeView.as_view(), name='update_billing_type'),
 
     # 로그인 관련 URL

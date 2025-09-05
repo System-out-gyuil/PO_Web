@@ -87,6 +87,9 @@
     </style>
   </head>
   <body>
+    <!-- 빌링키 결과 데이터 -->
+    {{ billing_result|json_script:"billing-result" }}
+
     <div class="success-container">
       <div class="success-card">
         <div class="success-icon">
@@ -94,17 +97,7 @@
         </div>
 
         <h1 class="text-3xl font-bold text-gray-800 mb-4">결제 인증 성공!</h1>
-        <p class="text-gray-600 mb-8">카드 정보가 성공적으로 인증되었습니다.</p>
-
-        <div class="info-box">
-          <div class="info-label">구매자 ID (customerKey)</div>
-          <div class="info-value" id="customerKey">{{ customer_key|default:"-" }}</div>
-        </div>
-
-        <div class="info-box">
-          <div class="info-label">인증 키 (authKey)</div>
-          <div class="info-value" id="authKey">{{ auth_key|default:"-" }}</div>
-        </div>
+        <p class="text-gray-600 mb-8">카드 정보가 성공적으로 저장되고 결제가 완료되었습니다.</p>
 
         <div class="mt-8">
           <a href="{% url 'sales:diary_pay' %}" class="btn-primary"> <i class="fas fa-arrow-left"></i> 결제 페이지로 돌아가기 </a>
@@ -122,7 +115,7 @@
         };
       }
 
-      // 페이지 로드 시 쿼리 파라미터 표시
+      // 페이지 로드 시 서버에서 처리된 결과 표시
       document.addEventListener("DOMContentLoaded", function () {
         const params = getQueryParams();
 
@@ -134,70 +127,19 @@
           document.getElementById("authKey").textContent = params.authKey;
         }
 
-        // 서버로 데이터 전송 (선택사항)
-        if (params.customerKey && params.authKey) {
-          sendToServer(params);
+        // 서버에서 이미 처리된 빌링키 결과 표시
+        const billingResultElement = document.getElementById("billing-result");
+        if (billingResultElement) {
+          const billingResult = JSON.parse(billingResultElement.textContent);
+          if (billingResult && billingResult.success) {
+            console.log("빌링키 발급 성공:", billingResult.data);
+            showBillingKeySuccess(billingResult.data);
+          } else if (billingResult && !billingResult.success) {
+            console.error("빌링키 발급 실패:", billingResult.error);
+            showBillingKeyError(billingResult.error);
+          }
         }
       });
-
-      // 서버로 인증 정보 전송 및 빌링키 발급
-      function sendToServer(params) {
-        // 1. 먼저 인증 정보를 서버에 저장
-        fetch("/sales/api/payment/auth-success/", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRFToken": getCookie("csrftoken"),
-          },
-          body: JSON.stringify({
-            customerKey: params.customerKey,
-            authKey: params.authKey,
-          }),
-        })
-          .then((response) => response.json())
-          .then((data) => {
-            console.log("인증 정보 서버 전송 성공:", data);
-
-            // 2. 빌링키 발급 요청
-            return issueBillingKey(params.customerKey, params.authKey);
-          })
-          .then((billingResult) => {
-            if (billingResult.success) {
-              console.log("빌링키 발급 성공:", billingResult.data);
-              showBillingKeySuccess(billingResult.data);
-            } else {
-              console.error("빌링키 발급 실패:", billingResult.error);
-              showBillingKeyError(billingResult.error);
-            }
-          })
-          .catch((error) => {
-            console.error("처리 중 오류:", error);
-            showBillingKeyError({ message: "처리 중 오류가 발생했습니다." });
-          });
-      }
-
-      // 빌링키 발급 요청
-      function issueBillingKey(customerKey, authKey) {
-        return fetch("/sales/api/payment/issue-billing-key/", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRFToken": getCookie("csrftoken"),
-          },
-          body: JSON.stringify({
-            customerKey: customerKey,
-            authKey: authKey,
-          }),
-        })
-          .then((response) => response.json())
-          .then((data) => {
-            if (data.status === "success") {
-              return { success: true, data: data.data };
-            } else {
-              return { success: false, error: data.error || data.message };
-            }
-          });
-      }
 
       // 빌링키 발급 성공 표시
       function showBillingKeySuccess(billingData) {

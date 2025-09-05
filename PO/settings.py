@@ -127,6 +127,7 @@ CRONJOBS = [
     
     ('0 10 * * *', 'django.core.management.call_command', ['solapi']), #매일 10시
     ('0 10 * * *', 'django.core.management.call_command', ['solapi_date_over']), #매일 10시
+    ('* * * * *', 'django.core.management.call_command', ['toss_payments_auto']), #매분
 ]
 
 SITE_ID = 18 #sitemap 

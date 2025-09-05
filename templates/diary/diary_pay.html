@@ -6,10 +6,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>이용권 구매 - 자금왕</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <link rel="stylesheet" href="{% static 'diary/pay/diary_pay.css' %}" />
     <link rel="stylesheet" href="{% static 'diary/base/base.css' %}" />
     <link rel="icon" href="{% static 'images/자금왕_favicon.png' %}" />
+
+    <!-- Font Awesome 비동기 로딩 (더 빠른 CDN) -->
+    <link
+      rel="preload"
+      href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css"
+      as="style"
+      onload="this.onload=null;this.rel='stylesheet'"
+    />
+    <noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" /></noscript>
+
+    <script src="https://js.tosspayments.com/v2/standard"></script>
   </head>
   <body>
     {% include 'diary/header.html' %}
@@ -21,7 +31,11 @@
           <div class="pay-box-content">
             <div class="pay-box-price"><span class="pay-box-price-number">15</span>만원</div>
             <div class="pay-box-button-wrap">
-              <button class="pay-box-button">구매하기</button>
+              {% if billing_type == '1' and billing_activate %}
+              <button class="pay-box-button" onclick="showSubscriptionInfo()" style="background-color: #10b981">구독 정보 보기</button>
+              {% else %}
+              <button class="pay-box-button" onclick="showSubscriptionInfo()">구독하기</button>
+              {% endif %}
             </div>
             <div class="pay-box-price-explain">계약율 평균 30% 향상</div>
             <div class="pay-box-price-explain">자료 찾는 시간 90% 단축</div>
@@ -34,7 +48,11 @@
           <div class="pay-box-content">
             <div class="pay-box-price"><span class="pay-box-price-number">72</span>만원</div>
             <div class="pay-box-button-wrap">
-              <button class="pay-box-button">구매하기</button>
+              {% if has_active_subscription %}
+              <button class="pay-box-button" disabled style="background-color: #9ca3af; cursor: not-allowed">구매하기</button>
+              {% else %}
+              <button class="pay-box-button" onclick="showPurchaseModal('2', 6, 720000)">구매하기</button>
+              {% endif %}
             </div>
             <div class="pay-box-price-explain">계약율 평균 30% 향상</div>
             <div class="pay-box-price-explain">자료 찾는 시간 90% 단축</div>
@@ -47,7 +65,11 @@
           <div class="pay-box-content">
             <div class="pay-box-price"><span class="pay-box-price-number">120</span>만원</div>
             <div class="pay-box-button-wrap">
-              <button class="pay-box-button">구매하기</button>
+              {% if has_active_subscription %}
+              <button class="pay-box-button" disabled style="background-color: #9ca3af; cursor: not-allowed">구매하기</button>
+              {% else %}
+              <button class="pay-box-button" onclick="showPurchaseModal('3', 12, 1200000)">구매하기</button>
+              {% endif %}
             </div>
             <div class="pay-box-price-explain">계약율 평균 30% 향상</div>
             <div class="pay-box-price-explain">자료 찾는 시간 90% 단축</div>
@@ -59,10 +81,522 @@
       <div class="pay-box-price-explain-wrap">
         <div class="pay-box-price-explain pay-box-price-explain-wrap-text">위 상품의 최대 이용기간은 1년입니다.</div>
         <a class="pay-box-price-explain-link" href="{% url 'sales:terms_of_service' %}#section20">
-          <div class="pay-box-price-explain-link-text">환불 규정 안내 <i class="fa-solid fa-arrow-right"></i></div>
+          <div class="pay-box-price-explain-link-text">환불 규정 안내</div>
         </a>
       </div>
     </section>
+
+    <script>
+      // ------  SDK 초기화 ------
+      // @docs https://docs.tosspayments.com/sdk/v2/js#토스페이먼츠-초기화
+      const clientKey = "{{ client_key }}";
+      const customerKey = "{{ customer_key }}";
+      const tossPayments = TossPayments(clientKey);
+      // 회원 결제
+      // @docs https://docs.tosspayments.com/sdk/v2/js#tosspaymentspayment
+      const payment = tossPayments.payment({ customerKey });
+      // 비회원 결제
+      // const payment = tossPayments.payment({customerKey: TossPayments.ANONYMOUS})
+      // ------ '카드 등록하기' 버튼 누르면 결제창 띄우기 ------
+      // @docs https://docs.tosspayments.com/sdk/v2/js#paymentrequestpayment
+      async function requestBillingAuth(type) {
+        console.log('requestBillingAuth 호출됨, type:', type);
+
+        // 세션에 billing_type 저장
+        try {
+          await fetch('/sales/api/payment/request-billing-auth/', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': getCookie('csrftoken'),
+            },
+            body: JSON.stringify({
+              billing_type: type,
+              customer_key: customerKey
+            })
+          });
+        } catch (error) {
+          console.error('billing_type 저장 오류:', error);
+        }
+
+        // Toss Payments 빌링키 발급 요청
+        await payment.requestBillingAuth({
+          method: "CARD", // 자동결제(빌링)는 카드만 지원합니다
+          successUrl: window.location.origin + "/sales/toss-payments/success/", // 요청이 성공하면 리다이렉트되는 URL
+          failUrl: window.location.origin + "/sales/toss-payments/fail/", // 요청이 실패하면 리다이렉트되는 URL
+          customerEmail: "{{ user_email }}",
+          customerName: "{{ user_name }}",
+        });
+      }
+
+      // ------ 구독해제 기능 ------
+      async function cancelSubscription() {
+        if (confirm("정말로 구독을 해제하시겠습니까?")) {
+          try {
+            const response = await fetch("/sales/api/subscription/cancel-subscription/", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": getCookie("csrftoken"),
+              },
+              body: JSON.stringify({
+                billingType: "1",
+              }),
+            });
+
+            const result = await response.json();
+
+            if (result.status === "success") {
+              alert("구독이 성공적으로 해제되었습니다.");
+              location.reload(); // 페이지 새로고침
+            } else {
+              alert("구독 해제에 실패했습니다: " + result.message);
+            }
+          } catch (error) {
+            console.error("구독 해제 오류:", error);
+            alert("구독 해제 중 오류가 발생했습니다.");
+          }
+        }
+      }
+
+                  // 구독 정보 모달 표시 (1개월 구독 전용)
+      function showSubscriptionInfo() {
+        // 1개월 구독은 항상 구독 정보 모달 표시
+        document.getElementById('subscriptionModal').style.display = 'flex';
+
+        // 구독하지 않은 경우 구독 후 사용 가능일 및 다음 정기 결제일 계산
+        {% if not billing_type == '1' or not billing_activate %}
+        // 남은 사용기간을 기준으로 계산
+        const currentUseDate = new Date('{{ current_use_date|date:"Y-m-d" }}');
+        const remainingDays = {{ remaining_days }};
+
+        // 구독 후 사용 가능일 (현재 사용 가능일 + 30일)
+        const newDate = new Date(currentUseDate);
+        newDate.setDate(currentUseDate.getDate() + 30);
+        document.getElementById('subNewDate').textContent = newDate.toISOString().split('T')[0];
+
+        // 다음 정기 결제일 (구독 후 사용 가능일과 동일)
+        document.getElementById('subNextBillingDate').textContent = newDate.toISOString().split('T')[0];
+        {% endif %}
+      }
+
+      // 구독하기 모달 표시
+      function showSubscribeModal() {
+        // 구독하기 확인 모달 내용 업데이트
+        document.getElementById('modalProductName').textContent = '1개월 자동정기결제';
+        document.getElementById('modalPrice').textContent = '150,000';
+        document.getElementById('modalDuration').textContent = '1';
+
+        // 구매 후 사용 가능일 계산 (1개월)
+        const today = new Date();
+        const newDate = new Date(today);
+        newDate.setDate(today.getDate() + 30);
+
+        document.getElementById('modalNewDate').textContent = newDate.toISOString().split('T')[0];
+
+        // 구독하기 모달 표시
+        document.getElementById('purchaseModal').style.display = 'flex';
+      }
+
+      // 구독 정보 모달 닫기
+      function closeSubscriptionModal() {
+        document.getElementById('subscriptionModal').style.display = 'none';
+      }
+
+      // 구독하기 확인
+      function confirmSubscription() {
+        console.log('confirmSubscription 호출됨, has_billing:', "{{ has_billing }}");
+        has_billing = "{{ has_billing }}";
+        // 빌링키가 있는 경우 바로 결제, 없는 경우 카드 등록
+        if (has_billing == 'True') {
+          // 이미 빌링키가 있는 경우 바로 결제
+          console.log('빌링키가 있는 경우 바로 결제');
+          closeSubscriptionModal();
+          requestPaymentWithBillingKey('1');
+        } else {
+          // 빌링키가 없는 경우 카드 등록
+          console.log('빌링키가 없는 경우 카드 등록');
+          closeSubscriptionModal();
+          requestBillingAuth('1');
+        }
+      }
+
+      // 빌링키가 있는 경우 바로 결제
+      function requestPaymentWithBillingKey(billingType) {
+        console.log('requestPaymentWithBillingKey 호출됨, billingType:', billingType);
+        console.log('billingType 타입:', typeof billingType);
+        const csrfToken = getCookie('csrftoken');
+        console.log('CSRF Token:', csrfToken);
+
+        // 빌링키로 바로 결제 요청
+        fetch('/sales/api/payment/request-payment/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken,
+          },
+          body: JSON.stringify({
+            billingType: billingType,
+          }),
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.status === 'success') {
+            alert('결제가 완료되었습니다.');
+            location.reload();
+          } else {
+            alert('결제 실패: ' + data.message);
+          }
+        })
+        .catch(error => {
+          console.error('결제 오류:', error);
+          alert('결제 중 오류가 발생했습니다.');
+        });
+      }
+
+      // CSRF 토큰 가져오기 함수
+      function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== "") {
+          const cookies = document.cookie.split(";");
+          for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === name + "=") {
+              cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+              break;
+            }
+          }
+        }
+        return cookieValue;
+      }
+
+      // 모달 관련 변수
+      let currentPurchaseType = null;
+      let currentPurchaseDuration = null;
+      let currentPurchasePrice = null;
+
+      // 구매 모달 표시
+      function showPurchaseModal(type, duration, price) {
+        currentPurchaseType = type;
+        currentPurchaseDuration = duration;
+        currentPurchasePrice = price;
+
+        // 모달 내용 업데이트
+        document.getElementById('modalProductName').textContent = `${duration}개월 이용권`;
+        document.getElementById('modalPrice').textContent = price.toLocaleString();
+        document.getElementById('modalDuration').textContent = duration;
+
+        // 구매 후 사용 가능일 계산
+        const currentDate = new Date('{{ current_use_date|date:"Y-m-d" }}');
+        const remainingDays = {{ remaining_days }};
+
+        // 오늘 날짜를 기준으로 계산
+        const today = new Date();
+        const newDate = new Date(today);
+        newDate.setDate(today.getDate() + remainingDays + (duration * 30));
+
+        document.getElementById('modalNewDate').textContent = newDate.toISOString().split('T')[0];
+
+        // 모달 표시
+        document.getElementById('purchaseModal').style.display = 'flex';
+      }
+
+      // 구매 모달 닫기
+      function closePurchaseModal() {
+        document.getElementById('purchaseModal').style.display = 'none';
+        currentPurchaseType = null;
+        currentPurchaseDuration = null;
+        currentPurchasePrice = null;
+      }
+
+      // 구매 확인
+      function confirmPurchase() {
+        console.log('confirmPurchase 호출됨, currentPurchaseType:', currentPurchaseType);
+        if (currentPurchaseType) {
+          // 6개월, 1년 구매인 경우
+          console.log('6개월/1년 구매, currentPurchaseType:', currentPurchaseType);
+          const purchaseType = currentPurchaseType; // 값 저장
+          closePurchaseModal(); // 모달 닫기
+          {% if has_billing %}
+          // 빌링키가 있는 경우 바로 결제
+          requestPaymentWithBillingKey(purchaseType);
+          {% else %}
+          // 빌링키가 없는 경우 카드 등록
+          requestBillingAuth(purchaseType);
+          {% endif %}
+        } else {
+          // 1개월 구독하기인 경우
+          console.log('1개월 구독, currentPurchaseType:', currentPurchaseType);
+          closePurchaseModal(); // 모달 닫기
+          {% if has_billing %}
+          // 빌링키가 있는 경우 바로 결제
+          requestPaymentWithBillingKey('1');
+          {% else %}
+          // 빌링키가 없는 경우 카드 등록
+          requestBillingAuth('1');
+          {% endif %}
+        }
+      }
+
+      // 카드 연동 해제
+      async function unlinkCard() {
+        if (confirm("카드 연동을 해제하시겠습니까? 해제 후에는 다시 카드를 등록해야 합니다.")) {
+          try {
+            const response = await fetch("/sales/api/payment/unlink-card/", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": getCookie("csrftoken"),
+              },
+            });
+
+            const result = await response.json();
+
+            if (result.status === "success") {
+              alert("카드 연동이 해제되었습니다.");
+              location.reload(); // 페이지 새로고침
+            } else {
+              alert("카드 연동 해제에 실패했습니다: " + result.message);
+            }
+          } catch (error) {
+            console.error("카드 연동 해제 오류:", error);
+            alert("카드 연동 해제 중 오류가 발생했습니다.");
+          }
+        }
+      }
+
+      // 모달 외부 클릭 시 닫기
+      window.onclick = function(event) {
+        const purchaseModal = document.getElementById('purchaseModal');
+        const subscriptionModal = document.getElementById('subscriptionModal');
+
+        if (event.target === purchaseModal) {
+          closePurchaseModal();
+        } else if (event.target === subscriptionModal) {
+          closeSubscriptionModal();
+        }
+      }
+    </script>
+
+    <!-- 구독 정보 모달 -->
+    <div id="subscriptionModal" class="modal" style="display: none">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>1개월 자동정기결제</h3>
+          <span class="close" onclick="closeSubscriptionModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+          <div class="subscription-info">
+            {% if billing_type == '1' and billing_activate %}
+            <!-- 이미 구독 중인 경우 -->
+            <h4>구독 정보</h4>
+            <p><strong>가격:</strong> 150,000원</p>
+            <p><strong>결제 주기:</strong> 매월 자동 결제</p>
+            <p><strong>현재 사용 가능일:</strong> <span id="subCurrentDate">{{ current_use_date|date:"Y-m-d" }}</span></p>
+            <p><strong>남은 기간:</strong> <span id="subRemainingDays">{{ remaining_days }}</span>일</p>
+            <p><strong>다음 결제일:</strong> <span id="subNextBillingDate">{{ last_billing_date|date:"Y-m-d" }}</span></p>
+            {% if card_info %}
+            <div class="card-info" style="margin-top: 15px; padding: 10px; background-color: #f8f9fa; border-radius: 5px">
+              <h5 style="margin: 0 0 10px 0; color: #495057">등록된 카드 정보</h5>
+              <p style="margin: 5px 0"><strong>카드번호:</strong> {{ card_info.number }}</p>
+              <p style="margin: 5px 0"><strong>카드사:</strong> {{ card_info.company }}</p>
+              <p style="margin: 5px 0"><strong>소유자:</strong> {{ card_info.ownerType }}</p>
+              <button
+                onclick="unlinkCard()"
+                style="
+                  margin-top: 10px;
+                  padding: 5px 10px;
+                  background-color: #dc3545;
+                  color: white;
+                  border: none;
+                  border-radius: 3px;
+                  cursor: pointer;
+                "
+              >
+                카드 연동 해제
+              </button>
+            </div>
+            {% endif %} {% else %}
+            <!-- 구독하지 않은 경우 -->
+            <h4>구독하기</h4>
+            <p><strong>가격:</strong> 150,000원</p>
+            <p><strong>결제 주기:</strong> 매월 자동 결제</p>
+            <p><strong>현재 사용 가능일:</strong> <span id="subCurrentDate">{{ current_use_date|date:"Y-m-d" }}</span></p>
+            <p><strong>남은 기간:</strong> <span id="subRemainingDays">{{ remaining_days }}</span>일</p>
+            <p><strong>구독 후 사용 가능일:</strong> <span id="subNewDate">-</span></p>
+            <p><strong>다음 정기 결제일:</strong> <span id="subNextBillingDate">-</span></p>
+            {% if card_info %}
+            <div class="card-info" style="margin-top: 15px; padding: 10px; background-color: #f8f9fa; border-radius: 5px">
+              <h5 style="margin: 0 0 10px 0; color: #495057">등록된 카드 정보</h5>
+              <p style="margin: 5px 0"><strong>카드번호:</strong> {{ card_info.number }}</p>
+              <p style="margin: 5px 0"><strong>카드사:</strong> {{ card_info.company }}</p>
+              <p style="margin: 5px 0"><strong>소유자:</strong> {{ card_info.ownerType }}</p>
+              <button
+                onclick="unlinkCard()"
+                style="
+                  margin-top: 10px;
+                  padding: 5px 10px;
+                  background-color: #dc3545;
+                  color: white;
+                  border: none;
+                  border-radius: 3px;
+                  cursor: pointer;
+                "
+              >
+                카드 연동 해제
+              </button>
+            </div>
+            {% endif %} {% endif %}
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-cancel" onclick="closeSubscriptionModal()">닫기</button>
+          {% if billing_type == '1' and billing_activate %}
+          <button class="btn-confirm" onclick="cancelSubscription()" style="background-color: #dc2626">구독해제하기</button>
+          {% else %}
+          <button class="btn-confirm" onclick="confirmSubscription()" style="background-color: #10b981">구독하기</button>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- 구매 확인 모달 -->
+    <div id="purchaseModal" class="modal" style="display: none">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>구매 확인</h3>
+          <span class="close" onclick="closePurchaseModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+          <div class="purchase-info">
+            <h4 id="modalProductName">상품명</h4>
+            <p><strong>가격:</strong> <span id="modalPrice">0</span>원</p>
+            <p><strong>기간:</strong> <span id="modalDuration">0</span>개월</p>
+            <p><strong>현재 사용 가능일:</strong> <span id="modalCurrentDate">{{ current_use_date|date:"Y-m-d" }}</span></p>
+            <p><strong>남은 기간:</strong> <span id="modalRemainingDays">{{ remaining_days }}</span>일</p>
+            <p><strong>구매 후 사용 가능일:</strong> <span id="modalNewDate">-</span></p>
+            {% if card_info %}
+            <div class="card-info" style="margin-top: 15px; padding: 10px; background-color: #f8f9fa; border-radius: 5px">
+              <h5 style="margin: 0 0 10px 0; color: #495057">등록된 카드 정보</h5>
+              <p style="margin: 5px 0"><strong>카드번호:</strong> {{ card_info.number }}</p>
+              <p style="margin: 5px 0"><strong>카드사:</strong> {{ card_info.company }}</p>
+              <p style="margin: 5px 0"><strong>소유자:</strong> {{ card_info.ownerType }}</p>
+              <button
+                onclick="unlinkCard()"
+                style="
+                  margin-top: 10px;
+                  padding: 5px 10px;
+                  background-color: #dc3545;
+                  color: white;
+                  border: none;
+                  border-radius: 3px;
+                  cursor: pointer;
+                "
+              >
+                카드 연동 해제
+              </button>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-cancel" onclick="closePurchaseModal()">취소</button>
+          <button class="btn-confirm" onclick="confirmPurchase()">구매하기</button>
+        </div>
+      </div>
+    </div>
+
+    <style>
+      .modal {
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .modal-content {
+        background-color: white;
+        border-radius: 10px;
+        padding: 0;
+        width: 90%;
+        max-width: 500px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+      }
+
+      .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px;
+        border-bottom: 1px solid #e5e7eb;
+      }
+
+      .modal-header h3 {
+        margin: 0;
+        color: #374151;
+      }
+
+      .close {
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+        color: #9ca3af;
+      }
+
+      .close:hover {
+        color: #374151;
+      }
+
+      .modal-body {
+        padding: 20px;
+      }
+
+      .purchase-info p {
+        margin: 10px 0;
+        color: #374151;
+      }
+
+      .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        padding: 20px;
+        border-top: 1px solid #e5e7eb;
+      }
+
+      .btn-cancel,
+      .btn-confirm {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: 600;
+      }
+
+      .btn-cancel {
+        background-color: #f3f4f6;
+        color: #374151;
+      }
+
+      .btn-confirm {
+        background-color: #3b82f6;
+        color: white;
+      }
+
+      .btn-cancel:hover {
+        background-color: #e5e7eb;
+      }
+
+      .btn-confirm:hover {
+        background-color: #2563eb;
+      }
+    </style>
 
     <script src="{% static 'diary/base/base.js' %}"></script>
     <script src="{% static 'diary/pay/diary_pay.js' %}"></script>

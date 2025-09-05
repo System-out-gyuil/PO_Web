@@ -596,7 +596,7 @@ class TossPaymentBillingKey(models.Model):
     last_billing_date = models.DateTimeField(null=True, blank=True)
 
     # 재결제 일시
-    rebill_date = models.DateField(null=True, blank=True)
+    rebill_date = models.DateTimeField(null=True, blank=True)
 
     # 1이면 결재 완료, 0이면 결재 실패
     billing_status = models.CharField(max_length=255)
@@ -604,6 +604,8 @@ class TossPaymentBillingKey(models.Model):
     # 활성화 시 재 결재
     # 1이면 활성화, 0이면 비활성화
     billing_activate = models.BooleanField(default=True)
+
+    billing_success_data = models.JSONField(default=dict, null=True, blank=True)
 
     class Meta:
         indexes = [
@@ -627,3 +629,19 @@ class PayAmount(models.Model):
 
     def __str__(self):
         return f"{self.amount_name} - {self.price}"
+
+class PayHistory(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='pay_history_user')
+    payment_data = models.JSONField(default=dict)
+    billing_success_data = models.JSONField(default=dict, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['user']),
+            models.Index(fields=['created_at']),
+        ]
+
+    def __str__(self):
+        return f"{self.user.name} - {self.payment_data}"
