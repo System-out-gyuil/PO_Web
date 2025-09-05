@@ -152,7 +152,6 @@ def get_funding_recommendation(request):
                                            & (Q(possible_industry__contains=biz_industry) | Q(possible_industry__contains='무관')) \
                                            & (Q(revenue__contains=biz_revenue) | Q(revenue__contains='무관'))\
                                            & (Q(business_period__contains=biz_business_months) | Q(business_period__contains='무관')) \
-                                           & (Q(target__contains=biz_employees) | Q(target__contains='무관'))\
                                            & (
                                                # 상세지역이 포함된 경우만
                                                Q(noti_summary__contains=biz_region_detail) | 
@@ -171,7 +170,6 @@ def get_funding_recommendation(request):
                                            & (Q(possible_industry__contains=biz_industry) | Q(possible_industry__contains='무관')) \
                                            & (Q(revenue__contains=biz_revenue) | Q(revenue__contains='무관'))\
                                            & (Q(business_period__contains=biz_business_months) | Q(business_period__contains='무관')) \
-                                           & (Q(target__contains=biz_employees) | Q(target__contains='무관'))
                                            ).exclude(
                                                # detail_region이 포함된 데이터 제외
                                                Q(noti_summary__contains=biz_region_detail) | 
