@@ -216,584 +216,615 @@ def main():
     
     # 테스트 케이스 정의
     test_samples = [
-        # === 그룹 A: 제조업/IT 기보 중심 (1-10번) ===
-        {
-            'id': 'TEST_001',
-            'description': '소규모 제조업 - 기보 최소 1억원 보장 테스트',
-            'data': {
-                'annual_revenue': 80_000_000,       # 0.8억 (20% = 1,600만원)
-                'credit_score': 820,
-                'is_manufacturing_it': True,
-                'existing_debt_kibo': 0,
-                'existing_debt_shinbo': 0,
-                'existing_debt_jaedan': 0,
-                'opening_date': '2022-03-15',
-                'age': 42,
-                'career_years': 8,
-                'employees': 3,
-                'is_special_employee_industry': True
+    # === 그룹 A: 제조업/IT 기보 중심 (1-10번) ===
+    
+            {
+                'id': 'TEST_001',
+                'description': '소규모 제조업 - 기보 최소 1억원 보장 테스트',
+                'data': {
+                    'annual_revenue': 80_000_000,       # 0.8억 (20% = 1,600만원)
+                    'credit_score': 820,
+                    'is_manufacturing_it': True,
+                    'existing_debt_kibo': 0,
+                    'existing_debt_shinbo': 0,
+                    'existing_debt_jaedan': 0,
+                    'opening_date': '2022-03-15',
+                    'age': 42,
+                    'career_years': 8,
+                    'employees': 3,
+                    'is_special_employee_industry': True
+                },
+                'expected_results': ['기보_일반보증 (1억원)', '소진공_혁신성장 (불가-매출부족)', '신용보증재단 (2천5백만원)'],
+                'test_focus': '기보 최소 1억원 보장 (계산값 1,600만원 → 1억원)'
             },
-            'expected_results': ['기보_일반보증 (1천만원)', '신용보증재단 (2천5백만원)'],
-            'test_focus': '기보 최소 1억원 보장 (계산값 1,600만원 → 1억원)'
-        },
-        {
-            'id': 'TEST_002',
-            'description': '중간규모 제조업 - 기보 20% 기준 적용',
-            'data': {
-                'annual_revenue': 800_000_000,      # 8억 (20% = 1.6억)
-                'credit_score': 850,
-                'is_manufacturing_it': True,
-                'existing_debt_kibo': 0,
-                'existing_debt_shinbo': 0,
-                'existing_debt_jaedan': 0,
-                'opening_date': '2020-06-10',
-                'age': 38,
-                'career_years': 8,
-                'employees': 8,
-                'is_special_employee_industry': True
-            },
-            'expected_results': ['기보_일반보증 (2천만원)', '소진공_혁신성장 (7천만원)', '신용보증재단 (3천만원)'],
-            'test_focus': '기보 20% 계산 (8억 × 20% = 1.6억 → 2억원 상향)'
-        },
-        {
-            'id': 'TEST_003',
-            'description': '고매출 제조업 - 기보 증액 우선 원칙',
-            'data': {
-                'annual_revenue': 3_000_000_000,    # 30억 (20% = 6억)
-                'credit_score': 880,
-                'is_manufacturing_it': True,
-                'existing_debt_kibo': 200_000_000,  # 기존 2억
-                'existing_debt_shinbo': 0,
-                'existing_debt_jaedan': 0,
-                'opening_date': '2018-01-20',
-                'age': 48,
-                'career_years': 15,
-                'employees': 25,
-                'is_special_employee_industry': True
-            },
-            'expected_results': ['기보_일반보증_증액 (4천만원)', '신용보증재단 (5천만원)'],
-            'test_focus': '기보 증액 우선 (총한도 6억 - 기대출 2억 = 4억)'
-        },
-        {
-            'id': 'TEST_004',
-            'description': '청년 제조업 창업 - 복합 자금 활용',
-            'data': {
-                'annual_revenue': 400_000_000,      # 4억 (20% = 8천만원)
-                'credit_score': 830,
-                'is_manufacturing_it': True,
-                'existing_debt_kibo': 0,
-                'existing_debt_shinbo': 0,
-                'existing_debt_jaedan': 0,
-                'opening_date': '2023-03-01',
-                'age': 32,
-                'career_years': 6,
-                'employees': 4,
-                'is_special_employee_industry': True
-            },
-            'expected_results': ['중진공_청년창업 (1천만원)', '기보_일반보증 (1천만원)', '소진공_혁신성장 (7천만원)', '신용보증재단 (2천5백만원)'],
-            'test_focus': '복합 자금 + 중진공 금리 2.5% 표시'
-        },
-        {
-            'id': 'TEST_005',
-            'description': 'IT기업 - 기보 대상업종 확인',
-            'data': {
-                'annual_revenue': 1_200_000_000,    # 12억 (20% = 2.4억)
-                'credit_score': 890,
-                'is_manufacturing_it': True,
-                'existing_debt_kibo': 0,
-                'existing_debt_shinbo': 0,
-                'existing_debt_jaedan': 0,
-                'opening_date': '2021-09-15',
-                'age': 35,
-                'career_years': 8,
-                'employees': 7,
-                'is_special_employee_industry': False
-            },
-            'expected_results': ['기보_일반보증 (2천5백만원)', '소진공_혁신성장 (7천만원)', '신용보증재단 (5천만원)'],
-            'test_focus': 'IT업종 기보 적용 + 20% 계산'
-        },
-        {
-            'id': 'TEST_006',
-            'description': '저신용 제조업 - 경력으로 신용 보완',
-            'data': {
-                'annual_revenue': 500_000_000,      # 5억
-                'credit_score': 720,                # 800점 미만
-                'is_manufacturing_it': True,
-                'existing_debt_kibo': 0,
-                'existing_debt_shinbo': 0,
-                'existing_debt_jaedan': 0,
-                'opening_date': '2019-05-20',
-                'age': 55,
-                'career_years': 25,                 # 15년 이상으로 보완
-                'employees': 6,
-                'is_special_employee_industry': True
-            },
-            'expected_results': ['기보_일반보증 (1천만원)', '신용보증재단 (1천5백만원)'],
-            'test_focus': '경력 25년으로 신용점수 720점 보완'
-        },
-        {
-            'id': 'TEST_007',
-            'description': '예비창업 제조업 - 매출 0원 케이스',
-            'data': {
-                'annual_revenue': 0,
-                'credit_score': 850,
-                'is_manufacturing_it': True,
-                'existing_debt_kibo': 0,
-                'existing_debt_shinbo': 0,
-                'existing_debt_jaedan': 0,
-                'opening_date': '2024-11-01',
-                'age': 28,
-                'career_years': 5,
-                'employees': 0,
-                'is_special_employee_industry': True
-            },
-            'expected_results': ['중진공_청년창업 (1천만원)', '기보_일반보증 (1천만원)', '소진공_저신용 (3천만원)', '신용보증재단 (3천만원)'],
-            'test_focus': '매출 0원에서 기보 최소 1억원 보장'
-        },
-        {
-            'id': 'TEST_008',
-            'description': '대형 제조업 - 기보 한도 최대 활용',
-            'data': {
-                'annual_revenue': 5_000_000_000,    # 50억 (20% = 10억)
-                'credit_score': 920,
-                'is_manufacturing_it': True,
-                'existing_debt_kibo': 0,
-                'existing_debt_shinbo': 0,
-                'existing_debt_jaedan': 0,
-                'opening_date': '2015-01-01',
-                'age': 48,
-                'career_years': 22,
-                'employees': 45,
-                'is_special_employee_industry': True
-            },
-            'expected_results': ['기보_일반보증 (10천만원)', '신용보증재단 (5천만원)'],
-            'test_focus': '기보 최대 한도 (50억 × 20% = 10억원)'
-        },
-        {
-            'id': 'TEST_009',
-            'description': '기보 자격 미달 - 경력 부족',
-            'data': {
-                'annual_revenue': 300_000_000,
-                'credit_score': 750,                # 800점 미만
-                'is_manufacturing_it': True,
-                'existing_debt_kibo': 0,
-                'existing_debt_shinbo': 0,
-                'existing_debt_jaedan': 0,
-                'opening_date': '2023-08-01',
-                'age': 30,
-                'career_years': 2,                  # 3년 미만
-                'employees': 3,
-                'is_special_employee_industry': True
-            },
-            'expected_results': ['소진공_혁신성장 (7천만원)', '신용보증재단 (2천만원)'],
-            'test_focus': '제조업이지만 기보 자격 미달시 다른 자금 추천'
-        },
-        {
-            'id': 'TEST_010',
-            'description': '기보 기대출 초과 - 신보 전환 방지 테스트',
-            'data': {
-                'annual_revenue': 300_000_000,      # 3억 (20% = 6천만원, 최소 1억)
-                'credit_score': 850,
-                'is_manufacturing_it': True,
-                'existing_debt_kibo': 200_000_000,  # 기대출 2억 (한도 초과)
-                'existing_debt_shinbo': 0,
-                'existing_debt_jaedan': 0,
-                'opening_date': '2021-01-01',
-                'age': 40,
-                'career_years': 10,
-                'employees': 4,
-                'is_special_employee_industry': True
-            },
-            'expected_results': ['신보_일반보증 (5천만원)', '소진공_혁신성장 (7천만원)', '신용보증재단 (2천5백만원)'],
-            'test_focus': '기보 한도 초과시 신보 전환 (제조업 예외)'
-        },
 
-        # === 그룹 B: 서비스업 신보 중심 (11-18번) ===
-        {
-            'id': 'TEST_011',
-            'description': '고매출 서비스업 - 신보 15% 요율',
-            'data': {
-                'annual_revenue': 2_000_000_000,    # 20억
-                'credit_score': 920,                # 900점 이상
-                'is_manufacturing_it': False,
-                'existing_debt_kibo': 0,
-                'existing_debt_shinbo': 0,
-                'existing_debt_jaedan': 0,
-                'opening_date': '2019-03-01',
-                'age': 45,
-                'career_years': 15,
-                'employees': 12,
-                'is_special_employee_industry': False
+            {
+                'id': 'TEST_002',
+                'description': '중간규모 제조업 - 기보 20% 기준 적용',
+                'data': {
+                    'annual_revenue': 800_000_000,      # 8억 (20% = 1.6억)
+                    'credit_score': 850,
+                    'is_manufacturing_it': True,
+                    'existing_debt_kibo': 0,
+                    'existing_debt_shinbo': 0,
+                    'existing_debt_jaedan': 0,
+                    'opening_date': '2020-06-10',
+                    'age': 38,
+                    'career_years': 8,
+                    'employees': 8,
+                    'is_special_employee_industry': True
+                },
+                'expected_results': ['기보_일반보증 (2억원)', '소진공_혁신성장 (7천만원)', '신용보증재단 (3천만원)'],
+                'test_focus': '기보 20% 계산 (8억 × 20% = 1.6억 → 2억원 상향)'
             },
-            'expected_results': ['신보_일반보증 (30천만원)', '신용보증재단 (5천만원)'],
-            'test_focus': '신보 15% 요율 (20억 × 15% = 3억)'
-        },
-        {
-            'id': 'TEST_012',
-            'description': '중간 서비스업 - 신보 12% 요율',
-            'data': {
-                'annual_revenue': 800_000_000,      # 8억
-                'credit_score': 870,                # 900점 미만
-                'is_manufacturing_it': False,
-                'existing_debt_kibo': 0,
-                'existing_debt_shinbo': 0,
-                'existing_debt_jaedan': 0,
-                'opening_date': '2021-06-15',
-                'age': 38,
-                'career_years': 8,
-                'employees': 6,
-                'is_special_employee_industry': False
-            },
-            'expected_results': ['신보_일반보증 (10천만원)', '신용보증재단 (3천만원)'],
-            'test_focus': '신보 12% 요율 (8억 × 12% = 9,600만원 → 1억원)'
-        },
-        {
-            'id': 'TEST_013',
-            'description': '신보 기대출 보유 - 증액 케이스',
-            'data': {
-                'annual_revenue': 1_200_000_000,    # 12억
-                'credit_score': 890,
-                'is_manufacturing_it': False,
-                'existing_debt_kibo': 0,
-                'existing_debt_shinbo': 80_000_000, # 기존 8천만원
-                'existing_debt_jaedan': 0,
-                'opening_date': '2018-09-01',
-                'age': 42,
-                'career_years': 12,
-                'employees': 8,
-                'is_special_employee_industry': False
-            },
-            'expected_results': ['신보_증액 (10천만원)', '신용보증재단 (5천만원)'],
-            'test_focus': '신보 증액 (12억×15%-8천만원=1억원)'
-        },
-        {
-            'id': 'TEST_014',
-            'description': '신보 자격 미달 - 신용점수 부족',
-            'data': {
-                'annual_revenue': 600_000_000,      # 6억
-                'credit_score': 840,                # 850점 미만
-                'is_manufacturing_it': False,
-                'existing_debt_kibo': 0,
-                'existing_debt_shinbo': 0,
-                'existing_debt_jaedan': 0,
-                'opening_date': '2020-04-01',
-                'age': 35,
-                'career_years': 8,
-                'employees': 4,
-                'is_special_employee_industry': False
-            },
-            'expected_results': ['소진공_혁신성장 (7천만원)', '신용보증재단 (2천5백만원)'],
-            'test_focus': '신보 불가시 소진공으로 전환'
-        },
-        {
-            'id': 'TEST_015',
-            'description': '신보 자격 미달 - 업력 부족',
-            'data': {
-                'annual_revenue': 400_000_000,      # 4억
-                'credit_score': 880,
-                'is_manufacturing_it': False,
-                'existing_debt_kibo': 0,
-                'existing_debt_shinbo': 0,
-                'existing_debt_jaedan': 0,
-                'opening_date': '2024-10-01',       # 업력 1개월
-                'age': 40,
-                'career_years': 10,
-                'employees': 3,
-                'is_special_employee_industry': False
-            },
-            'expected_results': ['소진공_혁신성장 (7천만원)', '신용보증재단 (3천만원)'],
-            'test_focus': '신보 업력 부족시 소진공으로 전환'
-        },
-        {
-            'id': 'TEST_016',
-            'description': '건설업 - 특수업종 직원수 기준',
-            'data': {
-                'annual_revenue': 1_500_000_000,    # 15억
-                'credit_score': 860,
-                'is_manufacturing_it': False,
-                'existing_debt_kibo': 0,
-                'existing_debt_shinbo': 0,
-                'existing_debt_jaedan': 0,
-                'opening_date': '2019-07-01',
-                'age': 48,
-                'career_years': 18,
-                'employees': 8,                     # 특수업종 10명 미만
-                'is_special_employee_industry': True
-            },
-            'expected_results': ['신보_일반보증 (22천5백만원)', '소진공_혁신성장 (7천만원)', '신용보증재단 (5천만원)'],
-            'test_focus': '건설업 특수업종 직원수 기준 (10명 미만)'
-        },
-        {
-            'id': 'TEST_017',
-            'description': '운수업 - 특수업종 + 소진공',
-            'data': {
-                'annual_revenue': 800_000_000,      # 8억
-                'credit_score': 880,
-                'is_manufacturing_it': False,
-                'existing_debt_kibo': 0,
-                'existing_debt_shinbo': 0,
-                'existing_debt_jaedan': 0,
-                'opening_date': '2020-02-01',
-                'age': 45,
-                'career_years': 15,
-                'employees': 9,                     # 특수업종 10명 미만
-                'is_special_employee_industry': True
-            },
-            'expected_results': ['신보_일반보증 (10천만원)', '소진공_혁신성장 (7천만원)', '신용보증재단 (3천만원)'],
-            'test_focus': '운수업 특수업종 + 소진공 복합'
-        },
-        {
-            'id': 'TEST_018',
-            'description': '대표님 제시 사례 - 전문과학및기술서비스업',
-            'data': {
-                'annual_revenue': 300_000_000,      # 3억
-                'credit_score': 838,                # 신보 불가
-                'is_manufacturing_it': False,
-                'existing_debt_kibo': 0,
-                'existing_debt_shinbo': 0,
-                'existing_debt_jaedan': 20_000_000, # 재단 2천만원
-                'opening_date': '2022-01-01',
-                'age': 42,
-                'career_years': 12,
-                'employees': 3,
-                'is_special_employee_industry': False
-            },
-            'expected_results': ['소진공_혁신성장 (7천만원)', '신용보증재단 (5백만원)'],
-            'test_focus': '대표님 사례 검증 (재단 기대출 차감)'
-        },
 
-        # === 그룹 C: 소진공 특화 (19-25번) ===
-        {
-            'id': 'TEST_019',
-            'description': '소진공 혁신성장 고한도 - 매출 3억 이상',
-            'data': {
-                'annual_revenue': 350_000_000,      # 3.5억
-                'credit_score': 820,                # 800점 이상
-                'is_manufacturing_it': False,
-                'existing_debt_kibo': 0,
-                'existing_debt_shinbo': 0,
-                'existing_debt_jaedan': 0,
-                'opening_date': '2021-05-01',
-                'age': 35,
-                'career_years': 8,
-                'employees': 3,
-                'is_special_employee_industry': False
+            {
+                'id': 'TEST_003',
+                'description': '고매출 제조업 - 기보 증액 우선 원칙',
+                'data': {
+                    'annual_revenue': 3_000_000_000,    # 30억 (20% = 6억)
+                    'credit_score': 880,
+                    'is_manufacturing_it': True,
+                    'existing_debt_kibo': 200_000_000,  # 기존 2억
+                    'existing_debt_shinbo': 0,
+                    'existing_debt_jaedan': 0,
+                    'opening_date': '2018-01-20',
+                    'age': 48,
+                    'career_years': 15,
+                    'employees': 25,
+                    'is_special_employee_industry': True
+                },
+                'expected_results': ['기보_증액 (4억원)', '신용보증재단 (5천만원)'],
+                'test_focus': '기보 증액 우선 (총한도 6억 - 기대출 2억 = 4억)'
             },
-            'expected_results': ['소진공_혁신성장 (7천만원)', '신용보증재단 (2천5백만원)'],
-            'test_focus': '소진공 고한도 조건 (매출 3억 이상 + 신용 800점 이상)'
-        },
-        {
-            'id': 'TEST_020',
-            'description': '소진공 혁신성장 일반한도',
-            'data': {
-                'annual_revenue': 280_000_000,      # 2.8억
-                'credit_score': 780,                # 800점 미만
-                'is_manufacturing_it': False,
-                'existing_debt_kibo': 0,
-                'existing_debt_shinbo': 0,
-                'existing_debt_jaedan': 0,
-                'opening_date': '2020-08-01',
-                'age': 40,
-                'career_years': 10,
-                'employees': 4,
-                'is_special_employee_industry': False
-            },
-            'expected_results': ['소진공_혁신성장 (5천만원)', '신용보증재단 (2천만원)'],
-            'test_focus': '소진공 일반한도 (조건 미달시 5천만원)'
-        },
-        {
-            'id': 'TEST_021',
-            'description': '소진공 저신용 케이스',
-            'data': {
-                'annual_revenue': 180_000_000,      # 1.8억 (2억 미만)
-                'credit_score': 680,
-                'is_manufacturing_it': False,
-                'existing_debt_kibo': 0,
-                'existing_debt_shinbo': 0,
-                'existing_debt_jaedan': 0,
-                'opening_date': '2022-06-01',
-                'age': 45,
-                'career_years': 12,
-                'employees': 2,
-                'is_special_employee_industry': False
-            },
-            'expected_results': ['소진공_저신용 (3천만원)', '신용보증재단 (1천5백만원)'],
-            'test_focus': '소진공 저신용 (매출 2억 미만 + 신용 839점 이하)'
-        },
-        {
-            'id': 'TEST_022',
-            'description': '소진공 직원수 초과 - 일반업종',
-            'data': {
-                'annual_revenue': 400_000_000,      # 4억
-                'credit_score': 800,
-                'is_manufacturing_it': False,
-                'existing_debt_kibo': 0,
-                'existing_debt_shinbo': 0,
-                'existing_debt_jaedan': 0,
-                'opening_date': '2019-01-01',
-                'age': 42,
-                'career_years': 15,
-                'employees': 6,                     # 5명 초과
-                'is_special_employee_industry': False
-            },
-            'expected_results': ['신용보증재단 (2천5백만원)'],
-            'test_focus': '소진공 직원수 초과시 재단만 가능'
-        },
-        {
-            'id': 'TEST_023',
-            'description': '소진공 매출 부족 케이스',
-            'data': {
-                'annual_revenue': 150_000_000,      # 1.5억 (2억 미만)
-                'credit_score': 800,
-                'is_manufacturing_it': False,
-                'existing_debt_kibo': 0,
-                'existing_debt_shinbo': 0,
-                'existing_debt_jaedan': 0,
-                'opening_date': '2021-01-01',
-                'age': 35,
-                'career_years': 8,
-                'employees': 3,
-                'is_special_employee_industry': False
-            },
-            'expected_results': ['소진공_저신용 (3천만원)', '신용보증재단 (2천5백만원)'],
-            'test_focus': '소진공 혁신성장 매출 부족시 저신용으로 전환'
-        },
-        {
-            'id': 'TEST_024',
-            'description': '혁신성장 vs 저신용 선택 로직',
-            'data': {
-                'annual_revenue': 300_000_000,      # 3억
-                'credit_score': 839,                # 저신용 경계값
-                'is_manufacturing_it': False,
-                'existing_debt_kibo': 0,
-                'existing_debt_shinbo': 0,
-                'existing_debt_jaedan': 0,
-                'opening_date': '2022-01-01',
-                'age': 40,
-                'career_years': 8,
-                'employees': 4,
-                'is_special_employee_industry': False
-            },
-            'expected_results': ['소진공_혁신성장 (7천만원)', '신용보증재단 (2천5백만원)'],
-            'test_focus': '혁신성장 가능시 저신용 제외 (elif 구조)'
-        },
-        {
-            'id': 'TEST_025',
-            'description': '특수업종 직원수 경계 테스트',
-            'data': {
-                'annual_revenue': 500_000_000,      # 5억
-                'credit_score': 800,
-                'is_manufacturing_it': False,
-                'existing_debt_kibo': 0,
-                'existing_debt_shinbo': 0,
-                'existing_debt_jaedan': 0,
-                'opening_date': '2020-01-01',
-                'age': 45,
-                'career_years': 12,
-                'employees': 10,                    # 특수업종 경계값
-                'is_special_employee_industry': True
-            },
-            'expected_results': ['신용보증재단 (2천5백만원)'],
-            'test_focus': '특수업종 직원수 10명 경계값 (10명 이상시 소진공 불가)'
-        },
 
-        # === 그룹 D: 경계값 및 특수 케이스 (26-30번) ===
-        {
-            'id': 'TEST_026',
-            'description': '매출 0원 서비스업 - 예비창업',
-            'data': {
-                'annual_revenue': 0,
-                'credit_score': 826,
-                'is_manufacturing_it': False,
-                'existing_debt_kibo': 0,
-                'existing_debt_shinbo': 0,
-                'existing_debt_jaedan': 0,
-                'opening_date': '2024-11-01',
-                'age': 35,
-                'career_years': 5,
-                'employees': 0,
-                'is_special_employee_industry': False
+            {
+                'id': 'TEST_004',
+                'description': '청년 제조업 창업 - 복합 자금 활용',
+                'data': {
+                    'annual_revenue': 400_000_000,      # 4억 (20% = 8천만원)
+                    'credit_score': 830,
+                    'is_manufacturing_it': True,
+                    'existing_debt_kibo': 0,
+                    'existing_debt_shinbo': 0,
+                    'existing_debt_jaedan': 0,
+                    'opening_date': '2023-03-01',
+                    'age': 32,
+                    'career_years': 6,
+                    'employees': 4,
+                    'is_special_employee_industry': True
+                },
+                'expected_results': ['중진공_청년창업 (1억원-금리2.5%)', '기보_일반보증 (1억원)', '소진공_혁신성장 (7천만원)', '신용보증재단 (2천5백만원)'],
+                'test_focus': '복합 자금 + 중진공 금리 2.5% 표시'
             },
-            'expected_results': ['소진공_저신용 (3천만원)', '신용보증재단 (2천5백만원)'],
-            'test_focus': '매출 0원 서비스업 (소진공 혁신성장 매출 부족)'
-        },
-        {
-            'id': 'TEST_027',
-            'description': '신용보증재단 상담필요 케이스',
-            'data': {
-                'annual_revenue': 1_200_000_000,    # 12억 (10억 이상)
-                'credit_score': 820,                # 850점 미만
-                'is_manufacturing_it': False,
-                'existing_debt_kibo': 0,
-                'existing_debt_shinbo': 0,
-                'existing_debt_jaedan': 0,
-                'opening_date': '2020-01-01',
-                'age': 45,
-                'career_years': 15,
-                'employees': 8,
-                'is_special_employee_industry': False
+
+            {
+                'id': 'TEST_005',
+                'description': 'IT기업 - 기보 대상업종 확인',
+                'data': {
+                    'annual_revenue': 1_200_000_000,    # 12억 (20% = 2.4억)
+                    'credit_score': 890,
+                    'is_manufacturing_it': True,
+                    'existing_debt_kibo': 0,
+                    'existing_debt_shinbo': 0,
+                    'existing_debt_jaedan': 0,
+                    'opening_date': '2021-09-15',
+                    'age': 35,
+                    'career_years': 8,
+                    'employees': 7,
+                    'is_special_employee_industry': False
+                },
+                'expected_results': ['기보_일반보증 (2억5천만원)', '소진공_혁신성장 (7천만원)', '신용보증재단 (5천만원)'],
+                'test_focus': 'IT업종 기보 적용 + 20% 계산'
             },
-            'expected_results': ['소진공_혁신성장 (7천만원)', '신용보증재단_매출우대상담 (3천만원)'],
-            'test_focus': '재단 상담필요 조건 (매출 10억 이상 + 신용 850점 미만)'
-        },
-        {
-            'id': 'TEST_028',
-            'description': '복합 기대출 보유 케이스',
-            'data': {
-                'annual_revenue': 1_000_000_000,    # 10억 (20% = 2억)
-                'credit_score': 880,
-                'is_manufacturing_it': True,
-                'existing_debt_kibo': 150_000_000,  # 기보 1.5억
-                'existing_debt_shinbo': 0,
-                'existing_debt_jaedan': 30_000_000, # 재단 3천만원
-                'opening_date': '2018-03-01',
-                'age': 40,
-                'career_years': 12,
-                'employees': 8,
-                'is_special_employee_industry': True
+
+            {
+                'id': 'TEST_006',
+                'description': '저신용 제조업 - 경력으로 신용 보완',
+                'data': {
+                    'annual_revenue': 500_000_000,      # 5억
+                    'credit_score': 720,                # 800점 미만
+                    'is_manufacturing_it': True,
+                    'existing_debt_kibo': 0,
+                    'existing_debt_shinbo': 0,
+                    'existing_debt_jaedan': 0,
+                    'opening_date': '2019-05-20',
+                    'age': 55,
+                    'career_years': 25,                 # 15년 이상으로 보완
+                    'employees': 6,
+                    'is_special_employee_industry': True
+                },
+                'expected_results': ['기보_일반보증 (1억원)', '소진공_혁신성장 (불가-직원수초과)', '신용보증재단 (1천5백만원)'],
+                'test_focus': '경력 25년으로 신용점수 720점 보완'
             },
-            'expected_results': ['기보_일반보증_증액 (5천만원)', '신용보증재단 (2천만원)'],
-            'test_focus': '복합 기대출 보유시 각각 차감 계산'
-        },
-        {
-            'id': 'TEST_029',
-            'description': '신용점수 850점 경계 케이스',
-            'data': {
-                'annual_revenue': 500_000_000,      # 5억
-                'credit_score': 850,                # 정확히 850점
-                'is_manufacturing_it': False,
-                'existing_debt_kibo': 0,
-                'existing_debt_shinbo': 0,
-                'existing_debt_jaedan': 0,
-                'opening_date': '2021-01-01',
-                'age': 38,
-                'career_years': 10,
-                'employees': 4,
-                'is_special_employee_industry': False
+
+            {
+                'id': 'TEST_007',
+                'description': '예비창업 제조업 - 매출 0원 케이스',
+                'data': {
+                    'annual_revenue': 0,
+                    'credit_score': 850,
+                    'is_manufacturing_it': True,
+                    'existing_debt_kibo': 0,
+                    'existing_debt_shinbo': 0,
+                    'existing_debt_jaedan': 0,
+                    'opening_date': '2024-11-01',
+                    'age': 28,
+                    'career_years': 5,
+                    'employees': 0,
+                    'is_special_employee_industry': True
+                },
+                'expected_results': ['중진공_청년창업 (1억원-금리2.5%)', '기보_일반보증 (1억원)', '소진공_저신용 (3천만원)', '신용보증재단 (3천만원)'],
+                'test_focus': '매출 0원에서 기보 최소 1억원 보장'
             },
-            'expected_results': ['신보_일반보증 (5천만원)', '소진공_혁신성장 (5천만원)', '신용보증재단 (3천만원)'],
-            'test_focus': '신보 신용점수 850점 경계값 (이상시 신보 가능)'
-        },
-        {
-            'id': 'TEST_030',
-            'description': '모든 조건 만족 - 최대 복합 자금',
-            'data': {
-                'annual_revenue': 400_000_000,      # 4억
-                'credit_score': 900,
-                'is_manufacturing_it': True,
-                'existing_debt_kibo': 0,
-                'existing_debt_shinbo': 0,
-                'existing_debt_jaedan': 0,
-                'opening_date': '2022-01-01',
-                'age': 35,
-                'career_years': 8,
-                'employees': 4,
-                'is_special_employee_industry': True
+
+            {
+                'id': 'TEST_008',
+                'description': '대형 제조업 - 기보 한도 최대 활용',
+                'data': {
+                    'annual_revenue': 5_000_000_000,    # 50억 (20% = 10억)
+                    'credit_score': 920,
+                    'is_manufacturing_it': True,
+                    'existing_debt_kibo': 0,
+                    'existing_debt_shinbo': 0,
+                    'existing_debt_jaedan': 0,
+                    'opening_date': '2015-01-01',
+                    'age': 48,
+                    'career_years': 22,
+                    'employees': 45,
+                    'is_special_employee_industry': True
+                },
+                'expected_results': ['기보_일반보증 (10억원)', '신용보증재단 (5천만원)'],
+                'test_focus': '기보 최대 한도 (50억 × 20% = 10억원)'
             },
-            'expected_results': ['중진공_청년창업 (1천만원)', '기보_일반보증 (1천만원)', '소진공_혁신성장 (7천만원)', '신용보증재단 (5천만원)'],
-            'test_focus': '모든 조건 만족시 최대 복합 자금 (총 3억2천만원)'
-        }
-    ]
+
+            {
+                'id': 'TEST_009',
+                'description': '기보 자격 미달 - 경력 부족',
+                'data': {
+                    'annual_revenue': 300_000_000,
+                    'credit_score': 750,                # 800점 미만
+                    'is_manufacturing_it': True,
+                    'existing_debt_kibo': 0,
+                    'existing_debt_shinbo': 0,
+                    'existing_debt_jaedan': 0,
+                    'opening_date': '2023-08-01',
+                    'age': 30,
+                    'career_years': 2,                  # 3년 미만
+                    'employees': 3,
+                    'is_special_employee_industry': True
+                },
+                'expected_results': ['소진공_혁신성장 (7천만원)', '소진공_저신용 (불가-혁신성장우선)', '신용보증재단 (2천만원)'],
+                'test_focus': '제조업이지만 기보 자격 미달시 다른 자금 추천'
+            },
+
+            {
+                'id': 'TEST_010',
+                'description': '기보 기대출 초과 - 신보 전환 방지 테스트',
+                'data': {
+                    'annual_revenue': 300_000_000,      # 3억 (20% = 6천만원, 최소 1억)
+                    'credit_score': 850,
+                    'is_manufacturing_it': True,
+                    'existing_debt_kibo': 200_000_000,  # 기대출 2억 (한도 초과)
+                    'existing_debt_shinbo': 0,
+                    'existing_debt_jaedan': 0,
+                    'opening_date': '2021-01-01',
+                    'age': 40,
+                    'career_years': 10,
+                    'employees': 4,
+                    'is_special_employee_industry': True
+                },
+                'expected_results': ['기보_증액 (불가-한도초과)', '신보 (5천만원)', '소진공_혁신성장 (7천만원)', '신용보증재단 (2천5백만원)'],
+                'test_focus': '기보 한도 초과시 신보 전환 (제조업 예외)'
+            },
+
+            # === 그룹 B: 서비스업 신보 중심 (11-18번) ===
+
+            {
+                'id': 'TEST_011',
+                'description': '고매출 서비스업 - 신보 15% 요율',
+                'data': {
+                    'annual_revenue': 2_000_000_000,    # 20억
+                    'credit_score': 920,                # 900점 이상
+                    'is_manufacturing_it': False,
+                    'existing_debt_kibo': 0,
+                    'existing_debt_shinbo': 0,
+                    'existing_debt_jaedan': 0,
+                    'opening_date': '2019-03-01',
+                    'age': 45,
+                    'career_years': 15,
+                    'employees': 12,
+                    'is_special_employee_industry': False
+                },
+                'expected_results': ['신보 (3억원)', '신용보증재단 (5천만원)'],
+                'test_focus': '신보 15% 요율 (20억 × 15% = 3억)'
+            },
+
+            {
+                'id': 'TEST_012',
+                'description': '중간 서비스업 - 신보 12% 요율',
+                'data': {
+                    'annual_revenue': 800_000_000,      # 8억
+                    'credit_score': 870,                # 900점 미만
+                    'is_manufacturing_it': False,
+                    'existing_debt_kibo': 0,
+                    'existing_debt_shinbo': 0,
+                    'existing_debt_jaedan': 0,
+                    'opening_date': '2021-06-15',
+                    'age': 38,
+                    'career_years': 8,
+                    'employees': 6,
+                    'is_special_employee_industry': False
+                },
+                'expected_results': ['신보 (1억원)', '신용보증재단 (3천만원)'],
+                'test_focus': '신보 12% 요율 (8억 × 12% = 9,600만원 → 1억원)'
+            },
+
+            {
+                'id': 'TEST_013',
+                'description': '신보 기대출 보유 - 증액 케이스',
+                'data': {
+                    'annual_revenue': 1_200_000_000,    # 12억
+                    'credit_score': 890,
+                    'is_manufacturing_it': False,
+                    'existing_debt_kibo': 0,
+                    'existing_debt_shinbo': 80_000_000, # 기존 8천만원
+                    'existing_debt_jaedan': 0,
+                    'opening_date': '2018-09-01',
+                    'age': 42,
+                    'career_years': 12,
+                    'employees': 8,
+                    'is_special_employee_industry': False
+                },
+                'expected_results': ['신보 (1억원)', '신용보증재단 (5천만원)'],
+                'test_focus': '신보 증액 (12억×15%-8천만원=1억원)'
+            },
+
+            {
+                'id': 'TEST_014',
+                'description': '신보 자격 미달 - 신용점수 부족',
+                'data': {
+                    'annual_revenue': 600_000_000,      # 6억
+                    'credit_score': 840,                # 850점 미만
+                    'is_manufacturing_it': False,
+                    'existing_debt_kibo': 0,
+                    'existing_debt_shinbo': 0,
+                    'existing_debt_jaedan': 0,
+                    'opening_date': '2020-04-01',
+                    'age': 35,
+                    'career_years': 8,
+                    'employees': 4,
+                    'is_special_employee_industry': False
+                },
+                'expected_results': ['소진공_혁신성장 (7천만원)', '신용보증재단 (2천5백만원)'],
+                'test_focus': '신보 불가시 소진공으로 전환'
+            },
+
+            {
+                'id': 'TEST_015',
+                'description': '신보 자격 미달 - 업력 부족',
+                'data': {
+                    'annual_revenue': 400_000_000,      # 4억
+                    'credit_score': 880,
+                    'is_manufacturing_it': False,
+                    'existing_debt_kibo': 0,
+                    'existing_debt_shinbo': 0,
+                    'existing_debt_jaedan': 0,
+                    'opening_date': '2024-10-01',       # 업력 1개월
+                    'age': 40,
+                    'career_years': 10,
+                    'employees': 3,
+                    'is_special_employee_industry': False
+                },
+                'expected_results': ['소진공_혁신성장 (7천만원)', '신용보증재단 (3천만원)'],
+                'test_focus': '신보 업력 부족시 소진공으로 전환'
+            },
+
+            {
+                'id': 'TEST_016',
+                'description': '건설업 - 특수업종 직원수 기준',
+                'data': {
+                    'annual_revenue': 1_500_000_000,    # 15억
+                    'credit_score': 860,
+                    'is_manufacturing_it': False,
+                    'existing_debt_kibo': 0,
+                    'existing_debt_shinbo': 0,
+                    'existing_debt_jaedan': 0,
+                    'opening_date': '2019-07-01',
+                    'age': 48,
+                    'career_years': 18,
+                    'employees': 8,                     # 특수업종 10명 미만
+                    'is_special_employee_industry': True
+                },
+                'expected_results': ['신보 (2억2천5백만원)', '소진공_혁신성장 (7천만원)', '신용보증재단 (5천만원)'],
+                'test_focus': '건설업 특수업종 직원수 기준 (10명 미만)'
+            },
+
+            {
+                'id': 'TEST_017',
+                'description': '운수업 - 특수업종 + 소진공',
+                'data': {
+                    'annual_revenue': 800_000_000,      # 8억
+                    'credit_score': 880,
+                    'is_manufacturing_it': False,
+                    'existing_debt_kibo': 0,
+                    'existing_debt_shinbo': 0,
+                    'existing_debt_jaedan': 0,
+                    'opening_date': '2020-02-01',
+                    'age': 45,
+                    'career_years': 15,
+                    'employees': 9,                     # 특수업종 10명 미만
+                    'is_special_employee_industry': True
+                },
+                'expected_results': ['신보 (1억원)', '소진공_혁신성장 (7천만원)', '신용보증재단 (3천만원)'],
+                'test_focus': '운수업 특수업종 + 소진공 복합'
+            },
+
+            {
+                'id': 'TEST_018',
+                'description': '대표님 제시 사례 - 전문과학및기술서비스업',
+                'data': {
+                    'annual_revenue': 300_000_000,      # 3억
+                    'credit_score': 838,                # 신보 불가
+                    'is_manufacturing_it': False,
+                    'existing_debt_kibo': 0,
+                    'existing_debt_shinbo': 0,
+                    'existing_debt_jaedan': 20_000_000, # 재단 2천만원
+                    'opening_date': '2022-01-01',
+                    'age': 42,
+                    'career_years': 12,
+                    'employees': 3,
+                    'is_special_employee_industry': False
+                },
+                'expected_results': ['소진공_혁신성장 (7천만원)', '신용보증재단 (5백만원)'],
+                'test_focus': '대표님 사례 검증 (재단 기대출 차감)'
+            },
+
+            # === 그룹 C: 소진공 특화 (19-25번) ===
+
+            {
+                'id': 'TEST_019',
+                'description': '소진공 혁신성장 고한도 - 매출 3억 이상',
+                'data': {
+                    'annual_revenue': 350_000_000,      # 3.5억
+                    'credit_score': 820,                # 800점 이상
+                    'is_manufacturing_it': False,
+                    'existing_debt_kibo': 0,
+                    'existing_debt_shinbo': 0,
+                    'existing_debt_jaedan': 0,
+                    'opening_date': '2021-05-01',
+                    'age': 35,
+                    'career_years': 8,
+                    'employees': 3,
+                    'is_special_employee_industry': False
+                },
+                'expected_results': ['소진공_혁신성장 (7천만원)', '신용보증재단 (2천5백만원)'],
+                'test_focus': '소진공 고한도 조건 (매출 3억 이상 + 신용 800점 이상)'
+            },
+
+            {
+                'id': 'TEST_020',
+                'description': '소진공 혁신성장 일반한도',
+                'data': {
+                    'annual_revenue': 280_000_000,      # 2.8억
+                    'credit_score': 780,                # 800점 미만
+                    'is_manufacturing_it': False,
+                    'existing_debt_kibo': 0,
+                    'existing_debt_shinbo': 0,
+                    'existing_debt_jaedan': 0,
+                    'opening_date': '2020-08-01',
+                    'age': 40,
+                    'career_years': 10,
+                    'employees': 4,
+                    'is_special_employee_industry': False
+                },
+                'expected_results': ['소진공_혁신성장 (5천만원)', '신용보증재단 (2천만원)'],
+                'test_focus': '소진공 일반한도 (조건 미달시 5천만원)'
+            },
+
+            {
+                'id': 'TEST_021',
+                'description': '소진공 저신용 케이스',
+                'data': {
+                    'annual_revenue': 180_000_000,      # 1.8억 (2억 미만)
+                    'credit_score': 680,
+                    'is_manufacturing_it': False,
+                    'existing_debt_kibo': 0,
+                    'existing_debt_shinbo': 0,
+                    'existing_debt_jaedan': 0,
+                    'opening_date': '2022-06-01',
+                    'age': 45,
+                    'career_years': 12,
+                    'employees': 2,
+                    'is_special_employee_industry': False
+                },
+                'expected_results': ['소진공_저신용 (3천만원)', '신용보증재단 (1천5백만원)'],
+                'test_focus': '소진공 저신용 (매출 2억 미만 + 신용 839점 이하)'
+            },
+
+            {
+                'id': 'TEST_022',
+                'description': '소진공 직원수 초과 - 일반업종',
+                'data': {
+                    'annual_revenue': 400_000_000,      # 4억
+                    'credit_score': 800,
+                    'is_manufacturing_it': False,
+                    'existing_debt_kibo': 0,
+                    'existing_debt_shinbo': 0,
+                    'existing_debt_jaedan': 0,
+                    'opening_date': '2019-01-01',
+                    'age': 42,
+                    'career_years': 15,
+                    'employees': 6,                     # 5명 초과
+                    'is_special_employee_industry': False
+                },
+                'expected_results': ['신용보증재단 (2천5백만원)'],
+                'test_focus': '소진공 직원수 초과시 재단만 가능'
+            },
+
+            {
+                'id': 'TEST_023',
+                'description': '소진공 매출 부족 케이스',
+                'data': {
+                    'annual_revenue': 150_000_000,      # 1.5억 (2억 미만)
+                    'credit_score': 800,
+                    'is_manufacturing_it': False,
+                    'existing_debt_kibo': 0,
+                    'existing_debt_shinbo': 0,
+                    'existing_debt_jaedan': 0,
+                    'opening_date': '2021-01-01',
+                    'age': 35,
+                    'career_years': 8,
+                    'employees': 3,
+                    'is_special_employee_industry': False
+                },
+                'expected_results': ['소진공_저신용 (3천만원)', '신용보증재단 (2천5백만원)'],
+                'test_focus': '소진공 혁신성장 매출 부족시 저신용으로 전환'
+            },
+
+            {
+                'id': 'TEST_024',
+                'description': '혁신성장 vs 저신용 선택 로직',
+                'data': {
+                    'annual_revenue': 300_000_000,      # 3억
+                    'credit_score': 839,                # 저신용 경계값
+                    'is_manufacturing_it': False,
+                    'existing_debt_kibo': 0,
+                    'existing_debt_shinbo': 0,
+                    'existing_debt_jaedan': 0,
+                    'opening_date': '2022-01-01',
+                    'age': 40,
+                    'career_years': 8,
+                    'employees': 4,
+                    'is_special_employee_industry': False
+                },
+                'expected_results': ['소진공_혁신성장 (7천만원)', '신용보증재단 (2천5백만원)'],
+                'test_focus': '혁신성장 가능시 저신용 제외 (elif 구조)'
+            },
+
+            {
+                'id': 'TEST_025',
+                'description': '특수업종 직원수 경계 테스트',
+                'data': {
+                    'annual_revenue': 500_000_000,      # 5억
+                    'credit_score': 800,
+                    'is_manufacturing_it': False,
+                    'existing_debt_kibo': 0,
+                    'existing_debt_shinbo': 0,
+                    'existing_debt_jaedan': 0,
+                    'opening_date': '2020-01-01',
+                    'age': 45,
+                    'career_years': 12,
+                    'employees': 10,                    # 특수업종 경계값
+                    'is_special_employee_industry': True
+                },
+                'expected_results': ['신용보증재단 (2천5백만원)'],
+                'test_focus': '특수업종 직원수 10명 경계값 (10명 이상시 소진공 불가)'
+            },
+
+            # === 그룹 D: 경계값 및 특수 케이스 (26-30번) ===
+
+            {
+                'id': 'TEST_026',
+                'description': '매출 0원 서비스업 - 예비창업',
+                'data': {
+                    'annual_revenue': 0,
+                    'credit_score': 826,
+                    'is_manufacturing_it': False,
+                    'existing_debt_kibo': 0,
+                    'existing_debt_shinbo': 0,
+                    'existing_debt_jaedan': 0,
+                    'opening_date': '2024-11-01',
+                    'age': 35,
+                    'career_years': 5,
+                    'employees': 0,
+                    'is_special_employee_industry': False
+                },
+                'expected_results': ['소진공_저신용 (3천만원)', '신용보증재단 (2천5백만원)'],
+                'test_focus': '매출 0원 서비스업 (소진공 혁신성장 매출 부족)'
+            },
+
+            {
+                'id': 'TEST_027',
+                'description': '신용보증재단 상담필요 케이스',
+                'data': {
+                    'annual_revenue': 1_200_000_000,    # 12억 (10억 이상)
+                    'credit_score': 820,                # 850점 미만
+                    'is_manufacturing_it': False,
+                    'existing_debt_kibo': 0,
+                    'existing_debt_shinbo': 0,
+                    'existing_debt_jaedan': 0,
+                    'opening_date': '2020-01-01',
+                    'age': 45,
+                    'career_years': 15,
+                    'employees': 8,
+                    'is_special_employee_industry': False
+                },
+                'expected_results': ['소진공_혁신성장 (7천만원)', '신용보증재단 (상담필요-3천~5천만원)'],
+                'test_focus': '재단 상담필요 조건 (매출 10억 이상 + 신용 850점 미만)'
+            },
+
+            {
+                'id': 'TEST_028',
+                'description': '복합 기대출 보유 케이스',
+                'data': {
+                    'annual_revenue': 1_000_000_000,    # 10억 (20% = 2억)
+                    'credit_score': 880,
+                    'is_manufacturing_it': True,
+                    'existing_debt_kibo': 150_000_000,  # 기보 1.5억
+                    'existing_debt_shinbo': 0,
+                    'existing_debt_jaedan': 30_000_000, # 재단 3천만원
+                    'opening_date': '2018-03-01',
+                    'age': 40,
+                    'career_years': 12,
+                    'employees': 8,
+                    'is_special_employee_industry': True
+                },
+                'expected_results': ['기보_증액 (5천만원)', '신용보증재단 (2천만원)'],
+                'test_focus': '복합 기대출 보유시 각각 차감 계산'
+            },
+
+            {
+                'id': 'TEST_029',
+                'description': '신용점수 850점 경계 케이스',
+                'data': {
+                    'annual_revenue': 500_000_000,      # 5억
+                    'credit_score': 850,                # 정확히 850점
+                    'is_manufacturing_it': False,
+                    'existing_debt_kibo': 0,
+                    'existing_debt_shinbo': 0,
+                    'existing_debt_jaedan': 0,
+                    'opening_date': '2021-01-01',
+                    'age': 38,
+                    'career_years': 10,
+                    'employees': 4,
+                    'is_special_employee_industry': False
+                },
+                'expected_results': ['신보 (5천만원)', '소진공_혁신성장 (5천만원)', '신용보증재단 (3천만원)'],
+                'test_focus': '신보 신용점수 850점 경계값 (이상시 신보 가능)'
+            },
+
+            {
+                'id': 'TEST_030',
+                'description': '모든 조건 만족 - 최대 복합 자금',
+                'data': {
+                    'annual_revenue': 400_000_000,      # 4억
+                    'credit_score': 900,
+                    'is_manufacturing_it': True,
+                    'existing_debt_kibo': 0,
+                    'existing_debt_shinbo': 0,
+                    'existing_debt_jaedan': 0,
+                    'opening_date': '2022-01-01',
+                    'age': 35,
+                    'career_years': 8,
+                    'employees': 4,
+                    'is_special_employee_industry': True
+                },
+                'expected_results': ['중진공_청년창업 (1억원-금리2.5%)', '기보_일반보증 (1억원)', '소진공_혁신성장 (7천만원)', '신용보증재단 (5천만원)'],
+                'test_focus': '모든 조건 만족시 최대 복합 자금 (총 3억2천만원)'
+            }
+        ]
+
     
     # 테스트 실행
     results = []

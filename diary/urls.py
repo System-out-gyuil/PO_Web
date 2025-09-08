@@ -26,6 +26,7 @@ from .diary_use_preview import diary_use_preview
 from .diary_pay import diary_pay
 from .facebook_meta_db import facebook_meta_db
 from .toss_payments import TossPaymentsView, TossPaymentsSuccessView, TossPaymentsFailView, PaymentAuthSuccessView, PaymentAuthFailView, SubscriptionManagementView, CancelSubscriptionView, UpdateBillingTypeView, RequestPaymentView, UnlinkCardView, RequestBillingAuthView
+from .recommend_test import RecommendTestView
 
 app_name = 'sales'
 
@@ -283,4 +284,7 @@ urlpatterns = [
 
     # 페이스북 메타 데이터
     path('facebook_meta_db/', facebook_meta_db, name='facebook_meta_db'),
+
+    # 추천 테스트 관련 URL
+    path('recommend_test/', RecommendTestView.as_view(), name='recommend_test'),
 ] 

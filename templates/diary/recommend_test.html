@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>자금 추천 테스트 결과</title>
+    <style>
+      body {
+        font-family: "Malgun Gothic", sans-serif;
+        margin: 0;
+        padding: 20px;
+        background-color: #f5f5f5;
+      }
+
+      .container {
+        max-width: 1400px;
+        margin: 0 auto;
+      }
+
+      .header {
+        text-align: center;
+        margin-bottom: 30px;
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+
+      .test-item {
+        background: white;
+        margin-bottom: 20px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+      }
+
+      .test-header {
+        background: #2c3e50;
+        color: white;
+        padding: 15px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .test-id {
+        font-weight: bold;
+        font-size: 18px;
+      }
+
+      .status {
+        padding: 5px 15px;
+        border-radius: 20px;
+        font-weight: bold;
+      }
+
+      .status.FAIL {
+        background: #e74c3c;
+      }
+
+      .status.PASS {
+        background: #27ae60;
+      }
+
+      .test-content {
+        display: flex;
+        min-height: 300px;
+      }
+
+      .input-section,
+      .result-section {
+        flex: 1;
+        padding: 20px;
+      }
+
+      .input-section {
+        background: #ecf0f1;
+        border-right: 2px solid #bdc3c7;
+      }
+
+      .result-section {
+        background: #f8f9fa;
+      }
+
+      .section-title {
+        font-size: 18px;
+        font-weight: bold;
+        margin-bottom: 15px;
+        color: #2c3e50;
+        border-bottom: 2px solid #3498db;
+        padding-bottom: 5px;
+      }
+
+      .data-group {
+        margin-bottom: 20px;
+      }
+
+      .data-group h4 {
+        margin: 0 0 10px 0;
+        color: #34495e;
+        font-size: 14px;
+      }
+
+      .data-item {
+        background: white;
+        padding: 10px;
+        margin: 5px 0;
+        border-radius: 5px;
+        border-left: 4px solid #3498db;
+      }
+
+      .data-item strong {
+        color: #2c3e50;
+      }
+
+      .funds-list {
+        list-style: none;
+        padding: 0;
+      }
+
+      .funds-list li {
+        background: white;
+        padding: 8px 12px;
+        margin: 5px 0;
+        border-radius: 5px;
+        border-left: 4px solid #27ae60;
+      }
+
+      .comparison {
+        background: #fff3cd;
+        border: 1px solid #ffeaa7;
+        border-radius: 5px;
+        padding: 15px;
+        margin-top: 15px;
+      }
+
+      .comparison h4 {
+        color: #856404;
+        margin-top: 0;
+      }
+
+      .only-expected,
+      .only-actual {
+        margin: 10px 0;
+      }
+
+      .only-expected h5 {
+        color: #155724;
+        margin: 5px 0;
+      }
+
+      .only-actual h5 {
+        color: #721c24;
+        margin: 5px 0;
+      }
+
+      .only-expected ul,
+      .only-actual ul {
+        list-style: none;
+        padding: 0;
+      }
+
+      .only-expected li {
+        background: #d4edda;
+        padding: 5px 10px;
+        margin: 3px 0;
+        border-radius: 3px;
+        border-left: 3px solid #28a745;
+      }
+
+      .only-actual li {
+        background: #f8d7da;
+        padding: 5px 10px;
+        margin: 3px 0;
+        border-radius: 3px;
+        border-left: 3px solid #dc3545;
+      }
+
+      .test-focus {
+        background: #e3f2fd;
+        padding: 10px;
+        border-radius: 5px;
+        margin: 10px 0;
+        border-left: 4px solid #2196f3;
+      }
+
+      .test-focus strong {
+        color: #1976d2;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>자금 추천 시스템 테스트 결과</h1>
+        <p>총 30개 테스트 케이스 - 입력값과 결과값 비교</p>
+      </div>
+
+      <div id="test-results">
+        <!-- 테스트 결과가 여기에 동적으로 로드됩니다 -->
+      </div>
+    </div>
+
+    <script>
+      // test_results.json 데이터를 로드하고 표시
+      fetch("/static/test_results.json")
+        .then((response) => response.json())
+        .then((data) => {
+          const container = document.getElementById("test-results");
+
+          data.forEach((test) => {
+            const testElement = createTestElement(test);
+            container.appendChild(testElement);
+          });
+        })
+        .catch((error) => {
+          console.error("데이터 로드 오류:", error);
+          document.getElementById("test-results").innerHTML =
+            '<div class="test-item"><div class="test-header"><span>오류</span></div><div class="test-content"><p>데이터를 로드할 수 없습니다.</p></div></div>';
+        });
+
+      function createTestElement(test) {
+        const div = document.createElement("div");
+        div.className = "test-item";
+
+        div.innerHTML = `
+        <div class="test-header">
+          <span class="test-id">${test.test_id}</span>
+          {% comment %} <span class="status ${test.status}">${test.status}</span> {% endcomment %}
+        </div>
+        <div class="test-content">
+          <div class="input-section">
+            <div class="section-title">📥 input_conditions (샘플데이터)</div>
+            <div class="test-focus">
+              <strong>테스트 포커스:</strong> ${test.test_focus}
+            </div>
+            <div class="data-group">
+              <h4>input_conditions 원본</h4>
+              ${formatInputData(test.input_conditions.original_data)}
+            </div>
+            <div class="data-group">
+              <h4>전환된 input_conditions</h4>
+              ${formatInputData(test.input_conditions.converted_data)}
+            </div>
+          </div>
+          <div class="result-section">
+            <div class="section-title">📤 결과값</div>
+            <div class="data-group">
+              <h4>예상 결과</h4>
+              <ul class="funds-list">
+                ${test.results.expected.map((fund) => `<li>${fund}</li>`).join("")}
+              </ul>
+            </div>
+            <div class="data-group">
+              <h4>실제 결과</h4>
+              <ul class="funds-list">
+                ${test.results.actual.map((fund) => `<li>${fund}</li>`).join("")}
+              </ul>
+            </div>
+            <div class="data-group">
+              <h4>총 금액</h4>
+              <div class="data-item">
+                <strong>${formatAmount(test.results.total_amount)}원</strong> (${test.results.funds_count}개 자금)
+              </div>
+            </div>
+            <div class="comparison">
+              <h4>비교 결과</h4>
+              <div class="only-expected">
+                <h5>예상 기대값</h5>
+                <ul>
+                  ${test.comparison.only_expected.map((fund) => `<li>${fund}</li>`).join("")}
+                </ul>
+              </div>
+              <div class="only-actual">
+                <h5>실제 결과값</h5>
+                <ul>
+                  ${test.comparison.only_actual.map((fund) => `<li>${fund}</li>`).join("")}
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+        return div;
+      }
+
+      function formatInputData(data) {
+        let html = "";
+        for (const [key, value] of Object.entries(data)) {
+          if (typeof value === "object" && value !== null) {
+            html += `<div class="data-item"><strong>${key}:</strong><br>${formatInputData(value)}</div>`;
+          } else {
+            const displayValue = typeof value === "number" && value > 1000 ? formatAmount(value) : value;
+            html += `<div class="data-item"><strong>${key}:</strong> ${displayValue}</div>`;
+          }
+        }
+        return html;
+      }
+
+      function formatAmount(amount) {
+        if (amount >= 100000000) {
+          return (amount / 100000000).toFixed(1) + "억";
+        } else if (amount >= 10000) {
+          return (amount / 10000).toFixed(0) + "만";
+        }
+        return amount.toLocaleString();
+      }
+    </script>
+  </body>
+</html>
