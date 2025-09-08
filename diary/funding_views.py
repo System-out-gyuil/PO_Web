@@ -73,6 +73,7 @@ def get_funding_recommendation(request):
         
         # 개업년월로부터 업력 계산 (기본값: 3년 = 36개월)
         opening_date_value = _get_attribute_value(user, row, '개업년월')
+        print(f"개업년월: {opening_date_value}")
         calculated_months = _calculate_business_months(opening_date_value)
         company_data['business_months'] = calculated_months if calculated_months > 0 else 36
         
@@ -259,7 +260,8 @@ def get_funding_recommendation(request):
         
         # 경력은 별도 속성에서 가져오기 (기본값: 5년)
         experience_value = _get_attribute_value(user, row, '경력')
-        company_data['experience_years'] = _parse_number(experience_value, 5)  # 기본값 5년
+        print(f"경력: {experience_value}", type(experience_value))
+        company_data['experience_years'] = _calculate_experience_years(experience_value, 5)  # 기본값 5년
         
         print("=== 수집된 회사 데이터 ===")
         for key, value in company_data.items():
@@ -775,35 +777,160 @@ def _parse_number(value, default=0):
     return default
 
 
-def _calculate_business_months(opening_date_str):
+def _calculate_experience_years(experience_value, default=5):
+    """경력 데이터에서 경력 년수를 계산하는 헬퍼 함수"""
+    if experience_value is None:
+        return default
+    
+    try:
+        from datetime import datetime, date
+        import json
+        
+        # 딕셔너리나 JSON 문자열인 경우 (경력 필드)
+        if isinstance(experience_value, dict):
+            # 딕셔너리에서 years 키 확인
+            if 'years' in experience_value and experience_value['years']:
+                return int(experience_value['years'])
+            return default
+        elif isinstance(experience_value, str):
+            # JSON 문자열인 경우 파싱 시도
+            if experience_value.startswith('{'):
+                try:
+                    data = json.loads(experience_value)
+                    if 'years' in data and data['years']:
+                        return int(data['years'])
+                except (json.JSONDecodeError, ValueError):
+                    pass
+            
+            # 숫자 문자열인 경우
+            try:
+                years = int(experience_value)
+                return max(0, years)
+            except ValueError:
+                pass
+            
+            # 날짜 문자열인 경우 (기존 로직)
+            date_formats = [
+                '%Y-%m-%d',
+                '%Y/%m/%d',
+                '%Y.%m.%d',
+                '%m/%d/%Y',
+                '%d/%m/%Y',
+                '%Y-%m-%d %H:%M:%S',
+                '%Y-%m-%dT%H:%M:%S',
+            ]
+            
+            experience_date = None
+            for fmt in date_formats:
+                try:
+                    experience_date = datetime.strptime(experience_value, fmt).date()
+                    break
+                except ValueError:
+                    continue
+            
+            if experience_date is None:
+                return default
+            
+            # 현재 날짜와 비교하여 경력 년수 계산
+            today = date.today()
+            years = today.year - experience_date.year
+            
+            # 생일이 아직 지나지 않았으면 1년 빼기
+            if (today.month, today.day) < (experience_date.month, experience_date.day):
+                years -= 1
+            
+            return max(0, years)  # 음수 방지
+        
+        # datetime 객체인 경우
+        elif isinstance(experience_value, datetime):
+            experience_date = experience_value.date()
+            today = date.today()
+            years = today.year - experience_date.year
+            
+            if (today.month, today.day) < (experience_date.month, experience_date.day):
+                years -= 1
+            
+            return max(0, years)
+        
+        # date 객체인 경우
+        elif isinstance(experience_value, date):
+            today = date.today()
+            years = today.year - experience_value.year
+            
+            if (today.month, today.day) < (experience_value.month, experience_value.day):
+                years -= 1
+            
+            return max(0, years)
+        
+        return default
+        
+    except (ValueError, TypeError, AttributeError, KeyError):
+        return default
+
+
+def _calculate_business_months(opening_date_value):
     """개업년월로부터 업력(개월수) 계산하는 헬퍼 함수"""
-    if not opening_date_str:
+    if not opening_date_value:
         return 12  # 기본값
     
     try:
-        # 다양한 날짜 형식 처리
-        if isinstance(opening_date_str, str):
-            # YYYY-MM-DD 형식
-            if '-' in opening_date_str and len(opening_date_str) >= 7:
-                opening_date = datetime.strptime(opening_date_str[:7], '%Y-%m')
-            # YYYY년 MM월 형식
-            elif '년' in opening_date_str and '월' in opening_date_str:
-                # 예: "2023년 5월"
-                match = re.search(r'(\d{4})년\s*(\d{1,2})월', opening_date_str)
-                if match:
-                    year, month = int(match.group(1)), int(match.group(2))
-                    opening_date = datetime(year, month, 1)
-                else:
-                    return 12
-            else:
-                return 12
+        opening_date = None
+        
+        # 딕셔너리 형태인 경우 (JSON 형태)
+        if isinstance(opening_date_value, dict):
+            if 'opening_date' in opening_date_value:
+                date_str = opening_date_value['opening_date']
+                if date_str:
+                    # YYYY-MM-DD 형식 파싱
+                    opening_date = datetime.strptime(date_str, '%Y-%m-%d')
+            elif 'years_ago' in opening_date_value and opening_date_value['years_ago']:
+                # years_ago가 있는 경우 직접 계산
+                years_ago = int(opening_date_value['years_ago'])
+                return years_ago * 12
+        
+        # 문자열인 경우
+        elif isinstance(opening_date_value, str):
+            # JSON 문자열인 경우 파싱 시도
+            if opening_date_value.startswith('{'):
+                try:
+                    import json
+                    data = json.loads(opening_date_value)
+                    if 'opening_date' in data:
+                        date_str = data['opening_date']
+                        if date_str:
+                            opening_date = datetime.strptime(date_str, '%Y-%m-%d')
+                    elif 'years_ago' in data and data['years_ago']:
+                        years_ago = int(data['years_ago'])
+                        return years_ago * 12
+                except (json.JSONDecodeError, ValueError):
+                    pass
+            
+            # 일반 문자열 날짜 형식 처리
+            if opening_date is None:
+                # YYYY-MM-DD 형식
+                if '-' in opening_date_value and len(opening_date_value) >= 7:
+                    opening_date = datetime.strptime(opening_date_value[:7], '%Y-%m')
+                # YYYY년 MM월 형식
+                elif '년' in opening_date_value and '월' in opening_date_value:
+                    # 예: "2023년 5월"
+                    match = re.search(r'(\d{4})년\s*(\d{1,2})월', opening_date_value)
+                    if match:
+                        year, month = int(match.group(1)), int(match.group(2))
+                        opening_date = datetime(year, month, 1)
+        
+        # datetime 객체인 경우
+        elif isinstance(opening_date_value, datetime):
+            opening_date = opening_date_value
+        
+        if opening_date is None:
+            return 12  # 파싱 실패 시 기본값
         
         # 현재 날짜와의 차이 계산
         now = datetime.now()
         months_diff = (now.year - opening_date.year) * 12 + (now.month - opening_date.month)
         return max(1, months_diff)  # 최소 1개월
         
-    except (ValueError, AttributeError):
+    except (ValueError, AttributeError, TypeError, KeyError):
         return 12  # 파싱 실패 시 기본값
 
 
@@ -1322,19 +1449,19 @@ def get_saved_biz_recommendations(request):
                 print(f'all_ids: {all_ids}')
                 print(f'현재 처리 중인 biz.pblanc_id: {biz.pblanc_id}')
                 
-                # pblanc_ids에만 있고 alerts에는 없는 경우가 새로 추가된 공고
-                if pblanc_ids and len(pblanc_ids) > 0:
-                    is_in_pblanc = str(biz.pblanc_id) in [str(pid) for pid in pblanc_ids]
-                    is_in_alerts = str(biz.pblanc_id) in [str(aid) for aid in alerts] if alerts else False
+                # alerts에만 있는 경우가 새로 추가된 공고
+                if alerts and len(alerts) > 0:
+                    is_in_alerts = str(biz.pblanc_id) in [str(aid) for aid in alerts]
+                    is_in_pblanc = str(biz.pblanc_id) in [str(pid) for pid in pblanc_ids] if pblanc_ids else False
                     
-                    # pblanc_ids에는 있지만 alerts에는 없는 경우가 새 공고
-                    is_new = is_in_pblanc and not is_in_alerts
+                    # alerts에만 있고 pblanc_ids에는 없는 경우가 새 공고
+                    is_new = is_in_alerts and not is_in_pblanc
                     
                     print(f'is_in_pblanc: {is_in_pblanc}')
                     print(f'is_in_alerts: {is_in_alerts}')
-                    print(f'is_new 계산: {is_in_pblanc} and not {is_in_alerts} = {is_new}')
+                    print(f'is_new 계산: {is_in_alerts} and not {is_in_pblanc} = {is_new}')
                 else:
-                    print(f'pblanc_ids가 비어있음')
+                    print(f'alerts가 비어있음')
                 
                 print(f'결과 is_new: {is_new}')
                 print(f'==================')

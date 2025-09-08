@@ -453,11 +453,11 @@ class PolicyFundRecommendationEngineV2:
         if credit_score <= 839 and current_lowcredit == 0:
             print("저신용자금 가능 - 3천만원")
             funds.append({
-                'fund_name': '소진공_저신용',
+                'fund_name': '소진공_신용취약',
                 'limit': 30_000_000,
                 'priority': 4,
                 'institution': '소상공인시장진흥공단',
-                'calculation_note': '신규 저신용자금 3천만원',
+                'calculation_note': '신규 신용취약자금 3천만원',
                 'processing_time': '2-3주',
                 'interest_rate': '4.0~6.0%'
             })
@@ -543,12 +543,10 @@ class PolicyFundRecommendationEngineV2:
                     credit_tier = 2  # 840-879점
                 elif credit_score >= 780:
                     credit_tier = 3  # 780-839점
-                elif credit_score >= 745:
-                    credit_tier = 4  # 745-779점
-                elif credit_score >= 710:
-                    credit_tier = 5  # 710-744점 (지원불가)
+                elif credit_score >= 700:
+                    credit_tier = 4  # 700-744점
                 else:
-                    credit_tier = 6  # 595-709점 (지원불가)
+                    credit_tier = 5  # 700점 미만
                 
                 # 지원불가 구간 체크
                 if credit_tier >= 5:  # 710점 미만은 지원불가
@@ -561,7 +559,7 @@ class PolicyFundRecommendationEngineV2:
                     [25, 30, 35, 40, 45, 50, 60],  # 880-919점
                     [20, 25, 30, 35, 40, 40, 50],  # 840-879점
                     [15, 20, 25, 30, 30, 35, 40],  # 780-839점
-                    [10, 15, 20, 20, 25, 25, 30]   # 745-779점
+                    [10, 15, 20, 20, 25, 25, 30]   # 700-779점
                 ]
                 
                 return limit_matrix[credit_tier][year_tier] * 1000000  # 백만원을 원 단위로 변환
@@ -570,10 +568,8 @@ class PolicyFundRecommendationEngineV2:
             
             # 지원불가 체크
             if max_possible == 0:
-                if credit_score < 745:
-                    print(f"신용점수 {credit_score}점으로 신용보증재단 이용 불가 (745점 미만)")
-                else:
-                    print(f"신용점수 {credit_score}점으로 신용보증재단 이용 불가 (710-744점 지원불가)")
+                if credit_score < 700:
+                    print(f"신용점수 {credit_score}점으로 신용보증재단 이용 불가 (700점 미만)")
                 return None
             
             # 업력과 신용점수 기준 설명
@@ -601,7 +597,7 @@ class PolicyFundRecommendationEngineV2:
             elif credit_score >= 780:
                 credit_desc = "780-839점"
             else:
-                credit_desc = "745-779점"
+                credit_desc = "700-779점"
             
             calculation_note = f'업력 {year_desc} + 신용점수 {credit_desc}'
             print(f"일반 매트릭스 적용: {calculation_note}")

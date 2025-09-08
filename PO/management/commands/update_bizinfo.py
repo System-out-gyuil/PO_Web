@@ -440,10 +440,25 @@ class Command(BaseCommand):
     def update_diary_recommendations(self):
         """
         모든 diary 행의 데이터를 조회하여 각 행마다 해당하는 공고를 지원사업 속성에 자동으로 추가
+        당일 추가된 BizInfo 데이터만 추천 대상으로 사용
         """
         from diary.models import User, Row, Attribute, AttributeValue, AttributeType
+        from datetime import date, time as dt_time
+        from django.utils.timezone import make_aware
         
         print("=== diary 추천 지원사업 자동 업데이트 시작 ===")
+        
+        # 오늘 00:00:00 기준 datetime 객체 생성
+        today_midnight = datetime.combine(date.today(), dt_time.min)
+        today_midnight = make_aware(today_midnight)
+        
+        # 당일 추가된 BizInfo 데이터만 조회
+        today_bizinfo = BizInfo.objects.filter(registered_at__gte=today_midnight)
+        print(f"당일 추가된 BizInfo 데이터 수: {today_bizinfo.count()}개")
+        
+        if today_bizinfo.count() == 0:
+            print("당일 추가된 BizInfo 데이터가 없어서 업데이트를 건너뜁니다.")
+            return 0
         
         # 모든 사용자 조회
         users = User.objects.all()
@@ -521,10 +536,10 @@ class Command(BaseCommand):
                     
                     print(f"  행 {row.id}: 지역={biz_region}, 업종={biz_industry}, 매출={biz_revenue}, 업력={biz_business_months}, 직원수={biz_employees}")
                     
-                    # BizInfo에서 해당하는 공고 조회
+                    # 당일 추가된 BizInfo에서 해당하는 공고 조회
                     if biz_region:
-                        # 상세지역이 정확히 포함된 데이터만 검색
-                        data_with_detail = BizInfo.objects.filter(
+                        # 상세지역이 정확히 포함된 데이터만 검색 (당일 데이터만)
+                        data_with_detail = today_bizinfo.filter(
                             (Q(region__contains=biz_region) | Q(region__contains="전국") | Q(hashtag__contains=biz_region)) &
                             (Q(possible_industry__contains=biz_industry) | Q(possible_industry__contains='무관')) &
                             (Q(revenue__contains=biz_revenue) | Q(revenue__contains='무관')) &
@@ -540,10 +555,10 @@ class Command(BaseCommand):
                             )
                         )
                         
-                        # 상세지역이 포함된 데이터가 10개 미만인 경우, 포함되지 않은 데이터도 추가
+                        # 상세지역이 포함된 데이터가 10개 미만인 경우, 포함되지 않은 데이터도 추가 (당일 데이터만)
                         if data_with_detail.count() < 10:
                             needed_count = 10 - data_with_detail.count()
-                            additional_data = BizInfo.objects.filter(
+                            additional_data = today_bizinfo.filter(
                                 (Q(region__contains=biz_region) | Q(region__contains="전국") | Q(hashtag__contains=biz_region)) &
                                 (Q(possible_industry__contains=biz_industry) | Q(possible_industry__contains='무관')) &
                                 (Q(revenue__contains=biz_revenue) | Q(revenue__contains='무관')) &
@@ -572,8 +587,8 @@ class Command(BaseCommand):
                         else:
                             final_data = list(data_with_detail[:10])
                     else:
-                        # 지역이 없는 경우 기본 조건으로만 검색
-                        final_data = list(BizInfo.objects.filter(
+                        # 지역이 없는 경우 기본 조건으로만 검색 (당일 데이터만)
+                        final_data = list(today_bizinfo.filter(
                             (Q(possible_industry__contains=biz_industry) | Q(possible_industry__contains='무관')) &
                             (Q(revenue__contains=biz_revenue) | Q(revenue__contains='무관')) &
                             (Q(business_period__contains=biz_business_months) | Q(business_period__contains='무관')) &
@@ -586,6 +601,11 @@ class Command(BaseCommand):
 
                     print(f"    추천된 공고 수: {len(final_data)}개")
                     print(f"    pblanc_ids: {pblanc_ids_str}")
+                    
+                    # 당일 데이터가 없으면 해당 행은 건너뛰기
+                    if len(final_data) == 0:
+                        print(f"    당일 추가된 공고가 없어서 건너뜁니다.")
+                        continue
 
                     # 지원사업 속성 찾기 (없으면 생성)
                     try:
@@ -629,11 +649,30 @@ class Command(BaseCommand):
                                 if isinstance(existing_ids, str):
                                     existing_ids = [id.strip() for id in existing_ids.split(',') if id.strip()]
                                 
-                                # 새로 추가된 공고 ID들 찾기
+                                # 기존 알림 목록 가져오기
+                                existing_alerts = existing_data.get('알림', [])
+                                if isinstance(existing_alerts, str):
+                                    existing_alerts = [id.strip() for id in existing_alerts.split(',') if id.strip()]
+                                
+                                # 새로 추가된 공고 ID들 찾기 (당일 데이터이므로 모든 공고가 새로 추가된 것)
                                 new_ids = [id for id in pblanc_ids if id not in existing_ids]
+                                
                                 if new_ids:
-                                    support_data['알림'] = new_ids  # 새로 추가된 것들만 알림에
+                                    # 기존 알림 앞에 새로운 알림 추가
+                                    updated_alerts = new_ids + existing_alerts
+                                    
+                                    # 10개를 초과하면 가장 오래된 알림(뒤쪽) 제거
+                                    if len(updated_alerts) > 10:
+                                        updated_alerts = updated_alerts[:10]
+                                        print(f"    알림이 10개를 초과하여 가장 오래된 알림 제거")
+                                    
+                                    support_data['알림'] = updated_alerts
                                     print(f"    새로 추가된 공고: {new_ids}")
+                                    print(f"    업데이트된 알림 목록: {updated_alerts}")
+                                else:
+                                    # 당일 데이터가 기존에 이미 있다면 기존 알림 유지
+                                    support_data['알림'] = existing_alerts
+                                    print(f"    당일 데이터가 이미 존재하여 기존 알림 유지: {existing_alerts}")
                             else:
                                 # 기존 데이터가 잘못된 형태인 경우, 모든 공고를 알림으로 설정
                                 support_data['알림'] = pblanc_ids
