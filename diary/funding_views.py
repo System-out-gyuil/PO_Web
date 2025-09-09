@@ -1640,9 +1640,15 @@ def clear_biz_recommendation_alerts(request):
             
             # 데이터 타입에 따른 분기 처리
             if isinstance(current_value, dict):
-                # 딕셔너리인 경우
+                # 딕셔너리인 경우 - 알림의 공고들을 pblanc_ids로 이동
+                current_pblanc_ids = current_value.get('pblanc_ids', [])
+                current_alerts = current_value.get('알림', [])
+                
+                # 알림의 공고들을 pblanc_ids에 추가 (중복 제거)
+                updated_pblanc_ids = list(set(current_pblanc_ids + current_alerts))
+                
                 updated_value = {
-                    'pblanc_ids': current_value.get('pblanc_ids', []),
+                    'pblanc_ids': updated_pblanc_ids,
                     '알림': []  # 알림 제거
                 }
             elif isinstance(current_value, str):
@@ -1653,8 +1659,14 @@ def clear_biz_recommendation_alerts(request):
                     parsed_data = json.loads(cleaned_string)
                     
                     if isinstance(parsed_data, dict):
+                        current_pblanc_ids = parsed_data.get('pblanc_ids', [])
+                        current_alerts = parsed_data.get('알림', [])
+                        
+                        # 알림의 공고들을 pblanc_ids에 추가 (중복 제거)
+                        updated_pblanc_ids = list(set(current_pblanc_ids + current_alerts))
+                        
                         updated_value = {
-                            'pblanc_ids': parsed_data.get('pblanc_ids', []),
+                            'pblanc_ids': updated_pblanc_ids,
                             '알림': []  # 알림 제거
                         }
                     else:

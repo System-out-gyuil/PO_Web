@@ -841,7 +841,7 @@ function generateDetailModalContent(attributes, rowData, rowId) {
                     </div>
                 `;
     } else if (attr.name === "경력") {
-        console.log("경력 필드 처리");
+      console.log("경력 필드 처리");
       // 경력 필드 처리 - 년수만 입력 (개업년월과 동일한 스타일)
       let experienceData = {};
       let displayText = "";
@@ -4882,6 +4882,11 @@ function validateRequiredFieldsForBizRecommendation(rowId) {
 }
 
 function getSavedBizRecommendations(rowId) {
+  // 알림 제거와 함께 모달 열기
+  openRecommendModalWithAlertClear(rowId, "view");
+}
+
+function getSavedBizRecommendationsData(rowId) {
   // 로딩 표시
   showRecommendModal("추천 지원사업", "데이터를 조회하고 있습니다...", true);
 
@@ -5244,17 +5249,17 @@ function openRecommendModalWithAlertClear(rowId, type) {
           row.dataset.hasNotifications = "false";
         }
 
-        // 추천 모달 열기
-        openRecommendModal(rowId, type);
+        // 저장된 추천 지원사업 조회 및 모달 열기
+        getSavedBizRecommendationsData(rowId);
       } else {
         console.error("알림 제거 실패:", data.error);
         // 알림 제거 실패 시에도 모달 열기
-        openRecommendModal(rowId, type);
+        getSavedBizRecommendationsData(rowId);
       }
     })
     .catch((error) => {
       console.error("알림 제거 중 오류:", error);
       // 오류 발생 시에도 모달 열기
-      openRecommendModal(rowId, type);
+      getSavedBizRecommendationsData(rowId);
     });
 }

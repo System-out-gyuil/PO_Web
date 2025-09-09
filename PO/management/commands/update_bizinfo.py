@@ -630,8 +630,8 @@ class Command(BaseCommand):
 
                     # dict 형태로 데이터 구성
                     support_data = {
-                        'pblanc_ids': pblanc_ids,  # 항상 전체 추천 공고 ID 저장
-                        '알림': []
+                        'pblanc_ids': [],  # 확인된 공고 ID들
+                        '알림': []  # 새로 추가된 공고 ID들
                     }
 
                     # 기존 값이 있으면 기존 pblanc_ids와 비교하여 새로 추가된 것들 찾기
@@ -645,34 +645,50 @@ class Command(BaseCommand):
                                 existing_data = existing_value
                             
                             if isinstance(existing_data, dict) and 'pblanc_ids' in existing_data:
-                                existing_ids = existing_data.get('pblanc_ids', [])
-                                if isinstance(existing_ids, str):
-                                    existing_ids = [id.strip() for id in existing_ids.split(',') if id.strip()]
+                                existing_pblanc_ids = existing_data.get('pblanc_ids', [])
+                                if isinstance(existing_pblanc_ids, str):
+                                    existing_pblanc_ids = [id.strip() for id in existing_pblanc_ids.split(',') if id.strip()]
                                 
                                 # 기존 알림 목록 가져오기
                                 existing_alerts = existing_data.get('알림', [])
                                 if isinstance(existing_alerts, str):
                                     existing_alerts = [id.strip() for id in existing_alerts.split(',') if id.strip()]
                                 
+                                # 기존 pblanc_ids와 알림을 합쳐서 기존 공고 목록 생성
+                                existing_all_ids = existing_pblanc_ids + existing_alerts
+                                
                                 # 새로 추가된 공고 ID들 찾기 (당일 데이터이므로 모든 공고가 새로 추가된 것)
-                                new_ids = [id for id in pblanc_ids if id not in existing_ids]
+                                new_ids = [id for id in pblanc_ids if id not in existing_all_ids]
                                 
                                 if new_ids:
-                                    # 기존 알림 앞에 새로운 알림 추가
-                                    updated_alerts = new_ids + existing_alerts
+                                    # 기존 알림에 새로운 공고 추가
+                                    updated_alerts = existing_alerts + new_ids
                                     
-                                    # 10개를 초과하면 가장 오래된 알림(뒤쪽) 제거
-                                    if len(updated_alerts) > 10:
-                                        updated_alerts = updated_alerts[:10]
-                                        print(f"    알림이 10개를 초과하여 가장 오래된 알림 제거")
+                                    # 전체 공고 수가 10개를 초과하면 가장 오래된 공고 제거
+                                    total_count = len(existing_pblanc_ids) + len(updated_alerts)
+                                    if total_count > 10:
+                                        # 제거할 공고 수 계산
+                                        remove_count = total_count - 10
+                                        
+                                        # 알림에서 가장 오래된 공고부터 제거
+                                        if len(updated_alerts) >= remove_count:
+                                            updated_alerts = updated_alerts[remove_count:]
+                                        else:
+                                            # 알림이 부족하면 pblanc_ids에서도 제거
+                                            remaining_remove = remove_count - len(updated_alerts)
+                                            updated_alerts = []
+                                            existing_pblanc_ids = existing_pblanc_ids[remaining_remove:]
                                     
+                                    support_data['pblanc_ids'] = existing_pblanc_ids
                                     support_data['알림'] = updated_alerts
                                     print(f"    새로 추가된 공고: {new_ids}")
+                                    print(f"    업데이트된 pblanc_ids: {existing_pblanc_ids}")
                                     print(f"    업데이트된 알림 목록: {updated_alerts}")
                                 else:
-                                    # 당일 데이터가 기존에 이미 있다면 기존 알림 유지
+                                    # 당일 데이터가 기존에 이미 있다면 기존 데이터 유지
+                                    support_data['pblanc_ids'] = existing_pblanc_ids
                                     support_data['알림'] = existing_alerts
-                                    print(f"    당일 데이터가 이미 존재하여 기존 알림 유지: {existing_alerts}")
+                                    print(f"    당일 데이터가 이미 존재하여 기존 데이터 유지")
                             else:
                                 # 기존 데이터가 잘못된 형태인 경우, 모든 공고를 알림으로 설정
                                 support_data['알림'] = pblanc_ids
