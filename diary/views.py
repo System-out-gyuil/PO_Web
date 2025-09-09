@@ -101,7 +101,7 @@ def check_login_status(request):
                         if not is_admin_switch and current_date > use_date_date:
                             print(f"사용 기간이 만료되어 로그인 페이지로 리다이렉트")
                             request.session.flush()
-                            return redirect('login')
+                            return redirect('sales:login')
                         
                         # 남은 일수 계산
                         remaining_days = (use_date_date - current_date).days
@@ -187,7 +187,7 @@ def get_current_user_id(request):
 def diary_list(request):
     host = request.get_host()
     if 'namatji.com' in host:
-        return redirect('login')
+        return redirect('sales:login')
 
     # IP 주소 가져오기
     x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
@@ -234,13 +234,13 @@ def diary_list(request):
     
     if not request.session.get('diary_authenticated'):
         print(f"diary_authenticated가 False이므로 로그인 페이지로 리다이렉트")
-        return redirect('login')
+        return redirect('sales:login')
     
     # 사용자 ID 확인
     user_id = request.session.get('diary_member_id')
     if not user_id:
         print(f"diary_member_id가 없으므로 로그인 페이지로 리다이렉트")
-        return redirect('login')
+        return redirect('sales:login')
     
     try:
         user = User.objects.get(id=user_id)
@@ -262,7 +262,7 @@ def diary_list(request):
             if not is_admin_switch and current_date > use_date_date:
                 print(f"사용 기간이 만료되어 로그인 페이지로 리다이렉트")
                 request.session.flush()
-                return redirect('login')
+                return redirect('sales:login')
             
             # 남은 일수 계산
             remaining_days = (use_date_date - current_date).days
@@ -278,7 +278,7 @@ def diary_list(request):
         # 사용자가 존재하지 않는 경우 세션 정리 후 로그인 페이지로 리다이렉트
         print(f"사용자를 찾을 수 없어 세션 정리 후 로그인 페이지로 리다이렉트")
         request.session.flush()
-        return redirect('login')
+        return redirect('sales:login')
     
     # URL 파라미터에서 상태 ID 가져오기
     status_id = request.GET.get('status_id', 'all')
@@ -1305,19 +1305,19 @@ def get_recommended_notices(request):
 def entry_table_partial(request):
     # 로그인 상태 확인
     if not request.session.get('diary_authenticated'):
-        return redirect('login')
+        return redirect('sales:login')
     
     # 사용자 ID 확인
     user_id = request.session.get('diary_member_id')
     if not user_id:
-        return redirect('login')
+        return redirect('sales:login')
     
     try:
         user = User.objects.get(id=user_id)
     except User.DoesNotExist:
         # 사용자가 존재하지 않는 경우 세션 정리 후 로그인 페이지로 리다이렉트
         request.session.flush()
-        return redirect('login')
+        return redirect('sales:login')
     
     # URL 파라미터에서 상태 ID 가져오기
     status_id = request.GET.get('status_id', 'all')

@@ -1,5 +1,7 @@
 from django.urls import path
 from . import views
+
+app_name = 'diary'
 from .login_views import LoginView, LogoutView, SignupView, ChangePasswordView, SendVerificationEmailView, VerifyEmailView, ForgotPasswordView, ResetPasswordView, CheckEmailDuplicateView, login_popup
 from .main_views import DiaryMainView
 from .file_handler import upload_file, delete_file, download_file, download_file_note

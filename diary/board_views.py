@@ -10,17 +10,17 @@ import json
 def board_list_view(request):
     """게시판 목록 페이지"""
     if not request.session.get('diary_authenticated'):
-        return redirect('login')
+        return redirect('sales:login')
     
     user_id = request.session.get('diary_member_id')
     if not user_id:
-        return redirect('login')
+        return redirect('sales:login')
     
     try:
         user = User.objects.get(id=user_id)
     except User.DoesNotExist:
         request.session.flush()
-        return redirect('login')
+        return redirect('sales:login')
     
     context = {
         'is_authenticated': True,
@@ -182,11 +182,11 @@ def board_create(request):
 def board_detail_view(request, board_id):
     """게시글 상세 페이지 - 본인이 작성한 게시글만 조회 가능"""
     if not request.session.get('diary_authenticated'):
-        return redirect('login')
+        return redirect('sales:login')
     
     user_id = request.session.get('diary_member_id')
     if not user_id:
-        return redirect('login')
+        return redirect('sales:login')
     
     try:
         user = User.objects.get(id=user_id)

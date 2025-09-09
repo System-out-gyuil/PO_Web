@@ -116,17 +116,18 @@ def admin_dashboard(request):
     """어드민 대시보드"""
     # 관리자 권한 확인
     user_id = request.session.get('diary_member_id')
-    
+
+    print(f"user_id: {user_id}")
     if not user_id:
-        return redirect('login')
+        return redirect('sales:login')
     
     try:
         user = User.objects.get(id=user_id)
     except User.DoesNotExist:
-        return redirect('login')
+        return redirect('sales:login')
 
     if not user.is_admin:  # is_admin 필드로 권한 확인
-        return redirect('login')
+        return redirect('sales:login')
     
     # 최근 문의사항 5개
     recent_inquiries = Inquiry.objects.all().order_by('-created_at')[:5]
@@ -326,15 +327,15 @@ def alarm_create(request):
     user_id = request.session.get('diary_member_id')
     
     if not user_id:
-        return redirect('login')
+        return redirect('sales:login')
     
     try:
         user = User.objects.get(id=user_id)
     except User.DoesNotExist:
-        return redirect('login')
+        return redirect('sales:login')
 
     if not user.is_admin:  # 실제로는 더 안전한 권한 체크 필요
-        return redirect('login')
+        return redirect('sales:login')
     
     if request.method == 'POST':
         try:
