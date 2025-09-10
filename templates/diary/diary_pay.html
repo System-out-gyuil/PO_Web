@@ -104,6 +104,13 @@
       async function requestBillingAuth(type) {
         console.log('requestBillingAuth 호출됨, type:', type);
 
+        // 로그인하지 않은 사용자인 경우 로그인 페이지로 리다이렉트
+        if (!{{ is_authenticated|yesno:"true,false" }}) {
+          alert('결제를 위해서는 로그인이 필요합니다.');
+          window.location.href = '/sales/login/';
+          return;
+        }
+
         // 세션에 billing_type 저장
         try {
           await fetch('/sales/api/payment/request-billing-auth/', {
@@ -126,13 +133,20 @@
           method: "CARD", // 자동결제(빌링)는 카드만 지원합니다
           successUrl: window.location.origin + "/sales/toss-payments/success/", // 요청이 성공하면 리다이렉트되는 URL
           failUrl: window.location.origin + "/sales/toss-payments/fail/", // 요청이 실패하면 리다이렉트되는 URL
-          customerEmail: "{{ user_email }}",
-          customerName: "{{ user_name }}",
+          customerEmail: "{{ user_email|default:'' }}",
+          customerName: "{{ user_name|default:'' }}",
         });
       }
 
       // ------ 구독해제 기능 ------
       async function cancelSubscription() {
+        // 로그인하지 않은 사용자인 경우 로그인 페이지로 리다이렉트
+        if (!{{ is_authenticated|yesno:"true,false" }}) {
+          alert('구독 관리를 위해서는 로그인이 필요합니다.');
+          window.location.href = '/sales/login/';
+          return;
+        }
+
         if (confirm("정말로 구독을 해제하시겠습니까?")) {
           try {
             const response = await fetch("/sales/api/subscription/cancel-subscription/", {
@@ -163,6 +177,13 @@
 
                   // 구독 정보 모달 표시 (1개월 구독 전용)
       function showSubscriptionInfo() {
+        // 로그인하지 않은 사용자인 경우 로그인 페이지로 리다이렉트
+        if (!{{ is_authenticated|yesno:"true,false" }}) {
+          alert('구독 관리를 위해서는 로그인이 필요합니다.');
+          window.location.href = '/sales/login/';
+          return;
+        }
+
         // 1개월 구독은 항상 구독 정보 모달 표시
         document.getElementById('subscriptionModal').style.display = 'flex';
 
@@ -208,6 +229,14 @@
       // 구독하기 확인
       function confirmSubscription() {
         console.log('confirmSubscription 호출됨, has_billing:', "{{ has_billing }}");
+
+        // 로그인하지 않은 사용자인 경우 로그인 페이지로 리다이렉트
+        if (!{{ is_authenticated|yesno:"true,false" }}) {
+          alert('구독을 위해서는 로그인이 필요합니다.');
+          window.location.href = '/sales/login/';
+          return;
+        }
+
         has_billing = "{{ has_billing }}";
         // 빌링키가 있는 경우 바로 결제, 없는 경우 카드 등록
         if (has_billing == 'True') {
@@ -227,6 +256,14 @@
       function requestPaymentWithBillingKey(billingType) {
         console.log('requestPaymentWithBillingKey 호출됨, billingType:', billingType);
         console.log('billingType 타입:', typeof billingType);
+
+        // 로그인하지 않은 사용자인 경우 로그인 페이지로 리다이렉트
+        if (!{{ is_authenticated|yesno:"true,false" }}) {
+          alert('결제를 위해서는 로그인이 필요합니다.');
+          window.location.href = '/sales/login/';
+          return;
+        }
+
         const csrfToken = getCookie('csrftoken');
         console.log('CSRF Token:', csrfToken);
 
@@ -279,6 +316,13 @@
 
       // 구매 모달 표시
       function showPurchaseModal(type, duration, price) {
+        // 로그인하지 않은 사용자인 경우 로그인 페이지로 리다이렉트
+        if (!{{ is_authenticated|yesno:"true,false" }}) {
+          alert('구매를 위해서는 로그인이 필요합니다.');
+          window.location.href = '/sales/login/';
+          return;
+        }
+
         currentPurchaseType = type;
         currentPurchaseDuration = duration;
         currentPurchasePrice = price;
@@ -314,6 +358,14 @@
       // 구매 확인
       function confirmPurchase() {
         console.log('confirmPurchase 호출됨, currentPurchaseType:', currentPurchaseType);
+
+        // 로그인하지 않은 사용자인 경우 로그인 페이지로 리다이렉트
+        if (!{{ is_authenticated|yesno:"true,false" }}) {
+          alert('구매를 위해서는 로그인이 필요합니다.');
+          window.location.href = '/sales/login/';
+          return;
+        }
+
         if (currentPurchaseType) {
           // 6개월, 1년 구매인 경우
           console.log('6개월/1년 구매, currentPurchaseType:', currentPurchaseType);
@@ -342,6 +394,13 @@
 
       // 카드 연동 해제
       async function unlinkCard() {
+        // 로그인하지 않은 사용자인 경우 로그인 페이지로 리다이렉트
+        if (!{{ is_authenticated|yesno:"true,false" }}) {
+          alert('카드 관리를 위해서는 로그인이 필요합니다.');
+          window.location.href = '/sales/login/';
+          return;
+        }
+
         if (confirm("카드 연동을 해제하시겠습니까? 해제 후에는 다시 카드를 등록해야 합니다.")) {
           try {
             const response = await fetch("/sales/api/payment/unlink-card/", {
