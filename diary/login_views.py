@@ -261,24 +261,71 @@ class SignupView(View):
             })
     
     def _create_default_attributes(self, user):
-        """사용자에게 기본 속성들을 생성하는 메서드"""
-        # 원하는 순서대로 속성명 정의
-        desired_order = [
-            '회사명',      # 1. baseattribute
-            '매출',        # 3. baseattribute
-            '신용점수',    # 5. baseattribute
-            '업종',        # 8. baseattribute
-            '기대출',      # 4. baseattributedetail
-            '개업년월',    # 6. baseattribute
-            '나이',        # 7. baseattribute
-            '경력',        # 9. baseattribute
-            '직원수',      # 10. baseattribute
-            '지역',
-            '상세지역',
-            '추천자금',
-            '지원사업'
-        ]
-        
+        """사용자에게 기본 속성들을 생성하는 메서드 (샘플 계정의 sort_order 기준)"""
+        try:
+            # 샘플 데이터 제공 계정 (user.id=34)
+            sample_user = User.objects.get(id=34)
+            
+            # 샘플 계정의 속성들을 sort_order 순으로 조회
+            sample_attributes = Attribute.objects.filter(user=sample_user).order_by('sort_order')
+            
+            # 동기화를 활성화할 속성들 정의
+            cascade_enabled_attributes = {
+                '회사명', '매출', '계약여부', '지역', '상세지역', 
+                '주소', '이메일', '연락처', '미팅', 'TA', '신용점수', '업종', '기대출', '개업년월', '나이', '경력', '직원수', '추천자금',
+                '사업자등록증', '통신사', '부가세표준증명원', '재무제표', '음성파일', '변환된 텍스트'
+            }
+            
+            # 샘플 계정의 속성 순서대로 새 사용자에게 속성 생성
+            for sample_attr in sample_attributes:
+                # BaseAttribute 또는 BaseAttributeDetail에서 찾기
+                base_attr = None
+                is_detail = False
+                
+                try:
+                    # BaseAttribute에서 먼저 찾기
+                    base_attr = BaseAttribute.objects.get(name=sample_attr.name)
+                    is_detail = False
+                except BaseAttribute.DoesNotExist:
+                    try:
+                        # BaseAttributeDetail에서 찾기
+                        base_attr = BaseAttributeDetail.objects.get(name=sample_attr.name)
+                        is_detail = True
+                    except BaseAttributeDetail.DoesNotExist:
+                        print(f"속성 '{sample_attr.name}'을 BaseAttribute 또는 BaseAttributeDetail에서 찾을 수 없습니다.")
+                        continue
+                
+                if base_attr:
+                    # cascade 값 결정
+                    cascade_value = sample_attr.name in cascade_enabled_attributes
+                    
+                    # 새 사용자에게 속성 생성 (샘플 계정의 sort_order 사용)
+                    Attribute.objects.create(
+                        name=base_attr.name,
+                        user=user,
+                        attributeType=base_attr.attributeType,
+                        assential=True,
+                        detail=is_detail,
+                        sort_order=sample_attr.sort_order,  # 샘플 계정의 sort_order 사용
+                        view_select={"0": True},
+                        cascade=cascade_value,
+                        width=sample_attr.width or 150  # 샘플 계정의 width도 사용, 없으면 기본값
+                    )
+                    print(f"속성 생성 완료: {sample_attr.name} (sort_order: {sample_attr.sort_order})")
+            
+            print(f"샘플 계정 기준 속성 생성 완료: {sample_attributes.count()}개 속성")
+            
+        except User.DoesNotExist:
+            print("샘플 데이터 제공 계정(user.id=34)이 존재하지 않습니다. 기본 방식으로 속성을 생성합니다.")
+            # 기본 방식으로 폴백
+            self._create_default_attributes_fallback(user)
+        except Exception as e:
+            print(f"샘플 계정 기준 속성 생성 중 오류: {str(e)}. 기본 방식으로 속성을 생성합니다.")
+            # 기본 방식으로 폴백
+            self._create_default_attributes_fallback(user)
+    
+    def _create_default_attributes_fallback(self, user):
+        """기본 방식으로 속성을 생성하는 폴백 메서드"""
         # 동기화를 활성화할 속성들 정의
         cascade_enabled_attributes = {
             '회사명', '매출', '계약여부', '지역', '상세지역', 
@@ -289,84 +336,41 @@ class SignupView(View):
         # sort_order를 위한 카운터
         sort_order_counter = 1
         
-        # 원하는 순서대로 속성 생성
-        for attr_name in desired_order:
-            # BaseAttribute에서 찾기
-            try:
-                base_attr = BaseAttribute.objects.get(name=attr_name)
-                # cascade 값 결정
-                cascade_value = attr_name in cascade_enabled_attributes
-                Attribute.objects.create(
-                    name=base_attr.name,
-                    user=user,
-                    attributeType=base_attr.attributeType,
-                    assential=True,
-                    detail=False,  # BaseAttribute는 detail=0
-                    sort_order=sort_order_counter,
-                    view_select={"0": True},
-                    cascade=cascade_value,  # 특정 속성만 True, 나머지는 False
-                    width=150  # 기본값
-                )
-                sort_order_counter += 1
-            except BaseAttribute.DoesNotExist:
-                # BaseAttributeDetail에서 찾기
-                try:
-                    base_detail_attr = BaseAttributeDetail.objects.get(name=attr_name)
-                    # cascade 값 결정
-                    cascade_value = attr_name in cascade_enabled_attributes
-                    Attribute.objects.create(
-                        name=base_detail_attr.name,
-                        user=user,
-                        attributeType=base_detail_attr.attributeType,
-                        assential=True,
-                        detail=True,  # BaseAttributeDetail은 detail=1
-                        sort_order=sort_order_counter,
-                        view_select={"0": True},
-                        cascade=cascade_value,  # 특정 속성만 True, 나머지는 False
-                        width=150  # 기본값
-                    )
-                    sort_order_counter += 1
-                except BaseAttributeDetail.DoesNotExist:
-                    # 원하는 순서에 없는 속성은 건너뛰기
-                    continue
-        
-        # 나머지 BaseAttribute 속성들 (원하는 순서에 없는 것들)
+        # BaseAttribute 속성들 생성
         base_attributes = BaseAttribute.objects.all()
         for base_attr in base_attributes:
-            if base_attr.name not in desired_order:
-                # cascade 값 결정
-                cascade_value = base_attr.name in cascade_enabled_attributes
-                Attribute.objects.create(
-                    name=base_attr.name,
-                    user=user,
-                    attributeType=base_attr.attributeType,
-                    assential=True,
-                    detail=False,  # BaseAttribute는 detail=0
-                    sort_order=sort_order_counter,
-                    view_select={"0": True},
-                    cascade=cascade_value,  # 특정 속성만 True, 나머지는 False
-                    width=150  # 기본값
-                )
-                sort_order_counter += 1
+            # cascade 값 결정
+            cascade_value = base_attr.name in cascade_enabled_attributes
+            Attribute.objects.create(
+                name=base_attr.name,
+                user=user,
+                attributeType=base_attr.attributeType,
+                assential=True,
+                detail=False,  # BaseAttribute는 detail=0
+                sort_order=sort_order_counter,
+                view_select={"0": True},
+                cascade=cascade_value,
+                width=150  # 기본값
+            )
+            sort_order_counter += 1
         
-        # 나머지 BaseAttributeDetail 속성들 (원하는 순서에 없는 것들)
+        # BaseAttributeDetail 속성들 생성
         base_attribute_details = BaseAttributeDetail.objects.all()
         for base_detail_attr in base_attribute_details:
-            if base_detail_attr.name not in desired_order:
-                # cascade 값 결정
-                cascade_value = base_detail_attr.name in cascade_enabled_attributes
-                Attribute.objects.create(
-                    name=base_detail_attr.name,
-                    user=user,
-                    attributeType=base_detail_attr.attributeType,
-                    assential=True,
-                    detail=True,  # BaseAttributeDetail은 detail=1
-                    sort_order=sort_order_counter,
-                    view_select={"0": True},
-                    cascade=cascade_value,  # 특정 속성만 True, 나머지는 False
-                    width=150  # 기본값
-                )
-                sort_order_counter += 1
+            # cascade 값 결정
+            cascade_value = base_detail_attr.name in cascade_enabled_attributes
+            Attribute.objects.create(
+                name=base_detail_attr.name,
+                user=user,
+                attributeType=base_detail_attr.attributeType,
+                assential=True,
+                detail=True,  # BaseAttributeDetail은 detail=1
+                sort_order=sort_order_counter,
+                view_select={"0": True},
+                cascade=cascade_value,
+                width=150  # 기본값
+            )
+            sort_order_counter += 1
     
     def _create_sample_data(self, user):
         """샘플 데이터를 생성하는 메서드 (user.id=15 기준, FK는 새 유저 인스턴스 사용, 드롭다운 id 매핑)"""
