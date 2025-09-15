@@ -237,15 +237,30 @@ def extract_text_from_file_optimized(file_path):
         return ""
 
 def extract_pdf_text_optimized(file_path, file_hash):
-    """최적화된 PDF 텍스트 추출 (메모리 효율적)"""
+    """최적화된 PDF 텍스트 추출 (메모리 효율적, OCR fallback 포함)"""
+    print(f"PDF 텍스트 추출 시작: {file_path}")
+    
+    def is_text_extracted_enough(file_path, extracted_text):
+        """텍스트 추출이 충분한지 확인"""
+        file_size = os.path.getsize(file_path)
+        text_length = len(extracted_text.strip()) if extracted_text else 0
+        if file_size == 0:
+            return False
+        ratio = text_length / file_size
+        print(f"텍스트 추출 비율: {ratio:.4f} (텍스트: {text_length}자, 파일크기: {file_size}바이트)")
+        return ratio > 0.001  # 0.1% 이상이면 텍스트가 어느 정도 있다고 판단
+    
     try:
         with pdfplumber.open(file_path) as pdf:
+            print(f"PDF 페이지 수: {len(pdf.pages)}")
+            
             # 페이지 수에 따른 처리 방식 변경
             num_pages = len(pdf.pages)
             
-            if num_pages > 50:  # 50페이지 이상은 첫 10페이지만 처리
+            if num_pages > 50:  # 50페이지 이상은 첫 30페이지만 처리
                 pages_to_process = pdf.pages[:30]
-                result = "대용량 PDF - 첫 10페이지만 처리됨\n\n"
+                result = "대용량 PDF - 첫 30페이지만 처리됨\n\n"
+                print(f"대용량 PDF 감지, 첫 30페이지만 처리")
             else:
                 pages_to_process = pdf.pages
                 result = ""
@@ -254,32 +269,97 @@ def extract_pdf_text_optimized(file_path, file_hash):
             text_content = []
             
             for i, page in enumerate(pages_to_process):
+                print(f"페이지 {i+1} 처리 중...")
+                
                 # 표 우선 추출
-                tables = page.extract_tables()
-                if tables:
-                    for table in tables:
-                        all_tables.append(table)
+                try:
+                    tables = page.extract_tables()
+                    if tables:
+                        print(f"페이지 {i+1}에서 {len(tables)}개 표 발견")
+                        for table in tables:
+                            all_tables.append(table)
+                except Exception as e:
+                    print(f"페이지 {i+1} 표 추출 실패: {e}")
                 
                 # 텍스트 추출
-                page_text = page.extract_text()
-                if page_text:
-                    text_content.append(page_text)
+                try:
+                    page_text = page.extract_text()
+                    if page_text and page_text.strip():
+                        text_content.append(page_text)
+                        print(f"페이지 {i+1}에서 {len(page_text)}자 텍스트 추출")
+                    else:
+                        print(f"페이지 {i+1}에서 텍스트 없음")
+                except Exception as e:
+                    print(f"페이지 {i+1} 텍스트 추출 실패: {e}")
             
             # 표가 있으면 표 우선, 없으면 텍스트
             if all_tables:
+                print(f"총 {len(all_tables)}개 표 처리")
                 table_texts = []
                 for table in all_tables:
-                    table_texts.append('\n'.join(['\t'.join([cell if cell is not None else '' for cell in row]) for row in table if row]))
+                    table_text = '\n'.join(['\t'.join([cell if cell is not None else '' for cell in row]) for row in table if row])
+                    if table_text.strip():
+                        table_texts.append(table_text)
                 result += '\n\n'.join(table_texts)
             else:
+                print(f"표 없음, 텍스트 콘텐츠 {len(text_content)}개 처리")
                 result += '\n'.join(text_content)
+            
+            print(f"PDF 텍스트 추출 완료: {len(result)}자")
+            
+            # 텍스트 추출이 부족한 경우 OCR fallback 수행
+            if not is_text_extracted_enough(file_path, result):
+                print(f"텍스트 추출 부족, OCR fallback 수행")
+                ocr_texts = []
+                
+                # 최대 5페이지까지만 OCR 수행 (성능 고려)
+                ocr_pages = pages_to_process[:5]
+                print(f"OCR 대상 페이지: {len(ocr_pages)}개")
+                
+                for i, page in enumerate(ocr_pages):
+                    try:
+                        print(f"페이지 {i+1} OCR 시작")
+                        # 페이지를 이미지로 저장
+                        with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_img:
+                            img = page.to_image(resolution=300)
+                            img.save(tmp_img.name, format='PNG')
+                            print(f"페이지 {i+1} 이미지 저장 완료: {tmp_img.name}")
+                            
+                            # OCR 수행
+                            ocr_text = clova_ocr(tmp_img.name, 'png')
+                            if ocr_text and ocr_text.strip():
+                                ocr_texts.append(f"[페이지 {i+1} OCR 결과]:\n{ocr_text}")
+                                print(f"페이지 {i+1} OCR 완료: {len(ocr_text)}자")
+                            else:
+                                print(f"페이지 {i+1} OCR 결과 없음")
+                            
+                            # 임시 파일 정리
+                            try:
+                                os.remove(tmp_img.name)
+                                print(f"임시 이미지 파일 삭제: {tmp_img.name}")
+                            except Exception as e:
+                                print(f"임시 파일 삭제 실패: {e}")
+                                
+                    except Exception as e:
+                        print(f"페이지 {i+1} OCR 실패: {e}")
+                        logger.error(f"페이지 {i+1} OCR 실패: {e}")
+                
+                if ocr_texts:
+                    result = f"[경고] 이 PDF는 텍스트가 거의 없는 이미지 기반 PDF로 판단되어 OCR로 텍스트를 추출했습니다.\n\n" + '\n\n'.join(ocr_texts)
+                    print(f"OCR fallback 완료: 총 {len(result)}자")
+                else:
+                    result = "[오류] PDF에서 텍스트를 추출할 수 없으며, OCR도 실패했습니다."
+                    print(f"OCR fallback도 실패")
             
             # 캐시 저장
             set_cached_file_text(file_hash, result)
+            print(f"PDF 텍스트 추출 최종 완료: {len(result)}자")
             return result
             
     except Exception as e:
-        logger.error(f"PDF 텍스트 추출 실패: {e}")
+        error_msg = f"PDF 텍스트 추출 실패: {e}"
+        print(error_msg)
+        logger.error(error_msg)
         return ""
 
 def extract_image_text_optimized(file_path, file_hash):
