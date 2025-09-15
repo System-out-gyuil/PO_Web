@@ -1014,33 +1014,43 @@ def ai_chat(request):
                                             file_info['field_name'] = attr_name
                                             all_files.append(file_info)
                                             print(f"파일 처리 대상 추가 (data 구조): {filename}")
-                                elif file_info.get('type') == 'text':
-                                    # text 타입은 항상 새로 처리 (캐시 무시)
-                                    print(f'text 타입 파일 새로 처리: {file_info.get("text")}')
-                                    text_content = file_info.get('text', '')
-                                    if text_content:
-                                        file_texts.append(f"[{attr_name} - 텍스트]:\n{text_content}")
-                                        print(f'text 타입 파일 캐시에 저장: {attr_name}')
+                                        elif file_info.get('type') == 'text':
+                                            # text 타입은 항상 새로 처리 (캐시 무시)
+                                            print(f'text 타입 파일 새로 처리: {file_info.get("text")}')
+                                            text_content = file_info.get('text', '')
+                                            if text_content:
+                                                file_texts.append(f"[{attr_name} - 텍스트]:\n{text_content}")
+                                                print(f'text 타입 파일 캐시에 저장: {attr_name}')
                                 
                                 # 일반 파일 속성인 경우 (배열 구조)
                                 elif isinstance(file_data, list):
                                     print(f"배열 구조 파일 개수: {len(file_data)}")
                                     for i, file_info in enumerate(file_data):
                                         print(f"파일 {i}: {file_info}")
-                                        filename = file_info.get('original_filename', '파일')
-                                        print(f"파일 감지 (배열 구조): {filename} (속성: {attr_name})")
                                         
-                                        # 파일 크기 체크 (50MB 제한)
-                                        file_size = file_info.get('file_size', 0)
-                                        if file_size > 50 * 1024 * 1024:  # 50MB
-                                            file_texts.append(f"[{attr_name} - {file_info.get('original_filename', '파일')}]: 파일이 너무 커서 텍스트 추출을 건너뜁니다.")
-                                            print(f"파일 크기 초과로 건너뜀: {filename} ({file_size / (1024*1024):.1f}MB)")
-                                            continue
-                                        
-                                        # 파일 정보에 필드명 추가
-                                        file_info['field_name'] = attr_name
-                                        all_files.append(file_info)
-                                        print(f"파일 처리 대상 추가 (배열 구조): {filename}")
+                                        # text 타입 파일 처리
+                                        if file_info.get('type') == 'text':
+                                            print(f'배열 구조에서 text 타입 파일 새로 처리: {file_info.get("text")}')
+                                            text_content = file_info.get('text', '')
+                                            if text_content:
+                                                file_texts.append(f"[{attr_name} - 텍스트]:\n{text_content}")
+                                                print(f'text 타입 파일 캐시에 저장: {attr_name}')
+                                        else:
+                                            # 일반 파일 처리
+                                            filename = file_info.get('original_filename', '파일')
+                                            print(f"파일 감지 (배열 구조): {filename} (속성: {attr_name})")
+                                            
+                                            # 파일 크기 체크 (50MB 제한)
+                                            file_size = file_info.get('file_size', 0)
+                                            if file_size > 50 * 1024 * 1024:  # 50MB
+                                                file_texts.append(f"[{attr_name} - {file_info.get('original_filename', '파일')}]: 파일이 너무 커서 텍스트 추출을 건너뜁니다.")
+                                                print(f"파일 크기 초과로 건너뜀: {filename} ({file_size / (1024*1024):.1f}MB)")
+                                                continue
+                                            
+                                            # 파일 정보에 필드명 추가
+                                            file_info['field_name'] = attr_name
+                                            all_files.append(file_info)
+                                            print(f"파일 처리 대상 추가 (배열 구조): {filename}")
                                 
                                 # 단일 파일 경로인 경우
                                 elif isinstance(file_data, str):
