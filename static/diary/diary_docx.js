@@ -59,7 +59,7 @@ const modalStyles = `
     }
     
     .tab-container {
-      width: 100%;
+      width: 90%;
     }
     
     .tab-buttons {

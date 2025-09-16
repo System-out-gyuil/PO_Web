@@ -307,6 +307,7 @@ class SignupView(View):
                         assential=True,
                         detail=is_detail,
                         sort_order=sample_attr.sort_order,  # 샘플 계정의 sort_order 사용
+                        detail_sort_order=sample_attr.detail_sort_order,  # 샘플 계정의 detail_sort_order 사용
                         view_select={"0": True},
                         cascade=cascade_value,
                         width=sample_attr.width or 150  # 샘플 계정의 width도 사용, 없으면 기본값
@@ -348,6 +349,7 @@ class SignupView(View):
                 assential=True,
                 detail=False,  # BaseAttribute는 detail=0
                 sort_order=sort_order_counter,
+                detail_sort_order=sort_order_counter,  # detail_sort_order도 동일하게 설정
                 view_select={"0": True},
                 cascade=cascade_value,
                 width=150  # 기본값
@@ -366,6 +368,7 @@ class SignupView(View):
                 assential=True,
                 detail=True,  # BaseAttributeDetail은 detail=1
                 sort_order=sort_order_counter,
+                detail_sort_order=sort_order_counter,  # detail_sort_order도 동일하게 설정
                 view_select={"0": True},
                 cascade=cascade_value,
                 width=150  # 기본값
