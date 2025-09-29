@@ -353,8 +353,8 @@ def board_file_upload(request):
                 return JsonResponse({'success': False, 'message': '파일이 선택되지 않았습니다.'})
             
             # 파일 크기 제한 (10MB)
-            if uploaded_file.size > 10 * 1024 * 1024:
-                return JsonResponse({'success': False, 'message': '파일 크기는 10MB를 초과할 수 없습니다.'})
+            if uploaded_file.size > 200 * 1024 * 1024:
+                return JsonResponse({'success': False, 'message': '파일 크기는 200MB를 초과할 수 없습니다.'})
             
             import uuid
             import os
@@ -576,13 +576,17 @@ def board_file_download(request, saved_name):
         except:
             pass
         
+        # 한글 파일명을 URL 인코딩
+        import urllib.parse
+        encoded_filename = urllib.parse.quote(original_name.encode('utf-8'))
+        
         # 다운로드 URL 생성
         download_url = s3_client.generate_presigned_url(
             'get_object',
             Params={
                 'Bucket': settings.AWS_STORAGE_BUCKET_NAME,
                 'Key': saved_name,
-                'ResponseContentDisposition': f'attachment; filename="{original_name}"'
+                'ResponseContentDisposition': f'attachment; filename*=UTF-8\'\'{encoded_filename}'
             },
             ExpiresIn=3600  # 1시간
         )

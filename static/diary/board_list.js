@@ -214,7 +214,7 @@ function handleFiles(files) {
     
     Array.from(files).forEach(file => {
         // 파일 크기 제한 (10MB)
-        if (file.size > 10 * 1024 * 1024) {
+        if (file.size > 200 * 1024 * 1024) {
             alert(`파일 크기가 너무 큽니다: ${file.name}`);
             return;
         }
