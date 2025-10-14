@@ -119,6 +119,7 @@ def board_list_api(request):
 
 @csrf_exempt
 def board_create(request):
+    print(f"=== board_create 시작 ===")
     """게시글 작성"""
     if not request.session.get('diary_authenticated'):
         return JsonResponse({'success': False, 'message': '로그인이 필요합니다.'})
@@ -180,6 +181,7 @@ def board_create(request):
 
 @csrf_exempt
 def board_detail_view(request, board_id):
+
     """게시글 상세 페이지 - 본인이 작성한 게시글만 조회 가능"""
     if not request.session.get('diary_authenticated'):
         return redirect('sales:login')

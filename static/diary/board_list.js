@@ -298,110 +298,111 @@ function formatFileSize(bytes) {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
-// 게시글 작성 제출
-async function submitBoard() {
-    const title = document.getElementById('board-title-input').value.trim();
-    const content = document.getElementById('board-content-input').value.trim();
+// // 게시글 작성 제출
+// async function submitBoard() {
+//     const title = document.getElementById('board-title-input').value.trim();
+//     const content = document.getElementById('board-content-input').value.trim();
     
-    // 유효성 검사
-    if (!title) {
-        alert('제목을 입력해주세요.');
-        document.getElementById('board-title-input').focus();
-        return;
-    }
+//     // 유효성 검사
+//     if (!title) {
+//         alert('제목을 입력해주세요.');
+//         document.getElementById('board-title-input').focus();
+//         return;
+//     }
     
-    if (!content) {
-        alert('내용을 입력해주세요.');
-        document.getElementById('board-content-input').focus();
-        return;
-    }
+//     if (!content) {
+//         alert('내용을 입력해주세요.');
+//         document.getElementById('board-content-input').focus();
+//         return;
+//     }
     
-    // 제출 버튼 비활성화
-    const submitBtn = document.querySelector('.btn-submit');
-    const originalText = submitBtn.textContent;
-    submitBtn.disabled = true;
-    submitBtn.textContent = '작성 중...';
+//     // 제출 버튼 비활성화
+//     const submitBtn = document.querySelector('.btn-submit');
+//     const originalText = submitBtn.textContent;
+//     submitBtn.disabled = true;
+//     submitBtn.textContent = '작성 중...';
     
-    try {
-        // 파일 업로드 처리
-        const fileItems = document.querySelectorAll('#fileList .file-item');
-        let uploadedFiles = [];
+//     try {
+//         // 파일 업로드 처리
+//         const fileItems = document.querySelectorAll('#fileList .file-item');
+//         let uploadedFiles = [];
         
-        if (fileItems.length > 0) {
-            // 업로드 진행률 표시
-            document.getElementById('uploadProgress').style.display = 'block';
-            const progressBar = document.getElementById('progressBar');
+//         if (fileItems.length > 0) {
+//             // 업로드 진행률 표시
+//             document.getElementById('uploadProgress').style.display = 'block';
+//             const progressBar = document.getElementById('progressBar');
             
-            for (let i = 0; i < fileItems.length; i++) {
-                const fileItem = fileItems[i];
-                const fileName = fileItem.dataset.fileName;
+//             for (let i = 0; i < fileItems.length; i++) {
+//                 const fileItem = fileItems[i];
+//                 const fileName = fileItem.dataset.fileName;
                 
-                // 파일 객체 찾기
-                const fileInput = document.getElementById('board-file-input');
-                const file = Array.from(fileInput.files).find(f => f.name === fileName);
+//                 // 파일 객체 찾기
+//                 const fileInput = document.getElementById('board-file-input');
+//                 const file = Array.from(fileInput.files).find(f => f.name === fileName);
                 
-                if (file) {
-                    // 진행률 업데이트
-                    const progress = ((i + 1) / fileItems.length) * 100;
-                    progressBar.style.width = progress + '%';
+//                 if (file) {
+//                     // 진행률 업데이트
+//                     const progress = ((i + 1) / fileItems.length) * 100;
+//                     progressBar.style.width = progress + '%';
                     
-                    // 파일 업로드
-                    const formData = new FormData();
-                    formData.append('file', file);
+//                     // 파일 업로드
+//                     const formData = new FormData();
+//                     formData.append('file', file);
                     
-                    const uploadResponse = await fetch('/sales/board/upload-file/', {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRFToken': getCookie('csrftoken')
-                        },
-                        body: formData
-                    });
+//                     const uploadResponse = await fetch('/sales/board/upload-file/', {
+//                         method: 'POST',
+//                         headers: {
+//                             'X-CSRFToken': getCookie('csrftoken')
+//                         },
+//                         body: formData
+//                     });
                     
-                    const uploadData = await uploadResponse.json();
+//                     const uploadData = await uploadResponse.json();
                     
-                    if (uploadData.success) {
-                        uploadedFiles.push(uploadData.file);
-                    } else {
-                        alert(`파일 업로드 실패: ${fileName}`);
-                    }
-                }
-            }
-        }
+//                     if (uploadData.success) {
+//                         uploadedFiles.push(uploadData.file);
+//                     } else {
+//                         alert(`파일 업로드 실패: ${fileName}`);
+//                     }
+//                 }
+//             }
+//         }
         
-        // 게시글 작성
-        const response = await fetch('/sales/board/create/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken')
-            },
-            body: JSON.stringify({
-                title: title,
-                content: content,
-                files: uploadedFiles
-            })
-        });
+//         // 게시글 
+//         console.log(321)
+//         const response = await fetch('/sales/board/create/', {
+//             method: 'POST',
+//             headers: {
+//                 'Content-Type': 'application/json',
+//                 'X-CSRFToken': getCookie('csrftoken')
+//             },
+//             body: JSON.stringify({
+//                 title: title,
+//                 content: content,
+//                 files: uploadedFiles
+//             })
+//         });
         
-        const data = await response.json();
+//         const data = await response.json();
         
-        if (data.success) {
-            alert('게시글이 작성되었습니다.');
-            closeWriteBoardModal();
-            // 게시글 목록 새로고침
-            loadBoards();
-        } else {
-            alert('게시글 작성에 실패했습니다: ' + data.error);
-        }
-    } catch (error) {
-        console.error('Error submitting board:', error);
-        alert('게시글 작성 중 오류가 발생했습니다.');
-    } finally {
-        // 제출 버튼 다시 활성화
-        submitBtn.disabled = false;
-        submitBtn.textContent = originalText;
-        document.getElementById('uploadProgress').style.display = 'none';
-    }
-}
+//         if (data.success) {
+//             alert('게시글이 작성되었습니다.');
+//             closeWriteBoardModal();
+//             // 게시글 목록 새로고침
+//             loadBoards();
+//         } else {
+//             alert('게시글 작성에 실패했습니다: ' + data.error);
+//         }
+//     } catch (error) {
+//         console.error('Error submitting board:', error);
+//         alert('게시글 작성 중 오류가 발생했습니다.');
+//     } finally {
+//         // 제출 버튼 다시 활성화
+//         submitBtn.disabled = false;
+//         submitBtn.textContent = originalText;
+//         document.getElementById('uploadProgress').style.display = 'none';
+//     }
+// }
 
 // CSRF 토큰 가져오기
 function getCookie(name) {

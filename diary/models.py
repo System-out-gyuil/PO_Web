@@ -66,6 +66,7 @@ class User(models.Model):
     is_admin = models.BooleanField(default=False)
     use_date = models.DateTimeField(null=True, blank=True)  # 사용 기간 만료일
     activate = models.BooleanField(default=True)
+    pc_info = models.JSONField(default=dict, null=True, blank=True)
 
     def __str__(self):
         return self.name
