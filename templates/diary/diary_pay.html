@@ -29,7 +29,7 @@
         <div class="pay-box">
           <div class="pay-box-title">1개월 이용권 구매<span class="pay-box-title-sub">자동정기결제</span></div>
           <div class="pay-box-content">
-            <div class="pay-box-price"><span class="pay-box-price-number">15</span>만원</div>
+            <div class="pay-box-price"><span class="pay-box-price-number">{{ one_month_amount }}</span>원</div>
             <div class="pay-box-button-wrap">
               {% if billing_type == '1' and billing_activate %}
               <button class="pay-box-button" onclick="showSubscriptionInfo()" style="background-color: #10b981">구독 정보 보기</button>
@@ -46,12 +46,12 @@
         <div class="pay-box">
           <div class="pay-box-title">6개월 이용권 구매<span class="pay-box-title-sub">일반결제</span></div>
           <div class="pay-box-content">
-            <div class="pay-box-price"><span class="pay-box-price-number">72</span>만원</div>
+            <div class="pay-box-price"><span class="pay-box-price-number">{{ six_month_amount }}</span>원</div>
             <div class="pay-box-button-wrap">
               {% if has_active_subscription %}
               <button class="pay-box-button" disabled style="background-color: #9ca3af; cursor: not-allowed">구매하기</button>
               {% else %}
-              <button class="pay-box-button" onclick="showPurchaseModal('2', 6, 720000)">구매하기</button>
+              <button class="pay-box-button" onclick="showPurchaseModal('2', 6, {{ six_month_amount }})">구매하기</button>
               {% endif %}
             </div>
             <div class="pay-box-price-explain">계약율 평균 30% 향상</div>
@@ -63,12 +63,12 @@
         <div class="pay-box">
           <div class="pay-box-title">1년 이용권 구매<span class="pay-box-title-sub">일반결제</span></div>
           <div class="pay-box-content">
-            <div class="pay-box-price"><span class="pay-box-price-number">120</span>만원</div>
+            <div class="pay-box-price"><span class="pay-box-price-number">{{ twelve_month_amount }}</span>원</div>
             <div class="pay-box-button-wrap">
               {% if has_active_subscription %}
               <button class="pay-box-button" disabled style="background-color: #9ca3af; cursor: not-allowed">구매하기</button>
               {% else %}
-              <button class="pay-box-button" onclick="showPurchaseModal('3', 12, 1200000)">구매하기</button>
+              <button class="pay-box-button" onclick="showPurchaseModal('3', 12, {{ twelve_month_amount }})">구매하기</button>
               {% endif %}
             </div>
             <div class="pay-box-price-explain">계약율 평균 30% 향상</div>
@@ -90,8 +90,8 @@
       // ------  SDK 초기화 ------
       // @docs https://docs.tosspayments.com/sdk/v2/js#토스페이먼츠-초기화
       {% comment %} const clientKey = "{{ client_key }}"; {% endcomment %}
-      const clientKey = "test_ck_5OWRapdA8dJex15owpqbVo1zEqZK"; // 테스트 키
-      {% comment %} const clientKey = "test_ck_GjLJoQ1aVZbZ74je4kv1Vw6KYe2R"; // 발급받은 테스트 키{% endcomment %}
+      {% comment %} const clientKey = "test_ck_5OWRapdA8dJex15owpqbVo1zEqZK"; // 테스트 키 {% endcomment %}
+      const clientKey = "live_ck_26DlbXAaV0Poav1gZvKxVqY50Q9R"; // 발급받은 테스트 키
       const customerKey = "{{ customer_key }}";
       const tossPayments = TossPayments(clientKey);
       // 회원 결제
@@ -207,7 +207,7 @@
       function showSubscribeModal() {
         // 구독하기 확인 모달 내용 업데이트
         document.getElementById('modalProductName').textContent = '1개월 자동정기결제';
-        document.getElementById('modalPrice').textContent = '150,000';
+        document.getElementById('modalPrice').textContent = '{{ one_month_amount }}';
         document.getElementById('modalDuration').textContent = '1';
 
         // 구매 후 사용 가능일 계산 (1개월)
@@ -329,7 +329,13 @@
 
         // 모달 내용 업데이트
         document.getElementById('modalProductName').textContent = `${duration}개월 이용권`;
-        document.getElementById('modalPrice').textContent = price.toLocaleString();
+
+        if (duration == 6) {
+          document.getElementById('modalPrice').textContent = '{{ six_month_amount }}';
+        } else if (duration == 12) {
+          document.getElementById('modalPrice').textContent = '{{ twelve_month_amount }}';
+        }
+        
         document.getElementById('modalDuration').textContent = duration;
 
         // 구매 후 사용 가능일 계산
@@ -451,7 +457,7 @@
             {% if billing_type == '1' and billing_activate %}
             <!-- 이미 구독 중인 경우 -->
             <h4>구독 정보</h4>
-            <p><strong>가격:</strong> 150,000원</p>
+            <p><strong>가격:</strong> {{ one_month_amount }}원</p>
             <p><strong>결제 주기:</strong> 매월 자동 결제</p>
             <p><strong>현재 사용 가능일:</strong> <span id="subCurrentDate">{{ current_use_date|date:"Y-m-d" }}</span></p>
             <p><strong>남은 기간:</strong> <span id="subRemainingDays">{{ remaining_days }}</span>일</p>
@@ -480,7 +486,7 @@
             {% endif %} {% else %}
             <!-- 구독하지 않은 경우 -->
             <h4>구독하기</h4>
-            <p><strong>가격:</strong> 150,000원</p>
+            <p><strong>가격:</strong> {{ one_month_amount }}원</p>
             <p><strong>결제 주기:</strong> 매월 자동 결제</p>
             <p><strong>현재 사용 가능일:</strong> <span id="subCurrentDate">{{ current_use_date|date:"Y-m-d" }}</span></p>
             <p><strong>남은 기간:</strong> <span id="subRemainingDays">{{ remaining_days }}</span>일</p>

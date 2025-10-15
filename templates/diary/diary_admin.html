@@ -1,1467 +1,1492 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>관리자 페이지</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
-    <link rel="icon" href="{% static 'images/자금왕_favicon.png' %}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" />
+    <link rel="icon" href="{% static 'images/자금왕_favicon.png' %}" />
     <style>
-        .sidebar {
-            min-height: 100vh;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-        .sidebar .nav-link {
-            color: rgba(255,255,255,0.8);
-            padding: 12px 20px;
-            margin: 2px 0;
-            border-radius: 8px;
-            transition: all 0.3s;
-        }
-        .sidebar .nav-link:hover,
-        .sidebar .nav-link.active {
-            color: white;
-            background: rgba(255,255,255,0.1);
-            transform: translateX(5px);
-        }
-        .main-content {
-            background: #f8f9fa;
-            min-height: 100vh;
-        }
-        .card {
-            border: none;
-            border-radius: 15px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            transition: transform 0.3s;
-        }
-        .card:hover {
-            transform: translateY(-2px);
-        }
-        .stat-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-            border-radius: 8px;
-        }
-        .table {
-            border-radius: 10px;
-            overflow: hidden;
-        }
-        .modal-content {
-            border-radius: 15px;
-            border: none;
-        }
-        .form-control, .form-select {
-            border-radius: 8px;
-            border: 1px solid #e0e0e0;
-        }
-        .form-control:focus, .form-select:focus {
-            border-color: #667eea;
-            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
-        }
-        .badge {
-            border-radius: 20px;
-            padding: 8px 12px;
-        }
-        .search-box {
-            border-radius: 25px;
-            border: 1px solid #e0e0e0;
-            padding: 10px 20px;
-        }
-        .search-box:focus {
-            border-color: #667eea;
-            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
-        }
-        
-        /* 헤더 스타일 */
-        .main-header {
-            background: #fff;
-            color: white;
-            padding: 15px 0;
-            box-shadow: 2px 2px 2px 2px rgba(0, 0, 0, 0.1);
-        }
-        
-        .header-container {
-            margin: 0 auto;
-            padding: 0 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .header-left {
-            display: flex;
-            align-items: center;
-        }
-        
-        .header-title {
-            margin: 0;
-            font-size: 24px;
-            font-weight: 600;
-            color: #333;
-        }
-        
-        .header-right {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-        
-        /* 헤더 버튼 공통 스타일 */
-        .header-btn {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 16px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            transition: all 0.2s ease;
-            text-decoration: none;
-            color: #333;
-            background: #f8f9fa;
-            border: 1px solid #dee2e6;
-        }
-        
-        .header-btn:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-        
-        
-        
-        /* 관리자 권한 토글 버튼 스타일 */
-        .admin-toggle-btn {
-            padding: 4px 8px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-            font-weight: 500;
-            transition: all 0.2s ease;
-        }
-        
-        .admin-toggle-btn.admin {
-            background: #28a745;
-            color: white;
-        }
-        
-        .admin-toggle-btn.admin:hover {
-            background: #1e7e34;
-        }
-        
-        .admin-toggle-btn.user {
-            background: #6c757d;
-            color: white;
-        }
-        
-        .admin-toggle-btn.user:hover {
-            background: #545b62;
-        }
-        
-        /* 관리자 권한 변경 확인 모달 스타일 */
-        .admin-change-modal .modal-content {
-            border-radius: 15px;
-        }
-        
-        .admin-change-modal .modal-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border-radius: 15px 15px 0 0;
-        }
-        
-        .admin-change-modal .modal-body {
-            padding: 30px;
-        }
-        
-        .admin-change-modal .user-info {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-        }
-        
-        .admin-change-modal .change-description {
-            color: #6c757d;
-            font-size: 14px;
-            line-height: 1.5;
-        }
-        
-        /* 정렬 가능한 열 스타일 */
-        .sortable {
-            cursor: default;
-            user-select: none;
-            position: relative;
-        }
-        
-        .sort-buttons {
-            display: inline-flex;
-            gap: 2px;
-            margin-left: 8px;
-        }
-        
-        .sort-btn {
-            padding: 2px 6px;
-            font-size: 10px;
-            border-radius: 4px;
-            transition: all 0.2s ease;
-        }
-        
-        .sort-btn:hover {
-            transform: scale(1.1);
-        }
-        
-        .sort-btn.active {
-            background-color: #007bff;
-            color: white;
-            border-color: #007bff;
-        }
-        
-        .sort-btn.active:hover {
-            background-color: #0056b3;
-            border-color: #0056b3;
-        }
-        
-        .sort-btn:not(.active) {
-            background-color: #f8f9fa;
-            border-color: #dee2e6;
-            color: #6c757d;
-        }
-        
-        .sort-btn:not(.active):hover {
-            background-color: #e9ecef;
-            border-color: #adb5bd;
-        }
-        
-        /* 정렬 아이콘 상태별 스타일 */
-        .fa-sort-up {
-            color: #007bff !important;
-        }
-        
-        .fa-sort-down {
-            color: #007bff !important;
-        }
-        
-        .fa-sort {
-            color: #6c757d !important;
-        }
-    </style>
-    <link rel="stylesheet" href="{% static 'diary/base/base.css' %}">
+      .sidebar {
+        min-height: 100vh;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      }
+      .sidebar .nav-link {
+        color: rgba(255, 255, 255, 0.8);
+        padding: 12px 20px;
+        margin: 2px 0;
+        border-radius: 8px;
+        transition: all 0.3s;
+      }
+      .sidebar .nav-link:hover,
+      .sidebar .nav-link.active {
+        color: white;
+        background: rgba(255, 255, 255, 0.1);
+        transform: translateX(5px);
+      }
+      .main-content {
+        background: #f8f9fa;
+        min-height: 100vh;
+      }
+      .card {
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        transition: transform 0.3s;
+      }
+      .card:hover {
+        transform: translateY(-2px);
+      }
+      .stat-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+      }
+      .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        border-radius: 8px;
+      }
+      .table {
+        border-radius: 10px;
+        overflow: hidden;
+      }
+      .modal-content {
+        border-radius: 15px;
+        border: none;
+      }
+      .form-control,
+      .form-select {
+        border-radius: 8px;
+        border: 1px solid #e0e0e0;
+      }
+      .form-control:focus,
+      .form-select:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+      }
+      .badge {
+        border-radius: 20px;
+        padding: 8px 12px;
+      }
+      .search-box {
+        border-radius: 25px;
+        border: 1px solid #e0e0e0;
+        padding: 10px 20px;
+      }
+      .search-box:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+      }
 
-</head>
-<body>
+      /* 헤더 스타일 */
+      .main-header {
+        background: #fff;
+        color: white;
+        padding: 15px 0;
+        box-shadow: 2px 2px 2px 2px rgba(0, 0, 0, 0.1);
+      }
+
+      .header-container {
+        margin: 0 auto;
+        padding: 0 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .header-left {
+        display: flex;
+        align-items: center;
+      }
+
+      .header-title {
+        margin: 0;
+        font-size: 24px;
+        font-weight: 600;
+        color: #333;
+      }
+
+      .header-right {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+      }
+
+      /* 헤더 버튼 공통 스타일 */
+      .header-btn {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        color: #333;
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+      }
+
+      .header-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+
+      /* 관리자 권한 토글 버튼 스타일 */
+      .admin-toggle-btn {
+        padding: 4px 8px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+      }
+
+      .admin-toggle-btn.admin {
+        background: #28a745;
+        color: white;
+      }
+
+      .admin-toggle-btn.admin:hover {
+        background: #1e7e34;
+      }
+
+      .admin-toggle-btn.user {
+        background: #6c757d;
+        color: white;
+      }
+
+      .admin-toggle-btn.user:hover {
+        background: #545b62;
+      }
+
+      /* 관리자 권한 변경 확인 모달 스타일 */
+      .admin-change-modal .modal-content {
+        border-radius: 15px;
+      }
+
+      .admin-change-modal .modal-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 15px 15px 0 0;
+      }
+
+      .admin-change-modal .modal-body {
+        padding: 30px;
+      }
+
+      .admin-change-modal .user-info {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+      }
+
+      .admin-change-modal .change-description {
+        color: #6c757d;
+        font-size: 14px;
+        line-height: 1.5;
+      }
+
+      /* 정렬 가능한 열 스타일 */
+      .sortable {
+        cursor: default;
+        user-select: none;
+        position: relative;
+      }
+
+      .sort-buttons {
+        display: inline-flex;
+        gap: 2px;
+        margin-left: 8px;
+      }
+
+      .sort-btn {
+        padding: 2px 6px;
+        font-size: 10px;
+        border-radius: 4px;
+        transition: all 0.2s ease;
+      }
+
+      .sort-btn:hover {
+        transform: scale(1.1);
+      }
+
+      .sort-btn.active {
+        background-color: #007bff;
+        color: white;
+        border-color: #007bff;
+      }
+
+      .sort-btn.active:hover {
+        background-color: #0056b3;
+        border-color: #0056b3;
+      }
+
+      .sort-btn:not(.active) {
+        background-color: #f8f9fa;
+        border-color: #dee2e6;
+        color: #6c757d;
+      }
+
+      .sort-btn:not(.active):hover {
+        background-color: #e9ecef;
+        border-color: #adb5bd;
+      }
+
+      /* 정렬 아이콘 상태별 스타일 */
+      .fa-sort-up {
+        color: #007bff !important;
+      }
+
+      .fa-sort-down {
+        color: #007bff !important;
+      }
+
+      .fa-sort {
+        color: #6c757d !important;
+      }
+    </style>
+    <link rel="stylesheet" href="{% static 'diary/base/base.css' %}" />
+  </head>
+  <body>
     <!-- 헤더 -->
     {% include 'diary/header.html' %}
 
     <div class="container-fluid">
-        <div class="row">
-            <!-- Sidebar -->
-            <div class="col-md-3 col-lg-2 px-0">
-                <div class="sidebar p-3">
-                    {% comment %} <div class="text-center mb-4">
-                        <h4 class="text-white"><i class="fas fa-cog"></i> 관리자</h4>
-                    </div> {% endcomment %}
-                    <nav class="nav flex-column">
-                        <a class="nav-link active" href="javascript:void(0)" onclick="showDashboard(); return false;">
-                            <i class="fas fa-tachometer-alt me-2"></i> 대시보드
-                        </a>
-                        <a class="nav-link" href="javascript:void(0)" onclick="showInquiries(); return false;">
-                            <i class="fas fa-question-circle me-2"></i> 문의사항
-                        </a>
-                        <a class="nav-link" href="javascript:void(0)" onclick="showAlarms(); return false;">
-                            <i class="fas fa-bell me-2"></i> 공지사항
-                        </a>
-                        <a class="nav-link" href="javascript:void(0)" onclick="showCreateAlarm(); return false;">
-                            <i class="fas fa-plus me-2"></i> 공지사항 작성
-                        </a>
-                        <a class="nav-link" href="javascript:void(0)" onclick="showViewCounts(); return false;">
-                            <i class="fas fa-chart-line me-2"></i> 조회수 관리
-                        </a>
-                        <a class="nav-link" href="javascript:void(0)" onclick="showUsers(); return false;">
-                            <i class="fas fa-users me-2"></i> 사용자
-                        </a>
-                        <a class="nav-link" href="javascript:void(0)" onclick="showClassForms(); return false;">
-                            <i class="fas fa-graduation-cap me-2"></i> 원데이 클래스
-                        </a>
-                        <a class="nav-link" href="javascript:void(0)" onclick="showLogs(); return false;">
-                            <i class="fas fa-file-alt me-2"></i> 접속 로그
-                        </a>
-                    </nav>
-                </div>
+      <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-3 col-lg-2 px-0">
+          <div class="sidebar p-3">
+            {% comment %}
+            <div class="text-center mb-4">
+              <h4 class="text-white"><i class="fas fa-cog"></i> 관리자</h4>
             </div>
-
-            <!-- Main Content -->
-            <div class="col-md-9 col-lg-10">
-                <div class="main-content p-4">
-                    <!-- Dashboard -->
-                    <div id="dashboard-content">
-                        <div class="d-flex justify-content-between align-items-center mb-4">
-                            <h2><i class="fas fa-tachometer-alt"></i> 대시보드</h2>
-                            <div class="text-muted">{{ user.email }}</div>
-                        </div>
-
-                        <!-- Statistics Cards -->
-                        <div class="row mb-4">
-                            <div class="col-md-3">
-                                <div class="card stat-card">
-                                    <div class="card-body text-center">
-                                        <i class="fas fa-question-circle fa-2x mb-2"></i>
-                                        <h4>{{ total_inquiries|default:0 }}</h4>
-                                        <p class="mb-0">총 문의사항</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="card stat-card">
-                                    <div class="card-body text-center">
-                                        <i class="fas fa-bell fa-2x mb-2"></i>
-                                        <h4>{{ total_alarms|default:0 }}</h4>
-                                        <p class="mb-0">총 공지사항</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="card stat-card">
-                                    <div class="card-body text-center">
-                                        <i class="fas fa-clock fa-2x mb-2"></i>
-                                        <h4>{{ unread_inquiries|default:0 }}</h4>
-                                        <p class="mb-0">최근 7일 문의</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="card stat-card">
-                                    <div class="card-body text-center">
-                                        <i class="fas fa-users fa-2x mb-2"></i>
-                                        <h4>{{ user_count|default:0 }}</h4>
-                                        <p class="mb-0">총 사용자</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- View Count Statistics Cards -->
-                        {% comment %} <div class="row mb-4">
-                            <div class="col-md-3">
-                                <div class="card stat-card">
-                                    <div class="card-body text-center">
-                                        <i class="fas fa-chart-line fa-2x mb-2"></i>
-                                        <h4>{{ total_main_count|default:0 }}</h4>
-                                        <p class="mb-0">메인 페이지 조회수</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="card stat-card">
-                                    <div class="card-body text-center">
-                                        <i class="fas fa-chart-bar fa-2x mb-2"></i>
-                                        <h4>{{ total_diary_count|default:0 }}</h4>
-                                        <p class="mb-0">다이어리 페이지 조회수</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="card stat-card">
-                                    <div class="card-body text-center">
-                                        <i class="fas fa-globe fa-2x mb-2"></i>
-                                        <h4>{{ total_main_ips|default:0 }}</h4>
-                                        <p class="mb-0">메인 페이지 IP 수</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="card stat-card">
-                                    <div class="card-body text-center">
-                                        <i class="fas fa-network-wired fa-2x mb-2"></i>
-                                        <h4>{{ total_diary_ips|default:0 }}</h4>
-                                        <p class="mb-0">다이어리 페이지 IP 수</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div> {% endcomment %}
-
-                        <!-- Recent Inquiries -->
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="card">
-                                    <div class="card-header">
-                                        <h5><i class="fas fa-question-circle"></i> 최근 문의사항</h5>
-                                    </div>
-                                    <div class="card-body">
-                                        {% if recent_inquiries %}
-                                            {% for inquiry in recent_inquiries %}
-                                                <div class="d-flex justify-content-between align-items-center mb-2 p-2 border-bottom">
-                                                    <div>
-                                                        <strong>{{ inquiry.name|default:"익명" }}</strong>
-                                                        <br>
-                                                        <small class="text-muted">{{ inquiry.company_name|default:"회사명 없음" }}</small>
-                                                    </div>
-                                                    <small class="text-muted">{{ inquiry.created_at|date:"m/d H:i" }}</small>
-                                                </div>
-                                            {% endfor %}
-                                        {% else %}
-                                            <p class="text-muted">최근 문의사항이 없습니다.</p>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Recent Alarms -->
-                            <div class="col-md-6">
-                                <div class="card">
-                                    <div class="card-header">
-                                        <h5><i class="fas fa-bell"></i> 최근 공지사항</h5>
-                                    </div>
-                                    <div class="card-body">
-                                        {% if recent_alarms %}
-                                            {% for alarm in recent_alarms %}
-                                                <div class="d-flex justify-content-between align-items-center mb-2 p-2 border-bottom">
-                                                    <div>
-                                                        <strong>{{ alarm.title }}</strong>
-                                                        <br>
-                                                        <small class="text-muted">{{ alarm.get_text_content|truncatechars:30 }}</small>
-                                                        {% if alarm.get_files %}
-                                                            <br>
-                                                            <small class="text-info"><i class="fas fa-paperclip"></i> {{ alarm.get_files|length }}개 파일</small>
-                                                        {% endif %}
-                                                    </div>
-                                                    <small class="text-muted">{{ alarm.created_at|date:"m/d H:i" }}</small>
-                                                </div>
-                                            {% endfor %}
-                                        {% else %}
-                                            <p class="text-muted">최근 공지사항이 없습니다.</p>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Inquiries Content -->
-                    <div id="inquiries-content" style="display: none;">
-                        <div class="d-flex justify-content-between align-items-center mb-4">
-                            <h2><i class="fas fa-question-circle"></i> 문의사항 관리</h2>
-                            <div class="d-flex gap-2">
-                                <input type="text" class="form-control search-box" id="inquiry-search" placeholder="검색...">
-                                <select class="form-select" id="inquiry-sort" style="width: auto;">
-                                    <option value="-created_at">최신순</option>
-                                    <option value="created_at">오래된순</option>
-                                    <option value="name">이름순</option>
-                                    <option value="company_name">회사명순</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="card">
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-hover">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th>번호</th>
-                                                <th>이름</th>
-                                                <th>회사명</th>
-                                                <th>연락처</th>
-                                                <th>내용</th>
-                                                <th>작성일</th>
-                                                <th>관리</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="inquiries-table-body">
-                                            <!-- JavaScript로 동적 로드 -->
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <nav aria-label="문의사항 페이지네이션">
-                                    <ul class="pagination justify-content-center" id="inquiries-pagination">
-                                        <!-- JavaScript로 동적 생성 -->
-                                    </ul>
-                                </nav>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Alarms Content -->
-                    <div id="alarms-content" style="display: none;">
-                        <div class="d-flex justify-content-between align-items-center mb-4">
-                            <h2><i class="fas fa-bell"></i> 공지사항 관리</h2>
-                            <div class="d-flex gap-2">
-                                <input type="text" class="form-control search-box" id="alarm-search" placeholder="검색...">
-                                <select class="form-select" id="alarm-sort" style="width: auto;">
-                                    <option value="-created_at">최신순</option>
-                                    <option value="created_at">오래된순</option>
-                                    <option value="title">제목순</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="card">
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-hover">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th>번호</th>
-                                                <th>제목</th>
-                                                <th>내용</th>
-                                                <th>파일</th>
-                                                <th>작성일</th>
-                                                <th>관리</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="alarms-table-body">
-                                            <!-- JavaScript로 동적 로드 -->
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <nav aria-label="공지사항 페이지네이션">
-                                    <ul class="pagination justify-content-center" id="alarms-pagination">
-                                        <!-- JavaScript로 동적 생성 -->
-                                    </ul>
-                                </nav>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Create Alarm Content -->
-                    <div id="create-alarm-content" style="display: none;">
-                        <div class="d-flex justify-content-between align-items-center mb-4">
-                            <h2><i class="fas fa-plus"></i> 공지사항 작성</h2>
-                        </div>
-
-                        <div class="card">
-                            <div class="card-body">
-                                <form id="create-alarm-form" enctype="multipart/form-data">
-                                    <div class="mb-3">
-                                        <label for="alarm-title" class="form-label">제목</label>
-                                        <input type="text" class="form-control" id="alarm-title" required>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="alarm-content" class="form-label">내용</label>
-                                        <textarea class="form-control" id="alarm-content" rows="10" required></textarea>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="alarm-files" class="form-label">파일 첨부</label>
-                                        <input type="file" class="form-control" id="alarm-files" multiple>
-                                        <div class="form-text">여러 파일을 선택할 수 있습니다.</div>
-                                    </div>
-                                    <div class="d-flex gap-2">
-                                        <button type="submit" class="btn btn-primary">
-                                            <i class="fas fa-save"></i> 공지사항 작성
-                                        </button>
-                                        <button type="button" class="btn btn-secondary" onclick="showDashboard()">
-                                            <i class="fas fa-times"></i> 취소
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Users Content -->
-                    <div id="users-content" style="display: none;">
-                        <div class="d-flex justify-content-between align-items-center mb-4">
-                            <h2><i class="fas fa-users"></i> 사용자 관리</h2>
-                            <div class="d-flex gap-2">
-                                <input type="text" class="form-control search-box" id="user-search" placeholder="검색...">
-                                <select class="form-select" id="user-sort" style="width: auto;">
-                                    <option value="-created_at">최신순</option>
-                                    <option value="created_at">오래된순</option>
-                                    <option value="name">이름순</option>
-                                    <option value="email">이메일순</option>
-                                    <option value="company_name">회사명순</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="card">
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-hover">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th class="sortable" data-sort="id">
-                                                    번호
-                                                    <div class="sort-buttons">
-                                                        <button class="btn btn-sm btn-outline-secondary sort-btn" data-field="id" data-direction="asc" title="오름차순">
-                                                            <i class="fas fa-sort-up"></i>
-                                                        </button>
-                                                        <button class="btn btn-sm btn-outline-secondary sort-btn" data-field="id" data-direction="desc" title="내림차순">
-                                                            <i class="fas fa-sort-down"></i>
-                                                        </button>
-                                                    </div>
-                                                </th>
-                                                <th class="sortable" data-sort="name">
-                                                    이름 <small class="text-muted">(클릭하여 계정 전환)</small>
-                                                    <div class="sort-buttons">
-                                                        <button class="btn btn-sm btn-outline-secondary sort-btn" data-field="name" data-direction="asc" title="오름차순">
-                                                            <i class="fas fa-sort-up"></i>
-                                                        </button>
-                                                        <button class="btn btn-sm btn-outline-secondary sort-btn" data-field="name" data-direction="desc" title="내림차순">
-                                                            <i class="fas fa-sort-down"></i>
-                                                        </button>
-                                                    </div>
-                                                </th>
-                                                <th class="sortable" data-sort="email">
-                                                    이메일
-                                                    <div class="sort-buttons">
-                                                        <button class="btn btn-sm btn-outline-secondary sort-btn" data-field="email" data-direction="asc" title="오름차순">
-                                                            <i class="fas fa-sort-up"></i>
-                                                        </button>
-                                                        <button class="btn btn-sm btn-outline-secondary sort-btn" data-field="email" data-direction="desc" title="내림차순">
-                                                            <i class="fas fa-sort-down"></i>
-                                                        </button>
-                                                    </div>
-                                                </th>
-                                                <th class="sortable" data-sort="company_name">
-                                                    회사명
-                                                    <div class="sort-buttons">
-                                                        <button class="btn btn-sm btn-outline-secondary sort-btn" data-field="company_name" data-direction="asc" title="오름차순">
-                                                            <i class="fas fa-sort-up"></i>
-                                                        </button>
-                                                        <button class="btn btn-sm btn-outline-secondary sort-btn" data-field="company_name" data-direction="desc" title="내림차순">
-                                                            <i class="fas fa-sort-down"></i>
-                                                        </button>
-                                                    </div>
-                                                </th>
-                                                <th class="sortable" data-sort="phone_number">
-                                                    연락처
-                                                    <div class="sort-buttons">
-                                                        <button class="btn btn-sm btn-outline-secondary sort-btn" data-field="phone_number" data-direction="asc" title="오름차순">
-                                                            <i class="fas fa-sort-up"></i>
-                                                        </button>
-                                                        <button class="btn btn-sm btn-outline-secondary sort-btn" data-field="phone_number" data-direction="desc" title="내림차순">
-                                                            <i class="fas fa-sort-down"></i>
-                                                        </button>
-                                                    </div>
-                                                </th>
-                                                <th class="sortable" data-sort="created_at">
-                                                    가입일
-                                                    <div class="sort-buttons">
-                                                        <button class="btn btn-sm btn-outline-secondary sort-btn" data-field="created_at" data-direction="asc" title="오름차순">
-                                                            <i class="fas fa-sort-up"></i>
-                                                        </button>
-                                                        <button class="btn btn-sm btn-outline-secondary sort-btn" data-field="created_at" data-direction="desc" title="내림차순">
-                                                            <i class="fas fa-sort-down"></i>
-                                                        </button>
-                                                    </div>
-                                                </th>
-                                                <th class="sortable" data-sort="use_date">
-                                                    사용 기간
-                                                    <div class="sort-buttons">
-                                                        <button class="btn btn-sm btn-outline-secondary sort-btn" data-field="use_date" data-direction="asc" title="오름차순">
-                                                            <i class="fas fa-sort-up"></i>
-                                                        </button>
-                                                        <button class="btn btn-sm btn-outline-secondary sort-btn" data-field="use_date" data-direction="desc" title="내림차순">
-                                                            <i class="fas fa-sort-down"></i>
-                                                        </button>
-                                                    </div>
-                                                </th>
-                                                <th>활성화</th>
-                                                <th>관리자</th>
-                                                <th>관리</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="users-table-body">
-                                            <!-- JavaScript로 동적 로드 -->
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <nav aria-label="사용자 페이지네이션">
-                                    <ul class="pagination justify-content-center" id="users-pagination">
-                                        <!-- JavaScript로 동적 생성 -->
-                                    </ul>
-                                </nav>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- View Counts Content -->
-                    <div id="view-counts-content" style="display: none;">
-                        <div class="d-flex justify-content-between align-items-center mb-4">
-                            <h2><i class="fas fa-chart-line"></i> 조회수 관리</h2>
-                        </div>
-
-                        <!-- Count Type Selection -->
-                        <div class="card mb-4">
-                            <div class="card-body">
-                                <h5 class="card-title mb-3">조회수 타입 선택</h5>
-                                <div class="btn-group" role="group" aria-label="조회수 타입 선택">
-                                    <input type="radio" class="btn-check" name="count-type" id="main-count" value="main" checked>
-                                    <label class="btn btn-outline-primary" for="main-count">
-                                        <i class="fas fa-home me-2"></i>메인 페이지
-                                    </label>
-                                    <input type="radio" class="btn-check" name="count-type" id="diary-count" value="diary">
-                                    <label class="btn btn-outline-primary" for="diary-count">
-                                        <i class="fas fa-book me-2"></i>다이어리 페이지
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Date Range Selection -->
-                        <div class="card mb-4">
-                            <div class="card-body">
-                                <h5 class="card-title mb-3">날짜 범위 선택 (선택사항)</h5>
-                                <div class="row">
-                                    <div class="col-md-4">
-                                        <label for="start-date" class="form-label">시작 날짜</label>
-                                        <input type="date" class="form-control" id="start-date">
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label for="end-date" class="form-label">종료 날짜</label>
-                                        <input type="date" class="form-control" id="end-date">
-                                    </div>
-                                    <div class="col-md-4 d-flex align-items-end gap-2">
-                                        <button type="button" class="btn btn-primary" onclick="loadDailyViewCounts()">
-                                            <i class="fas fa-search"></i> 기간 조회
-                                        </button>
-                                        <button type="button" class="btn btn-outline-secondary" onclick="loadAllViewCounts()">
-                                            <i class="fas fa-globe"></i> 전체 기간
-                                        </button>
-                                    </div>
-                                </div>
-                                <div class="form-text mt-2">
-                                    <i class="fas fa-info-circle"></i> 날짜를 선택하지 않으면 전체 기간의 데이터가 표시됩니다.
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Daily View Counts Chart -->
-                        <div class="card mb-4">
-                            <div class="card-header">
-                                <h5 class="card-title mb-0">
-                                    <i class="fas fa-chart-area me-2"></i>일별 조회수 차트
-                                </h5>
-                            </div>
-                            <div class="card-body">
-                                <canvas id="dailyViewChart" width="400" height="200"></canvas>
-                            </div>
-                        </div>
-
-                        <!-- Summary Cards -->
-                        <div class="row mb-4">
-                            <div class="col-md-4">
-                                <div class="card border-primary">
-                                    <div class="card-body text-center">
-                                        <h5 class="card-title text-primary">
-                                            <i class="fas fa-chart-bar me-2"></i>총 조회수
-                                        </h5>
-                                        <h3 class="text-primary" id="total-count-display">0</h3>
-                                        <p class="text-muted mb-0" id="count-type-display">메인 페이지</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="card border-success">
-                                    <div class="card-body text-center">
-                                        <h5 class="card-title text-success">
-                                            <i class="fas fa-globe me-2"></i>총 IP 수
-                                        </h5>
-                                        <h3 class="text-success" id="total-ips-display">0</h3>
-                                        <p class="text-muted mb-0">고유 방문자</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="card border-info">
-                                    <div class="card-body text-center">
-                                        <h5 class="card-title text-info">
-                                            <i class="fas fa-calendar me-2"></i>기간
-                                        </h5>
-                                        <h3 class="text-info" id="date-range-display">-</h3>
-                                        <p class="text-muted mb-0">조회 기간</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Daily Details Table -->
-                        <div class="card mb-4">
-                            <div class="card-header">
-                                <h5 class="card-title mb-0">
-                                    <i class="fas fa-table me-2"></i>일별 상세 조회수
-                                </h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-hover">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th>날짜</th>
-                                                <th>총 조회수</th>
-                                                <th>고유 IP 수</th>
-                                                <th>평균 조회수/IP</th>
-                                                <th>상세보기</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="daily-details-table-body">
-                                            <!-- JavaScript로 동적 로드 -->
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Search and Sort Controls -->
-                        <div class="card mb-4">
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <label for="count-search" class="form-label">IP 검색</label>
-                                        <input type="text" class="form-control" id="count-search" placeholder="IP 주소를 입력하세요...">
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label for="count-sort" class="form-label">정렬 기준</label>
-                                        <select class="form-select" id="count-sort">
-                                            <option value="-count">조회수 높은순</option>
-                                            <option value="count">조회수 낮은순</option>
-                                            <option value="-created_at">최신순</option>
-                                            <option value="created_at">오래된순</option>
-                                            <option value="ip">IP순</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Data Table -->
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="card-title mb-0">
-                                    <i class="fas fa-table me-2"></i>조회수 상세 목록
-                                </h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-hover">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th>번호</th>
-                                                <th>IP 주소</th>
-                                                <th>조회수</th>
-                                                <th>최초 방문</th>
-                                                <th>마지막 방문</th>
-                                                <th>관리</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="counts-table-body">
-                                            <!-- JavaScript로 동적 로드 -->
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <nav aria-label="조회수 페이지네이션">
-                                    <ul class="pagination justify-content-center" id="counts-pagination">
-                                        <!-- JavaScript로 동적 생성 -->
-                                    </ul>
-                                </nav>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Class Forms Content -->
-                    <div id="class-forms-content" style="display: none;">
-                        <div class="d-flex justify-content-between align-items-center mb-4">
-                            <h2><i class="fas fa-graduation-cap"></i> 원데이 클래스 신청 관리</h2>
-                            <div class="d-flex gap-2">
-                                <input type="text" class="form-control search-box" id="class-form-search" placeholder="이름 또는 연락처로 검색...">
-                                <select class="form-select" id="class-form-sort" style="width: auto;">
-                                    <option value="-created_at">최신순</option>
-                                    <option value="created_at">오래된순</option>
-                                    <option value="name">이름순</option>
-                                    <option value="phone">연락처순</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <!-- Summary Card -->
-                        <div class="row mb-4">
-                            <div class="col-md-4">
-                                <div class="card border-primary">
-                                    <div class="card-body text-center">
-                                        <h5 class="card-title text-primary">
-                                            <i class="fas fa-users me-2"></i>총 신청자 수
-                                        </h5>
-                                        <h3 class="text-primary" id="total-class-forms-display">0</h3>
-                                        <p class="text-muted mb-0">클래스 신청 완료</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="card">
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-hover">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th>번호</th>
-                                                <th>이름</th>
-                                                <th>연락처</th>
-                                                <th>신청일</th>
-                                                <th>관리</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="class-forms-table-body">
-                                            <!-- JavaScript로 동적 로드 -->
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <nav aria-label="클래스 신청 페이지네이션">
-                                    <ul class="pagination justify-content-center" id="class-forms-pagination">
-                                        <!-- JavaScript로 동적 생성 -->
-                                    </ul>
-                                </nav>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Logs Content -->
-                    <div id="logs-content" style="display: none;">
-                        <div class="d-flex justify-content-between align-items-center mb-4">
-                            <h2><i class="fas fa-file-alt"></i> 사용자 접속 로그</h2>
-                            <div class="d-flex gap-2">
-                                <button type="button" class="btn btn-success" onclick="exportLogsToExcel()">
-                                    <i class="fas fa-download"></i> 엑셀 다운로드
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Date Range Selection -->
-                        <div class="card mb-4">
-                            <div class="card-body">
-                                <h5 class="card-title mb-3">기간 선택</h5>
-                                <div class="row">
-                                    <div class="col-md-4">
-                                        <label for="log-start-date" class="form-label">시작 날짜</label>
-                                        <input type="date" class="form-control" id="log-start-date">
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label for="log-end-date" class="form-label">종료 날짜</label>
-                                        <input type="date" class="form-control" id="log-end-date">
-                                    </div>
-                                    <div class="col-md-4 d-flex align-items-end gap-2">
-                                        <button type="button" class="btn btn-primary" onclick="loadLogs()">
-                                            <i class="fas fa-search"></i> 조회
-                                        </button>
-                                        <button type="button" class="btn btn-outline-secondary" onclick="clearLogDates()">
-                                            <i class="fas fa-times"></i> 초기화
-                                        </button>
-                                    </div>
-                                </div>
-                                <div class="form-text mt-2">
-                                    <i class="fas fa-info-circle"></i> 날짜를 선택하지 않으면 전체 기간의 데이터가 표시됩니다.
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Summary Cards -->
-                        <div class="row mb-4">
-                            <div class="col-md-4">
-                                <div class="card border-primary">
-                                    <div class="card-body text-center">
-                                        <h5 class="card-title text-primary">
-                                            <i class="fas fa-list me-2"></i>총 로그 수
-                                        </h5>
-                                        <h3 class="text-primary" id="total-logs-display">0</h3>
-                                        <p class="text-muted mb-0">전체 접속 기록</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="card border-success">
-                                    <div class="card-body text-center">
-                                        <h5 class="card-title text-success">
-                                            <i class="fas fa-users me-2"></i>고유 사용자
-                                        </h5>
-                                        <h3 class="text-success" id="unique-users-display">0</h3>
-                                        <p class="text-muted mb-0">접속한 사용자 수</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="card border-info">
-                                    <div class="card-body text-center">
-                                        <h5 class="card-title text-info">
-                                            <i class="fas fa-globe me-2"></i>고유 IP
-                                        </h5>
-                                        <h3 class="text-info" id="unique-ips-display">0</h3>
-                                        <p class="text-muted mb-0">접속한 IP 수</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Search and Sort Controls -->
-                        <div class="card mb-4">
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <label for="log-search" class="form-label">검색</label>
-                                        <input type="text" class="form-control" id="log-search" placeholder="IP, 사용자명, 이메일로 검색...">
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label for="log-sort" class="form-label">정렬 기준</label>
-                                        <select class="form-select" id="log-sort">
-                                            <option value="-created_at">최신순</option>
-                                            <option value="created_at">오래된순</option>
-                                            <option value="ip">IP순</option>
-                                            <option value="user__name">사용자명순</option>
-                                            <option value="user__email">이메일순</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Data Table -->
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="card-title mb-0">
-                                    <i class="fas fa-table me-2"></i>접속 로그 목록
-                                </h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-hover">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th>번호</th>
-                                                <th>IP 주소</th>
-                                                <th>사용자명</th>
-                                                <th>이메일</th>
-                                                <th>접속일</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="logs-table-body">
-                                            <!-- JavaScript로 동적 로드 -->
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <nav aria-label="로그 페이지네이션">
-                                    <ul class="pagination justify-content-center" id="logs-pagination">
-                                        <!-- JavaScript로 동적 생성 -->
-                                    </ul>
-                                </nav>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            {% endcomment %}
+            <nav class="nav flex-column">
+              <a class="nav-link active" href="javascript:void(0)" onclick="showDashboard(); return false;">
+                <i class="fas fa-tachometer-alt me-2"></i> 대시보드
+              </a>
+              <a class="nav-link" href="javascript:void(0)" onclick="showInquiries(); return false;">
+                <i class="fas fa-question-circle me-2"></i> 문의사항
+              </a>
+              <a class="nav-link" href="javascript:void(0)" onclick="showAlarms(); return false;"> <i class="fas fa-bell me-2"></i> 공지사항 </a>
+              <a class="nav-link" href="javascript:void(0)" onclick="showCreateAlarm(); return false;">
+                <i class="fas fa-plus me-2"></i> 공지사항 작성
+              </a>
+              <a class="nav-link" href="javascript:void(0)" onclick="showViewCounts(); return false;">
+                <i class="fas fa-chart-line me-2"></i> 조회수 관리
+              </a>
+              <a class="nav-link" href="javascript:void(0)" onclick="showUsers(); return false;"> <i class="fas fa-users me-2"></i> 사용자 </a>
+              <a class="nav-link" href="javascript:void(0)" onclick="showClassForms(); return false;">
+                <i class="fas fa-graduation-cap me-2"></i> 원데이 클래스
+              </a>
+              <a class="nav-link" href="javascript:void(0)" onclick="showLogs(); return false;"> <i class="fas fa-file-alt me-2"></i> 접속 로그 </a>
+              <a class="nav-link" href="javascript:void(0)" onclick="showPayAmounts(); return false;">
+                <i class="fas fa-won-sign me-2"></i> 결제금액 관리
+              </a>
+            </nav>
+          </div>
         </div>
+
+        <!-- Main Content -->
+        <div class="col-md-9 col-lg-10">
+          <div class="main-content p-4">
+            <!-- Dashboard -->
+            <div id="dashboard-content">
+              <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-tachometer-alt"></i> 대시보드</h2>
+                <div class="text-muted">{{ user.email }}</div>
+              </div>
+
+              <!-- Statistics Cards -->
+              <div class="row mb-4">
+                <div class="col-md-3">
+                  <div class="card stat-card">
+                    <div class="card-body text-center">
+                      <i class="fas fa-question-circle fa-2x mb-2"></i>
+                      <h4>{{ total_inquiries|default:0 }}</h4>
+                      <p class="mb-0">총 문의사항</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="card stat-card">
+                    <div class="card-body text-center">
+                      <i class="fas fa-bell fa-2x mb-2"></i>
+                      <h4>{{ total_alarms|default:0 }}</h4>
+                      <p class="mb-0">총 공지사항</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="card stat-card">
+                    <div class="card-body text-center">
+                      <i class="fas fa-clock fa-2x mb-2"></i>
+                      <h4>{{ unread_inquiries|default:0 }}</h4>
+                      <p class="mb-0">최근 7일 문의</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="card stat-card">
+                    <div class="card-body text-center">
+                      <i class="fas fa-users fa-2x mb-2"></i>
+                      <h4>{{ user_count|default:0 }}</h4>
+                      <p class="mb-0">총 사용자</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- View Count Statistics Cards -->
+              {% comment %}
+              <div class="row mb-4">
+                <div class="col-md-3">
+                  <div class="card stat-card">
+                    <div class="card-body text-center">
+                      <i class="fas fa-chart-line fa-2x mb-2"></i>
+                      <h4>{{ total_main_count|default:0 }}</h4>
+                      <p class="mb-0">메인 페이지 조회수</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="card stat-card">
+                    <div class="card-body text-center">
+                      <i class="fas fa-chart-bar fa-2x mb-2"></i>
+                      <h4>{{ total_diary_count|default:0 }}</h4>
+                      <p class="mb-0">다이어리 페이지 조회수</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="card stat-card">
+                    <div class="card-body text-center">
+                      <i class="fas fa-globe fa-2x mb-2"></i>
+                      <h4>{{ total_main_ips|default:0 }}</h4>
+                      <p class="mb-0">메인 페이지 IP 수</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="card stat-card">
+                    <div class="card-body text-center">
+                      <i class="fas fa-network-wired fa-2x mb-2"></i>
+                      <h4>{{ total_diary_ips|default:0 }}</h4>
+                      <p class="mb-0">다이어리 페이지 IP 수</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {% endcomment %}
+
+              <!-- Recent Inquiries -->
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="card">
+                    <div class="card-header">
+                      <h5><i class="fas fa-question-circle"></i> 최근 문의사항</h5>
+                    </div>
+                    <div class="card-body">
+                      {% if recent_inquiries %} {% for inquiry in recent_inquiries %}
+                      <div class="d-flex justify-content-between align-items-center mb-2 p-2 border-bottom">
+                        <div>
+                          <strong>{{ inquiry.name|default:"익명" }}</strong>
+                          <br />
+                          <small class="text-muted">{{ inquiry.company_name|default:"회사명 없음" }}</small>
+                        </div>
+                        <small class="text-muted">{{ inquiry.created_at|date:"m/d H:i" }}</small>
+                      </div>
+                      {% endfor %} {% else %}
+                      <p class="text-muted">최근 문의사항이 없습니다.</p>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Recent Alarms -->
+                <div class="col-md-6">
+                  <div class="card">
+                    <div class="card-header">
+                      <h5><i class="fas fa-bell"></i> 최근 공지사항</h5>
+                    </div>
+                    <div class="card-body">
+                      {% if recent_alarms %} {% for alarm in recent_alarms %}
+                      <div class="d-flex justify-content-between align-items-center mb-2 p-2 border-bottom">
+                        <div>
+                          <strong>{{ alarm.title }}</strong>
+                          <br />
+                          <small class="text-muted">{{ alarm.get_text_content|truncatechars:30 }}</small>
+                          {% if alarm.get_files %}
+                          <br />
+                          <small class="text-info"><i class="fas fa-paperclip"></i> {{ alarm.get_files|length }}개 파일</small>
+                          {% endif %}
+                        </div>
+                        <small class="text-muted">{{ alarm.created_at|date:"m/d H:i" }}</small>
+                      </div>
+                      {% endfor %} {% else %}
+                      <p class="text-muted">최근 공지사항이 없습니다.</p>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Inquiries Content -->
+            <div id="inquiries-content" style="display: none">
+              <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-question-circle"></i> 문의사항 관리</h2>
+                <div class="d-flex gap-2">
+                  <input type="text" class="form-control search-box" id="inquiry-search" placeholder="검색..." />
+                  <select class="form-select" id="inquiry-sort" style="width: auto">
+                    <option value="-created_at">최신순</option>
+                    <option value="created_at">오래된순</option>
+                    <option value="name">이름순</option>
+                    <option value="company_name">회사명순</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-body">
+                  <div class="table-responsive">
+                    <table class="table table-hover">
+                      <thead class="table-light">
+                        <tr>
+                          <th>번호</th>
+                          <th>이름</th>
+                          <th>회사명</th>
+                          <th>연락처</th>
+                          <th>내용</th>
+                          <th>작성일</th>
+                          <th>관리</th>
+                        </tr>
+                      </thead>
+                      <tbody id="inquiries-table-body">
+                        <!-- JavaScript로 동적 로드 -->
+                      </tbody>
+                    </table>
+                  </div>
+                  <nav aria-label="문의사항 페이지네이션">
+                    <ul class="pagination justify-content-center" id="inquiries-pagination">
+                      <!-- JavaScript로 동적 생성 -->
+                    </ul>
+                  </nav>
+                </div>
+              </div>
+            </div>
+
+            <!-- Alarms Content -->
+            <div id="alarms-content" style="display: none">
+              <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-bell"></i> 공지사항 관리</h2>
+                <div class="d-flex gap-2">
+                  <input type="text" class="form-control search-box" id="alarm-search" placeholder="검색..." />
+                  <select class="form-select" id="alarm-sort" style="width: auto">
+                    <option value="-created_at">최신순</option>
+                    <option value="created_at">오래된순</option>
+                    <option value="title">제목순</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-body">
+                  <div class="table-responsive">
+                    <table class="table table-hover">
+                      <thead class="table-light">
+                        <tr>
+                          <th style="width: 10%">번호</th>
+                          <th style="width: 20%">제목</th>
+                          <th style="width: 40%">내용</th>
+                          <th>파일</th>
+                          <th>작성일</th>
+                          <th style="width: 13%">관리</th>
+                        </tr>
+                      </thead>
+                      <tbody id="alarms-table-body">
+                        <!-- JavaScript로 동적 로드 -->
+                      </tbody>
+                    </table>
+                  </div>
+                  <nav aria-label="공지사항 페이지네이션">
+                    <ul class="pagination justify-content-center" id="alarms-pagination">
+                      <!-- JavaScript로 동적 생성 -->
+                    </ul>
+                  </nav>
+                </div>
+              </div>
+            </div>
+
+            <!-- Create Alarm Content -->
+            <div id="create-alarm-content" style="display: none">
+              <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-plus"></i> 공지사항 작성</h2>
+              </div>
+
+              <div class="card">
+                <div class="card-body">
+                  <form id="create-alarm-form" enctype="multipart/form-data">
+                    <div class="mb-3">
+                      <label for="alarm-title" class="form-label">제목</label>
+                      <input type="text" class="form-control" id="alarm-title" required />
+                    </div>
+                    <div class="mb-3">
+                      <label for="alarm-content" class="form-label">내용</label>
+                      <textarea class="form-control" id="alarm-content" rows="10" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                      <label for="alarm-files" class="form-label">파일 첨부</label>
+                      <input type="file" class="form-control" id="alarm-files" multiple />
+                      <div class="form-text">여러 파일을 선택할 수 있습니다.</div>
+                    </div>
+                    <div class="d-flex gap-2">
+                      <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> 공지사항 작성</button>
+                      <button type="button" class="btn btn-secondary" onclick="showDashboard()"><i class="fas fa-times"></i> 취소</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+
+            <!-- Users Content -->
+            <div id="users-content" style="display: none">
+              <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-users"></i> 사용자 관리</h2>
+                <div class="d-flex gap-2">
+                  <input type="text" class="form-control search-box" id="user-search" placeholder="검색..." />
+                  <select class="form-select" id="user-sort" style="width: auto">
+                    <option value="-created_at">최신순</option>
+                    <option value="created_at">오래된순</option>
+                    <option value="name">이름순</option>
+                    <option value="email">이메일순</option>
+                    <option value="company_name">회사명순</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-body">
+                  <div class="table-responsive">
+                    <table class="table table-hover">
+                      <thead class="table-light">
+                        <tr>
+                          <th class="sortable" data-sort="id">
+                            번호
+                            <div class="sort-buttons">
+                              <button class="btn btn-sm btn-outline-secondary sort-btn" data-field="id" data-direction="asc" title="오름차순">
+                                <i class="fas fa-sort-up"></i>
+                              </button>
+                              <button class="btn btn-sm btn-outline-secondary sort-btn" data-field="id" data-direction="desc" title="내림차순">
+                                <i class="fas fa-sort-down"></i>
+                              </button>
+                            </div>
+                          </th>
+                          <th class="sortable" data-sort="name">
+                            이름
+                            <div class="sort-buttons">
+                              <button class="btn btn-sm btn-outline-secondary sort-btn" data-field="name" data-direction="asc" title="오름차순">
+                                <i class="fas fa-sort-up"></i>
+                              </button>
+                              <button class="btn btn-sm btn-outline-secondary sort-btn" data-field="name" data-direction="desc" title="내림차순">
+                                <i class="fas fa-sort-down"></i>
+                              </button>
+                            </div>
+                          </th>
+                          <th class="sortable" data-sort="email">
+                            이메일
+                            <div class="sort-buttons">
+                              <button class="btn btn-sm btn-outline-secondary sort-btn" data-field="email" data-direction="asc" title="오름차순">
+                                <i class="fas fa-sort-up"></i>
+                              </button>
+                              <button class="btn btn-sm btn-outline-secondary sort-btn" data-field="email" data-direction="desc" title="내림차순">
+                                <i class="fas fa-sort-down"></i>
+                              </button>
+                            </div>
+                          </th>
+                          <th class="sortable" data-sort="company_name">
+                            회사명
+                            <div class="sort-buttons">
+                              <button
+                                class="btn btn-sm btn-outline-secondary sort-btn"
+                                data-field="company_name"
+                                data-direction="asc"
+                                title="오름차순"
+                              >
+                                <i class="fas fa-sort-up"></i>
+                              </button>
+                              <button
+                                class="btn btn-sm btn-outline-secondary sort-btn"
+                                data-field="company_name"
+                                data-direction="desc"
+                                title="내림차순"
+                              >
+                                <i class="fas fa-sort-down"></i>
+                              </button>
+                            </div>
+                          </th>
+                          <th class="sortable" data-sort="phone_number">
+                            연락처
+                            <div class="sort-buttons">
+                              <button
+                                class="btn btn-sm btn-outline-secondary sort-btn"
+                                data-field="phone_number"
+                                data-direction="asc"
+                                title="오름차순"
+                              >
+                                <i class="fas fa-sort-up"></i>
+                              </button>
+                              <button
+                                class="btn btn-sm btn-outline-secondary sort-btn"
+                                data-field="phone_number"
+                                data-direction="desc"
+                                title="내림차순"
+                              >
+                                <i class="fas fa-sort-down"></i>
+                              </button>
+                            </div>
+                          </th>
+                          <th class="sortable" data-sort="created_at">
+                            가입일
+                            <div class="sort-buttons">
+                              <button class="btn btn-sm btn-outline-secondary sort-btn" data-field="created_at" data-direction="asc" title="오름차순">
+                                <i class="fas fa-sort-up"></i>
+                              </button>
+                              <button
+                                class="btn btn-sm btn-outline-secondary sort-btn"
+                                data-field="created_at"
+                                data-direction="desc"
+                                title="내림차순"
+                              >
+                                <i class="fas fa-sort-down"></i>
+                              </button>
+                            </div>
+                          </th>
+                          <th class="sortable" data-sort="use_date">
+                            사용 기간
+                            <div class="sort-buttons">
+                              <button class="btn btn-sm btn-outline-secondary sort-btn" data-field="use_date" data-direction="asc" title="오름차순">
+                                <i class="fas fa-sort-up"></i>
+                              </button>
+                              <button class="btn btn-sm btn-outline-secondary sort-btn" data-field="use_date" data-direction="desc" title="내림차순">
+                                <i class="fas fa-sort-down"></i>
+                              </button>
+                            </div>
+                          </th>
+                          <th>활성화</th>
+                          <th>관리자</th>
+                          <th>관리</th>
+                        </tr>
+                      </thead>
+                      <tbody id="users-table-body">
+                        <!-- JavaScript로 동적 로드 -->
+                      </tbody>
+                    </table>
+                  </div>
+                  <nav aria-label="사용자 페이지네이션">
+                    <ul class="pagination justify-content-center" id="users-pagination">
+                      <!-- JavaScript로 동적 생성 -->
+                    </ul>
+                  </nav>
+                </div>
+              </div>
+            </div>
+
+            <!-- View Counts Content -->
+            <div id="view-counts-content" style="display: none">
+              <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-chart-line"></i> 조회수 관리</h2>
+              </div>
+
+              <!-- Count Type Selection -->
+              <div class="card mb-4">
+                <div class="card-body">
+                  <h5 class="card-title mb-3">조회수 타입 선택</h5>
+                  <div class="btn-group" role="group" aria-label="조회수 타입 선택">
+                    <input type="radio" class="btn-check" name="count-type" id="main-count" value="main" checked />
+                    <label class="btn btn-outline-primary" for="main-count"> <i class="fas fa-home me-2"></i>메인 페이지 </label>
+                    <input type="radio" class="btn-check" name="count-type" id="diary-count" value="diary" />
+                    <label class="btn btn-outline-primary" for="diary-count"> <i class="fas fa-book me-2"></i>다이어리 페이지 </label>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Date Range Selection -->
+              <div class="card mb-4">
+                <div class="card-body">
+                  <h5 class="card-title mb-3">날짜 범위 선택 (선택사항)</h5>
+                  <div class="row">
+                    <div class="col-md-4">
+                      <label for="start-date" class="form-label">시작 날짜</label>
+                      <input type="date" class="form-control" id="start-date" />
+                    </div>
+                    <div class="col-md-4">
+                      <label for="end-date" class="form-label">종료 날짜</label>
+                      <input type="date" class="form-control" id="end-date" />
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end gap-2">
+                      <button type="button" class="btn btn-primary" onclick="loadDailyViewCounts()"><i class="fas fa-search"></i> 기간 조회</button>
+                      <button type="button" class="btn btn-outline-secondary" onclick="loadAllViewCounts()">
+                        <i class="fas fa-globe"></i> 전체 기간
+                      </button>
+                    </div>
+                  </div>
+                  <div class="form-text mt-2"><i class="fas fa-info-circle"></i> 날짜를 선택하지 않으면 전체 기간의 데이터가 표시됩니다.</div>
+                </div>
+              </div>
+
+              <!-- Daily View Counts Chart -->
+              <div class="card mb-4">
+                <div class="card-header">
+                  <h5 class="card-title mb-0"><i class="fas fa-chart-area me-2"></i>일별 조회수 차트</h5>
+                </div>
+                <div class="card-body">
+                  <canvas id="dailyViewChart" width="400" height="200"></canvas>
+                </div>
+              </div>
+
+              <!-- Summary Cards -->
+              <div class="row mb-4">
+                <div class="col-md-4">
+                  <div class="card border-primary">
+                    <div class="card-body text-center">
+                      <h5 class="card-title text-primary"><i class="fas fa-chart-bar me-2"></i>총 조회수</h5>
+                      <h3 class="text-primary" id="total-count-display">0</h3>
+                      <p class="text-muted mb-0" id="count-type-display">메인 페이지</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="card border-success">
+                    <div class="card-body text-center">
+                      <h5 class="card-title text-success"><i class="fas fa-globe me-2"></i>총 IP 수</h5>
+                      <h3 class="text-success" id="total-ips-display">0</h3>
+                      <p class="text-muted mb-0">고유 방문자</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="card border-info">
+                    <div class="card-body text-center">
+                      <h5 class="card-title text-info"><i class="fas fa-calendar me-2"></i>기간</h5>
+                      <h3 class="text-info" id="date-range-display">-</h3>
+                      <p class="text-muted mb-0">조회 기간</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Daily Details Table -->
+              <div class="card mb-4">
+                <div class="card-header">
+                  <h5 class="card-title mb-0"><i class="fas fa-table me-2"></i>일별 상세 조회수</h5>
+                </div>
+                <div class="card-body">
+                  <div class="table-responsive">
+                    <table class="table table-hover">
+                      <thead class="table-light">
+                        <tr>
+                          <th>날짜</th>
+                          <th>총 조회수</th>
+                          <th>고유 IP 수</th>
+                          <th>평균 조회수/IP</th>
+                          <th>상세보기</th>
+                        </tr>
+                      </thead>
+                      <tbody id="daily-details-table-body">
+                        <!-- JavaScript로 동적 로드 -->
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Search and Sort Controls -->
+              <div class="card mb-4">
+                <div class="card-body">
+                  <div class="row">
+                    <div class="col-md-6">
+                      <label for="count-search" class="form-label">IP 검색</label>
+                      <input type="text" class="form-control" id="count-search" placeholder="IP 주소를 입력하세요..." />
+                    </div>
+                    <div class="col-md-6">
+                      <label for="count-sort" class="form-label">정렬 기준</label>
+                      <select class="form-select" id="count-sort">
+                        <option value="-count">조회수 높은순</option>
+                        <option value="count">조회수 낮은순</option>
+                        <option value="-created_at">최신순</option>
+                        <option value="created_at">오래된순</option>
+                        <option value="ip">IP순</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Data Table -->
+              <div class="card">
+                <div class="card-header">
+                  <h5 class="card-title mb-0"><i class="fas fa-table me-2"></i>조회수 상세 목록</h5>
+                </div>
+                <div class="card-body">
+                  <div class="table-responsive">
+                    <table class="table table-hover">
+                      <thead class="table-light">
+                        <tr>
+                          <th>번호</th>
+                          <th>IP 주소</th>
+                          <th>조회수</th>
+                          <th>최초 방문</th>
+                          <th>마지막 방문</th>
+                          <th>관리</th>
+                        </tr>
+                      </thead>
+                      <tbody id="counts-table-body">
+                        <!-- JavaScript로 동적 로드 -->
+                      </tbody>
+                    </table>
+                  </div>
+                  <nav aria-label="조회수 페이지네이션">
+                    <ul class="pagination justify-content-center" id="counts-pagination">
+                      <!-- JavaScript로 동적 생성 -->
+                    </ul>
+                  </nav>
+                </div>
+              </div>
+            </div>
+
+            <!-- Class Forms Content -->
+            <div id="class-forms-content" style="display: none">
+              <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-graduation-cap"></i> 원데이 클래스 신청 관리</h2>
+                <div class="d-flex gap-2">
+                  <input type="text" class="form-control search-box" id="class-form-search" placeholder="이름 또는 연락처로 검색..." />
+                  <select class="form-select" id="class-form-sort" style="width: auto">
+                    <option value="-created_at">최신순</option>
+                    <option value="created_at">오래된순</option>
+                    <option value="name">이름순</option>
+                    <option value="phone">연락처순</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Summary Card -->
+              <div class="row mb-4">
+                <div class="col-md-4">
+                  <div class="card border-primary">
+                    <div class="card-body text-center">
+                      <h5 class="card-title text-primary"><i class="fas fa-users me-2"></i>총 신청자 수</h5>
+                      <h3 class="text-primary" id="total-class-forms-display">0</h3>
+                      <p class="text-muted mb-0">클래스 신청 완료</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-body">
+                  <div class="table-responsive">
+                    <table class="table table-hover">
+                      <thead class="table-light">
+                        <tr>
+                          <th>번호</th>
+                          <th>이름</th>
+                          <th>연락처</th>
+                          <th>신청일</th>
+                          <th>관리</th>
+                        </tr>
+                      </thead>
+                      <tbody id="class-forms-table-body">
+                        <!-- JavaScript로 동적 로드 -->
+                      </tbody>
+                    </table>
+                  </div>
+                  <nav aria-label="클래스 신청 페이지네이션">
+                    <ul class="pagination justify-content-center" id="class-forms-pagination">
+                      <!-- JavaScript로 동적 생성 -->
+                    </ul>
+                  </nav>
+                </div>
+              </div>
+            </div>
+
+            <!-- PayAmounts Content -->
+            <div id="payamounts-content" style="display: none">
+              <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-won-sign"></i> 결제금액 관리</h2>
+              </div>
+
+              <!-- Summary Card -->
+              <div class="row mb-4">
+                <div class="col-md-4">
+                  <div class="card border-primary">
+                    <div class="card-body text-center">
+                      <h5 class="card-title text-primary"><i class="fas fa-list me-2"></i>총 결제 옵션</h5>
+                      <h3 class="text-primary" id="total-payamounts-display">0</h3>
+                      <p class="text-muted mb-0">등록된 결제 금액</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-body">
+                  <div class="table-responsive">
+                    <table class="table table-hover">
+                      <thead class="table-light">
+                        <tr>
+                          <th>번호</th>
+                          <th>금액명</th>
+                          <th>금액</th>
+                          <th>생성일</th>
+                          <th>수정일</th>
+                          <th>관리</th>
+                        </tr>
+                      </thead>
+                      <tbody id="payamounts-table-body">
+                        <!-- JavaScript로 동적 로드 -->
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Logs Content -->
+            <div id="logs-content" style="display: none">
+              <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-file-alt"></i> 사용자 접속 로그</h2>
+                <div class="d-flex gap-2">
+                  <button type="button" class="btn btn-success" onclick="exportLogsToExcel()"><i class="fas fa-download"></i> 엑셀 다운로드</button>
+                </div>
+              </div>
+
+              <!-- Date Range Selection -->
+              <div class="card mb-4">
+                <div class="card-body">
+                  <h5 class="card-title mb-3">기간 선택</h5>
+                  <div class="row">
+                    <div class="col-md-4">
+                      <label for="log-start-date" class="form-label">시작 날짜</label>
+                      <input type="date" class="form-control" id="log-start-date" />
+                    </div>
+                    <div class="col-md-4">
+                      <label for="log-end-date" class="form-label">종료 날짜</label>
+                      <input type="date" class="form-control" id="log-end-date" />
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end gap-2">
+                      <button type="button" class="btn btn-primary" onclick="loadLogs()"><i class="fas fa-search"></i> 조회</button>
+                      <button type="button" class="btn btn-outline-secondary" onclick="clearLogDates()"><i class="fas fa-times"></i> 초기화</button>
+                    </div>
+                  </div>
+                  <div class="form-text mt-2"><i class="fas fa-info-circle"></i> 날짜를 선택하지 않으면 전체 기간의 데이터가 표시됩니다.</div>
+                </div>
+              </div>
+
+              <!-- Summary Cards -->
+              <div class="row mb-4">
+                <div class="col-md-4">
+                  <div class="card border-primary">
+                    <div class="card-body text-center">
+                      <h5 class="card-title text-primary"><i class="fas fa-list me-2"></i>총 로그 수</h5>
+                      <h3 class="text-primary" id="total-logs-display">0</h3>
+                      <p class="text-muted mb-0">전체 접속 기록</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="card border-success">
+                    <div class="card-body text-center">
+                      <h5 class="card-title text-success"><i class="fas fa-users me-2"></i>고유 사용자</h5>
+                      <h3 class="text-success" id="unique-users-display">0</h3>
+                      <p class="text-muted mb-0">접속한 사용자 수</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="card border-info">
+                    <div class="card-body text-center">
+                      <h5 class="card-title text-info"><i class="fas fa-globe me-2"></i>고유 IP</h5>
+                      <h3 class="text-info" id="unique-ips-display">0</h3>
+                      <p class="text-muted mb-0">접속한 IP 수</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Search and Sort Controls -->
+              <div class="card mb-4">
+                <div class="card-body">
+                  <div class="row">
+                    <div class="col-md-6">
+                      <label for="log-search" class="form-label">검색</label>
+                      <input type="text" class="form-control" id="log-search" placeholder="IP, 사용자명, 이메일로 검색..." />
+                    </div>
+                    <div class="col-md-6">
+                      <label for="log-sort" class="form-label">정렬 기준</label>
+                      <select class="form-select" id="log-sort">
+                        <option value="-created_at">최신순</option>
+                        <option value="created_at">오래된순</option>
+                        <option value="ip">IP순</option>
+                        <option value="user__name">사용자명순</option>
+                        <option value="user__email">이메일순</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Data Table -->
+              <div class="card">
+                <div class="card-header">
+                  <h5 class="card-title mb-0"><i class="fas fa-table me-2"></i>접속 로그 목록</h5>
+                </div>
+                <div class="card-body">
+                  <div class="table-responsive">
+                    <table class="table table-hover">
+                      <thead class="table-light">
+                        <tr>
+                          <th>번호</th>
+                          <th>IP 주소</th>
+                          <th>사용자명</th>
+                          <th>이메일</th>
+                          <th>접속일</th>
+                        </tr>
+                      </thead>
+                      <tbody id="logs-table-body">
+                        <!-- JavaScript로 동적 로드 -->
+                      </tbody>
+                    </table>
+                  </div>
+                  <nav aria-label="로그 페이지네이션">
+                    <ul class="pagination justify-content-center" id="logs-pagination">
+                      <!-- JavaScript로 동적 생성 -->
+                    </ul>
+                  </nav>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Inquiry Detail Modal -->
     <div class="modal fade" id="inquiryDetailModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">문의사항 상세보기</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body" id="inquiry-detail-content">
-                    <!-- 동적 로드 -->
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-danger" id="delete-inquiry-btn">
-                        <i class="fas fa-trash"></i> 삭제
-                    </button>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
-                </div>
-            </div>
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">문의사항 상세보기</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body" id="inquiry-detail-content">
+            <!-- 동적 로드 -->
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-danger" id="delete-inquiry-btn"><i class="fas fa-trash"></i> 삭제</button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+          </div>
         </div>
+      </div>
     </div>
 
     <!-- Edit Alarm Modal -->
     <div class="modal fade" id="editAlarmModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">공지사항 수정</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">공지사항 수정</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <form id="edit-alarm-form" enctype="multipart/form-data">
+              <input type="hidden" id="edit-alarm-id" />
+              <div class="mb-3">
+                <label for="edit-alarm-title" class="form-label">제목</label>
+                <input type="text" class="form-control" id="edit-alarm-title" required />
+              </div>
+              <div class="mb-3">
+                <label for="edit-alarm-content" class="form-label">내용</label>
+                <textarea class="form-control" id="edit-alarm-content" rows="10" required></textarea>
+              </div>
+              <div class="mb-3">
+                <label for="edit-alarm-files" class="form-label">파일 첨부</label>
+                <input type="file" class="form-control" id="edit-alarm-files" multiple />
+                <div class="form-text">여러 파일을 선택할 수 있습니다.</div>
+              </div>
+              <div class="mb-3" id="current-files-section" style="display: none">
+                <label class="form-label">현재 첨부된 파일</label>
+                <div id="current-files-list" class="border rounded p-2 bg-light">
+                  <!-- 현재 파일 목록이 여기에 표시됩니다 -->
                 </div>
-                <div class="modal-body">
-                    <form id="edit-alarm-form" enctype="multipart/form-data">
-                        <input type="hidden" id="edit-alarm-id">
-                        <div class="mb-3">
-                            <label for="edit-alarm-title" class="form-label">제목</label>
-                            <input type="text" class="form-control" id="edit-alarm-title" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="edit-alarm-content" class="form-label">내용</label>
-                            <textarea class="form-control" id="edit-alarm-content" rows="10" required></textarea>
-                        </div>
-                        <div class="mb-3">
-                            <label for="edit-alarm-files" class="form-label">파일 첨부</label>
-                            <input type="file" class="form-control" id="edit-alarm-files" multiple>
-                            <div class="form-text">여러 파일을 선택할 수 있습니다.</div>
-                        </div>
-                        <div class="mb-3" id="current-files-section" style="display: none;">
-                            <label class="form-label">현재 첨부된 파일</label>
-                            <div id="current-files-list" class="border rounded p-2 bg-light">
-                                <!-- 현재 파일 목록이 여기에 표시됩니다 -->
-                            </div>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-primary" id="save-edit-alarm-btn">
-                        <i class="fas fa-save"></i> 저장
-                    </button>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-                </div>
-            </div>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" id="save-edit-alarm-btn"><i class="fas fa-save"></i> 저장</button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+          </div>
         </div>
+      </div>
     </div>
 
     <!-- User Delete Confirmation Modal -->
     <div class="modal fade" id="userDeleteModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">사용자 삭제 확인</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <p>정말로 이 사용자를 삭제하시겠습니까?</p>
-                    <div class="alert alert-warning">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <strong>주의:</strong> 사용자를 삭제하면 해당 사용자의 모든 데이터(알림, 기타 관련 정보)가 함께 삭제됩니다.
-                    </div>
-                    <div id="user-delete-info">
-                        <!-- 삭제할 사용자 정보가 여기에 표시됩니다 -->
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-danger" id="confirm-user-delete-btn">
-                        <i class="fas fa-trash"></i> 삭제
-                    </button>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-                </div>
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">사용자 삭제 확인</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <p>정말로 이 사용자를 삭제하시겠습니까?</p>
+            <div class="alert alert-warning">
+              <i class="fas fa-exclamation-triangle"></i>
+              <strong>주의:</strong> 사용자를 삭제하면 해당 사용자의 모든 데이터(알림, 기타 관련 정보)가 함께 삭제됩니다.
             </div>
+            <div id="user-delete-info">
+              <!-- 삭제할 사용자 정보가 여기에 표시됩니다 -->
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-danger" id="confirm-user-delete-btn"><i class="fas fa-trash"></i> 삭제</button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+          </div>
         </div>
+      </div>
     </div>
 
     <!-- 관리자 권한 변경 확인 모달 -->
     <div class="modal fade admin-change-modal" id="adminChangeModal" tabindex="-1">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">관리자 권한 변경</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="user-info">
-                    <h6>변경할 사용자 정보</h6>
-                    <p class="change-description">
-                        현재 관리자 권한: <strong id="current-admin-status"></strong>
-                    </p>
-                    <p class="change-description">
-                        변경할 관리자 권한: <strong id="target-admin-status"></strong>
-                    </p>
-                </div>
-                <div class="alert alert-warning">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <strong>주의:</strong> 관리자 권한을 변경하면 해당 사용자의 모든 데이터(알림, 기타 관련 정보)가 함께 변경됩니다.
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-primary" id="confirm-admin-change-btn">
-                    <i class="fas fa-check"></i> 변경
-                </button>
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-            </div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">관리자 권한 변경</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
+        <div class="modal-body">
+          <div class="user-info">
+            <h6>변경할 사용자 정보</h6>
+            <p class="change-description">현재 관리자 권한: <strong id="current-admin-status"></strong></p>
+            <p class="change-description">변경할 관리자 권한: <strong id="target-admin-status"></strong></p>
+          </div>
+          <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle"></i>
+            <strong>주의:</strong> 관리자 권한을 변경하면 해당 사용자의 모든 데이터(알림, 기타 관련 정보)가 함께 변경됩니다.
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary" id="confirm-admin-change-btn"><i class="fas fa-check"></i> 변경</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+        </div>
+      </div>
     </div>
 
     <!-- 사용 기간 수정 모달 -->
     <div class="modal fade" id="useDateEditModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">사용 기간 수정</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="user-info mb-3">
-                        <h6>사용자 정보</h6>
-                        <p class="mb-1"><strong>이름:</strong> <span id="edit-use-date-user-name"></span></p>
-                        <p class="mb-1"><strong>이메일:</strong> <span id="edit-use-date-user-email"></span></p>
-                    </div>
-                    <div class="mb-3">
-                        <label for="edit-use-date" class="form-label">사용 기간</label>
-                        <input type="date" class="form-control" id="edit-use-date" required>
-                        <div class="form-text">사용자의 사용 기간을 설정하세요.</div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-primary" id="save-use-date-btn">
-                        <i class="fas fa-save"></i> 저장
-                    </button>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-                </div>
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">사용 기간 수정</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div class="user-info mb-3">
+              <h6>사용자 정보</h6>
+              <p class="mb-1"><strong>이름:</strong> <span id="edit-use-date-user-name"></span></p>
+              <p class="mb-1"><strong>이메일:</strong> <span id="edit-use-date-user-email"></span></p>
             </div>
+            <div class="mb-3">
+              <label for="edit-use-date" class="form-label">사용 기간</label>
+              <input type="date" class="form-control" id="edit-use-date" required />
+              <div class="form-text">사용자의 사용 기간을 설정하세요.</div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" id="save-use-date-btn"><i class="fas fa-save"></i> 저장</button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+          </div>
         </div>
+      </div>
     </div>
 
     <!-- 조회수 삭제 확인 모달 -->
     <div class="modal fade" id="countDeleteModal" tabindex="-1">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">조회수 기록 삭제 확인</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p>정말로 이 조회수 기록을 삭제하시겠습니까?</p>
-                <div class="alert alert-warning">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <strong>주의:</strong> 삭제된 조회수 기록은 복구할 수 없습니다.
-                </div>
-                <div id="count-delete-info">
-                    <!-- 삭제할 조회수 기록 정보가 여기에 표시됩니다 -->
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-danger" id="confirm-count-delete-btn">
-                    <i class="fas fa-trash"></i> 삭제
-                </button>
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-            </div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">조회수 기록 삭제 확인</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
+        <div class="modal-body">
+          <p>정말로 이 조회수 기록을 삭제하시겠습니까?</p>
+          <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle"></i>
+            <strong>주의:</strong> 삭제된 조회수 기록은 복구할 수 없습니다.
+          </div>
+          <div id="count-delete-info">
+            <!-- 삭제할 조회수 기록 정보가 여기에 표시됩니다 -->
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-danger" id="confirm-count-delete-btn"><i class="fas fa-trash"></i> 삭제</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+        </div>
+      </div>
     </div>
 
     <!-- 일별 조회수 상세 정보 모달 -->
     <div class="modal fade" id="dailyDetailModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">일별 조회수 상세 정보</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <strong>날짜:</strong> <span id="detail-date"></span>
-                        </div>
-                        <div class="col-md-6">
-                            <strong>페이지 타입:</strong> <span id="detail-page-type"></span>
-                        </div>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <strong>총 조회수:</strong> <span id="detail-total-count"></span>
-                        </div>
-                        <div class="col-md-6">
-                            <strong>고유 IP 수:</strong> <span id="detail-unique-ips"></span>
-                        </div>
-                    </div>
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>IP 주소</th>
-                                    <th>조회수</th>
-                                    <th>최초 방문</th>
-                                    <th>마지막 방문</th>
-                                </tr>
-                            </thead>
-                            <tbody id="detail-table-body">
-                                <!-- 동적 로드 -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
-                </div>
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">일별 조회수 상세 정보</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div class="row mb-3">
+              <div class="col-md-6"><strong>날짜:</strong> <span id="detail-date"></span></div>
+              <div class="col-md-6"><strong>페이지 타입:</strong> <span id="detail-page-type"></span></div>
             </div>
+            <div class="row mb-3">
+              <div class="col-md-6"><strong>총 조회수:</strong> <span id="detail-total-count"></span></div>
+              <div class="col-md-6"><strong>고유 IP 수:</strong> <span id="detail-unique-ips"></span></div>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-hover">
+                <thead class="table-light">
+                  <tr>
+                    <th>IP 주소</th>
+                    <th>조회수</th>
+                    <th>최초 방문</th>
+                    <th>마지막 방문</th>
+                  </tr>
+                </thead>
+                <tbody id="detail-table-body">
+                  <!-- 동적 로드 -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+          </div>
         </div>
+      </div>
+    </div>
+
+    <!-- 결제금액 수정 모달 -->
+    <div class="modal fade" id="payamountEditModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">결제금액 수정</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div class="user-info mb-3">
+              <h6>결제 옵션 정보</h6>
+              <p class="mb-1"><strong>금액명:</strong> <span id="edit-payamount-name"></span></p>
+              <p class="mb-1"><strong>현재 금액:</strong> <span id="edit-payamount-current-price"></span></p>
+            </div>
+            <div class="mb-3">
+              <label for="edit-payamount-price" class="form-label">새로운 금액</label>
+              <input type="number" class="form-control" id="edit-payamount-price" min="100" required />
+              <div class="form-text">최소 금액은 100원입니다.</div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" id="save-payamount-btn"><i class="fas fa-save"></i> 저장</button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="{% static 'diary/diary_admin.js' %}"></script>
+    <script src="{% static 'diary/diary_admin.js' %}?v=2"></script>
     <script src="{% static 'diary/base/base.js' %}"></script>
-    
+
     <script>
-        // 일별 조회수 차트 변수
-        let dailyViewChart = null;
-        
-        // 페이지 로드 시 기본 날짜 설정
-        document.addEventListener('DOMContentLoaded', function() {
-            const today = new Date();
-            const sevenDaysAgo = new Date();
-            sevenDaysAgo.setDate(today.getDate() - 7);
-            
-            document.getElementById('end-date').value = today.toISOString().split('T')[0];
-            document.getElementById('start-date').value = sevenDaysAgo.toISOString().split('T')[0];
-            
-            // 조회수 타입 변경 시 자동 로드
-            document.querySelectorAll('input[name="count-type"]').forEach(radio => {
-                radio.addEventListener('change', function() {
-                    loadAllViewCounts(); // 기본적으로 전체 기간 로드
-                });
-            });
-            
-            // 페이지 로드 시 기본 데이터 로드 (전체 기간)
-            loadAllViewCounts();
+      // 일별 조회수 차트 변수
+      let dailyViewChart = null;
+
+      // 페이지 로드 시 기본 날짜 설정
+      document.addEventListener("DOMContentLoaded", function () {
+        const today = new Date();
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(today.getDate() - 7);
+
+        document.getElementById("end-date").value = today.toISOString().split("T")[0];
+        document.getElementById("start-date").value = sevenDaysAgo.toISOString().split("T")[0];
+
+        // 조회수 타입 변경 시 자동 로드
+        document.querySelectorAll('input[name="count-type"]').forEach((radio) => {
+          radio.addEventListener("change", function () {
+            loadAllViewCounts(); // 기본적으로 전체 기간 로드
+          });
         });
-        
-        // 전체 기간 조회수 로드 함수
-        function loadAllViewCounts() {
-            const pageType = document.querySelector('input[name="count-type"]:checked').value;
-            
-            fetch(`/sales/api/daily_view_counts/?page_type=${pageType}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        updateDailyViewChart(data);
-                        updateDailyDetailsTable(data);
-                        updateSummaryCards(data);
-                        // 전체 기간 로드 시 날짜 입력란 비우기
-                        document.getElementById('start-date').value = '';
-                        document.getElementById('end-date').value = '';
-                    } else {
-                        console.error('전체 기간 조회수 로드 실패:', data.error);
-                    }
-                })
-                .catch(error => {
-                    console.error('전체 기간 조회수 로드 오류:', error);
-                });
-        }
-        
-        // 일별 조회수 로드 함수 (기간 지정)
-        function loadDailyViewCounts() {
-            const pageType = document.querySelector('input[name="count-type"]:checked').value;
-            const startDate = document.getElementById('start-date').value;
-            const endDate = document.getElementById('end-date').value;
-            
-            if (!startDate || !endDate) {
-                alert('시작 날짜와 종료 날짜를 모두 선택해주세요.');
-                return;
+
+        // 페이지 로드 시 기본 데이터 로드 (전체 기간)
+        loadAllViewCounts();
+      });
+
+      // 전체 기간 조회수 로드 함수
+      function loadAllViewCounts() {
+        const pageType = document.querySelector('input[name="count-type"]:checked').value;
+
+        fetch(`/sales/api/daily_view_counts/?page_type=${pageType}`)
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.success) {
+              updateDailyViewChart(data);
+              updateDailyDetailsTable(data);
+              updateSummaryCards(data);
+              // 전체 기간 로드 시 날짜 입력란 비우기
+              document.getElementById("start-date").value = "";
+              document.getElementById("end-date").value = "";
+            } else {
+              console.error("전체 기간 조회수 로드 실패:", data.error);
             }
-            
-            fetch(`/sales/api/daily_view_counts/?page_type=${pageType}&start_date=${startDate}&end_date=${endDate}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        updateDailyViewChart(data);
-                        updateDailyDetailsTable(data);
-                        updateSummaryCards(data);
-                    } else {
-                        console.error('일별 조회수 로드 실패:', data.error);
-                    }
-                })
-                .catch(error => {
-                    console.error('일별 조회수 로드 오류:', error);
-                });
+          })
+          .catch((error) => {
+            console.error("전체 기간 조회수 로드 오류:", error);
+          });
+      }
+
+      // 일별 조회수 로드 함수 (기간 지정)
+      function loadDailyViewCounts() {
+        const pageType = document.querySelector('input[name="count-type"]:checked').value;
+        const startDate = document.getElementById("start-date").value;
+        const endDate = document.getElementById("end-date").value;
+
+        if (!startDate || !endDate) {
+          alert("시작 날짜와 종료 날짜를 모두 선택해주세요.");
+          return;
         }
-        
-        // 일별 조회수 차트 업데이트
-        function updateDailyViewChart(data) {
-            const ctx = document.getElementById('dailyViewChart').getContext('2d');
-            
-            // 기존 차트가 있으면 제거
-            if (dailyViewChart) {
-                dailyViewChart.destroy();
+
+        fetch(`/sales/api/daily_view_counts/?page_type=${pageType}&start_date=${startDate}&end_date=${endDate}`)
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.success) {
+              updateDailyViewChart(data);
+              updateDailyDetailsTable(data);
+              updateSummaryCards(data);
+            } else {
+              console.error("일별 조회수 로드 실패:", data.error);
             }
-            
-            const dates = Object.keys(data.daily_data).sort();
-            const counts = dates.map(date => data.daily_data[date].total_count);
-            const uniqueIPs = dates.map(date => data.daily_data[date].unique_ips);
-            
-            dailyViewChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: dates.map(date => new Date(date).toLocaleDateString('ko-KR')),
-                    datasets: [
-                        {
-                            label: '총 조회수',
-                            data: counts,
-                            borderColor: 'rgb(75, 192, 192)',
-                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                            yAxisID: 'y'
-                        },
-                        {
-                            label: '고유 IP 수',
-                            data: uniqueIPs,
-                            borderColor: 'rgb(255, 99, 132)',
-                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                            yAxisID: 'y1'
-                        }
-                    ]
+          })
+          .catch((error) => {
+            console.error("일별 조회수 로드 오류:", error);
+          });
+      }
+
+      // 일별 조회수 차트 업데이트
+      function updateDailyViewChart(data) {
+        const ctx = document.getElementById("dailyViewChart").getContext("2d");
+
+        // 기존 차트가 있으면 제거
+        if (dailyViewChart) {
+          dailyViewChart.destroy();
+        }
+
+        const dates = Object.keys(data.daily_data).sort();
+        const counts = dates.map((date) => data.daily_data[date].total_count);
+        const uniqueIPs = dates.map((date) => data.daily_data[date].unique_ips);
+
+        dailyViewChart = new Chart(ctx, {
+          type: "line",
+          data: {
+            labels: dates.map((date) => new Date(date).toLocaleDateString("ko-KR")),
+            datasets: [
+              {
+                label: "총 조회수",
+                data: counts,
+                borderColor: "rgb(75, 192, 192)",
+                backgroundColor: "rgba(75, 192, 192, 0.2)",
+                yAxisID: "y",
+              },
+              {
+                label: "고유 IP 수",
+                data: uniqueIPs,
+                borderColor: "rgb(255, 99, 132)",
+                backgroundColor: "rgba(255, 99, 132, 0.2)",
+                yAxisID: "y1",
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            interaction: {
+              mode: "index",
+              intersect: false,
+            },
+            scales: {
+              x: {
+                display: true,
+                title: {
+                  display: true,
+                  text: "날짜",
                 },
-                options: {
-                    responsive: true,
-                    interaction: {
-                        mode: 'index',
-                        intersect: false,
-                    },
-                    scales: {
-                        x: {
-                            display: true,
-                            title: {
-                                display: true,
-                                text: '날짜'
-                            }
-                        },
-                        y: {
-                            type: 'linear',
-                            display: true,
-                            position: 'left',
-                            title: {
-                                display: true,
-                                text: '총 조회수'
-                            },
-                            beginAtZero: true,
-                            grid: {
-                                drawOnChartArea: true,
-                            },
-                        },
-                        y1: {
-                            type: 'linear',
-                            display: true,
-                            position: 'right',
-                            title: {
-                                display: true,
-                                text: '고유 IP 수'
-                            },
-                            beginAtZero: true,
-                            grid: {
-                                drawOnChartArea: false,
-                            },
-                            // 왼쪽 Y축과 동일한 스케일 사용
-                            min: 0,
-                            max: Math.max(...counts, ...uniqueIPs),
-                            ticks: {
-                                callback: function(value) {
-                                    return value;
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        }
-        
-        // 일별 상세 테이블 업데이트
-        function updateDailyDetailsTable(data) {
-            const tbody = document.getElementById('daily-details-table-body');
-            tbody.innerHTML = '';
-            
-            // 전체 기간 요약 행 추가 (날짜 범위가 지정되지 않은 경우)
-            if (!data.start_date || !data.end_date) {
-                const summaryRow = document.createElement('tr');
-                summaryRow.className = 'table-info';
-                summaryRow.innerHTML = `
+              },
+              y: {
+                type: "linear",
+                display: true,
+                position: "left",
+                title: {
+                  display: true,
+                  text: "총 조회수",
+                },
+                beginAtZero: true,
+                grid: {
+                  drawOnChartArea: true,
+                },
+              },
+              y1: {
+                type: "linear",
+                display: true,
+                position: "right",
+                title: {
+                  display: true,
+                  text: "고유 IP 수",
+                },
+                beginAtZero: true,
+                grid: {
+                  drawOnChartArea: false,
+                },
+                // 왼쪽 Y축과 동일한 스케일 사용
+                min: 0,
+                max: Math.max(...counts, ...uniqueIPs),
+                ticks: {
+                  callback: function (value) {
+                    return value;
+                  },
+                },
+              },
+            },
+          },
+        });
+      }
+
+      // 일별 상세 테이블 업데이트
+      function updateDailyDetailsTable(data) {
+        const tbody = document.getElementById("daily-details-table-body");
+        tbody.innerHTML = "";
+
+        // 전체 기간 요약 행 추가 (날짜 범위가 지정되지 않은 경우)
+        if (!data.start_date || !data.end_date) {
+          const summaryRow = document.createElement("tr");
+          summaryRow.className = "table-info";
+          summaryRow.innerHTML = `
                     <td><strong>전체 기간</strong></td>
                     <td><strong>${data.total_stats.total_count.toLocaleString()}</strong></td>
                     <td><strong>${data.total_stats.total_unique_ips.toLocaleString()}</strong></td>
@@ -1472,18 +1497,18 @@
                         </button>
                     </td>
                 `;
-                tbody.appendChild(summaryRow);
-            }
-            
-            const dates = Object.keys(data.daily_data).sort();
-            
-            dates.forEach(date => {
-                const record = data.daily_data[date];
-                const row = document.createElement('tr');
-                const avgCount = record.unique_ips > 0 ? (record.total_count / record.unique_ips).toFixed(1) : '0';
-                
-                row.innerHTML = `
-                    <td>${new Date(date).toLocaleDateString('ko-KR')}</td>
+          tbody.appendChild(summaryRow);
+        }
+
+        const dates = Object.keys(data.daily_data).sort();
+
+        dates.forEach((date) => {
+          const record = data.daily_data[date];
+          const row = document.createElement("tr");
+          const avgCount = record.unique_ips > 0 ? (record.total_count / record.unique_ips).toFixed(1) : "0";
+
+          row.innerHTML = `
+                    <td>${new Date(date).toLocaleDateString("ko-KR")}</td>
                     <td>${record.total_count.toLocaleString()}</td>
                     <td>${record.unique_ips.toLocaleString()}</td>
                     <td>${avgCount}</td>
@@ -1493,98 +1518,98 @@
                         </button>
                     </td>
                 `;
-                tbody.appendChild(row);
+          tbody.appendChild(row);
+        });
+      }
+
+      // 요약 카드 업데이트
+      function updateSummaryCards(data) {
+        document.getElementById("total-count-display").textContent = data.total_stats.total_count.toLocaleString();
+        document.getElementById("total-ips-display").textContent = data.total_stats.total_unique_ips.toLocaleString();
+
+        // 날짜 범위 표시
+        if (data.start_date && data.end_date) {
+          document.getElementById("date-range-display").textContent = `${data.start_date} ~ ${data.end_date}`;
+        } else {
+          document.getElementById("date-range-display").textContent = "전체 기간";
+        }
+
+        const pageTypeText = data.page_type === "main" ? "메인 페이지" : "다이어리 페이지";
+        document.getElementById("count-type-display").textContent = pageTypeText;
+      }
+
+      // 일별 상세 정보 모달 표시
+      function showDailyDetail(date) {
+        const pageType = document.querySelector('input[name="count-type"]:checked').value;
+
+        // 날짜가 'all'인 경우 전체 기간 상세 정보 표시
+        if (date === "all") {
+          fetch(`/sales/api/daily_view_details/?page_type=${pageType}`)
+            .then((response) => response.json())
+            .then((data) => {
+              if (data.success) {
+                document.getElementById("detail-date").textContent = "전체 기간";
+                document.getElementById("detail-page-type").textContent = data.page_type === "main" ? "메인 페이지" : "다이어리 페이지";
+                document.getElementById("detail-total-count").textContent = data.stats.total_count.toLocaleString();
+                document.getElementById("detail-unique-ips").textContent = data.stats.unique_ips.toLocaleString();
+
+                const tbody = document.getElementById("detail-table-body");
+                tbody.innerHTML = "";
+
+                data.records.forEach((record) => {
+                  const row = document.createElement("tr");
+                  row.innerHTML = `
+                                    <td>${record.ip}</td>
+                                    <td>${record.count.toLocaleString()}</td>
+                                    <td>${new Date(record.created_at).toLocaleString("ko-KR")}</td>
+                                    <td>${new Date(record.updated_at).toLocaleString("ko-KR")}</td>
+                                `;
+                  tbody.appendChild(row);
+                });
+
+                new bootstrap.Modal(document.getElementById("dailyDetailModal")).show();
+              } else {
+                console.error("전체 기간 상세 정보 로드 실패:", data.error);
+              }
+            })
+            .catch((error) => {
+              console.error("전체 기간 상세 정보 로드 오류:", error);
+            });
+        } else {
+          // 특정 날짜 상세 정보 표시
+          fetch(`/sales/api/daily_view_details/?page_type=${pageType}&date=${date}`)
+            .then((response) => response.json())
+            .then((data) => {
+              if (data.success) {
+                document.getElementById("detail-date").textContent = new Date(date).toLocaleDateString("ko-KR");
+                document.getElementById("detail-page-type").textContent = data.page_type === "main" ? "메인 페이지" : "다이어리 페이지";
+                document.getElementById("detail-total-count").textContent = data.stats.total_count.toLocaleString();
+                document.getElementById("detail-unique-ips").textContent = data.stats.unique_ips.toLocaleString();
+
+                const tbody = document.getElementById("detail-table-body");
+                tbody.innerHTML = "";
+
+                data.records.forEach((record) => {
+                  const row = document.createElement("tr");
+                  row.innerHTML = `
+                                    <td>${record.ip}</td>
+                                    <td>${record.count.toLocaleString()}</td>
+                                    <td>${new Date(record.created_at).toLocaleString("ko-KR")}</td>
+                                    <td>${new Date(record.updated_at).toLocaleString("ko-KR")}</td>
+                                `;
+                  tbody.appendChild(row);
+                });
+
+                new bootstrap.Modal(document.getElementById("dailyDetailModal")).show();
+              } else {
+                console.error("상세 정보 로드 실패:", data.error);
+              }
+            })
+            .catch((error) => {
+              console.error("상세 정보 로드 오류:", error);
             });
         }
-        
-        // 요약 카드 업데이트
-        function updateSummaryCards(data) {
-            document.getElementById('total-count-display').textContent = data.total_stats.total_count.toLocaleString();
-            document.getElementById('total-ips-display').textContent = data.total_stats.total_unique_ips.toLocaleString();
-            
-            // 날짜 범위 표시
-            if (data.start_date && data.end_date) {
-                document.getElementById('date-range-display').textContent = `${data.start_date} ~ ${data.end_date}`;
-            } else {
-                document.getElementById('date-range-display').textContent = '전체 기간';
-            }
-            
-            const pageTypeText = data.page_type === 'main' ? '메인 페이지' : '다이어리 페이지';
-            document.getElementById('count-type-display').textContent = pageTypeText;
-        }
-        
-        // 일별 상세 정보 모달 표시
-        function showDailyDetail(date) {
-            const pageType = document.querySelector('input[name="count-type"]:checked').value;
-            
-            // 날짜가 'all'인 경우 전체 기간 상세 정보 표시
-            if (date === 'all') {
-                fetch(`/sales/api/daily_view_details/?page_type=${pageType}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            document.getElementById('detail-date').textContent = '전체 기간';
-                            document.getElementById('detail-page-type').textContent = data.page_type === 'main' ? '메인 페이지' : '다이어리 페이지';
-                            document.getElementById('detail-total-count').textContent = data.stats.total_count.toLocaleString();
-                            document.getElementById('detail-unique-ips').textContent = data.stats.unique_ips.toLocaleString();
-                            
-                            const tbody = document.getElementById('detail-table-body');
-                            tbody.innerHTML = '';
-                            
-                            data.records.forEach(record => {
-                                const row = document.createElement('tr');
-                                row.innerHTML = `
-                                    <td>${record.ip}</td>
-                                    <td>${record.count.toLocaleString()}</td>
-                                    <td>${new Date(record.created_at).toLocaleString('ko-KR')}</td>
-                                    <td>${new Date(record.updated_at).toLocaleString('ko-KR')}</td>
-                                `;
-                                tbody.appendChild(row);
-                            });
-                            
-                            new bootstrap.Modal(document.getElementById('dailyDetailModal')).show();
-                        } else {
-                            console.error('전체 기간 상세 정보 로드 실패:', data.error);
-                        }
-                    })
-                    .catch(error => {
-                        console.error('전체 기간 상세 정보 로드 오류:', error);
-                    });
-            } else {
-                // 특정 날짜 상세 정보 표시
-                fetch(`/sales/api/daily_view_details/?page_type=${pageType}&date=${date}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            document.getElementById('detail-date').textContent = new Date(date).toLocaleDateString('ko-KR');
-                            document.getElementById('detail-page-type').textContent = data.page_type === 'main' ? '메인 페이지' : '다이어리 페이지';
-                            document.getElementById('detail-total-count').textContent = data.stats.total_count.toLocaleString();
-                            document.getElementById('detail-unique-ips').textContent = data.stats.unique_ips.toLocaleString();
-                            
-                            const tbody = document.getElementById('detail-table-body');
-                            tbody.innerHTML = '';
-                            
-                            data.records.forEach(record => {
-                                const row = document.createElement('tr');
-                                row.innerHTML = `
-                                    <td>${record.ip}</td>
-                                    <td>${record.count.toLocaleString()}</td>
-                                    <td>${new Date(record.created_at).toLocaleString('ko-KR')}</td>
-                                    <td>${new Date(record.updated_at).toLocaleString('ko-KR')}</td>
-                                `;
-                                tbody.appendChild(row);
-                            });
-                            
-                            new bootstrap.Modal(document.getElementById('dailyDetailModal')).show();
-                        } else {
-                            console.error('상세 정보 로드 실패:', data.error);
-                        }
-                    })
-                    .catch(error => {
-                        console.error('상세 정보 로드 오류:', error);
-                    });
-            }
-        }
+      }
     </script>
-</body>
+  </body>
 </html>

@@ -12,7 +12,7 @@ import boto3
 import urllib.parse
 from django.conf import settings
 from botocore.exceptions import ClientError
-from .models import Inquiry, Alarm, UserAlarm, User, Diary_main_count, Diary_diary_count, ClassForm, CountUser, CountUserIP
+from .models import Inquiry, Alarm, UserAlarm, User, Diary_main_count, Diary_diary_count, ClassForm, CountUser, CountUserIP, PayAmount
 from django.core.paginator import Paginator
 from django.core.serializers import serialize
 from django.forms.models import model_to_dict
@@ -1276,6 +1276,99 @@ def log_list(request):
         'pagination': pagination,
         'total_count': total_count
     })
+
+def payamount_list(request):
+    """결제 금액 목록 API"""
+    user_id = request.session.get('diary_member_id')
+    
+    if not user_id:
+        return JsonResponse({'success': False, 'message': '로그인이 필요합니다.'})
+    
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'message': '사용자를 찾을 수 없습니다.'})
+
+    if not user.is_admin:
+        return JsonResponse({'success': False, 'message': '권한이 없습니다.'})
+    
+    # PayAmount 데이터 조회
+    payamounts = PayAmount.objects.all().order_by('id')
+    
+    # 데이터 직렬화
+    payamounts_data = []
+    for payamount in payamounts:
+        payamount_dict = {
+            'id': payamount.id,
+            'amount_name': payamount.amount_name,
+            'price': payamount.price,
+            'formatted_price': f"{payamount.price:,}",  # 천 단위 콤마 추가
+            'created_at': payamount.created_at.isoformat(),
+            'updated_at': payamount.updated_at.isoformat(),
+        }
+        payamounts_data.append(payamount_dict)
+    
+    return JsonResponse({
+        'success': True,
+        'payamounts': payamounts_data
+    })
+
+@csrf_exempt
+def payamount_update(request, payamount_id):
+    """결제 금액 수정"""
+    user_id = request.session.get('diary_member_id')
+    
+    if not user_id:
+        return JsonResponse({'success': False, 'message': '로그인이 필요합니다.'})
+    
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'message': '사용자를 찾을 수 없습니다.'})
+
+    if not user.is_admin:
+        return JsonResponse({'success': False, 'message': '권한이 없습니다.'})
+    
+    try:
+        payamount = PayAmount.objects.get(id=payamount_id)
+    except PayAmount.DoesNotExist:
+        return JsonResponse({'success': False, 'message': '수정할 결제 금액을 찾을 수 없습니다.'})
+    
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            new_price = data.get('price')
+            
+            if new_price is None:
+                return JsonResponse({'success': False, 'message': '금액을 입력해주세요.'})
+            
+            # 금액 유효성 검증
+            try:
+                new_price = int(new_price)
+            except (ValueError, TypeError):
+                return JsonResponse({'success': False, 'message': '올바른 금액을 입력해주세요.'})
+            
+            # 최소 금액 검증 (100원)
+            if new_price < 100:
+                return JsonResponse({'success': False, 'message': '최소 금액은 100원입니다.'})
+            
+            # 금액 업데이트
+            payamount.price = new_price
+            payamount.save()
+            
+            return JsonResponse({
+                'success': True, 
+                'message': '결제 금액이 성공적으로 수정되었습니다.',
+                'new_price': new_price,
+                'formatted_price': f"{new_price:,}"
+            })
+                
+        except json.JSONDecodeError:
+            return JsonResponse({'success': False, 'message': '잘못된 요청 형식입니다.'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': f'결제 금액 수정 중 오류가 발생했습니다: {str(e)}'})
+    
+    return JsonResponse({'success': False, 'message': '잘못된 요청입니다.'})
 
 def log_export_excel(request):
     """로그 데이터 엑셀 다운로드"""

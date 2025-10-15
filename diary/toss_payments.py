@@ -20,6 +20,8 @@ import uuid
 
 logger = logging.getLogger(__name__)
 
+
+
 # 토스페이먼츠 API 설정
 TOSS_API_URL = "https://api.tosspayments.com"
 
@@ -122,7 +124,7 @@ def issue_billing_key(auth_key, customer_key):
 def payment(request):
   print("=================================== payment ===================================")
   try:
-    user_id = request.session.get('diary_member_id')
+    user_id = request.session.get('diary_member_id')  # 올바른 세션 키 사용
     user = User.objects.get(id=user_id)
     payment_data = user.toss_payment_billing_key.payment_data
     payment_type = user.toss_payment_billing_key.payment_type
@@ -358,6 +360,15 @@ class TossPaymentsSuccessView(View):
   
   def _process_success(self, request, customer_key, auth_key, billing_type):
     try:
+      # 한달 이용권 금액
+      one_month_amount = PayAmount.objects.get(id=1).price
+      print(f"one_month_amount: {one_month_amount}")
+      # 6개월 이용권 금액
+      six_month_amount = PayAmount.objects.get(id=2).price
+      print(f"six_month_amount: {six_month_amount}")
+      # 12개월 이용권 금액
+      twelve_month_amount = PayAmount.objects.get(id=3).price
+      print(f"twelve_month_amount: {twelve_month_amount}")
       # 로깅
       logger.info(f"결제 인증 성공 - customerKey: {customer_key}, authKey: {auth_key}, billing_type: {billing_type}")
       
@@ -395,57 +406,80 @@ class TossPaymentsSuccessView(View):
           ).first()
             
           if not existing_billing:
-
-              if billing_type == '1':
-                # 새로운 빌링키 저장
-                TossPaymentBillingKey.objects.create(
-                  user=user,
-                  billing_key=billing_data.get('billingKey'),
-                  billing_data=billing_data,
-                  billing_type=billing_type,
-                  billing_status="1",
-                  billing_activate=True,
-                  last_billing_date=timezone.now(),
-                  billing_success_data=json.dumps(billing_data, ensure_ascii=False, separators=(',', ':'))
-                )
+            # 새로운 빌링키 저장 (모든 타입에 대해 활성화 상태로 저장)
+            billing_key_obj = TossPaymentBillingKey.objects.create(
+              user=user,
+              billing_key=billing_data.get('billingKey'),
+              billing_data=billing_data,
+              billing_type=billing_type,
+              billing_status="1",
+              billing_activate=True,  # 모든 타입에 대해 활성화
+              last_billing_date=timezone.now(),
+              billing_success_data=json.dumps(billing_data, ensure_ascii=False, separators=(',', ':'))
+            )
+            logger.info(f"새로운 빌링키 저장 완료 - user: {user_id}, billingKey: {billing_data.get('billingKey')}")
+            
+            # 처음 카드 등록 시 즉시 결제 처리
+            try:
+              payment_result = payment(request)
+              logger.info(f"처음 카드 등록 시 결제 처리 완료 - user: {user_id}, billing_type: {billing_type}")
+              
+              # 결제 성공 기록 저장
+              PayHistory.objects.create(
+                user=user,
+                payment_data={
+                  'success': True,
+                  'billing_key_data': {
+                    'billing_key': billing_data.get('billingKey'),
+                    'billing_type': billing_type,
+                    'amount': one_month_amount if billing_type == '1' else (six_month_amount if billing_type == '2' else twelve_month_amount),
+                    'order_id': f"order_{uuid.uuid4().hex[:16]}",
+                    'order_name': "1개월 이용권" if billing_type == '1' else ("6개월 이용권" if billing_type == '2' else "1년 이용권"),
+                    'payment_key': 'initial_billing_key',
+                    'toss_response': billing_data
+                  }
+                },
+                billing_success_data=billing_key_obj.billing_success_data
+              )
+              
+            except Exception as e:
+              logger.error(f"처음 카드 등록 시 결제 처리 중 오류: {str(e)}")
+              
+              # 결제 실패 기록 저장
+              PayHistory.objects.create(
+                user=user,
+                payment_data={
+                  'success': False,
+                  'error_info': {
+                    'billing_type': billing_type,
+                    'error_code': 'INITIAL_PAYMENT_ERROR',
+                    'error_message': f'처음 카드 등록 시 결제 처리 중 오류: {str(e)}',
+                    'error_type': type(e).__name__,
+                    'error_details': str(e)
+                  }
+                }
+              )
+                
+            # 구매 완료 시 사용자의 use_date 업데이트
+            if billing_type in ['2', '3']:  # 6개월 또는 1년 구매
+              update_user_use_date(user, billing_type)
+            elif billing_type == '1':  # 1개월 구독의 경우 rebill_date 설정
+              if user.use_date:
+                if hasattr(user.use_date, 'date'):
+                  current_use_date = user.use_date.date()
+                else:
+                  current_use_date = user.use_date
+                next_billing_date = current_use_date + timedelta(days=30)
               else:
-                # 새로운 빌링키 저장
-                TossPaymentBillingKey.objects.create(
-                  user=user,
-                  billing_key=billing_data.get('billingKey'),
-                  billing_data=billing_data,
-                  billing_type=billing_type,
-                  billing_status="1",
-                  billing_activate=False,
-                  last_billing_date=timezone.now(),
-                  billing_success_data=json.dumps(billing_data, ensure_ascii=False, separators=(',', ':'))
-                )
-                logger.info(f"새로운 빌링키 저장 완료 - user: {user_id}, billingKey: {billing_data.get('billingKey')}")
-                
-              # 구매 완료 시 사용자의 use_date 업데이트
-              if billing_type in ['2', '3']:  # 6개월 또는 1년 구매
-                update_user_use_date(user, billing_type)
-              elif billing_type == '1':  # 1개월 구독의 경우 rebill_date 설정
-                billing_key = TossPaymentBillingKey.objects.get(
-                  user=user,
-                  billing_key=billing_data.get('billingKey')
-                )
-                if user.use_date:
-                  if hasattr(user.use_date, 'date'):
-                    current_use_date = user.use_date.date()
-                  else:
-                    current_use_date = user.use_date
-                  next_billing_date = current_use_date + timedelta(days=30)
-                else:
-                  next_billing_date = timezone.now() + timedelta(days=30)
-                
-                # datetime으로 변환하여 시, 분, 초 포함
-                if isinstance(next_billing_date, datetime):
-                  billing_key.rebill_date = next_billing_date
-                else:
-                  billing_key.rebill_date = datetime.combine(next_billing_date, timezone.now().time())
-                billing_key.save()
-                print(f"TossPaymentsSuccessView - rebill_date 설정: {billing_key.rebill_date}")
+                next_billing_date = timezone.now() + timedelta(days=30)
+              
+              # datetime으로 변환하여 시, 분, 초 포함
+              if isinstance(next_billing_date, datetime):
+                billing_key_obj.rebill_date = next_billing_date
+              else:
+                billing_key_obj.rebill_date = datetime.combine(next_billing_date, timezone.now().time())
+              billing_key_obj.save()
+              print(f"TossPaymentsSuccessView - rebill_date 설정: {billing_key_obj.rebill_date}")
                 
           else:
             logger.info(f"이미 존재하는 빌링키 - user: {user_id}, billingKey: {billing_data.get('billingKey')}")
@@ -471,7 +505,7 @@ class TossPaymentsSuccessView(View):
                   'billing_key_data': {
                     'billing_key': billing_data.get('billingKey'),
                     'billing_type': billing_type,
-                    'amount': 150000 if billing_type == '1' else (720000 if billing_type == '2' else 1200000),
+                    'amount': one_month_amount if billing_type == '1' else (six_month_amount if billing_type == '2' else twelve_month_amount),
                     'order_id': f"order_{uuid.uuid4().hex[:16]}",
                     'order_name': "1개월 이용권" if billing_type == '1' else ("6개월 이용권" if billing_type == '2' else "1년 이용권"),
                     'payment_key': 'existing_billing_key',
@@ -836,6 +870,16 @@ class RequestPaymentView(View):
     })
   
   def post(self, request):
+    # 한달 이용권 금액
+    one_month_amount = PayAmount.objects.get(id=1).price
+    print(f"one_month_amount: {one_month_amount}")
+    # 6개월 이용권 금액
+    six_month_amount = PayAmount.objects.get(id=2).price
+    print(f"six_month_amount: {six_month_amount}")
+    # 12개월 이용권 금액
+    twelve_month_amount = PayAmount.objects.get(id=3).price
+    print(f"twelve_month_amount: {twelve_month_amount}")
+
     print(f"RequestPaymentView POST 요청 받음: {request.path}")
     print(f"request.method: {request.method}")
     print(f"request.body: {request.body}")
@@ -918,13 +962,13 @@ class RequestPaymentView(View):
         
         # 결제 금액 설정
         if billing_type == '1':  # 1개월
-          amount = 150000
+          amount = one_month_amount
           order_name = "1개월 이용권"
         elif billing_type == '2':  # 6개월
-          amount = 720000
+          amount = six_month_amount
           order_name = "6개월 이용권"
         elif billing_type == '3':  # 1년
-          amount = 1200000
+          amount = twelve_month_amount
           order_name = "1년 이용권"
         else:
           return JsonResponse({

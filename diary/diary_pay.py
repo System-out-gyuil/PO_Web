@@ -1,5 +1,5 @@
 from django.shortcuts import render
-from .models import User, TossPaymentBillingKey
+from .models import User, TossPaymentBillingKey, PayAmount
 from config import TOSS_PAYMENTS_CLIENT_KEY
 import uuid
 from datetime import datetime, timedelta
@@ -123,6 +123,13 @@ def diary_pay(request):
         is_authenticated = False
         user = None
 
+    one_month_amount = f"{PayAmount.objects.get(id=1).price:,}"
+    six_month_amount = f"{PayAmount.objects.get(id=2).price:,}"
+    twelve_month_amount = f"{PayAmount.objects.get(id=3).price:,}"
+    print(f"one_month_amount: {one_month_amount}")
+    print(f"six_month_amount: {six_month_amount}")
+    print(f"twelve_month_amount: {twelve_month_amount}")
+
     context = {
       'is_authenticated': is_authenticated,
       'is_admin': is_admin,
@@ -138,7 +145,10 @@ def diary_pay(request):
       'current_use_date': current_use_date,
       'remaining_days': remaining_days,
       'has_billing': has_billing,
-      'card_info': card_info
+      'card_info': card_info,
+      'one_month_amount': one_month_amount,
+      'six_month_amount': str(six_month_amount),
+      'twelve_month_amount': str(twelve_month_amount)
     }
 
     return render(request, 'diary/diary_pay.html', context)

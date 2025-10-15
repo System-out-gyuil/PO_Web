@@ -12,7 +12,7 @@ from .audio_handler import upload_audio_file, get_audio_files_by_date, delete_au
 from .cascade_handlers import toggle_cascade_attribute, get_cascade_attributes_list
 from .auto_blog import blog_account_check_api
 from .detail_openai import ai_chat, ai_chat_cache_clear, file_cache_management, performance_monitoring
-from .admin_view import admin_dashboard, inquiry_list, inquiry_detail, alarm_list, alarm_create, alarm_edit, alarm_delete, inquiry_delete, admin_api, user_list, user_delete, user_toggle_admin, user_update_use_date, diary_count_list, diary_count_delete, class_form_list, class_form_delete, user_toggle_activate, log_list, log_export_excel, user_login_switch
+from .admin_view import admin_dashboard, inquiry_list, inquiry_detail, alarm_list, alarm_create, alarm_edit, alarm_delete, inquiry_delete, admin_api, user_list, user_delete, user_toggle_admin, user_update_use_date, diary_count_list, diary_count_delete, class_form_list, class_form_delete, user_toggle_activate, log_list, log_export_excel, user_login_switch, payamount_list, payamount_update
 from .diary_board import diary_board, get_announcements, get_announcement_detail, mark_as_read, download_announcement_file, announcement_detail_page, create_announcement, upload_announcement_file, get_announcement_file_url, get_announcement_download_url, announcement_category_list, announcement_category_create, announcement_category_delete, announcement_list_with_category, create_announcement_with_category, update_announcement, delete_announcement, download_s3_auto_blog_file
 from .main_views import CompanyInfoView, PersonalInfoView, TermsOfServiceView
 from .session_handlers import cleanup_session_cache_api, get_active_sessions_api
@@ -246,6 +246,8 @@ urlpatterns = [
     path('diary_admin/users/<int:user_id>/login_switch/', user_login_switch, name='admin_user_login_switch'),
     path('diary_admin/logs/', log_list, name='admin_log_list'),
     path('diary_admin/logs/export/', log_export_excel, name='admin_log_export'),
+    path('diary_admin/payamounts/', payamount_list, name='admin_payamount_list'),
+    path('diary_admin/payamount/<int:payamount_id>/update/', payamount_update, name='admin_payamount_update'),
     # 회사 소개 관련 URL
     path('company_info/', CompanyInfoView.as_view(), name='company_info'),
     path('personal_info/', PersonalInfoView.as_view(), name='personal_info'),
