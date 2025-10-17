@@ -2,438 +2,452 @@
 
 <!DOCTYPE html>
 <html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>게시판 - 자금왕</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" />
     <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    
-    <!-- Base CSS and Custom CSS -->
-    <link rel="stylesheet" href="{% static 'diary/diary_board.css' %}">
-    <link rel="stylesheet" href="{% static 'diary/board/board.css' %}">
-    <link rel="stylesheet" href="{% static 'diary/base/base.css' %}">
-    <link rel="icon" href="{% static 'images/자금왕_favicon.png' %}">
-    
-    <style>
-        /* 삭제 버튼 스타일 */
-        .announcement-actions {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
-        
-        .edit-btn {
-            background: none;
-            border: none;
-            color: #3b82f6;
-            cursor: pointer;
-            padding: 4px 8px;
-            border-radius: 4px;
-            transition: all 0.2s;
-            font-size: 14px;
-        }
-        
-        .edit-btn:hover {
-            background-color: #eff6ff;
-            color: #2563eb;
-        }
-        
-        .delete-btn {
-            background: none;
-            border: none;
-            color: #ef4444;
-            cursor: pointer;
-            padding: 4px 8px;
-            border-radius: 4px;
-            transition: all 0.2s;
-            font-size: 14px;
-        }
-        
-        .delete-btn:hover {
-            background-color: #fef2f2;
-            color: #dc2626;
-        }
-        
-        /* 삭제 모달 스타일 */
-        .btn-delete {
-            background-color: #ef4444;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-        
-        .btn-delete:hover {
-            background-color: #dc2626;
-        }
-        
-        .text-red-500 {
-            color: #ef4444;
-        }
-        
-        .text-sm {
-            font-size: 0.875rem;
-        }
-        
-        .mt-2 {
-            margin-top: 0.5rem;
-        }
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
 
-        @media (max-width: 768px) {
-            .search-input-container {
-                width: 96%;
-                margin: 0 auto;
-            }
+    <!-- Base CSS and Custom CSS -->
+    <link rel="stylesheet" href="{% static 'diary/diary_board.css' %}" />
+    <link rel="stylesheet" href="{% static 'diary/board/board.css' %}" />
+    <link rel="stylesheet" href="{% static 'diary/base/base.css' %}" />
+    <link rel="icon" href="{% static 'images/자금왕_favicon.png' %}" />
+
+    <style>
+      /* 삭제 버튼 스타일 */
+      .announcement-actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .edit-btn {
+        background: none;
+        border: none;
+        color: #3b82f6;
+        cursor: pointer;
+        padding: 4px 8px;
+        border-radius: 4px;
+        transition: all 0.2s;
+        font-size: 14px;
+      }
+
+      .edit-btn:hover {
+        background-color: #eff6ff;
+        color: #2563eb;
+      }
+
+      .delete-btn {
+        background: none;
+        border: none;
+        color: #ef4444;
+        cursor: pointer;
+        padding: 4px 8px;
+        border-radius: 4px;
+        transition: all 0.2s;
+        font-size: 14px;
+      }
+
+      .delete-btn:hover {
+        background-color: #fef2f2;
+        color: #dc2626;
+      }
+
+      /* 삭제 모달 스타일 */
+      .btn-delete {
+        background-color: #ef4444;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background-color 0.2s;
+      }
+
+      .btn-delete:hover {
+        background-color: #dc2626;
+      }
+
+      .text-red-500 {
+        color: #ef4444;
+      }
+
+      .text-sm {
+        font-size: 0.875rem;
+      }
+
+      .mt-2 {
+        margin-top: 0.5rem;
+      }
+
+      @media (max-width: 768px) {
+        .search-input-container {
+          width: 96%;
+          margin: 0 auto;
         }
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <!-- Header -->
     {% include 'diary/header.html' %}
 
     <!-- Main Content -->
     <main class="container">
-        <div class="board-container">
-            <!-- 헤더 -->
-            <div class="board-header">
-                <h1><i class="fas fa-clipboard-list"></i> 게시판</h1>
-            </div>
-
-            <!-- 게시판 탭 -->
-            <div class="tab-content active" id="board-tab">
-                <!-- 카테고리 탭 -->
-                <div class="category-tabs" id="category-tabs">
-                    <div class="loading">
-                        <div class="spinner"></div>
-                    </div>
-                </div>
-                
-                <!-- 검색 및 필터 -->
-                <div class="search-controls">
-                    <div class="search-box" style="max-width: 420px; width: 100%;">
-                        <div class="search-input-container">
-                            <input type="text" id="board-search" placeholder="게시글 검색..." onkeyup="searchBoards()"
-                                class="search-input bg-white border border-gray-200 rounded-full pl-5 pr-12 py-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition w-full text-gray-800 placeholder-gray-400" />
-                            <button onclick="searchBoards()" type="button"
-                                style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: #667eea; border: none; border-radius: 50%; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(102,126,234,0.08);"
-                                class="hover:bg-indigo-700 transition">
-                                <i class="fas fa-search" style="color: white; font-size: 1.1rem;"></i>
-                            </button>
-                        </div>
-                    </div>
-                    {% if is_authenticated %}
-                    <div class="button-group" id="user-buttons">
-                        <button class="add-category-button" onclick="showAddCategoryModal()" style="margin-right: 10px;">
-                            <i class="fas fa-plus"></i> 새 카테고리
-                        </button>
-                        <button class="write-button" onclick="showWriteBoardModal()">
-                            <i class="fas fa-pen"></i> 게시글 작성
-                        </button>
-                    </div>
-                    {% endif %}
-                </div>
-                
-                <!-- 게시글 목록 -->
-                <div class="announcement-list" id="board-list">
-                    <div class="loading">
-                        <div class="spinner"></div>
-                    </div>
-                </div>
-                
-                <!-- 페이지네이션 -->
-                <div class="pagination" id="board-pagination" style="display: none;">
-                </div>
-            </div>
-
-            <!-- 모달 -->
-            <div class="modal" id="writeBoardModal" style="display: none;">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h3>게시글 작성</h3>
-                        <button class="close" onclick="closeWriteBoardModal()">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="form-group">
-                            <label class="form-label">카테고리</label>
-                            <select id="board-category-input" class="form-input">
-                                <option value="">카테고리 선택</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">제목</label>
-                            <input type="text" id="board-title-input" class="form-input" placeholder="제목을 입력하세요">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">내용</label>
-                            <textarea id="board-content-input" class="form-textarea" placeholder="내용을 입력하세요"></textarea>
-                        </div>
-                        <div class="file-upload-section">
-                            <div class="file-upload-area" onclick="document.getElementById('board-file-input').click()">
-                                <div class="file-upload-icon">
-                                    <i class="fas fa-cloud-upload-alt"></i>
-                                </div>
-                                <div class="file-upload-text">
-                                    파일을 드래그하거나 클릭하여 업로드하세요
-                                </div>
-                            </div>
-                            <input type="file" id="board-file-input" class="file-input" multiple>
-                            <div class="file-list" id="boardFileList"></div>
-                            <div class="upload-progress" id="boardUploadProgress" style="display: none;">
-                                <div class="progress-bar">
-                                    <div class="progress-fill" id="boardProgressBar"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button class="btn-submit" onclick="submitBoard()">작성</button>
-                        <button class="btn-cancel" onclick="closeWriteBoardModal()">취소</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 새 카테고리 추가 모달 -->
-            <div class="modal" id="addCategoryModal" style="display: none;">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h3>새 카테고리 추가</h3>
-                        <button class="close" onclick="closeAddCategoryModal()">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="form-group">
-                            <label class="form-label">카테고리명</label>
-                            <input type="text" id="new-category-input" class="form-input" placeholder="새 카테고리명을 입력하세요" maxlength="20">
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button class="btn-submit" onclick="submitNewCategory()">추가</button>
-                        <button class="btn-cancel" onclick="closeAddCategoryModal()">취소</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 게시글 삭제 확인 모달 -->
-            <div class="modal" id="deleteBoardModal" style="display: none;">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h3>게시글 삭제</h3>
-                        <button class="close" onclick="closeDeleteBoardModal()">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                    <div class="modal-body">
-                        <p>정말로 "<span id="delete-board-title"></span>" 게시글을 삭제하시겠습니까?</p>
-                        <p class="text-red-500 text-sm mt-2">이 작업은 되돌릴 수 없습니다.</p>
-                    </div>
-                    <div class="modal-footer">
-                        <button class="btn-delete" onclick="confirmDeleteBoard()">삭제</button>
-                        <button class="btn-cancel" onclick="closeDeleteBoardModal()">취소</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 게시글 수정 모달 -->
-            <div class="modal" id="editBoardModal" style="display: none;">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h3>게시글 수정</h3>
-                        <button class="close" onclick="closeEditBoardModal()">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="form-group">
-                            <label class="form-label">제목</label>
-                            <input type="text" id="edit-board-title-input" class="form-input" placeholder="제목을 입력하세요">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">카테고리</label>
-                            <select id="edit-board-category-input" class="form-input">
-                                <option value="">카테고리 선택</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">내용</label>
-                            <textarea id="edit-board-content-input" class="form-textarea" placeholder="내용을 입력하세요"></textarea>
-                        </div>
-                        <div class="file-upload-section">
-                            <div class="file-upload-area" onclick="document.getElementById('edit-board-file-input').click()">
-                                <div class="file-upload-icon">
-                                    <i class="fas fa-cloud-upload-alt"></i>
-                                </div>
-                                <div class="file-upload-text">
-                                    파일을 드래그하거나 클릭하여 업로드하세요
-                                </div>
-                            </div>
-                            <input type="file" id="edit-board-file-input" class="file-input" multiple>
-                            <div class="file-list" id="editBoardFileList"></div>
-                            <div class="upload-progress" id="editBoardUploadProgress" style="display: none;">
-                                <div class="progress-bar">
-                                    <div class="progress-fill" id="editBoardProgressBar"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button class="btn-submit" onclick="submitBoardEdit()">수정</button>
-                        <button class="btn-cancel" onclick="closeEditBoardModal()">취소</button>
-                    </div>
-                </div>
-            </div>
+      <div class="board-container">
+        <!-- 헤더 -->
+        <div class="board-header">
+          <h1><i class="fas fa-clipboard-list"></i> 게시판</h1>
         </div>
+
+        <!-- 게시판 탭 -->
+        <div class="tab-content active" id="board-tab">
+          <!-- 카테고리 탭 -->
+          <div class="category-tabs" id="category-tabs">
+            <div class="loading">
+              <div class="spinner"></div>
+            </div>
+          </div>
+
+          <!-- 검색 및 필터 -->
+          <div class="search-controls">
+            <div class="search-box" style="max-width: 420px; width: 100%">
+              <div class="search-input-container">
+                <input
+                  type="text"
+                  id="board-search"
+                  placeholder="게시글 검색..."
+                  onkeyup="searchBoards()"
+                  class="search-input bg-white border border-gray-200 rounded-full pl-5 pr-12 py-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition w-full text-gray-800 placeholder-gray-400"
+                />
+                <button
+                  onclick="searchBoards()"
+                  type="button"
+                  style="
+                    position: absolute;
+                    right: 8px;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    background: #667eea;
+                    border: none;
+                    border-radius: 50%;
+                    width: 38px;
+                    height: 38px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.08);
+                  "
+                  class="hover:bg-indigo-700 transition"
+                >
+                  <i class="fas fa-search" style="color: white; font-size: 1.1rem"></i>
+                </button>
+              </div>
+            </div>
+            {% if is_authenticated %}
+            <div class="button-group" id="user-buttons">
+              <button class="add-category-button" onclick="showAddCategoryModal()" style="margin-right: 10px">
+                <i class="fas fa-plus"></i> 새 카테고리
+              </button>
+              <button class="write-button" onclick="showWriteBoardModal()"><i class="fas fa-pen"></i> 게시글 작성</button>
+            </div>
+            {% endif %}
+          </div>
+
+          <!-- 게시글 목록 -->
+          <div class="announcement-list" id="board-list">
+            <div class="loading">
+              <div class="spinner"></div>
+            </div>
+          </div>
+
+          <!-- 페이지네이션 -->
+          <div class="pagination" id="board-pagination" style="display: none"></div>
+        </div>
+
+        <!-- 모달 -->
+        <div class="modal" id="writeBoardModal" style="display: none">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>게시글 작성</h3>
+              <button class="close" onclick="closeWriteBoardModal()">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+            <div class="modal-body">
+              <div class="form-group">
+                <label class="form-label">카테고리</label>
+                <select id="board-category-input" class="form-input">
+                  <option value="">카테고리 선택</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">제목</label>
+                <input type="text" id="board-title-input" class="form-input" placeholder="제목을 입력하세요" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">내용</label>
+                <textarea id="board-content-input" class="form-textarea" placeholder="내용을 입력하세요"></textarea>
+              </div>
+              <div class="file-upload-section">
+                <div class="file-upload-area" onclick="document.getElementById('board-file-input').click()">
+                  <div class="file-upload-icon">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                  </div>
+                  <div class="file-upload-text">파일을 드래그하거나 클릭하여 업로드하세요</div>
+                </div>
+                <input type="file" id="board-file-input" class="file-input" multiple />
+                <div class="file-list" id="boardFileList"></div>
+                <div class="upload-progress" id="boardUploadProgress" style="display: none">
+                  <div class="progress-bar">
+                    <div class="progress-fill" id="boardProgressBar"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn-submit" onclick="submitBoard()">작성</button>
+              <button class="btn-cancel" onclick="closeWriteBoardModal()">취소</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 새 카테고리 추가 모달 -->
+        <div class="modal" id="addCategoryModal" style="display: none">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>새 카테고리 추가</h3>
+              <button class="close" onclick="closeAddCategoryModal()">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+            <div class="modal-body">
+              <div class="form-group">
+                <label class="form-label">카테고리명</label>
+                <input type="text" id="new-category-input" class="form-input" placeholder="새 카테고리명을 입력하세요" maxlength="20" />
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn-submit" onclick="submitNewCategory()">추가</button>
+              <button class="btn-cancel" onclick="closeAddCategoryModal()">취소</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 게시글 삭제 확인 모달 -->
+        <div class="modal" id="deleteBoardModal" style="display: none">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>게시글 삭제</h3>
+              <button class="close" onclick="closeDeleteBoardModal()">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+            <div class="modal-body">
+              <p>정말로 "<span id="delete-board-title"></span>" 게시글을 삭제하시겠습니까?</p>
+              <p class="text-red-500 text-sm mt-2">이 작업은 되돌릴 수 없습니다.</p>
+            </div>
+            <div class="modal-footer">
+              <button class="btn-delete" onclick="confirmDeleteBoard()">삭제</button>
+              <button class="btn-cancel" onclick="closeDeleteBoardModal()">취소</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 게시글 수정 모달 -->
+        <div class="modal" id="editBoardModal" style="display: none">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>게시글 수정</h3>
+              <button class="close" onclick="closeEditBoardModal()">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+            <div class="modal-body">
+              <div class="form-group">
+                <label class="form-label">제목</label>
+                <input type="text" id="edit-board-title-input" class="form-input" placeholder="제목을 입력하세요" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">카테고리</label>
+                <select id="edit-board-category-input" class="form-input">
+                  <option value="">카테고리 선택</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">내용</label>
+                <textarea id="edit-board-content-input" class="form-textarea" placeholder="내용을 입력하세요"></textarea>
+              </div>
+              <div class="file-upload-section">
+                <div class="file-upload-area" onclick="document.getElementById('edit-board-file-input').click()">
+                  <div class="file-upload-icon">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                  </div>
+                  <div class="file-upload-text">파일을 드래그하거나 클릭하여 업로드하세요</div>
+                </div>
+                <input type="file" id="edit-board-file-input" class="file-input" multiple />
+                <div class="file-list" id="editBoardFileList"></div>
+                <div class="upload-progress" id="editBoardUploadProgress" style="display: none">
+                  <div class="progress-bar">
+                    <div class="progress-fill" id="editBoardProgressBar"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn-submit" onclick="submitBoardEdit()">수정</button>
+              <button class="btn-cancel" onclick="closeEditBoardModal()">취소</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </main>
 
     <script>
-        let currentCategoryId = null;  // 현재 선택된 카테고리 ID
-        let currentCategoryName = '일반';  // 현재 선택된 카테고리명
-        
-        // 카테고리 탭 로드
-        async function loadCategories() {
-            try {
-                const response = await fetch('/sales/board/categories/');
-                const data = await response.json();
-                
-                if (data.success) {
-                    renderCategoryTabs(data.categories);
-                    
-                    // 카테고리가 로드된 후 첫 번째 카테고리 자동 선택
-                    if (data.categories.length > 0 && !currentCategoryId) {
-                        const firstCategory = data.categories[0];
-                        selectCategory(firstCategory.id, firstCategory.name);
-                    }
-                } else {
-                    showError('카테고리를 불러오는데 실패했습니다: ' + data.message);
-                }
-            } catch (error) {
-                console.error('Error loading categories:', error);
-                showError('카테고리를 불러오는데 실패했습니다.');
+      let currentCategoryId = null; // 현재 선택된 카테고리 ID
+      let currentCategoryName = "일반"; // 현재 선택된 카테고리명
+
+      // 카테고리 탭 로드
+      async function loadCategories() {
+        try {
+          const response = await fetch("/sales/board/categories/");
+          const data = await response.json();
+
+          if (data.success) {
+            renderCategoryTabs(data.categories);
+
+            // 카테고리가 로드된 후 첫 번째 카테고리 자동 선택
+            if (data.categories.length > 0 && !currentCategoryId) {
+              const firstCategory = data.categories[0];
+              selectCategory(firstCategory.id, firstCategory.name);
             }
+          } else {
+            showError("카테고리를 불러오는데 실패했습니다: " + data.message);
+          }
+        } catch (error) {
+          console.error("Error loading categories:", error);
+          showError("카테고리를 불러오는데 실패했습니다.");
         }
-        
-        // 카테고리 탭 렌더링
-        function renderCategoryTabs(categories) {
-            const categoryTabs = document.getElementById('category-tabs');
-            
-            if (!categoryTabs) return;
-            
-            let html = '';
-            categories.forEach((category, index) => {
-                // 첫 번째 카테고리이거나 현재 선택된 카테고리인 경우 활성화
-                const activeClass = (index === 0 && !currentCategoryId) || category.id === currentCategoryId ? 'active' : '';
-                html += `
+      }
+
+      // 카테고리 탭 렌더링
+      function renderCategoryTabs(categories) {
+        const categoryTabs = document.getElementById("category-tabs");
+
+        if (!categoryTabs) return;
+
+        let html = "";
+        categories.forEach((category, index) => {
+          // 첫 번째 카테고리이거나 현재 선택된 카테고리인 경우 활성화
+          const activeClass = (index === 0 && !currentCategoryId) || category.id === currentCategoryId ? "active" : "";
+          html += `
                     <button class="category-tab ${activeClass}" onclick="selectCategory(${category.id}, '${escapeHtml(category.name)}')">
                         ${escapeHtml(category.name)}
                     </button>
                 `;
-            });
-            
-            categoryTabs.innerHTML = html;
-            
-            // 디버깅용 로그
-            console.log(`카테고리 탭 렌더링 완료: ${categories.length}개, 현재 선택: ${currentCategoryId}`);
+        });
+
+        categoryTabs.innerHTML = html;
+
+        // 디버깅용 로그
+        console.log(`카테고리 탭 렌더링 완료: ${categories.length}개, 현재 선택: ${currentCategoryId}`);
+      }
+
+      // 카테고리 선택
+      function selectCategory(categoryId, categoryName) {
+        currentCategoryId = categoryId;
+        currentCategoryName = categoryName;
+
+        // 탭 활성화 상태 업데이트
+        const tabs = document.querySelectorAll(".category-tab");
+        tabs.forEach((tab) => {
+          // onclick 속성에서 categoryId를 추출하여 비교
+          const tabCategoryId = tab.onclick.toString().match(/selectCategory\((\d+)/)?.[1];
+          if (tabCategoryId && parseInt(tabCategoryId) === categoryId) {
+            tab.classList.add("active");
+          } else {
+            tab.classList.remove("active");
+          }
+        });
+
+        // 카테고리 변경 시 1페이지부터 시작
+        loadBoards(1, "", categoryId);
+
+        // 디버깅용 로그
+        console.log(`카테고리 선택됨: ID=${categoryId}, 이름=${categoryName}`);
+      }
+
+      // 게시글 검색
+      function searchBoards() {
+        const searchInput = document.getElementById("board-search");
+        const searchTerm = searchInput ? searchInput.value.trim() : "";
+
+        // 검색 시 1페이지부터 시작
+        loadBoards(1, searchTerm, currentCategoryId);
+      }
+
+      // 게시글 목록 로드
+      async function loadBoards(page = 1, search = "", categoryId = null) {
+        try {
+          const params = new URLSearchParams({
+            page: page,
+            search: search,
+          });
+
+          if (categoryId) {
+            params.append("category", categoryId);
+          }
+
+          const response = await fetch(`/sales/board/api/?${params}`);
+          const data = await response.json();
+
+          if (data.success) {
+            renderBoards(data.boards);
+            renderPagination(data.pagination);
+          } else {
+            showError("게시글을 불러오는데 실패했습니다: " + data.message);
+          }
+        } catch (error) {
+          console.error("Error loading boards:", error);
+          showError("게시글을 불러오는데 실패했습니다.");
         }
-        
-        // 카테고리 선택
-        function selectCategory(categoryId, categoryName) {
-            currentCategoryId = categoryId;
-            currentCategoryName = categoryName;
-            
-            // 탭 활성화 상태 업데이트
-            const tabs = document.querySelectorAll('.category-tab');
-            tabs.forEach(tab => {
-                // onclick 속성에서 categoryId를 추출하여 비교
-                const tabCategoryId = tab.onclick.toString().match(/selectCategory\((\d+)/)?.[1];
-                if (tabCategoryId && parseInt(tabCategoryId) === categoryId) {
-                    tab.classList.add('active');
-                } else {
-                    tab.classList.remove('active');
-                }
-            });
-            
-            // 카테고리 변경 시 1페이지부터 시작
-            loadBoards(1, '', categoryId);
-            
-            // 디버깅용 로그
-            console.log(`카테고리 선택됨: ID=${categoryId}, 이름=${categoryName}`);
-        }
-        
-        // 게시글 검색
-        function searchBoards() {
-            const searchInput = document.getElementById('board-search');
-            const searchTerm = searchInput ? searchInput.value.trim() : '';
-            
-            // 검색 시 1페이지부터 시작
-            loadBoards(1, searchTerm, currentCategoryId);
-        }
-        
-        // 게시글 목록 로드
-        async function loadBoards(page = 1, search = '', categoryId = null) {
-            try {
-                const params = new URLSearchParams({
-                    page: page,
-                    search: search
-                });
-                
-                if (categoryId) {
-                    params.append('category', categoryId);
-                }
-                
-                const response = await fetch(`/sales/board/api/?${params}`);
-                const data = await response.json();
-                
-                if (data.success) {
-                    renderBoards(data.boards);
-                    renderPagination(data.pagination);
-                } else {
-                    showError('게시글을 불러오는데 실패했습니다: ' + data.message);
-                }
-            } catch (error) {
-                console.error('Error loading boards:', error);
-                showError('게시글을 불러오는데 실패했습니다.');
-            }
-        }
-        
-        // 게시글 목록 렌더링
-        function renderBoards(boards) {
-            const boardList = document.getElementById('board-list');
-            
-            if (!boardList) return;
-            
-            if (boards.length === 0) {
-                boardList.innerHTML = `
+      }
+
+      // 게시글 목록 렌더링
+      function renderBoards(boards) {
+        const boardList = document.getElementById("board-list");
+
+        if (!boardList) return;
+
+        if (boards.length === 0) {
+          boardList.innerHTML = `
                     <div class="empty-state">
                         <i class="fas fa-clipboard-list"></i>
                         <h5>게시글이 없습니다</h5>
                         <p>첫 번째 게시글을 작성해보세요.</p>
                     </div>
                 `;
-                return;
-            }
-            
-            let html = '';
-            boards.forEach(board => {
-                const createdDate = new Date(board.created_at).toLocaleDateString('ko-KR');
-                const contentPreview = board.content.length > 300 ? 
-                    board.content.substring(0, 300) + '...' : board.content;
-                
-                html += `
+          return;
+        }
+
+        let html = "";
+        boards.forEach((board) => {
+          const createdDate = new Date(board.created_at).toLocaleDateString("ko-KR");
+          const contentPreview = board.content.length > 300 ? board.content.substring(0, 300) + "..." : board.content;
+
+          html += `
                     <div class="announcement-item">
                         <div class="announcement-header">
                             <h3 class="announcement-title" onclick="viewBoardDetail(${board.id})">${escapeHtml(board.title)}</h3>
                             <div class="announcement-actions">
-                                <button class="edit-btn" onclick="editBoard(${board.id}, '${escapeHtml(board.title)}', '${escapeHtml(board.content)}', ${board.category_id || 'null'}, '${escapeHtml(board.category_name || '일반')}')" title="수정">
+                                <button class="edit-btn" onclick="editBoard(${board.id})" title="수정">
                                     <i class="fas fa-edit"></i>
                                 </button>
                                 <button class="delete-btn" onclick="deleteBoard(${board.id}, '${escapeHtml(board.title)}')" title="삭제">
@@ -449,217 +463,220 @@
                                 <i class="fas fa-calendar-alt"></i> ${createdDate}
                             </span>
                             <span class="announcement-category">
-                                <i class="fas fa-tag"></i> ${escapeHtml(board.category_name || '일반')}
+                                <i class="fas fa-tag"></i> ${escapeHtml(board.category_name || "일반")}
                             </span>
                         </div>
                         <div class="announcement-content" onclick="viewBoardDetail(${board.id})">
                             <p>${escapeHtml(contentPreview)}</p>
                         </div>
-                        ${board.files && board.files.length > 0 ? `
+                        ${
+                          board.files && board.files.length > 0
+                            ? `
                             <div class="announcement-files" onclick="viewBoardDetail(${board.id})">
                                 <i class="fas fa-paperclip"></i> 첨부파일 ${board.files.length}개
                             </div>
-                        ` : ''}
+                        `
+                            : ""
+                        }
                     </div>
                 `;
-            });
-            
-            boardList.innerHTML = html;
+        });
+
+        boardList.innerHTML = html;
+      }
+
+      // 페이지네이션 렌더링
+      function renderPagination(pagination) {
+        const paginationContainer = document.getElementById("board-pagination");
+
+        if (!paginationContainer) return;
+
+        if (pagination.num_pages <= 1) {
+          paginationContainer.innerHTML = "";
+          paginationContainer.style.display = "none";
+          return;
         }
-        
-        // 페이지네이션 렌더링
-        function renderPagination(pagination) {
-            const paginationContainer = document.getElementById('board-pagination');
-            
-            if (!paginationContainer) return;
-            
-            if (pagination.num_pages <= 1) {
-                paginationContainer.innerHTML = '';
-                paginationContainer.style.display = 'none';
-                return;
-            }
-            
-            paginationContainer.style.display = 'flex';
-            
-            let html = '';
-            
-            // 페이지 정보 표시
-            
-            
-            // 이전 페이지
-            if (pagination.has_previous) {
-                html += `<a href="#" class="page-button" onclick="loadBoards(${pagination.previous_page_number}, '', currentCategoryId)">
+
+        paginationContainer.style.display = "flex";
+
+        let html = "";
+
+        // 페이지 정보 표시
+
+        // 이전 페이지
+        if (pagination.has_previous) {
+          html += `<a href="#" class="page-button" onclick="loadBoards(${pagination.previous_page_number}, '', currentCategoryId)">
                     <i class="fas fa-chevron-left"></i>
                 </a>`;
-            }
-            
-            // 페이지 번호
-            const startPage = Math.max(1, pagination.number - 2);
-            const endPage = Math.min(pagination.num_pages, pagination.number + 2);
-            
-            for (let i = startPage; i <= endPage; i++) {
-                const activeClass = i === pagination.number ? 'active' : '';
-                html += `<a href="#" class="page-button ${activeClass}" onclick="loadBoards(${i}, '', currentCategoryId)">${i}</a>`;
-            }
-            
-            // 다음 페이지
-            if (pagination.has_next) {
-                html += `<a href="#" class="page-button" onclick="loadBoards(${pagination.next_page_number}, '', currentCategoryId)">
+        }
+
+        // 페이지 번호
+        const startPage = Math.max(1, pagination.number - 2);
+        const endPage = Math.min(pagination.num_pages, pagination.number + 2);
+
+        for (let i = startPage; i <= endPage; i++) {
+          const activeClass = i === pagination.number ? "active" : "";
+          html += `<a href="#" class="page-button ${activeClass}" onclick="loadBoards(${i}, '', currentCategoryId)">${i}</a>`;
+        }
+
+        // 다음 페이지
+        if (pagination.has_next) {
+          html += `<a href="#" class="page-button" onclick="loadBoards(${pagination.next_page_number}, '', currentCategoryId)">
                     <i class="fas fa-chevron-right"></i>
                 </a>`;
-            }
-            
-            paginationContainer.innerHTML = html;
         }
-        
-        // 게시글 상세보기
-        function viewBoardDetail(boardId) {
-            window.location.href = `/sales/board/${boardId}/`;
-        }
-        
-        // 에러 표시
-        function showError(message) {
-            const boardList = document.getElementById('board-list');
-            if (boardList) {
-                boardList.innerHTML = `
+
+        paginationContainer.innerHTML = html;
+      }
+
+      // 게시글 상세보기
+      function viewBoardDetail(boardId) {
+        window.location.href = `/sales/board/${boardId}/`;
+      }
+
+      // 에러 표시
+      function showError(message) {
+        const boardList = document.getElementById("board-list");
+        if (boardList) {
+          boardList.innerHTML = `
                     <div class="error-message">
                         <i class="fas fa-exclamation-triangle"></i>
                         ${escapeHtml(message)}
                     </div>
                 `;
-            }
         }
-        
-        // HTML 이스케이프 함수
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-        
-        // 게시글 작성 모달 표시
-        function showWriteBoardModal() {
-            const modal = document.getElementById('writeBoardModal');
-            modal.style.display = 'block';
-            
-            // 폼 초기화
-            document.getElementById('board-title-input').value = '';
-            document.getElementById('board-content-input').value = '';
-            document.getElementById('boardFileList').innerHTML = '';
-            document.getElementById('boardUploadProgress').style.display = 'none';
-            
-            // 카테고리 옵션 로드
-            loadBoardCategoryOptions();
-            
-            // 제목 입력 필드에 포커스
-            document.getElementById('board-title-input').focus();
-            
-            // 파일 입력 이벤트 리스너 추가
-            setupFileUpload();
-        }
-        
-        // 게시글 작성 모달용 카테고리 옵션 로드
-        async function loadBoardCategoryOptions() {
-            try {
-                const response = await fetch('/sales/board/categories/');
-                const data = await response.json();
-                
-                if (data.success) {
-                    const categorySelect = document.getElementById('board-category-input');
-                    if (categorySelect) {
-                        // 기존 옵션들 제거 (첫 번째 "카테고리 선택" 옵션 제외)
-                        while (categorySelect.children.length > 1) {
-                            categorySelect.removeChild(categorySelect.lastChild);
-                        }
-                        
-                        // 새 카테고리 옵션들 추가
-                        data.categories.forEach(category => {
-                            const option = document.createElement('option');
-                            option.value = category.id;
-                            option.textContent = category.name;
-                            // 현재 선택된 카테고리인 경우 선택
-                            if (category.id === currentCategoryId) {
-                                option.selected = true;
-                            }
-                            categorySelect.appendChild(option);
-                        });
-                    }
+      }
+
+      // HTML 이스케이프 함수
+      function escapeHtml(text) {
+        const div = document.createElement("div");
+        div.textContent = text;
+        return div.innerHTML;
+      }
+
+      // 게시글 작성 모달 표시
+      function showWriteBoardModal() {
+        const modal = document.getElementById("writeBoardModal");
+        modal.style.display = "block";
+
+        // 폼 초기화
+        document.getElementById("board-title-input").value = "";
+        document.getElementById("board-content-input").value = "";
+        document.getElementById("boardFileList").innerHTML = "";
+        document.getElementById("boardUploadProgress").style.display = "none";
+
+        // 카테고리 옵션 로드
+        loadBoardCategoryOptions();
+
+        // 제목 입력 필드에 포커스
+        document.getElementById("board-title-input").focus();
+
+        // 파일 입력 이벤트 리스너 추가
+        setupFileUpload();
+      }
+
+      // 게시글 작성 모달용 카테고리 옵션 로드
+      async function loadBoardCategoryOptions() {
+        try {
+          const response = await fetch("/sales/board/categories/");
+          const data = await response.json();
+
+          if (data.success) {
+            const categorySelect = document.getElementById("board-category-input");
+            if (categorySelect) {
+              // 기존 옵션들 제거 (첫 번째 "카테고리 선택" 옵션 제외)
+              while (categorySelect.children.length > 1) {
+                categorySelect.removeChild(categorySelect.lastChild);
+              }
+
+              // 새 카테고리 옵션들 추가
+              data.categories.forEach((category) => {
+                const option = document.createElement("option");
+                option.value = category.id;
+                option.textContent = category.name;
+                // 현재 선택된 카테고리인 경우 선택
+                if (category.id === currentCategoryId) {
+                  option.selected = true;
                 }
-            } catch (error) {
-                console.error('카테고리 옵션 로드 오류:', error);
+                categorySelect.appendChild(option);
+              });
             }
+          }
+        } catch (error) {
+          console.error("카테고리 옵션 로드 오류:", error);
         }
-        
-        // 게시글 작성 모달 닫기
-        function closeWriteBoardModal() {
-            const modal = document.getElementById('writeBoardModal');
-            modal.style.display = 'none';
-        }
-        
-        // 파일 업로드 설정
-        function setupFileUpload() {
-            const fileInput = document.getElementById('board-file-input');
-            const fileList = document.getElementById('boardFileList');
-            
-            // 파일 선택 이벤트
-            fileInput.addEventListener('change', handleFileSelect);
-            
-            // 드래그 앤 드롭 이벤트
-            const uploadSection = document.querySelector('.file-upload-section');
-            
-            uploadSection.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                uploadSection.style.borderColor = '#667eea';
-            });
-            
-            uploadSection.addEventListener('dragleave', (e) => {
-                e.preventDefault();
-                uploadSection.style.borderColor = '#dee2e6';
-            });
-            
-            uploadSection.addEventListener('drop', (e) => {
-                e.preventDefault();
-                uploadSection.style.borderColor = '#dee2e6';
-                
-                const files = e.dataTransfer.files;
-                handleFiles(files);
-            });
-        }
-        
-        // 파일 선택 처리
-        function handleFileSelect(event) {
-            const files = event.target.files;
-            handleFiles(files);
-        }
-        
-        // 파일 처리
-        function handleFiles(files) {
-            const fileList = document.getElementById('boardFileList');
-            
-            Array.from(files).forEach(file => {
-                // 파일 크기 제한 (10MB)
-                if (file.size > 200 * 1024 * 1024) {
-                    alert(`파일 크기가 너무 큽니다: ${file.name}`);
-                    return;
-                }
-                
-                // 파일 아이템 생성
-                const fileItem = createFileItem(file);
-                fileList.appendChild(fileItem);
-            });
-        }
-        
-        // 파일 아이템 생성
-        function createFileItem(file) {
-            const fileItem = document.createElement('div');
-            fileItem.className = 'file-item';
-            fileItem.dataset.fileName = file.name;
-            fileItem.dataset.fileSize = file.size;
-            
-            const fileIcon = getFileIcon(file.name);
-            const fileSize = formatFileSize(file.size);
-            
-            fileItem.innerHTML = `
+      }
+
+      // 게시글 작성 모달 닫기
+      function closeWriteBoardModal() {
+        const modal = document.getElementById("writeBoardModal");
+        modal.style.display = "none";
+      }
+
+      // 파일 업로드 설정
+      function setupFileUpload() {
+        const fileInput = document.getElementById("board-file-input");
+        const fileList = document.getElementById("boardFileList");
+
+        // 파일 선택 이벤트
+        fileInput.addEventListener("change", handleFileSelect);
+
+        // 드래그 앤 드롭 이벤트
+        const uploadSection = document.querySelector(".file-upload-section");
+
+        uploadSection.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          uploadSection.style.borderColor = "#667eea";
+        });
+
+        uploadSection.addEventListener("dragleave", (e) => {
+          e.preventDefault();
+          uploadSection.style.borderColor = "#dee2e6";
+        });
+
+        uploadSection.addEventListener("drop", (e) => {
+          e.preventDefault();
+          uploadSection.style.borderColor = "#dee2e6";
+
+          const files = e.dataTransfer.files;
+          handleFiles(files);
+        });
+      }
+
+      // 파일 선택 처리
+      function handleFileSelect(event) {
+        const files = event.target.files;
+        handleFiles(files);
+      }
+
+      // 파일 처리
+      function handleFiles(files) {
+        const fileList = document.getElementById("boardFileList");
+
+        Array.from(files).forEach((file) => {
+          // 파일 크기 제한 (10MB)
+          if (file.size > 200 * 1024 * 1024) {
+            alert(`파일 크기가 너무 큽니다: ${file.name}`);
+            return;
+          }
+
+          // 파일 아이템 생성
+          const fileItem = createFileItem(file);
+          fileList.appendChild(fileItem);
+        });
+      }
+
+      // 파일 아이템 생성
+      function createFileItem(file) {
+        const fileItem = document.createElement("div");
+        fileItem.className = "file-item";
+        fileItem.dataset.fileName = file.name;
+        fileItem.dataset.fileSize = file.size;
+
+        const fileIcon = getFileIcon(file.name);
+        const fileSize = formatFileSize(file.size);
+
+        fileItem.innerHTML = `
                 <div class="file-info">
                     <div class="file-icon">
                         ${fileIcon}
@@ -673,414 +690,480 @@
                     <i class="fas fa-times"></i>
                 </button>
             `;
-            
-            return fileItem;
+
+        return fileItem;
+      }
+
+      // 파일 제거
+      function removeFile(button) {
+        const fileItem = button.parentElement;
+        fileItem.remove();
+      }
+
+      // 파일 아이콘 반환
+      function getFileIcon(fileName) {
+        const fileExt = fileName.split(".").pop()?.toLowerCase() || "";
+
+        const iconMap = {
+          // 이미지 파일
+          jpg: "🖼️",
+          jpeg: "🖼️",
+          png: "🖼️",
+          gif: "🖼️",
+          bmp: "🖼️",
+          svg: "🖼️",
+          webp: "🖼️",
+          // 문서 파일
+          pdf: "📄",
+          doc: "📝",
+          docx: "📝",
+          txt: "📄",
+          rtf: "📝",
+          // 스프레드시트
+          xls: "📊",
+          xlsx: "📊",
+          csv: "📊",
+          // 프레젠테이션
+          ppt: "📋",
+          pptx: "📋",
+          // 압축 파일
+          zip: "📦",
+          rar: "📦",
+          "7z": "📦",
+          tar: "📦",
+          gz: "📦",
+          // 오디오 파일
+          mp3: "🎵",
+          wav: "🎵",
+          flac: "🎵",
+          aac: "🎵",
+          ogg: "🎵",
+          // 비디오 파일
+          mp4: "🎬",
+          avi: "🎬",
+          mov: "🎬",
+          wmv: "🎬",
+          flv: "🎬",
+          mkv: "🎬",
+          // 코드 파일
+          html: "⚙️",
+          css: "🎨",
+          js: "⚙️",
+          py: "🐍",
+          java: "☕",
+          cpp: "⚙️",
+          c: "⚙️",
+          // 기타
+          json: "📋",
+          xml: "📋",
+          sql: "🗄️",
+          md: "📄",
+        };
+
+        return iconMap[fileExt] || "📄";
+      }
+
+      // 파일 크기 포맷팅
+      function formatFileSize(bytes) {
+        if (bytes === 0) return "0 Bytes";
+
+        const k = 1024;
+        const sizes = ["Bytes", "KB", "MB", "GB"];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+      }
+
+      // 게시글 작성 제출
+      async function submitBoard() {
+        const title = document.getElementById("board-title-input").value.trim();
+        const content = document.getElementById("board-content-input").value.trim();
+        const categoryId = document.getElementById("board-category-input").value;
+
+        // 유효성 검사
+        if (!title) {
+          alert("제목을 입력해주세요.");
+          document.getElementById("board-title-input").focus();
+          return;
         }
-        
-        // 파일 제거
-        function removeFile(button) {
-            const fileItem = button.parentElement;
-            fileItem.remove();
+
+        if (!content) {
+          alert("내용을 입력해주세요.");
+          document.getElementById("board-content-input").focus();
+          return;
         }
-        
-        // 파일 아이콘 반환
-        function getFileIcon(fileName) {
-            const fileExt = fileName.split('.').pop()?.toLowerCase() || '';
-            
-            const iconMap = {
-                // 이미지 파일
-                'jpg': '🖼️', 'jpeg': '🖼️', 'png': '🖼️', 'gif': '🖼️', 'bmp': '🖼️', 'svg': '🖼️', 'webp': '🖼️',
-                // 문서 파일
-                'pdf': '📄', 'doc': '📝', 'docx': '📝', 'txt': '📄', 'rtf': '📝',
-                // 스프레드시트
-                'xls': '📊', 'xlsx': '📊', 'csv': '📊',
-                // 프레젠테이션
-                'ppt': '📋', 'pptx': '📋',
-                // 압축 파일
-                'zip': '📦', 'rar': '📦', '7z': '📦', 'tar': '📦', 'gz': '📦',
-                // 오디오 파일
-                'mp3': '🎵', 'wav': '🎵', 'flac': '🎵', 'aac': '🎵', 'ogg': '🎵',
-                // 비디오 파일
-                'mp4': '🎬', 'avi': '🎬', 'mov': '🎬', 'wmv': '🎬', 'flv': '🎬', 'mkv': '🎬',
-                // 코드 파일
-                'html': '⚙️', 'css': '🎨', 'js': '⚙️', 'py': '🐍', 'java': '☕', 'cpp': '⚙️', 'c': '⚙️',
-                // 기타
-                'json': '📋', 'xml': '📋', 'sql': '🗄️', 'md': '📄'
-            };
-            
-            return iconMap[fileExt] || '📄';
-        }
-        
-        // 파일 크기 포맷팅
-        function formatFileSize(bytes) {
-            if (bytes === 0) return '0 Bytes';
-            
-            const k = 1024;
-            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-        }
-        
-         // 게시글 작성 제출
-         async function submitBoard() {
-            const title = document.getElementById('board-title-input').value.trim();
-            const content = document.getElementById('board-content-input').value.trim();
-            const categoryId = document.getElementById('board-category-input').value;
-            
-            // 유효성 검사
-            if (!title) {
-                alert('제목을 입력해주세요.');
-                document.getElementById('board-title-input').focus();
-                return;
-            }
-            
-            if (!content) {
-                alert('내용을 입력해주세요.');
-                document.getElementById('board-content-input').focus();
-                return;
-            }
-            
-            // 제출 버튼 비활성화
-            const submitBtn = document.querySelector('.btn-submit');
-            const originalText = submitBtn.textContent;
-            submitBtn.disabled = true;
-            submitBtn.textContent = '작성 중...';
-            
-            try {
-                // 파일 업로드 처리
-                const fileItems = document.querySelectorAll('#boardFileList .file-item');
-                let uploadedFiles = [];
-                
-                if (fileItems.length > 0) {
-                    // 업로드 진행률 표시
-                    document.getElementById('boardUploadProgress').style.display = 'block';
-                    const progressBar = document.getElementById('boardProgressBar');
-                    
-                    for (let i = 0; i < fileItems.length; i++) {
-                        const fileItem = fileItems[i];
-                        const fileName = fileItem.dataset.fileName;
-                        const fileSize = fileItem.dataset.fileSize;
-                        
-                        // 파일 객체 찾기
-                        const fileInput = document.getElementById('board-file-input');
-                        const file = Array.from(fileInput.files).find(f => f.name === fileName);
-                        
-                        if (file) {
-                            // 진행률 업데이트
-                            const progress = ((i + 1) / fileItems.length) * 100;
-                            progressBar.style.width = progress + '%';
-                            
-                            // 파일 업로드
-                            const formData = new FormData();
-                            formData.append('file', file);
-                            
-                            const uploadResponse = await fetch('/sales/board/upload-file/', {
-                                method: 'POST',
-                                headers: {
-                                    'X-CSRFToken': getCookie('csrftoken')
-                                },
-                                body: formData
-                            });
-                            
-                            const uploadData = await uploadResponse.json();
-                            
-                            if (uploadData.success) {
-                                uploadedFiles.push(uploadData.file);
-                            } else {
-                                alert(`파일 업로드 실패: ${fileName}`);
-                            }
-                        }
-                    }
-                }
-                
-                // 게시글 작성 (카테고리 ID 포함)
-                console.log(123)
-                const response = await fetch('/sales/board/create/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCookie('csrftoken')
-                    },
-                    body: JSON.stringify({
-                        title: title,
-                        content: content,
-                        category_id: categoryId || null,  // 카테고리 ID (빈 값이면 null)
-                        files: uploadedFiles
-                    })
+
+        // 제출 버튼 비활성화
+        const submitBtn = document.querySelector(".btn-submit");
+        const originalText = submitBtn.textContent;
+        submitBtn.disabled = true;
+        submitBtn.textContent = "작성 중...";
+
+        try {
+          // 파일 업로드 처리
+          const fileItems = document.querySelectorAll("#boardFileList .file-item");
+          let uploadedFiles = [];
+
+          if (fileItems.length > 0) {
+            // 업로드 진행률 표시
+            document.getElementById("boardUploadProgress").style.display = "block";
+            const progressBar = document.getElementById("boardProgressBar");
+
+            for (let i = 0; i < fileItems.length; i++) {
+              const fileItem = fileItems[i];
+              const fileName = fileItem.dataset.fileName;
+              const fileSize = fileItem.dataset.fileSize;
+
+              // 파일 객체 찾기
+              const fileInput = document.getElementById("board-file-input");
+              const file = Array.from(fileInput.files).find((f) => f.name === fileName);
+
+              if (file) {
+                // 진행률 업데이트
+                const progress = ((i + 1) / fileItems.length) * 100;
+                progressBar.style.width = progress + "%";
+
+                // 파일 업로드
+                const formData = new FormData();
+                formData.append("file", file);
+
+                const uploadResponse = await fetch("/sales/board/upload-file/", {
+                  method: "POST",
+                  headers: {
+                    "X-CSRFToken": getCookie("csrftoken"),
+                  },
+                  body: formData,
                 });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    alert('게시글이 작성되었습니다.');
-                    closeWriteBoardModal();
-                    // 게시글 목록 새로고침
-                    loadBoards(1, '', currentCategoryId);
+
+                const uploadData = await uploadResponse.json();
+
+                if (uploadData.success) {
+                  uploadedFiles.push(uploadData.file);
                 } else {
-                    alert('게시글 작성에 실패했습니다: ' + data.message);
+                  alert(`파일 업로드 실패: ${fileName}`);
                 }
-            } catch (error) {
-                console.error('Error submitting board:', error);
-                alert('게시글 작성 중 오류가 발생했습니다.');
-            } finally {
-                // 제출 버튼 다시 활성화
-                submitBtn.disabled = false;
-                submitBtn.textContent = originalText;
-                document.getElementById('boardUploadProgress').style.display = 'none';
+              }
             }
+          }
+
+          // 게시글 작성 (카테고리 ID 포함)
+          console.log(123);
+          const response = await fetch("/sales/board/create/", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": getCookie("csrftoken"),
+            },
+            body: JSON.stringify({
+              title: title,
+              content: content,
+              category_id: categoryId || null, // 카테고리 ID (빈 값이면 null)
+              files: uploadedFiles,
+            }),
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+            alert("게시글이 작성되었습니다.");
+            closeWriteBoardModal();
+            // 게시글 목록 새로고침
+            loadBoards(1, "", currentCategoryId);
+          } else {
+            alert("게시글 작성에 실패했습니다: " + data.message);
+          }
+        } catch (error) {
+          console.error("Error submitting board:", error);
+          alert("게시글 작성 중 오류가 발생했습니다.");
+        } finally {
+          // 제출 버튼 다시 활성화
+          submitBtn.disabled = false;
+          submitBtn.textContent = originalText;
+          document.getElementById("boardUploadProgress").style.display = "none";
         }
-        
-        // 새 카테고리 추가 모달 표시
-        function showAddCategoryModal() {
-            const modal = document.getElementById('addCategoryModal');
-            modal.style.display = 'block';
-            
-            // 폼 초기화
-            document.getElementById('new-category-input').value = '';
-            
-            // 입력 필드에 포커스
-            document.getElementById('new-category-input').focus();
+      }
+
+      // 새 카테고리 추가 모달 표시
+      function showAddCategoryModal() {
+        const modal = document.getElementById("addCategoryModal");
+        modal.style.display = "block";
+
+        // 폼 초기화
+        document.getElementById("new-category-input").value = "";
+
+        // 입력 필드에 포커스
+        document.getElementById("new-category-input").focus();
+      }
+
+      // 새 카테고리 추가 모달 닫기
+      function closeAddCategoryModal() {
+        const modal = document.getElementById("addCategoryModal");
+        modal.style.display = "none";
+      }
+
+      // 새 카테고리 추가 제출
+      async function submitNewCategory() {
+        const categoryName = document.getElementById("new-category-input").value.trim();
+
+        if (!categoryName) {
+          alert("카테고리명을 입력해주세요.");
+          document.getElementById("new-category-input").focus();
+          return;
         }
-        
-        // 새 카테고리 추가 모달 닫기
-        function closeAddCategoryModal() {
-            const modal = document.getElementById('addCategoryModal');
-            modal.style.display = 'none';
+
+        try {
+          const response = await fetch("/sales/board/add-category/", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": getCookie("csrftoken"),
+            },
+            body: JSON.stringify({
+              category: categoryName,
+            }),
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+            alert("새 카테고리가 추가되었습니다.");
+            closeAddCategoryModal();
+
+            // 새로 추가된 카테고리 정보
+            const newCategory = data.category;
+
+            // 카테고리 목록 새로고침
+            await loadCategories();
+
+            // 새로 추가된 카테고리 자동 선택
+            setTimeout(() => {
+              selectCategory(newCategory.id, newCategory.name);
+            }, 100);
+          } else {
+            alert("카테고리 추가에 실패했습니다: " + data.message);
+          }
+        } catch (error) {
+          console.error("Error adding category:", error);
+          alert("카테고리 추가 중 오류가 발생했습니다.");
         }
-        
-        // 새 카테고리 추가 제출
-        async function submitNewCategory() {
-            const categoryName = document.getElementById('new-category-input').value.trim();
-            
-            if (!categoryName) {
-                alert('카테고리명을 입력해주세요.');
-                document.getElementById('new-category-input').focus();
-                return;
-            }
-            
-            try {
-                const response = await fetch('/sales/board/add-category/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCookie('csrftoken')
-                    },
-                    body: JSON.stringify({
-                        category: categoryName
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    alert('새 카테고리가 추가되었습니다.');
-                    closeAddCategoryModal();
-                    
-                    // 새로 추가된 카테고리 정보
-                    const newCategory = data.category;
-                    
-                    // 카테고리 목록 새로고침
-                    await loadCategories();
-                    
-                    // 새로 추가된 카테고리 자동 선택
-                    setTimeout(() => {
-                        selectCategory(newCategory.id, newCategory.name);
-                    }, 100);
-                } else {
-                    alert('카테고리 추가에 실패했습니다: ' + data.message);
-                }
-            } catch (error) {
-                console.error('Error adding category:', error);
-                alert('카테고리 추가 중 오류가 발생했습니다.');
-            }
+      }
+
+      // 게시글 삭제 모달 표시
+      function deleteBoard(boardId, boardTitle) {
+        const modal = document.getElementById("deleteBoardModal");
+        const titleSpan = document.getElementById("delete-board-title");
+
+        // 삭제할 게시글 정보 저장
+        modal.dataset.boardId = boardId;
+        titleSpan.textContent = boardTitle;
+
+        modal.style.display = "block";
+      }
+
+      // 게시글 삭제 모달 닫기
+      function closeDeleteBoardModal() {
+        const modal = document.getElementById("deleteBoardModal");
+        modal.style.display = "none";
+      }
+
+      // 게시글 삭제 확인
+      async function confirmDeleteBoard() {
+        const modal = document.getElementById("deleteBoardModal");
+        const boardId = modal.dataset.boardId;
+
+        if (!boardId) {
+          alert("삭제할 게시글 정보를 찾을 수 없습니다.");
+          return;
         }
-        
-        // 게시글 삭제 모달 표시
-        function deleteBoard(boardId, boardTitle) {
-            const modal = document.getElementById('deleteBoardModal');
-            const titleSpan = document.getElementById('delete-board-title');
-            
-            // 삭제할 게시글 정보 저장
-            modal.dataset.boardId = boardId;
-            titleSpan.textContent = boardTitle;
-            
-            modal.style.display = 'block';
+
+        try {
+          const response = await fetch(`/sales/board/${boardId}/delete/`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": getCookie("csrftoken"),
+            },
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+            alert("게시글이 삭제되었습니다.");
+            closeDeleteBoardModal();
+            // 게시글 목록 새로고침
+            loadBoards(1, "", currentCategoryId);
+          } else {
+            alert("게시글 삭제에 실패했습니다: " + data.message);
+          }
+        } catch (error) {
+          console.error("Error deleting board:", error);
+          alert("게시글 삭제 중 오류가 발생했습니다.");
         }
-        
-        // 게시글 삭제 모달 닫기
-        function closeDeleteBoardModal() {
-            const modal = document.getElementById('deleteBoardModal');
-            modal.style.display = 'none';
-        }
-        
-        // 게시글 삭제 확인
-        async function confirmDeleteBoard() {
-            const modal = document.getElementById('deleteBoardModal');
-            const boardId = modal.dataset.boardId;
-            
-            if (!boardId) {
-                alert('삭제할 게시글 정보를 찾을 수 없습니다.');
-                return;
-            }
-            
-            try {
-                const response = await fetch(`/sales/board/${boardId}/delete/`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCookie('csrftoken')
-                    }
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    alert('게시글이 삭제되었습니다.');
-                    closeDeleteBoardModal();
-                    // 게시글 목록 새로고침
-                    loadBoards(1, '', currentCategoryId);
-                } else {
-                    alert('게시글 삭제에 실패했습니다: ' + data.message);
-                }
-            } catch (error) {
-                console.error('Error deleting board:', error);
-                alert('게시글 삭제 중 오류가 발생했습니다.');
-            }
-        }
-        
-        // 게시글 수정 모달 표시
-        function editBoard(boardId, title, content, categoryId, categoryName) {
-            const modal = document.getElementById('editBoardModal');
-            
-            // 폼 초기화
-            document.getElementById('edit-board-title-input').value = title;
-            document.getElementById('edit-board-content-input').value = content;
-            document.getElementById('editBoardFileList').innerHTML = '';
-            document.getElementById('editBoardUploadProgress').style.display = 'none';
-            
-            // 게시글 ID 저장
-            modal.dataset.boardId = boardId;
-            
+      }
+
+      // 게시글 수정 모달 표시
+      async function editBoard(boardId) {
+        const modal = document.getElementById("editBoardModal");
+
+        // 게시글 ID 저장
+        modal.dataset.boardId = boardId;
+
+        // 폼 초기화
+        document.getElementById("edit-board-title-input").value = "";
+        document.getElementById("edit-board-content-input").value = "";
+        document.getElementById("editBoardFileList").innerHTML = "";
+        document.getElementById("editBoardUploadProgress").style.display = "none";
+
+        // 모달 표시
+        modal.style.display = "block";
+
+        try {
+          // 게시글 상세 정보 가져오기 (파일 정보 포함)
+          const response = await fetch(`/sales/board/${boardId}/api/`);
+          const data = await response.json();
+
+          if (data.success && data.board) {
+            const board = data.board;
+
+            // 폼에 데이터 설정
+            document.getElementById("edit-board-title-input").value = board.title;
+            document.getElementById("edit-board-content-input").value = board.content;
+
             // 카테고리 옵션 로드 및 선택
-            loadEditCategoryOptions(categoryId);
-            
-            // 파일 업로드 설정
-            setupEditFileUpload();
-            
-            modal.style.display = 'block';
-            
-            // 제목 입력 필드에 포커스
-            document.getElementById('edit-board-title-input').focus();
+            await loadEditCategoryOptions(board.category_id);
+
+            // 기존 파일 정보 저장 (전역 변수)
+            window.currentEditFiles = board.files || [];
+
+            // 기존 파일 목록 표시
+            renderExistingFilesForEdit(board.files || []);
+          } else {
+            // API 호출 실패 시 에러 표시
+            alert("게시글 정보를 불러오는데 실패했습니다: " + data.message);
+            closeEditBoardModal();
+            return;
+          }
+        } catch (error) {
+          console.error("게시글 정보 로드 오류:", error);
+          alert("게시글 정보를 불러오는데 실패했습니다.");
+          closeEditBoardModal();
+          return;
         }
-        
-        // 게시글 수정 모달 닫기
-        function closeEditBoardModal() {
-            const modal = document.getElementById('editBoardModal');
-            modal.style.display = 'none';
-        }
-        
-        // 수정 모달용 카테고리 옵션 로드
-        async function loadEditCategoryOptions(selectedCategoryId) {
-            try {
-                const response = await fetch('/sales/board/categories/');
-                const data = await response.json();
-                
-                if (data.success) {
-                    const categorySelect = document.getElementById('edit-board-category-input');
-                    if (categorySelect) {
-                        // 기존 옵션들 제거 (첫 번째 "카테고리 선택" 옵션 제외)
-                        while (categorySelect.children.length > 1) {
-                            categorySelect.removeChild(categorySelect.lastChild);
-                        }
-                        
-                        // 새 카테고리 옵션들 추가
-                        data.categories.forEach(category => {
-                            const option = document.createElement('option');
-                            option.value = category.id;
-                            option.textContent = category.name;
-                            // 현재 게시글의 카테고리이거나 현재 선택된 카테고리인 경우 선택
-                            if (category.id === selectedCategoryId || category.id === currentCategoryId) {
-                                option.selected = true;
-                            }
-                            categorySelect.appendChild(option);
-                        });
-                        
-                        // 선택된 카테고리가 없으면 현재 선택된 카테고리로 설정
-                        if (!selectedCategoryId && currentCategoryId) {
-                            categorySelect.value = currentCategoryId;
-                        }
-                    }
+
+        // 파일 업로드 설정
+        setupEditFileUpload();
+
+        // 제목 입력 필드에 포커스
+        document.getElementById("edit-board-title-input").focus();
+      }
+
+      // 게시글 수정 모달 닫기
+      function closeEditBoardModal() {
+        const modal = document.getElementById("editBoardModal");
+        modal.style.display = "none";
+      }
+
+      // 수정 모달용 카테고리 옵션 로드
+      async function loadEditCategoryOptions(selectedCategoryId) {
+        try {
+          const response = await fetch("/sales/board/categories/");
+          const data = await response.json();
+
+          if (data.success) {
+            const categorySelect = document.getElementById("edit-board-category-input");
+            if (categorySelect) {
+              // 기존 옵션들 제거 (첫 번째 "카테고리 선택" 옵션 제외)
+              while (categorySelect.children.length > 1) {
+                categorySelect.removeChild(categorySelect.lastChild);
+              }
+
+              // 새 카테고리 옵션들 추가
+              data.categories.forEach((category) => {
+                const option = document.createElement("option");
+                option.value = category.id;
+                option.textContent = category.name;
+                // 현재 게시글의 카테고리이거나 현재 선택된 카테고리인 경우 선택
+                if (category.id === selectedCategoryId || category.id === currentCategoryId) {
+                  option.selected = true;
                 }
-            } catch (error) {
-                console.error('카테고리 옵션 로드 오류:', error);
+                categorySelect.appendChild(option);
+              });
+
+              // 선택된 카테고리가 없으면 현재 선택된 카테고리로 설정
+              if (!selectedCategoryId && currentCategoryId) {
+                categorySelect.value = currentCategoryId;
+              }
             }
+          }
+        } catch (error) {
+          console.error("카테고리 옵션 로드 오류:", error);
         }
-        
-        // 수정 모달용 파일 업로드 설정
-        function setupEditFileUpload() {
-            const fileInput = document.getElementById('edit-board-file-input');
-            const fileList = document.getElementById('editBoardFileList');
-            
-            // 파일 선택 이벤트
-            fileInput.addEventListener('change', handleEditFileSelect);
-            
-            // 드래그 앤 드롭 이벤트
-            const uploadSection = document.querySelector('#editBoardModal .file-upload-section');
-            
-            uploadSection.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                uploadSection.style.borderColor = '#667eea';
-            });
-            
-            uploadSection.addEventListener('dragleave', (e) => {
-                e.preventDefault();
-                uploadSection.style.borderColor = '#dee2e6';
-            });
-            
-            uploadSection.addEventListener('drop', (e) => {
-                e.preventDefault();
-                uploadSection.style.borderColor = '#dee2e6';
-                
-                const files = e.dataTransfer.files;
-                handleEditFiles(files);
-            });
-        }
-        
-        // 수정 모달용 파일 선택 처리
-        function handleEditFileSelect(event) {
-            const files = event.target.files;
-            handleEditFiles(files);
-        }
-        
-        // 수정 모달용 파일 처리
-        function handleEditFiles(files) {
-            const fileList = document.getElementById('editBoardFileList');
-            
-            Array.from(files).forEach(file => {
-                // 파일 크기 제한 (10MB)
-                if (file.size > 200 * 1024 * 1024) {
-                    alert(`파일 크기가 너무 큽니다: ${file.name}`);
-                    return;
-                }
-                
-                // 파일 아이템 생성
-                const fileItem = createEditFileItem(file);
-                fileList.appendChild(fileItem);
-            });
-        }
-        
-        // 수정 모달용 파일 아이템 생성
-        function createEditFileItem(file) {
-            const fileItem = document.createElement('div');
-            fileItem.className = 'file-item';
-            fileItem.dataset.fileName = file.name;
-            fileItem.dataset.fileSize = file.size;
-            
-            const fileIcon = getFileIcon(file.name);
-            const fileSize = formatFileSize(file.size);
-            
-            fileItem.innerHTML = `
+      }
+
+      // 수정 모달용 파일 업로드 설정
+      function setupEditFileUpload() {
+        const fileInput = document.getElementById("edit-board-file-input");
+        const fileList = document.getElementById("editBoardFileList");
+
+        // 파일 선택 이벤트
+        fileInput.addEventListener("change", handleEditFileSelect);
+
+        // 드래그 앤 드롭 이벤트
+        const uploadSection = document.querySelector("#editBoardModal .file-upload-section");
+
+        uploadSection.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          uploadSection.style.borderColor = "#667eea";
+        });
+
+        uploadSection.addEventListener("dragleave", (e) => {
+          e.preventDefault();
+          uploadSection.style.borderColor = "#dee2e6";
+        });
+
+        uploadSection.addEventListener("drop", (e) => {
+          e.preventDefault();
+          uploadSection.style.borderColor = "#dee2e6";
+
+          const files = e.dataTransfer.files;
+          handleEditFiles(files);
+        });
+      }
+
+      // 수정 모달용 파일 선택 처리
+      function handleEditFileSelect(event) {
+        const files = event.target.files;
+        handleEditFiles(files);
+      }
+
+      // 수정 모달용 파일 처리
+      function handleEditFiles(files) {
+        const fileList = document.getElementById("editBoardFileList");
+
+        Array.from(files).forEach((file) => {
+          // 파일 크기 제한 (10MB)
+          if (file.size > 200 * 1024 * 1024) {
+            alert(`파일 크기가 너무 큽니다: ${file.name}`);
+            return;
+          }
+
+          // 파일 아이템 생성
+          const fileItem = createEditFileItem(file);
+          fileList.appendChild(fileItem);
+        });
+      }
+
+      // 수정 모달용 파일 아이템 생성
+      function createEditFileItem(file) {
+        const fileItem = document.createElement("div");
+        fileItem.className = "file-item";
+        fileItem.dataset.fileName = file.name;
+        fileItem.dataset.fileSize = file.size;
+
+        const fileIcon = getFileIcon(file.name);
+        const fileSize = formatFileSize(file.size);
+
+        fileItem.innerHTML = `
                 <div class="file-info">
                     <div class="file-icon">
                         ${fileIcon}
@@ -1094,236 +1177,304 @@
                     <i class="fas fa-times"></i>
                 </button>
             `;
-            
-            return fileItem;
+
+        return fileItem;
+      }
+
+      // 수정 모달용 파일 제거 (새로 업로드된 파일)
+      function removeEditFile(button) {
+        const fileItem = button.parentElement;
+        fileItem.remove();
+      }
+
+      // 기존 파일 목록 렌더링
+      function renderExistingFilesForEdit(files) {
+        const fileList = document.getElementById("editBoardFileList");
+
+        if (!files || files.length === 0) {
+          return;
         }
-        
-        // 수정 모달용 파일 제거
-        function removeEditFile(button) {
-            const fileItem = button.parentElement;
-            fileItem.remove();
+
+        files.forEach((file, index) => {
+          const fileIcon = getFileIcon(file.original_name);
+          const fileSize = formatFileSize(file.file_size);
+
+          const fileItem = document.createElement("div");
+          fileItem.className = "file-item existing-file";
+          fileItem.dataset.fileIndex = index;
+          fileItem.style.backgroundColor = "#f0f9ff";
+          fileItem.style.border = "1px solid #3b82f6";
+
+          fileItem.innerHTML = `
+                    <div class="file-info">
+                        <div class="file-icon">
+                            ${fileIcon}
+                        </div>
+                        <div>
+                            <div class="file-name">${escapeHtml(file.original_name)}</div>
+                            <div class="file-size">${fileSize} <span style="color: #3b82f6; font-size: 0.75rem;">(기존 파일)</span></div>
+                        </div>
+                    </div>
+                    <button class="file-remove" onclick="removeExistingEditFile(${index})">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `;
+
+          fileList.appendChild(fileItem);
+        });
+      }
+
+      // 기존 파일 제거
+      function removeExistingEditFile(index) {
+        if (confirm("이 파일을 삭제하시겠습니까?")) {
+          // 전역 변수에서 해당 파일 제거
+          if (window.currentEditFiles && window.currentEditFiles[index]) {
+            window.currentEditFiles.splice(index, 1);
+          }
+
+          // DOM에서 해당 파일 아이템 제거
+          const fileItems = document.querySelectorAll("#editBoardFileList .existing-file");
+          fileItems.forEach((item) => {
+            if (parseInt(item.dataset.fileIndex) === index) {
+              item.remove();
+            }
+          });
+
+          // 파일 목록 다시 렌더링 (인덱스 재정렬)
+          document.querySelectorAll("#editBoardFileList .file-item").forEach((item) => item.remove());
+          renderExistingFilesForEdit(window.currentEditFiles || []);
         }
-        
-        // 게시글 수정 제출
-        async function submitBoardEdit() {
-            const modal = document.getElementById('editBoardModal');
-            const boardId = modal.dataset.boardId;
-            
-            if (!boardId) {
-                alert('수정할 게시글 정보를 찾을 수 없습니다.');
-                return;
-            }
-            
-            const title = document.getElementById('edit-board-title-input').value.trim();
-            const content = document.getElementById('edit-board-content-input').value.trim();
-            const categoryId = document.getElementById('edit-board-category-input').value;
-            
-            // 유효성 검사
-            if (!title) {
-                alert('제목을 입력해주세요.');
-                document.getElementById('edit-board-title-input').focus();
-                return;
-            }
-            
-            if (!content) {
-                alert('내용을 입력해주세요.');
-                document.getElementById('edit-board-content-input').focus();
-                return;
-            }
-            
-            // 제출 버튼 비활성화
-            const submitBtn = document.querySelector('#editBoardModal .btn-submit');
-            const originalText = submitBtn.textContent;
-            submitBtn.disabled = true;
-            submitBtn.textContent = '수정 중...';
-            
-            try {
-                // 파일 업로드 처리
-                const fileItems = document.querySelectorAll('#editBoardFileList .file-item');
-                let uploadedFiles = [];
-                
-                if (fileItems.length > 0) {
-                    // 업로드 진행률 표시
-                    document.getElementById('editBoardUploadProgress').style.display = 'block';
-                    const progressBar = document.getElementById('editBoardProgressBar');
-                    
-                    for (let i = 0; i < fileItems.length; i++) {
-                        const fileItem = fileItems[i];
-                        const fileName = fileItem.dataset.fileName;
-                        const fileSize = fileItem.dataset.fileSize;
-                        
-                        // 파일 객체 찾기
-                        const fileInput = document.getElementById('edit-board-file-input');
-                        const file = Array.from(fileInput.files).find(f => f.name === fileName);
-                        
-                        if (file) {
-                            // 진행률 업데이트
-                            const progress = ((i + 1) / fileItems.length) * 100;
-                            progressBar.style.width = progress + '%';
-                            
-                            // 파일 업로드
-                            const formData = new FormData();
-                            formData.append('file', file);
-                            
-                            const uploadResponse = await fetch('/sales/board/upload-file/', {
-                                method: 'POST',
-                                headers: {
-                                    'X-CSRFToken': getCookie('csrftoken')
-                                },
-                                body: formData
-                            });
-                            
-                            const uploadData = await uploadResponse.json();
-                            
-                            if (uploadData.success) {
-                                uploadedFiles.push(uploadData.file);
-                            } else {
-                                alert(`파일 업로드 실패: ${fileName}`);
-                            }
-                        }
-                    }
-                }
-                
-                // 게시글 수정 (카테고리 ID 포함)
-                const response = await fetch(`/sales/board/${boardId}/edit/`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCookie('csrftoken')
-                    },
-                    body: JSON.stringify({
-                        title: title,
-                        content: content,
-                        category_id: categoryId || null,  // 카테고리 ID (빈 값이면 null)
-                        files: uploadedFiles
-                    })
+      }
+
+      // 게시글 수정 제출
+      async function submitBoardEdit() {
+        const modal = document.getElementById("editBoardModal");
+        const boardId = modal.dataset.boardId;
+
+        if (!boardId) {
+          alert("수정할 게시글 정보를 찾을 수 없습니다.");
+          return;
+        }
+
+        const title = document.getElementById("edit-board-title-input").value.trim();
+        const content = document.getElementById("edit-board-content-input").value.trim();
+        const categoryId = document.getElementById("edit-board-category-input").value;
+
+        // 유효성 검사
+        if (!title) {
+          alert("제목을 입력해주세요.");
+          document.getElementById("edit-board-title-input").focus();
+          return;
+        }
+
+        if (!content) {
+          alert("내용을 입력해주세요.");
+          document.getElementById("edit-board-content-input").focus();
+          return;
+        }
+
+        // 제출 버튼 비활성화
+        const submitBtn = document.querySelector("#editBoardModal .btn-submit");
+        const originalText = submitBtn.textContent;
+        submitBtn.disabled = true;
+        submitBtn.textContent = "수정 중...";
+
+        try {
+          // 새로 업로드된 파일만 처리 (기존 파일 제외)
+          const fileItems = document.querySelectorAll("#editBoardFileList .file-item:not(.existing-file)");
+          let newUploadedFiles = [];
+
+          if (fileItems.length > 0) {
+            // 업로드 진행률 표시
+            document.getElementById("editBoardUploadProgress").style.display = "block";
+            const progressBar = document.getElementById("editBoardProgressBar");
+
+            for (let i = 0; i < fileItems.length; i++) {
+              const fileItem = fileItems[i];
+              const fileName = fileItem.dataset.fileName;
+
+              // 파일 객체 찾기
+              const fileInput = document.getElementById("edit-board-file-input");
+              const file = Array.from(fileInput.files).find((f) => f.name === fileName);
+
+              if (file) {
+                // 진행률 업데이트
+                const progress = ((i + 1) / fileItems.length) * 100;
+                progressBar.style.width = progress + "%";
+
+                // 파일 업로드
+                const formData = new FormData();
+                formData.append("file", file);
+
+                const uploadResponse = await fetch("/sales/board/upload-file/", {
+                  method: "POST",
+                  headers: {
+                    "X-CSRFToken": getCookie("csrftoken"),
+                  },
+                  body: formData,
                 });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    alert('게시글이 수정되었습니다.');
-                    closeEditBoardModal();
-                    // 게시글 목록 새로고침
-                    loadBoards(1, '', currentCategoryId);
+
+                const uploadData = await uploadResponse.json();
+
+                if (uploadData.success) {
+                  newUploadedFiles.push(uploadData.file);
                 } else {
-                    alert('게시글 수정에 실패했습니다: ' + data.message);
+                  alert(`파일 업로드 실패: ${fileName}`);
                 }
-            } catch (error) {
-                console.error('Error editing board:', error);
-                alert('게시글 수정 중 오류가 발생했습니다.');
-            } finally {
-                // 제출 버튼 다시 활성화
-                submitBtn.disabled = false;
-                submitBtn.textContent = originalText;
-                document.getElementById('editBoardUploadProgress').style.display = 'none';
+              }
             }
+          }
+
+          // 최종 파일 목록 = 기존 파일 + 새로 업로드된 파일
+          const finalFiles = [...(window.currentEditFiles || []), ...newUploadedFiles];
+
+          console.log("=== 게시글 수정 디버깅 ===");
+          console.log("기존 파일:", window.currentEditFiles);
+          console.log("새 파일:", newUploadedFiles);
+          console.log("최종 파일:", finalFiles);
+          console.log("카테고리 ID:", categoryId);
+
+          // 게시글 수정 (카테고리 ID 포함)
+          const response = await fetch(`/sales/board/${boardId}/edit/`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": getCookie("csrftoken"),
+            },
+            body: JSON.stringify({
+              title: title,
+              content: content,
+              category: categoryId || null, // 'category'로 전송 (백엔드에서 둘 다 받음)
+              files: finalFiles,
+            }),
+          });
+
+          const data = await response.json();
+          console.log("서버 응답:", data);
+
+          if (data.success) {
+            alert("게시글이 수정되었습니다.");
+            closeEditBoardModal();
+            // 게시글 목록 새로고침
+            loadBoards(1, "", currentCategoryId);
+          } else {
+            alert("게시글 수정에 실패했습니다: " + data.message);
+          }
+        } catch (error) {
+          console.error("Error editing board:", error);
+          alert("게시글 수정 중 오류가 발생했습니다.");
+        } finally {
+          // 제출 버튼 다시 활성화
+          submitBtn.disabled = false;
+          submitBtn.textContent = originalText;
+          document.getElementById("editBoardUploadProgress").style.display = "none";
         }
-        
-        // CSRF 토큰 가져오기
-        function getCookie(name) {
-            let cookieValue = null;
-            if (document.cookie && document.cookie !== '') {
-                const cookies = document.cookie.split(';');
-                for (let i = 0; i < cookies.length; i++) {
-                    const cookie = cookies[i].trim();
-                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                        break;
-                    }
-                }
+      }
+
+      // CSRF 토큰 가져오기
+      function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== "") {
+          const cookies = document.cookie.split(";");
+          for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === name + "=") {
+              cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+              break;
             }
-            return cookieValue;
+          }
         }
-        
-        // 로그아웃 함수
-        function logout() {
-            if (confirm('로그아웃하시겠습니까?')) {
-                // 서버에 로그아웃 요청
-                fetch('/sales/logout/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCookie('csrftoken')
-                    }
-                })
-                .then(response => {
-                    // 로그아웃은 항상 성공으로 처리 (리다이렉트 응답이므로)
-                    console.log('로그아웃 응답:', response.status);
-                    
-                    // 브라우저 캐시 정리
-                    if ('caches' in window) {
-                        caches.keys().then(function(names) {
-                            for (let name of names) {
-                                caches.delete(name);
-                            }
-                        });
-                    }
-                    
-                    // 세션 스토리지 정리
-                    sessionStorage.clear();
-                    
-                    // 로그인 페이지로 리다이렉트
-                    window.location.href = '/sales/login/';
-                })
-                .catch(error => {
-                    console.error('로그아웃 오류:', error);
-                    // 오류가 발생해도 로그인 페이지로 이동
-                    window.location.href = '/sales/login/';
+        return cookieValue;
+      }
+
+      // 로그아웃 함수
+      function logout() {
+        if (confirm("로그아웃하시겠습니까?")) {
+          // 서버에 로그아웃 요청
+          fetch("/sales/logout/", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": getCookie("csrftoken"),
+            },
+          })
+            .then((response) => {
+              // 로그아웃은 항상 성공으로 처리 (리다이렉트 응답이므로)
+              console.log("로그아웃 응답:", response.status);
+
+              // 브라우저 캐시 정리
+              if ("caches" in window) {
+                caches.keys().then(function (names) {
+                  for (let name of names) {
+                    caches.delete(name);
+                  }
                 });
-            }
+              }
+
+              // 세션 스토리지 정리
+              sessionStorage.clear();
+
+              // 로그인 페이지로 리다이렉트
+              window.location.href = "/sales/login/";
+            })
+            .catch((error) => {
+              console.error("로그아웃 오류:", error);
+              // 오류가 발생해도 로그인 페이지로 이동
+              window.location.href = "/sales/login/";
+            });
         }
-        
-        // 모달 외부 클릭 시 닫기
-        window.onclick = function(event) {
-            const writeModal = document.getElementById('writeBoardModal');
-            const categoryModal = document.getElementById('addCategoryModal');
-            const deleteModal = document.getElementById('deleteBoardModal');
-            const editModal = document.getElementById('editBoardModal');
-            
-            if (event.target === writeModal) {
-                closeWriteBoardModal();
-            }
-            if (event.target === categoryModal) {
-                closeAddCategoryModal();
-            }
-            if (event.target === deleteModal) {
-                closeDeleteBoardModal();
-            }
-            if (event.target === editModal) {
-                closeEditBoardModal();
-            }
+      }
+
+      // 모달 외부 클릭 시 닫기
+      window.onclick = function (event) {
+        const writeModal = document.getElementById("writeBoardModal");
+        const categoryModal = document.getElementById("addCategoryModal");
+        const deleteModal = document.getElementById("deleteBoardModal");
+        const editModal = document.getElementById("editBoardModal");
+
+        if (event.target === writeModal) {
+          closeWriteBoardModal();
         }
-        
-        // Enter 키로 제출
-        document.addEventListener('keydown', function(event) {
-            if (event.key === 'Enter' && event.ctrlKey) {
-                event.preventDefault();
-                submitBoard();
-            }
-            
-            // 새 카테고리 모달에서 Enter 키로 제출
-            if (event.key === 'Enter' && document.getElementById('addCategoryModal').style.display === 'block') {
-                event.preventDefault();
-                submitNewCategory();
-            }
-            
-            // 수정 모달에서 Enter 키로 제출
-            if (event.key === 'Enter' && document.getElementById('editBoardModal').style.display === 'block') {
-                event.preventDefault();
-                submitBoardEdit();
-            }
-        });
-        
-        // 페이지 로드 시 초기 데이터 로드
-        document.addEventListener('DOMContentLoaded', function() {
-            loadCategories();  // 카테고리 먼저 로드
-            // 첫 번째 카테고리 선택 (기본값)
-            // 이 부분은 loadCategories 함수 내부에서 처리되므로 제거
-        });
+        if (event.target === categoryModal) {
+          closeAddCategoryModal();
+        }
+        if (event.target === deleteModal) {
+          closeDeleteBoardModal();
+        }
+        if (event.target === editModal) {
+          closeEditBoardModal();
+        }
+      };
+
+      // Enter 키로 제출
+      document.addEventListener("keydown", function (event) {
+        if (event.key === "Enter" && event.ctrlKey) {
+          event.preventDefault();
+          submitBoard();
+        }
+
+        // 새 카테고리 모달에서 Enter 키로 제출
+        if (event.key === "Enter" && document.getElementById("addCategoryModal").style.display === "block") {
+          event.preventDefault();
+          submitNewCategory();
+        }
+
+        // 수정 모달에서 Enter 키로 제출
+        if (event.key === "Enter" && document.getElementById("editBoardModal").style.display === "block") {
+          event.preventDefault();
+          submitBoardEdit();
+        }
+      });
+
+      // 페이지 로드 시 초기 데이터 로드
+      document.addEventListener("DOMContentLoaded", function () {
+        loadCategories(); // 카테고리 먼저 로드
+        // 첫 번째 카테고리 선택 (기본값)
+        // 이 부분은 loadCategories 함수 내부에서 처리되므로 제거
+      });
     </script>
-    
+
     <!-- Base JavaScript -->
     <script src="{% static 'diary/base/base.js' %}"></script>
-</body>
+  </body>
 </html>
