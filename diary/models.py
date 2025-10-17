@@ -646,3 +646,66 @@ class PayHistory(models.Model):
 
     def __str__(self):
         return f"{self.user.name} - {self.payment_data}"
+
+class AIClassContent(models.Model):
+    """AI 법인영업 클래스 페이지의 텍스트 내용을 관리하는 모델"""
+    
+    # 페이지 섹션별로 구분
+    SECTION_CHOICES = [
+        ('hero', '메인 헤로 섹션'),
+        ('stats', '통계 섹션'),
+        ('barriers', '3가지 벽 섹션'),
+        ('benefits', '혜택 섹션'),
+        ('ai_tools', 'AI 툴 섹션'),
+        ('instructor', '강사 소개 섹션'),
+        ('class_info', '강의 정보 섹션'),
+        ('cta', 'CTA 섹션'),
+    ]
+    
+    section = models.CharField(max_length=20, choices=SECTION_CHOICES, unique=True)
+    
+    # 각 섹션의 텍스트 필드들
+    title = models.CharField(max_length=200, blank=True, null=True, help_text="섹션 제목")
+    subtitle = models.TextField(blank=True, null=True, help_text="섹션 부제목")
+    description = models.TextField(blank=True, null=True, help_text="섹션 설명")
+    content = models.TextField(blank=True, null=True, help_text="추가 내용")
+    
+    # 메타 정보
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "AI 클래스 페이지 내용"
+        verbose_name_plural = "AI 클래스 페이지 내용"
+        indexes = [
+            models.Index(fields=['section']),
+        ]
+    
+    def __str__(self):
+        return f"{self.get_section_display()} - {self.title or '제목 없음'}"
+
+class AIClassTextElement(models.Model):
+    """AI 클래스 페이지의 개별 텍스트 요소를 관리하는 모델"""
+    
+    # 텍스트 요소 식별자 (템플릿에서 사용할 키)
+    key = models.CharField(max_length=100, unique=True, help_text="템플릿에서 사용할 고유 키")
+    
+    # 텍스트 내용
+    text = models.TextField(help_text="표시될 텍스트 내용")
+    
+    # 설명 (관리자용)
+    description = models.CharField(max_length=200, blank=True, null=True, help_text="이 텍스트 요소에 대한 설명")
+    
+    # 메타 정보
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "AI 클래스 텍스트 요소"
+        verbose_name_plural = "AI 클래스 텍스트 요소"
+        indexes = [
+            models.Index(fields=['key']),
+        ]
+    
+    def __str__(self):
+        return f"{self.key} - {self.description or self.text[:50]}"

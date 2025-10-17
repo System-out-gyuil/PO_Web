@@ -5,7 +5,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django.views import View
 import re
-from diary.models import ClassForm
+from diary.models import ClassForm, AIClassTextElement
 
 def ai_class(request: HttpRequest):
     # User-Agent를 통해 모바일 여부 감지
@@ -20,9 +20,15 @@ def ai_class(request: HttpRequest):
         # 화면 크기나 터치 지원 여부로도 판단
         is_mobile = 'touch' in user_agent or 'tablet' in user_agent
     
+    # 텍스트 요소들을 데이터베이스에서 가져오기
+    text_elements = {}
+    for element in AIClassTextElement.objects.all():
+        text_elements[element.key] = element.text
+    
     context = {
         'is_mobile': is_mobile,
         'user_agent': user_agent,  # 디버깅용 (필요시 제거)
+        'text_elements': text_elements,
     }
     
     return render(request, 'ai_class/ai_class.html', context)
