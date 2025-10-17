@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Alarm, AlarmCategory, AIClassContent, AIClassTextElement
+from .models import Alarm, AlarmCategory, AIClassContent, AIClassTextElement, ClassFormTextElement
 
 # Register your models here.
 
@@ -41,6 +41,28 @@ class AIClassContentAdmin(admin.ModelAdmin):
 
 @admin.register(AIClassTextElement)
 class AIClassTextElementAdmin(admin.ModelAdmin):
+    list_display = ['key', 'description', 'updated_at']
+    list_filter = ['created_at', 'updated_at']
+    search_fields = ['key', 'text', 'description']
+    ordering = ['key']
+    
+    fieldsets = (
+        ('기본 정보', {
+            'fields': ('key', 'description')
+        }),
+        ('텍스트 내용', {
+            'fields': ('text',)
+        }),
+        ('메타 정보', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    readonly_fields = ['created_at', 'updated_at']
+
+@admin.register(ClassFormTextElement)
+class ClassFormTextElementAdmin(admin.ModelAdmin):
     list_display = ['key', 'description', 'updated_at']
     list_filter = ['created_at', 'updated_at']
     search_fields = ['key', 'text', 'description']

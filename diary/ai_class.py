@@ -5,7 +5,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django.views import View
 import re
-from diary.models import ClassForm, AIClassTextElement
+from diary.models import ClassForm, AIClassTextElement, ClassFormTextElement
 
 def ai_class(request: HttpRequest):
     # User-Agent를 통해 모바일 여부 감지
@@ -34,6 +34,42 @@ def ai_class(request: HttpRequest):
     return render(request, 'ai_class/ai_class.html', context)
 
 def class_form(request: HttpRequest):
+    # 텍스트 요소들을 데이터베이스에서 가져오기
+    text_elements_flat = {}
+    for element in ClassFormTextElement.objects.all():
+        text_elements_flat[element.key] = element.text
+    
+    # 기본값 설정 (DB에 데이터가 없을 경우 사용)
+    default_texts = {
+        'form.title': '법인영업 원데이 클래스',
+        'form.date': '일자 : 2025년 9월 16일(화요일) 15시 ~ 17시',
+        'form.location': '장소 : 구로디지털단지역 인근 (자세한 주소는 추후 문자 안내), 주차가능',
+        'form.capacity': '인원 : 선착순 10명',
+        'form.bank': '기업은행 : 074-118859-04-015(주식회사 피오코퍼레이션)',
+        'form.fee': '강의료 : 5만원',
+        'form.notice': '신청서 접수 후 입금완료시, 클래스 참여 확정됩니다.',
+        'form.label_name': '참석자 성함을 알려주세요',
+        'form.placeholder_name': '이름을 입력해주세요',
+        'form.label_phone': '참석자 연락처를 알려주세요',
+        'form.placeholder_phone': '연락처를 입력해주세요. (예: 01012341234, 010-1234-1234, 010 1234 1234)',
+        'form.phone_description': '연락처로 강의 관련 안내사항을 전달드립니다.',
+        'form.button_text': '클래스 신청하기',
+    }
+    
+    # 기본값과 병합 (DB 값이 우선)
+    for key, default_value in default_texts.items():
+        if key not in text_elements_flat:
+            text_elements_flat[key] = default_value
+    
+    # 중첩 딕셔너리로 변환 (form.title -> text_elements['form']['title'])
+    text_elements = {'form': {}}
+    for key, value in text_elements_flat.items():
+        if key.startswith('form.'):
+            nested_key = key.replace('form.', '')
+            text_elements['form'][nested_key] = value
+        else:
+            text_elements[key] = value
+    
     if request.method == 'POST':
         name = request.POST.get('name', '').strip()
         phone = request.POST.get('phone', '').strip()
@@ -53,7 +89,8 @@ def class_form(request: HttpRequest):
             context = {
                 'errors': errors,
                 'name': name,
-                'phone': phone
+                'phone': phone,
+                'text_elements': text_elements,
             }
             return render(request, 'ai_class/class_form.html', context)
         
@@ -76,11 +113,15 @@ def class_form(request: HttpRequest):
             context = {
                 'errors': errors,
                 'name': name,
-                'phone': phone
+                'phone': phone,
+                'text_elements': text_elements,
             }
             return render(request, 'ai_class/class_form.html', context)
     
-    return render(request, 'ai_class/class_form.html')
+    context = {
+        'text_elements': text_elements,
+    }
+    return render(request, 'ai_class/class_form.html', context)
 
 def is_valid_phone_format(phone):
     """전화번호 형식이 유효한지 검사 (다양한 형식 허용)"""

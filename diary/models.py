@@ -551,6 +551,24 @@ class ClassForm(models.Model):
         return f"{self.name} - {self.phone}"
 
 
+class ClassFormTextElement(models.Model):
+    """AI 클래스 폼 페이지의 텍스트 요소"""
+    key = models.CharField(max_length=100, unique=True, help_text="고유 키 (예: form.title, form.date)")
+    text = models.TextField(help_text="실제 표시될 텍스트")
+    description = models.CharField(max_length=200, blank=True, help_text="관리자용 설명")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'diary_classform_text_element'
+        verbose_name = 'AI 클래스 폼 텍스트'
+        verbose_name_plural = 'AI 클래스 폼 텍스트'
+        ordering = ['key']
+
+    def __str__(self):
+        return f"{self.key}: {self.text[:50]}"
+
+
 class CountUser(models.Model):
     name = models.CharField(max_length=50)
     count = models.IntegerField(default=0)

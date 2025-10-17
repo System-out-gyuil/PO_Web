@@ -1,0 +1,568 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI 클래스 폼 텍스트 관리</title>
+    <link rel="stylesheet" href="{% static 'ai_class/ai_class.css' %}" />
+    <style>
+      .admin-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+        font-family: "Pretendard", "Noto Sans KR", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      }
+
+      .admin-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 10px;
+        margin-bottom: 30px;
+        text-align: center;
+      }
+
+      .admin-header h1 {
+        margin: 0;
+        font-size: 2.5rem;
+        font-weight: 700;
+      }
+
+      .admin-header p {
+        margin: 10px 0 0 0;
+        opacity: 0.9;
+      }
+
+      .section-group {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin-bottom: 30px;
+        overflow: hidden;
+      }
+
+      .section-header {
+        background: #f8f9fa;
+        padding: 20px;
+        border-bottom: 1px solid #e9ecef;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .section-header h2 {
+        margin: 0;
+        color: #495057;
+        font-size: 1.5rem;
+      }
+
+      .section-header .toggle-icon {
+        font-size: 1.2rem;
+        transition: transform 0.3s ease;
+      }
+
+      .section-header.active .toggle-icon {
+        transform: rotate(180deg);
+      }
+
+      .section-content {
+        display: none;
+        padding: 20px;
+      }
+
+      .section-content.active {
+        display: block;
+      }
+
+      .text-element {
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        margin-bottom: 15px;
+        padding: 20px;
+        background: #f8f9fa;
+      }
+
+      .element-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+      }
+
+      .element-key {
+        font-weight: 600;
+        color: #495057;
+        font-size: 1.1rem;
+      }
+
+      .element-description {
+        color: #6c757d;
+        font-size: 0.9rem;
+        margin-top: 5px;
+      }
+
+      .element-actions {
+        display: flex;
+        gap: 10px;
+      }
+
+      .btn {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+      }
+
+      .btn-edit {
+        background: #007bff;
+        color: white;
+      }
+
+      .btn-edit:hover {
+        background: #0056b3;
+      }
+
+      .btn-delete {
+        background: #dc3545;
+        color: white;
+      }
+
+      .btn-delete:hover {
+        background: #c82333;
+      }
+
+      .btn-add {
+        background: #28a745;
+        color: white;
+        margin-bottom: 20px;
+      }
+
+      .btn-add:hover {
+        background: #218838;
+      }
+
+      .element-text {
+        background: white;
+        border: 1px solid #ced4da;
+        border-radius: 5px;
+        padding: 15px;
+        min-height: 100px;
+        font-size: 1rem;
+        line-height: 1.5;
+        resize: vertical;
+        white-space: pre-wrap;
+      }
+
+      .element-text:focus {
+        outline: none;
+        border-color: #007bff;
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+      }
+
+      .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+      }
+
+      .modal-content {
+        background-color: white;
+        margin: 5% auto;
+        padding: 30px;
+        border-radius: 10px;
+        width: 80%;
+        max-width: 600px;
+        max-height: 80vh;
+        overflow-y: auto;
+      }
+
+      .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid #e9ecef;
+      }
+
+      .modal-header h3 {
+        margin: 0;
+        color: #495057;
+      }
+
+      .close {
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+        color: #aaa;
+      }
+
+      .close:hover {
+        color: #000;
+      }
+
+      .form-group {
+        margin-bottom: 20px;
+      }
+
+      .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 600;
+        color: #495057;
+      }
+
+      .form-group input,
+      .form-group textarea {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ced4da;
+        border-radius: 5px;
+        font-size: 1rem;
+      }
+
+      .form-group textarea {
+        min-height: 150px;
+        resize: vertical;
+      }
+
+      .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-top: 20px;
+        padding-top: 15px;
+        border-top: 1px solid #e9ecef;
+      }
+
+      .btn-save {
+        background: #28a745;
+        color: white;
+      }
+
+      .btn-save:hover {
+        background: #218838;
+      }
+
+      .btn-cancel {
+        background: #6c757d;
+        color: white;
+      }
+
+      .btn-cancel:hover {
+        background: #5a6268;
+      }
+
+      .alert {
+        padding: 15px;
+        margin-bottom: 20px;
+        border-radius: 5px;
+        display: none;
+      }
+
+      .alert-success {
+        background-color: #d4edda;
+        border: 1px solid #c3e6cb;
+        color: #155724;
+      }
+
+      .alert-error {
+        background-color: #f8d7da;
+        border: 1px solid #f5c6cb;
+        color: #721c24;
+      }
+
+      .stats {
+        display: flex;
+        gap: 20px;
+        margin-bottom: 30px;
+      }
+
+      .stat-card {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        text-align: center;
+        flex: 1;
+      }
+
+      .stat-number {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #007bff;
+        margin-bottom: 5px;
+      }
+
+      .stat-label {
+        color: #6c757d;
+        font-size: 0.9rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="admin-container">
+      <div class="admin-header">
+        <h1>AI 클래스 폼 텍스트 관리</h1>
+        <p>AI 법인영업 클래스 신청 폼의 텍스트를 관리할 수 있습니다.</p>
+      </div>
+
+      <div class="stats">
+        <div class="stat-card">
+          <div class="stat-number">{{ total_elements }}</div>
+          <div class="stat-label">총 텍스트 요소</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number">{{ sections.basic_info|length }}</div>
+          <div class="stat-label">기본 정보</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number">{{ sections.class_details|length }}</div>
+          <div class="stat-label">강의 상세</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number">{{ sections.payment_info|length }}</div>
+          <div class="stat-label">결제 정보</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number">{{ sections.form_labels|length }}</div>
+          <div class="stat-label">폼 라벨</div>
+        </div>
+      </div>
+
+      <div class="alert alert-success" id="successAlert"></div>
+      <div class="alert alert-error" id="errorAlert"></div>
+
+      {% for section_name, elements in sections.items %}
+        {% if elements %}
+        <div class="section-group">
+          <div class="section-header" onclick="toggleSection('{{ section_name }}')">
+            <h2>
+              {% if section_name == 'basic_info' %}
+                기본 정보
+              {% elif section_name == 'class_details' %}
+                강의 상세 정보
+              {% elif section_name == 'payment_info' %}
+                결제 정보
+              {% elif section_name == 'form_labels' %}
+                폼 라벨 및 버튼
+              {% else %}
+                기타 섹션
+              {% endif %}
+              ({{ elements|length }}개)
+            </h2>
+            <span class="toggle-icon">▼</span>
+          </div>
+          <div class="section-content" id="section-{{ section_name }}">
+            {% for element in elements %}
+            <div class="text-element" data-element-id="{{ element.id }}">
+              <div class="element-header">
+                <div>
+                  <div class="element-key">{{ element.key }}</div>
+                  {% if element.description %}
+                  <div class="element-description">{{ element.description }}</div>
+                  {% endif %}
+                </div>
+                <div class="element-actions">
+                  <button class="btn btn-edit" onclick="editElement({{ element.id }})">수정</button>
+                  <button class="btn btn-delete" onclick="deleteElement({{ element.id }})">삭제</button>
+                </div>
+              </div>
+              <div class="element-text">{{ element.text }}</div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+
+    <!-- 수정 모달 -->
+    <div id="editModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>텍스트 수정</h3>
+          <span class="close" onclick="closeModal()">&times;</span>
+        </div>
+        <form id="editForm">
+          <div class="form-group">
+            <label for="editKey">키:</label>
+            <input type="text" id="editKey" readonly />
+          </div>
+          <div class="form-group">
+            <label for="editDescription">설명:</label>
+            <input type="text" id="editDescription" />
+          </div>
+          <div class="form-group">
+            <label for="editText">텍스트 내용:</label>
+            <textarea id="editText" required></textarea>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-cancel" onclick="closeModal()">취소</button>
+            <button type="submit" class="btn btn-save">저장</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      let currentElementId = null;
+
+      // 섹션 토글
+      function toggleSection(sectionName) {
+        const header = document.querySelector(`[onclick="toggleSection('${sectionName}')"]`);
+        const content = document.getElementById(`section-${sectionName}`);
+
+        if (content.classList.contains("active")) {
+          content.classList.remove("active");
+          header.classList.remove("active");
+        } else {
+          content.classList.add("active");
+          header.classList.add("active");
+        }
+      }
+
+      // 모든 섹션 열기
+      document.addEventListener("DOMContentLoaded", function () {
+        const sections = document.querySelectorAll(".section-content");
+        sections.forEach((section) => {
+          section.classList.add("active");
+          const header = section.previousElementSibling;
+          header.classList.add("active");
+        });
+      });
+
+      // 알림 표시
+      function showAlert(message, type = "success") {
+        const alertId = type === "success" ? "successAlert" : "errorAlert";
+        const alert = document.getElementById(alertId);
+        alert.textContent = message;
+        alert.style.display = "block";
+
+        setTimeout(() => {
+          alert.style.display = "none";
+        }, 5000);
+      }
+
+      // 모달 닫기
+      function closeModal() {
+        document.getElementById("editModal").style.display = "none";
+        currentElementId = null;
+      }
+
+      // 요소 수정
+      function editElement(elementId) {
+        currentElementId = elementId;
+
+        fetch(`/sales/diary_admin/ai_class/form_text/${elementId}/`)
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.success) {
+              document.getElementById("editKey").value = data.element.key;
+              document.getElementById("editDescription").value = data.element.description || "";
+              document.getElementById("editText").value = data.element.text;
+              document.getElementById("editModal").style.display = "block";
+            } else {
+              showAlert(data.error, "error");
+            }
+          })
+          .catch((error) => {
+            showAlert("요소를 불러오는 중 오류가 발생했습니다.", "error");
+          });
+      }
+
+      // 요소 삭제
+      function deleteElement(elementId) {
+        if (confirm("정말로 이 텍스트 요소를 삭제하시겠습니까?")) {
+          fetch(`/sales/diary_admin/ai_class/form_text/${elementId}/delete/`, {
+            method: "DELETE",
+            headers: {
+              "X-CSRFToken": getCookie("csrftoken"),
+              "Content-Type": "application/json",
+            },
+          })
+            .then((response) => response.json())
+            .then((data) => {
+              if (data.success) {
+                showAlert("텍스트 요소가 삭제되었습니다.");
+                location.reload();
+              } else {
+                showAlert(data.error, "error");
+              }
+            })
+            .catch((error) => {
+              showAlert("삭제 중 오류가 발생했습니다.", "error");
+            });
+        }
+      }
+
+      // 수정 폼 제출
+      document.getElementById("editForm").addEventListener("submit", function (e) {
+        e.preventDefault();
+
+        const data = {
+          key: document.getElementById("editKey").value,
+          text: document.getElementById("editText").value,
+          description: document.getElementById("editDescription").value,
+        };
+
+        fetch("/sales/diary_admin/ai_class/form_text/update/", {
+          method: "POST",
+          headers: {
+            "X-CSRFToken": getCookie("csrftoken"),
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(data),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.success) {
+              showAlert("텍스트가 성공적으로 업데이트되었습니다.");
+              closeModal();
+              location.reload();
+            } else {
+              showAlert(data.error, "error");
+            }
+          })
+          .catch((error) => {
+            showAlert("업데이트 중 오류가 발생했습니다.", "error");
+          });
+      });
+
+      // CSRF 토큰 가져오기
+      function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== "") {
+          const cookies = document.cookie.split(";");
+          for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === name + "=") {
+              cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+              break;
+            }
+          }
+        }
+        return cookieValue;
+      }
+
+      // 모달 외부 클릭 시 닫기
+      window.onclick = function (event) {
+        const editModal = document.getElementById("editModal");
+
+        if (event.target === editModal) {
+          closeModal();
+        }
+      };
+    </script>
+  </body>
+</html>
+

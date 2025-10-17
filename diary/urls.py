@@ -13,7 +13,7 @@ from .cascade_handlers import toggle_cascade_attribute, get_cascade_attributes_l
 from .auto_blog import blog_account_check_api
 from .detail_openai import ai_chat, ai_chat_cache_clear, file_cache_management, performance_monitoring
 from .admin_view import admin_dashboard, inquiry_list, inquiry_detail, alarm_list, alarm_create, alarm_edit, alarm_delete, inquiry_delete, admin_api, user_list, user_delete, user_toggle_admin, user_update_use_date, diary_count_list, diary_count_delete, class_form_list, class_form_delete, user_toggle_activate, log_list, log_export_excel, user_login_switch, payamount_list, payamount_update
-from .ai_class_admin_views import ai_class_text_management, update_text_element, create_text_element, delete_text_element, get_text_element, get_all_text_elements
+from .ai_class_admin_views import ai_class_text_management, update_text_element, create_text_element, delete_text_element, get_text_element, get_all_text_elements, class_form_text_management, update_form_text_element, create_form_text_element, delete_form_text_element, get_form_text_element
 from .diary_board import diary_board, get_announcements, get_announcement_detail, mark_as_read, download_announcement_file, announcement_detail_page, create_announcement, upload_announcement_file, get_announcement_file_url, get_announcement_download_url, announcement_category_list, announcement_category_create, announcement_category_delete, announcement_list_with_category, create_announcement_with_category, update_announcement, delete_announcement, download_s3_auto_blog_file
 from .main_views import CompanyInfoView, PersonalInfoView, TermsOfServiceView
 from .session_handlers import cleanup_session_cache_api, get_active_sessions_api
@@ -265,6 +265,13 @@ urlpatterns = [
     path('diary_admin/ai_class/text/<int:element_id>/', get_text_element, name='admin_get_text_element'),
     path('diary_admin/ai_class/text/<int:element_id>/delete/', delete_text_element, name='admin_delete_text_element'),
     path('diary_admin/ai_class/text/all/', get_all_text_elements, name='admin_get_all_text_elements'),
+    
+    # AI 클래스 폼 텍스트 관리 관련 URL (관리자 전용)
+    path('diary_admin/ai_class/form_text/', class_form_text_management, name='admin_class_form_text_management'),
+    path('diary_admin/ai_class/form_text/update/', update_form_text_element, name='admin_update_form_text_element'),
+    path('diary_admin/ai_class/form_text/create/', create_form_text_element, name='admin_create_form_text_element'),
+    path('diary_admin/ai_class/form_text/<int:element_id>/', get_form_text_element, name='admin_get_form_text_element'),
+    path('diary_admin/ai_class/form_text/<int:element_id>/delete/', delete_form_text_element, name='admin_delete_form_text_element'),
 
     # 원데이 클래스 관리 관련 URL
     path('diary_admin/class_forms/', class_form_list, name='admin_class_forms'),
