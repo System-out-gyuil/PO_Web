@@ -267,10 +267,18 @@ def board_edit(request, board_id):
         try:
             data = json.loads(request.body)
             
+            print("=== 게시글 수정 요청 디버깅 ===")
+            print(f"받은 데이터: {data}")
+            
             title = data.get('title', '').strip()
             content = data.get('content', '').strip()
-            category_id = data.get('category_id', None)  # 카테고리 ID 추가
+            category_id = data.get('category') or data.get('category_id', None)  # 카테고리 ID 추가 (category 또는 category_id)
             files = data.get('files', [])
+            
+            print(f"제목: {title}")
+            print(f"내용: {content}")
+            print(f"카테고리 ID: {category_id}")
+            print(f"카테고리 ID 타입: {type(category_id)}")
             
             if not title:
                 return JsonResponse({'success': False, 'message': '제목을 입력해주세요.'})
@@ -278,13 +286,20 @@ def board_edit(request, board_id):
             if not content:
                 return JsonResponse({'success': False, 'message': '내용을 입력해주세요.'})
             
+            if not category_id:
+                return JsonResponse({'success': False, 'message': '카테고리를 선택해주세요.'})
+            
             # 카테고리 확인
             category = None
             if category_id:
                 try:
                     category = NomalBoardCategory.objects.get(id=category_id, user=user)
+                    print(f"찾은 카테고리: {category.id} - {category.category_name}")
                 except NomalBoardCategory.DoesNotExist:
+                    print(f"카테고리를 찾을 수 없음. ID: {category_id}, User: {user.id}")
                     return JsonResponse({'success': False, 'message': '유효하지 않은 카테고리입니다.'})
+            else:
+                print("카테고리 ID가 없음")
             
             # 게시글 수정
             board.title = title
@@ -292,6 +307,8 @@ def board_edit(request, board_id):
             board.category = category  # 카테고리 변경 추가
             board.files = files
             board.save()
+            
+            print(f"게시글 수정 완료. ID: {board.id}, 카테고리: {board.category.id if board.category else None}")
             
             return JsonResponse({
                 'success': True,
