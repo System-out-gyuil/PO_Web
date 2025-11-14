@@ -39,19 +39,20 @@
     <div class="container">
       <div class="explain">
         <div class="explain_text">
-          <span class="explain_title">{% if text_elements.form.title %}{{ text_elements.form.title }}{% else %}법인영업 원데이 클래스{% endif %}</span
+          <span class="explain_title"
+            >{% if text_elements.form.title %}{{ text_elements.form.title|safe }}{% else %}법인영업 원데이 클래스{% endif %}</span
           ><br />
           법인영업 원데이 클래스를 진행합니다.<br /><br />
 
-          {% if text_elements.form.date %}{{ text_elements.form.date }}{% else %}일자 : 2025년 9월 16일(화요일) 15시 ~ 17시{% endif %}<br />
-          {% if text_elements.form.location %}{{ text_elements.form.location }}{% else %}장소 : 구로디지털단지역 인근 (자세한 주소는 추후 문자 안내),
-          주차가능{% endif %}<br />
-          {% if text_elements.form.capacity %}{{ text_elements.form.capacity }}{% else %}인원 : 선착순 10명{% endif %}<br /><br />
+          {% if text_elements.form.date %}{{ text_elements.form.date|safe }}{% else %}일자 : 2025년 9월 16일(화요일) 15시 ~ 17시{% endif %}<br />
+          {% if text_elements.form.location %}{{ text_elements.form.location|safe }}{% else %}장소 : 구로디지털단지역 인근 (자세한 주소는 추후 문자
+          안내), 주차가능{% endif %}<br />
+          {% if text_elements.form.capacity %}{{ text_elements.form.capacity|safe }}{% else %}인원 : 선착순 10명{% endif %}<br /><br />
 
-          {% if text_elements.form.bank %}{{ text_elements.form.bank }}{% else %}기업은행 : 074-118859-04-015(주식회사 피오코퍼레이션){% endif %}<br />
-          {% if text_elements.form.fee %}{{ text_elements.form.fee }}{% else %}강의료 : 5만원{% endif %}<br /><br />
+          {% if text_elements.form.bank %}{{ text_elements.form.bank|safe }}{% else %}기업은행 : 074-118859-04-015(주식회사 피오코퍼레이션){% endif %}<br />
+          {% if text_elements.form.fee %}{{ text_elements.form.fee|safe }}{% else %}강의료 : 5만원{% endif %}<br /><br />
 
-          {% if text_elements.form.notice %}{{ text_elements.form.notice }}{% else %}신청서 접수 후 입금완료시, 클래스 참여 확정됩니다.{% endif %}
+          {% if text_elements.form.notice %}{{ text_elements.form.notice|safe }}{% else %}신청서 접수 후 입금완료시, 클래스 참여 확정됩니다.{% endif %}
         </div>
       </div>
 
@@ -64,7 +65,7 @@
 
         <div class="form_row">
           <div class="form_title">
-            <span class="red">*</span> 1. {% if text_elements.form.label_name %}{{ text_elements.form.label_name }}{% else %}참석자 성함을
+            <span class="red">*</span> 1. {% if text_elements.form.label_name %}{{ text_elements.form.label_name|safe }}{% else %}참석자 성함을
             알려주세요{% endif %}
           </div>
           <div class="form_input">
@@ -74,7 +75,7 @@
             <input
               type="text"
               name="name"
-              placeholder="{% if text_elements.form.placeholder_name %}{{ text_elements.form.placeholder_name }}{% else %}이름을 입력해주세요{% endif %}"
+              placeholder="{% if text_elements.form.placeholder_name %}{{ text_elements.form.placeholder_name|safe }}{% else %}이름을 입력해주세요{% endif %}"
               value="{{ name|default:'' }}"
               {%
               if
@@ -89,12 +90,12 @@
 
         <div class="form_row">
           <div class="form_title">
-            <span class="red">*</span> 2. {% if text_elements.form.label_phone %}{{ text_elements.form.label_phone }}{% else %}참석자 연락처를
+            <span class="red">*</span> 2. {% if text_elements.form.label_phone %}{{ text_elements.form.label_phone|safe }}{% else %}참석자 연락처를
             알려주세요{% endif %}
           </div>
           <div class="form_input">
             <span
-              >{% if text_elements.form.phone_description %}{{ text_elements.form.phone_description }}{% else %}연락처로 강의 관련 안내사항을
+              >{% if text_elements.form.phone_description %}{{ text_elements.form.phone_description|safe }}{% else %}연락처로 강의 관련 안내사항을
               전달드립니다.{% endif %}</span
             >
             {% if errors.phone %}
@@ -103,7 +104,7 @@
             <input
               type="text"
               name="phone"
-              placeholder="{% if text_elements.form.placeholder_phone %}{{ text_elements.form.placeholder_phone }}{% else %}연락처를 입력해주세요. (예: 01012341234, 010-1234-1234, 010 1234 1234){% endif %}"
+              placeholder="{% if text_elements.form.placeholder_phone %}{{ text_elements.form.placeholder_phone|safe }}{% else %}연락처를 입력해주세요. (예: 01012341234, 010-1234-1234, 010 1234 1234){% endif %}"
               value="{{ phone|default:'' }}"
               {%
               if
@@ -118,7 +119,7 @@
 
         <div class="form_input">
           <button type="submit" class="submit-btn">
-            {% if text_elements.form.button_text %}{{ text_elements.form.button_text }}{% else %}클래스 신청하기{% endif %}
+            {% if text_elements.form.button_text %}{{ text_elements.form.button_text|safe }}{% else %}클래스 신청하기{% endif %}
           </button>
         </div>
       </form>
