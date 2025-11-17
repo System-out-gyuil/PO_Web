@@ -38,6 +38,8 @@ async function loadClassForms(page = 1) {
 // 원데이 클래스 신청 테이블 렌더링
 function renderClassFormsTable(classForms, currentPage = 1, pageSize = 10) {
   const tbody = document.getElementById("class-forms-table-body");
+  console.log("classForms", classForms);
+
   if (!tbody) return;
 
   tbody.innerHTML = "";
@@ -50,11 +52,13 @@ function renderClassFormsTable(classForms, currentPage = 1, pageSize = 10) {
   classForms.forEach((classForm, index) => {
     const row = document.createElement("tr");
     const displayNumber = (currentPage - 1) * pageSize + (classForms.length - index);
+    const desiredDate = (classForm.desired_date || "").trim();
 
     row.innerHTML = `
             <td>${displayNumber}</td>
             <td>${classForm.name}</td>
             <td>${classForm.phone}</td>
+            <td>${desiredDate || "미입력"}</td>
             <td>${formatDate(classForm.created_at)}</td>
             <td>
                 <button class="btn btn-sm btn-outline-danger" onclick="deleteClassForm(${classForm.id})">

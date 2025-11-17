@@ -7,6 +7,10 @@ from django.utils.decorators import method_decorator
 from django.views import View
 import json
 from .models import AIClassTextElement, ClassFormTextElement
+from .ai_class_defaults import (
+    get_class_form_default_descriptions,
+    get_class_form_default_texts,
+)
 from .admin_decorators import admin_required, admin_required_json
 
 @admin_required
@@ -208,6 +212,26 @@ def get_all_text_elements(request):
 @admin_required
 def class_form_text_management(request):
     """AI 클래스 폼 텍스트 관리 페이지"""
+    default_texts = get_class_form_default_texts()
+    default_descriptions = get_class_form_default_descriptions()
+
+    # 기본 텍스트 요소가 누락된 경우 자동 생성
+    existing_keys = set(ClassFormTextElement.objects.values_list('key', flat=True))
+    missing_elements = []
+
+    for key, text in default_texts.items():
+        if key not in existing_keys:
+            missing_elements.append(
+                ClassFormTextElement(
+                    key=key,
+                    text=text,
+                    description=default_descriptions.get(key, '')
+                )
+            )
+
+    if missing_elements:
+        ClassFormTextElement.objects.bulk_create(missing_elements)
+
     # 모든 텍스트 요소 가져오기
     text_elements = ClassFormTextElement.objects.all().order_by('key')
     
@@ -228,7 +252,13 @@ def class_form_text_management(request):
             sections['class_details'].append(element)
         elif key.startswith(('form.bank', 'form.account', 'form.fee', 'form.notice')):
             sections['payment_info'].append(element)
-        elif key.startswith(('form.label_', 'form.placeholder_', 'form.button')):
+        elif key.startswith((
+            'form.label_',
+            'form.placeholder_',
+            'form.button',
+            'form.phone_description',
+            'form.desired_date_description'
+        )):
             sections['form_labels'].append(element)
         else:
             sections['other'].append(element)

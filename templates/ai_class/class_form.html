@@ -117,6 +117,35 @@
           </div>
         </div>
 
+        <div class="form_row">
+          <div class="form_title">
+            <span class="red">*</span> 3. {% if text_elements.form.label_desired_date %}{{ text_elements.form.label_desired_date|safe }}{% else %}희망
+            수강 날짜를 알려주세요{% endif %}
+          </div>
+          <div class="form_input">
+            <span
+              >{% if text_elements.form.desired_date_description %}{{ text_elements.form.desired_date_description|safe }}{% else %}가능한 날짜/시간을
+              적어주세요.{% endif %}</span
+            >
+            {% if errors.desired_date %}
+            <div class="field-error">{{ errors.desired_date }}</div>
+            {% endif %}
+            <input
+              type="text"
+              name="desired_date"
+              placeholder="{% if text_elements.form.placeholder_desired_date %}{{ text_elements.form.placeholder_desired_date|safe }}{% else %}예: 9월 16일 15시{% endif %}"
+              value="{{ desired_date|default:'' }}"
+              {%
+              if
+              errors.desired_date
+              %}class="error-input"
+              {%
+              endif
+              %}
+            />
+          </div>
+        </div>
+
         <div class="form_input">
           <button type="submit" class="submit-btn">
             {% if text_elements.form.button_text %}{{ text_elements.form.button_text|safe }}{% else %}클래스 신청하기{% endif %}

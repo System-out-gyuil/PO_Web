@@ -6,6 +6,7 @@ from django.utils.decorators import method_decorator
 from django.views import View
 import re
 from diary.models import ClassForm, AIClassTextElement, ClassFormTextElement
+from diary.ai_class_defaults import get_class_form_default_texts
 
 def ai_class(request: HttpRequest):
     # User-Agent를 통해 모바일 여부 감지
@@ -40,21 +41,7 @@ def class_form(request: HttpRequest):
         text_elements_flat[element.key] = element.text
     
     # 기본값 설정 (DB에 데이터가 없을 경우 사용)
-    default_texts = {
-        'form.title': '법인영업 원데이 클래스',
-        'form.date': '일자 : 2025년 9월 16일(화요일) 15시 ~ 17시',
-        'form.location': '장소 : 구로디지털단지역 인근 (자세한 주소는 추후 문자 안내), 주차가능',
-        'form.capacity': '인원 : 선착순 10명',
-        'form.bank': '기업은행 : 074-118859-04-015(주식회사 피오코퍼레이션)',
-        'form.fee': '강의료 : 5만원',
-        'form.notice': '신청서 접수 후 입금완료시, 클래스 참여 확정됩니다.',
-        'form.label_name': '참석자 성함을 알려주세요',
-        'form.placeholder_name': '이름을 입력해주세요',
-        'form.label_phone': '참석자 연락처를 알려주세요',
-        'form.placeholder_phone': '연락처를 입력해주세요. (예: 01012341234, 010-1234-1234, 010 1234 1234)',
-        'form.phone_description': '연락처로 강의 관련 안내사항을 전달드립니다.',
-        'form.button_text': '클래스 신청하기',
-    }
+    default_texts = get_class_form_default_texts()
     
     # 기본값과 병합 (DB 값이 우선)
     for key, default_value in default_texts.items():
@@ -73,6 +60,7 @@ def class_form(request: HttpRequest):
     if request.method == 'POST':
         name = request.POST.get('name', '').strip()
         phone = request.POST.get('phone', '').strip()
+        desired_date = request.POST.get('desired_date', '').strip()
         
         # 유효성 검사
         errors = {}
@@ -85,11 +73,15 @@ def class_form(request: HttpRequest):
         elif not is_valid_phone_format(phone):
             errors['phone'] = '올바른 휴대폰 번호 형식을 입력해주세요. (예: 01012341234, 010-1234-1234, 010 1234 1234)'
         
+        if not desired_date:
+            errors['desired_date'] = '희망 날짜를 입력해주세요.'
+        
         if errors:
             context = {
                 'errors': errors,
                 'name': name,
                 'phone': phone,
+                'desired_date': desired_date,
                 'text_elements': text_elements,
             }
             return render(request, 'ai_class/class_form.html', context)
@@ -101,7 +93,8 @@ def class_form(request: HttpRequest):
             # 데이터베이스에 저장
             ClassForm.objects.create(
                 name=name,
-                phone=formatted_phone
+                phone=formatted_phone,
+                desired_date=desired_date
             )
             
             # 성공 메시지와 함께 리다이렉트
@@ -114,6 +107,7 @@ def class_form(request: HttpRequest):
                 'errors': errors,
                 'name': name,
                 'phone': phone,
+                'desired_date': desired_date,
                 'text_elements': text_elements,
             }
             return render(request, 'ai_class/class_form.html', context)

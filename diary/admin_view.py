@@ -1109,7 +1109,8 @@ def class_form_list(request):
     if search_query:
         class_forms = class_forms.filter(
             Q(name__icontains=search_query) |
-            Q(phone__icontains=search_query)
+            Q(phone__icontains=search_query) |
+            Q(desired_date__icontains=search_query)
         )
     
     # 정렬
@@ -1133,6 +1134,7 @@ def class_form_list(request):
             'id': class_form.id,
             'name': class_form.name,
             'phone': class_form.phone,
+            'desired_date': class_form.desired_date,
             'created_at': class_form.created_at.isoformat(),
             'updated_at': class_form.updated_at.isoformat(),
         }
