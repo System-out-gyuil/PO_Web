@@ -651,6 +651,11 @@ def user_list(request):
     # 사용자 데이터 직렬화
     users_data = []
     for user in users_page:
+        # 사용 기간이 만료된 경우 자동으로 비활성화
+        user.deactivate_if_expired()
+        # DB에서 최신 상태 다시 가져오기
+        user.refresh_from_db()
+        
         user_dict = {
             'id': user.id,
             'name': user.name,

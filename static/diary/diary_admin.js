@@ -6,6 +6,7 @@ let currentAlarmId = null;
 let currentUserSort = { field: null, direction: null }; // 정렬이 설정되지 않은 상태
 let isSortingInProgress = false; // 정렬 진행 중 플래그
 let currentCountType = "main"; // 현재 조회수 타입 (main 또는 diary)
+let currentUserPage = 1; // 현재 사용자 목록 페이지 번호
 
 // 원데이 클래스 신청 목록 로드 (먼저 정의)
 async function loadClassForms(page = 1) {
@@ -400,7 +401,8 @@ function showUsers() {
   document.querySelectorAll(".nav-link").forEach((link) => link.classList.remove("active"));
   document.querySelector('a[onclick="showUsers(); return false;"]').classList.add("active");
   updateActiveNav("users");
-  loadUsers();
+  // 현재 페이지 유지 (없으면 1페이지)
+  loadUsers(currentUserPage || 1);
 }
 
 function showViewCounts() {
@@ -565,8 +567,13 @@ async function loadAlarms(page = 1) {
 }
 
 // 사용자 로드
-async function loadUsers(page = 1) {
+async function loadUsers(page = null) {
   try {
+    // 페이지 번호가 제공되지 않으면 현재 페이지 사용
+    if (page === null) {
+      page = currentUserPage || 1;
+    }
+    
     const searchQuery = document.getElementById("user-search")?.value || "";
 
     // 정렬 필드 매핑
@@ -621,7 +628,9 @@ async function loadUsers(page = 1) {
     const data = await response.json();
 
     if (data.success) {
-      renderUsersTable(data.users, data.current_user_id, data.is_super_admin, page, 10);
+      // 현재 페이지 번호 저장 (pagination.number를 우선 사용)
+      currentUserPage = data.pagination.number || page;
+      renderUsersTable(data.users, data.current_user_id, data.is_super_admin, currentUserPage, 10);
       renderPagination(data.pagination, "users-pagination", loadUsers);
       // 정렬 상태는 이미 handleUserTableSort에서 업데이트됨
     } else {
@@ -858,8 +867,26 @@ async function changeAdminStatus(userId, makeAdmin) {
       showAlert(data.message, "success");
       // 모달 닫기
       bootstrap.Modal.getInstance(document.getElementById("adminChangeModal")).hide();
-      // 사용자 목록 새로고침
-      loadUsers();
+      // 사용자 목록 새로고침 (현재 페이지 유지)
+      // 페이지네이션에서 현재 활성화된 페이지 번호를 찾거나, currentUserPage 사용
+      let pageToLoad = 1;
+      const activePageItem = document.querySelector("#users-pagination .page-item.active");
+      if (activePageItem) {
+        const pageLink = activePageItem.querySelector(".page-link");
+        if (pageLink) {
+          const pageText = pageLink.textContent.trim();
+          const pageNum = parseInt(pageText);
+          if (!isNaN(pageNum) && pageNum > 0) {
+            pageToLoad = pageNum;
+          }
+        }
+      }
+      // 페이지네이션에서 찾지 못한 경우 currentUserPage 사용
+      if (pageToLoad === 1 && currentUserPage && currentUserPage > 0) {
+        pageToLoad = currentUserPage;
+      }
+      console.log("관리자 권한 변경 후 페이지 로드:", pageToLoad, "currentUserPage:", currentUserPage);
+      loadUsers(pageToLoad);
     } else {
       showAlert(data.message, "danger");
     }
@@ -907,8 +934,8 @@ async function deleteUser(userId) {
       showAlert(data.message, "success");
       // 모달 닫기
       bootstrap.Modal.getInstance(document.getElementById("userDeleteModal")).hide();
-      // 사용자 목록 새로고침
-      loadUsers();
+      // 사용자 목록 새로고침 (현재 페이지 유지)
+      loadUsers(currentUserPage);
     } else {
       showAlert(data.message, "danger");
     }
@@ -1288,8 +1315,8 @@ async function saveUseDate(userId) {
       showAlert(data.message, "success");
       // 모달 닫기
       bootstrap.Modal.getInstance(document.getElementById("useDateEditModal")).hide();
-      // 사용자 목록 새로고침
-      loadUsers();
+      // 사용자 목록 새로고침 (현재 페이지 유지)
+      loadUsers(currentUserPage);
     } else {
       showAlert(data.message, "danger");
     }
@@ -1356,8 +1383,9 @@ function handleUserTableSort(field, direction) {
     // 즉시 시각적 업데이트
     updateUserTableSortVisuals();
 
-    // 사용자 목록 새로고침
-    loadUsers();
+    // 사용자 목록 새로고침 (정렬 시에는 1페이지로 이동)
+    currentUserPage = 1;
+    loadUsers(1);
   } finally {
     // 정렬 완료 후 플래그 해제
     setTimeout(() => {
@@ -1618,8 +1646,26 @@ async function changeActivateStatus(userId, makeActive) {
 
     if (data.success) {
       showAlert(data.message, "success");
-      // 사용자 목록 새로고침
-      loadUsers();
+      // 사용자 목록 새로고침 (현재 페이지 유지)
+      // 페이지네이션에서 현재 활성화된 페이지 번호를 찾거나, currentUserPage 사용
+      let pageToLoad = 1;
+      const activePageItem = document.querySelector("#users-pagination .page-item.active");
+      if (activePageItem) {
+        const pageLink = activePageItem.querySelector(".page-link");
+        if (pageLink) {
+          const pageText = pageLink.textContent.trim();
+          const pageNum = parseInt(pageText);
+          if (!isNaN(pageNum) && pageNum > 0) {
+            pageToLoad = pageNum;
+          }
+        }
+      }
+      // 페이지네이션에서 찾지 못한 경우 currentUserPage 사용
+      if (pageToLoad === 1 && currentUserPage && currentUserPage > 0) {
+        pageToLoad = currentUserPage;
+      }
+      console.log("활성화 상태 변경 후 페이지 로드:", pageToLoad, "currentUserPage:", currentUserPage);
+      loadUsers(pageToLoad);
     } else {
       showAlert(data.message, "danger");
     }
