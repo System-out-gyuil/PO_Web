@@ -255,6 +255,11 @@ def get_funding_recommendation(request):
         age_attribute_value = _get_attribute_value(user, row, '나이')
         calculated_age = _calculate_age_from_data(age_attribute_value)
         company_data['ceo_age'] = calculated_age if calculated_age > 0 else 35
+
+        print("===========================================")
+        print(f"age_attribute_value : {age_attribute_value}")
+        print(f"calculated_age : {calculated_age}")
+        print(f"company_data['ceo_age'] : {company_data['ceo_age']}")
         
         company_data['is_startup'] = company_data['business_months'] <= 36
         
@@ -953,8 +958,18 @@ def _calculate_age_from_data(age_data_str):
         if age_data.get('birth_date'):
             birth_date_str = age_data['birth_date']
             try:
-                # YY.MM.DD 형식 파싱
-                if '.' in birth_date_str and len(birth_date_str) == 8:
+                birth_date = None
+                
+                # YYYY-MM-DD 형식 파싱 (예: "1950-02-13")
+                if '-' in birth_date_str and len(birth_date_str) == 10:
+                    year_part, month_part, day_part = birth_date_str.split('-')
+                    year = int(year_part)
+                    month = int(month_part)
+                    day = int(day_part)
+                    birth_date = datetime(year, month, day)
+                
+                # YY.MM.DD 형식 파싱 (예: "50.02.13")
+                elif '.' in birth_date_str and len(birth_date_str) == 8:
                     year_part, month_part, day_part = birth_date_str.split('.')
                     year = int(year_part)
                     month = int(month_part)
@@ -967,6 +982,9 @@ def _calculate_age_from_data(age_data_str):
                         year += 2000
                     
                     birth_date = datetime(year, month, day)
+                
+                # 날짜 파싱 성공 시 나이 계산
+                if birth_date:
                     current_date = datetime.now()
                     
                     # 나이 계산
@@ -974,10 +992,12 @@ def _calculate_age_from_data(age_data_str):
                     if current_date.month < birth_date.month or (current_date.month == birth_date.month and current_date.day < birth_date.day):
                         age -= 1
                     
-                    return max(age, 1)  # 최소 1세
+                    calculated_age = max(age, 1)  # 최소 1세
+                    print(f"생년월일 파싱 성공: {birth_date_str} -> {birth_date.date()}, 계산된 나이: {calculated_age}")
+                    return calculated_age
                     
             except (ValueError, IndexError) as e:
-                print(f"생년월일 파싱 오류: {e}")
+                print(f"생년월일 파싱 오류: {e}, birth_date_str: {birth_date_str}")
                 
         # 연령대 선택이 있는 경우
         elif age_data.get('age_range'):
