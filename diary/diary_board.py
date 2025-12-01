@@ -480,6 +480,120 @@ def get_announcement_download_url(request, saved_name):
             'message': f'다운로드 URL 생성 중 오류가 발생했습니다: {str(e)}'
         })
 
+@csrf_exempt
+def get_announcement_file_content(request):
+    """공고 게시판 텍스트 파일의 내용을 가져오는 API (CORS 문제 해결용)"""
+    if request.method == 'GET':
+        user_id = request.session.get('diary_member_id')
+        
+        if not user_id:
+            return JsonResponse({'success': False, 'error': '로그인이 필요합니다.'})
+        
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '사용자를 찾을 수 없습니다.'})
+        
+        # 쿼리 파라미터에서 saved_name 가져오기
+        saved_name = request.GET.get('saved_name', '')
+        
+        if not saved_name:
+            return JsonResponse({'success': False, 'error': '파일 경로가 제공되지 않았습니다.'})
+        
+        try:
+            import chardet
+            import re
+            
+            print(f"텍스트 파일 내용 요청 - saved_name: {saved_name}")
+            
+            # S3 클라이언트 생성
+            s3_client = boto3.client(
+                's3',
+                aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+                aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+                region_name=settings.AWS_S3_REGION_NAME
+            )
+            
+            print(f"S3 버킷: {settings.AWS_STORAGE_BUCKET_NAME}, 키: {saved_name}")
+            
+            # S3에서 파일 내용 가져오기
+            try:
+                response = s3_client.get_object(
+                    Bucket=settings.AWS_STORAGE_BUCKET_NAME,
+                    Key=saved_name
+                )
+                file_content = response['Body'].read()
+                print(f"파일 내용 읽기 성공, 크기: {len(file_content)} bytes")
+            except ClientError as e:
+                error_code = e.response['Error']['Code']
+                error_message = e.response['Error']['Message']
+                print(f"S3 파일 읽기 실패: {error_code} - {error_message}")
+                return JsonResponse({'success': False, 'error': f'파일을 찾을 수 없습니다: {error_message}'})
+            
+            # 파일 확장자 확인
+            file_ext = saved_name.split('.')[-1].lower() if '.' in saved_name else ''
+            
+            # 인코딩 감지 및 디코딩
+            detected = chardet.detect(file_content)
+            detected_encoding = detected['encoding']
+            confidence = detected['confidence']
+            
+            # 파일 확장자에 따른 기본 인코딩 설정
+            default_encoding = 'utf-8'
+            if file_ext in ['txt', 'log', 'csv']:
+                default_encoding = 'euc-kr'
+            elif file_ext in ['json', 'xml', 'html', 'htm', 'css', 'js']:
+                default_encoding = 'utf-8'
+            
+            # 다양한 인코딩 시도
+            encodings_to_try = [detected_encoding, default_encoding, 'utf-8', 'euc-kr', 'cp949', 'iso-8859-1']
+            decoded_content = None
+            used_encoding = None
+            
+            for encoding in encodings_to_try:
+                if not encoding:
+                    continue
+                try:
+                    decoded_content = file_content.decode(encoding)
+                    used_encoding = encoding
+                    
+                    # 한글 파일의 경우 한글이 포함되어 있는지 확인
+                    if file_ext in ['txt', 'log', 'csv']:
+                        korean_pattern = re.compile(r'[가-힣]')
+                        if korean_pattern.search(decoded_content):
+                            print(f"한글 텍스트 감지됨 - 인코딩: {encoding}")
+                            break
+                    else:
+                        # 웹 파일들은 첫 번째 성공한 인코딩 사용
+                        break
+                except (UnicodeDecodeError, LookupError):
+                    print(f"인코딩 {encoding} 실패, 다음 시도...")
+                    continue
+            
+            if not decoded_content:
+                # 모든 인코딩이 실패한 경우 기본값 사용
+                decoded_content = file_content.decode('utf-8', errors='replace')
+                used_encoding = 'utf-8 (fallback)'
+            
+            return JsonResponse({
+                'success': True, 
+                'content': decoded_content,
+                'encoding': used_encoding,
+                'detected_encoding': detected_encoding,
+                'confidence': confidence
+            }, json_dumps_params={'ensure_ascii': False})
+            
+        except ClientError as e:
+            error_code = e.response['Error']['Code']
+            error_message = e.response['Error']['Message']
+            print(f"S3 파일 읽기 실패: {error_code} - {error_message}")
+            return JsonResponse({'success': False, 'error': f'파일을 읽을 수 없습니다: {error_message}'})
+        except Exception as e:
+            print(f"파일 내용 읽기 실패: {e}")
+            return JsonResponse({'success': False, 'error': f'파일 내용 읽기 실패: {str(e)}'})
+    
+    return JsonResponse({'success': False, 'error': 'GET 요청만 허용됩니다.'})
+
 def save_uploaded_files(files):
     """업로드된 파일들을 S3에 저장하고 파일 정보를 반환"""
     saved_files = []
